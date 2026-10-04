@@ -54,6 +54,13 @@ export class MineralProbioticRepository {
     static async syncDailyTreatments(dailyRecordId, pondIndex, pond, logDate, items = []) {
         if (!pondIndex || !logDate) return [];
 
+        let backupRows = [];
+        try {
+            backupRows = await this.getTreatmentsByDate(pondIndex, logDate);
+        } catch (backupErr) {
+            console.warn("Could not backup existing treatments before sync:", backupErr);
+        }
+
         try {
             // 1. Delete existing treatments for this date & pond
             const delEndpoint = `mineral_probiotic_used?pond_index=eq.${encodeURIComponent(pondIndex)}&log_date=eq.${encodeURIComponent(logDate)}`;
@@ -77,14 +84,29 @@ export class MineralProbioticRepository {
                 updated_at: new Date().toISOString()
             }));
 
-            // 3. Batch insert
-            const insertRes = await supabase.request("mineral_probiotic_used", {
-                method: "POST",
-                headers: { "Prefer": "return=representation" },
-                body: JSON.stringify(rows)
-            });
-
-            return insertRes || rows;
+            // 3. Batch insert with restore fallback
+            try {
+                const insertRes = await supabase.request("mineral_probiotic_used", {
+                    method: "POST",
+                    headers: { "Prefer": "return=representation" },
+                    body: JSON.stringify(rows)
+                });
+                return insertRes || rows;
+            } catch (insertErr) {
+                if (backupRows && backupRows.length > 0) {
+                    console.warn("Treatment insert failed, restoring previous records...");
+                    try {
+                        await supabase.request("mineral_probiotic_used", {
+                            method: "POST",
+                            headers: { "Prefer": "return=minimal" },
+                            body: JSON.stringify(backupRows)
+                        });
+                    } catch (restoreErr) {
+                        console.error("Failed to restore previous treatments:", restoreErr);
+                    }
+                }
+                throw insertErr;
+            }
         } catch (err) {
             console.error("Error syncing mineral_probiotic_used records:", err);
             throw err;
