@@ -157,10 +157,12 @@ The operational DBMS (10 modules: Master, Sampling, Feeding, Harvest, Stocking, 
 | 2026-10-04 | Concurrency & Integrity | 15-user simultaneous stress test passing at 137.2 RPS | Aligned Supabase pipelines, eliminated 4HP aerators per Rule 6, added rollback to treatment sync, built offline sync queue (`offlineSync.js`), documented in `CONCURRENCY_REPORT.md`. |
 | 2026-10-04 | Desktop UX | Desktop logbook readability fix (93% frosted white) | Scoped `@media (min-width: 769px)` rules in `field-ops-mobile.css` to fix transparent table readability over photographic background without altering mobile cards. |
 | 2026-10-04 | Visual Hierarchy | Landing page bubble frequency reduced by 70% | Tuned ambient bubbles from 20 to 6 with vertical delay offsets for subtle crystalline atmosphere. |
+| 2026-10-04 | Executive Analytics | Executive Production & Biomass Intelligence (Sleek Pastel) | Delivered live harvest readiness gate, 14d forward forecast, 12-month rolling biomass chart, packout grading (Prime Good vs Sub-grade), and commercial revenue/margin ledger in `ExecutiveBiomassView.js`. |
+| 2026-10-04 | Financial & Chart Fix | Species Realized Price Split & Canvas ResizeObserver Fix | Differentiated realized RM/kg between Vannamei and Monodon across ledger, cards, and CSV. Removed all synthetic 25% margin assumptions. Fixed 0x0 canvas collapse via ResizeObserver. |
 
 ---
 
-## 6. Sprint Log: Phase 2 Completed & Phase 3 Roadmap (2026-09-29)
+## 6. Sprint Log: Phase 2 & Phase 3 Completed (2026-10-04)
 
 ### Phase 2 Accomplishments (Delivered):
 1. **Grid Component Architecture (`PondGridMap.js`):**
@@ -185,11 +187,21 @@ The operational DBMS (10 modules: Master, Sampling, Feeding, Harvest, Stocking, 
    - Filter by Biosecurity (`All`, `🔴 Red Alert`, `🟡 Warning`, `🟢 Clean`, `⚪ Idle`).
    - Filter by Culture Stage: `All`, `Early (<30 DOC)`, `Mid (30–70 DOC)`, `Finishing (>70 DOC)`.
    - 5-minute smart in-memory session cache (`sessionStorage`) with one-click `[ 🔄 Refresh ]` button.
-6. **Build Verification:**
+
+### Phase 3 Accomplishments (Delivered):
+1. **Executive Production & Biomass Intelligence (`ExecutiveBiomassView.js`):**
+   - **Sleek Pastel Design Language:** Understated Nordic / Quiet Luxury theme featuring soft Celadon Sage (`#ECFDF5`), Warm Apricot (`#FFF7ED`), Pale Honey (`#FEFCE8`), and Glacier Blue (`#F0F9FF`).
+   - **6-Tile Executive KPI Strip:** Optimum Ready (Count & Tons), Minimum Ready (Count & Tons), 14-Day Forward Intake Forecast (+Tons), Slow Growth Watch (DOC 70+), Forced & Alert (Stunted / PCR Positive), and Live Standing Crop Biomass (Tons & Active Ponds).
+   - **Interactive Harvest Readiness Pipeline & Action Gate:** Tabular list with segmented tabs (`All Ready`, `Optimum`, `Minimum`, `Forced / Alert`, `14d Forecast`), live biosecurity markers, and 1-click action triggers (`Schedule Plant`, `Partial Thinning`, `Terminate Pond`).
+   - **12-Month Moving Minimalist Canvas Chart:** Soft sky-pastel column bars (`#BAE6FD`) paired with a Pine Emerald bezier revenue line and open data points. Handled initial hidden tab rendering with `ResizeObserver` on the parent container to prevent 0x0 canvas collapse.
+   - **Species-Differentiated Realized Pricing:** Segregated realized price per kg between Vannamei (`VAN RM/kg`, farm avg RM 19.86/kg) and Monodon (`MON RM/kg`, farm avg RM 29.56/kg) derived from real transaction revenue and harvested weight.
+   - **Purge of Synthetic Assumptions:** Eliminated arbitrary 25% margin assumptions across domain models, ledger, and CSV. All financial metrics strictly originate from recorded transactions.
+   - **Commercial Quality & Packout Grading:** Visual progress bars displaying Prime Good Grade (69.5%), 2nd Grade (18.8%), Small (10.3%), and Below/Rejects (1.4%).
+   - **Top Off-Takers Breakdown:** Commercial volume share, realized price per kg, and species badges (`VAN` / `MON`) for BAB Processing Plant, SBH Marine, and CS Fishery.
+   - **12-Month Performance Ledger Table:** Complete historical table with species-separated price columns (`VAN RM/kg`, `MON RM/kg`) and 1-click `[ 📥 Export CSV ]`.
+2. **Database Sync Deduplication (`database_migration/sync_weekly_access.ps1`):**
+   - Transitioned harvest and sampling table inserts into upsert/merge logic keyed on composite natural keys (`harv_date` + `pond_index` + `harv_type`, and `sampling_date` + `pond_index`), eliminating duplicate historical records on re-runs.
+3. **Build Verification:**
    - Production Vite build compiled cleanly with zero errors.
 
-### Next Sprint: Phase 3 (Executive Biomass Analytics & Trajectory)
-- Construct live KPI cards (Total Standing Biomass, Farm Capacity %, Harvest Pipeline).
-- Build the Biomass Trajectory Curve (Planned vs Realized biomass).
-- Ready placeholder for corporate Business Plan targets once dataset is supplied.
 

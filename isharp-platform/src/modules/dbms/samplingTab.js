@@ -51,7 +51,8 @@ export class SamplingTab {
         }
 
         try {
-            const data = await SamplingRepository.getSamplingByPond(pondIndex);
+            const raw = await SamplingRepository.getSamplingByPond(pondIndex, "asc");
+            const data = (raw || []).sort((a, b) => (Number(a.smpl_doc) || 0) - (Number(b.smpl_doc) || 0));
 
             if (!data || data.length === 0) {
                 this.dom.tbody.innerHTML = `

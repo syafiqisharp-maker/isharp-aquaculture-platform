@@ -478,7 +478,8 @@ export class PondWqsDetail {
     async loadBiometrics(pondIndex) {
         if (!pondIndex) return;
         try {
-            const samplings = await SamplingRepository.getSamplingByPond(pondIndex);
+            const raw = await SamplingRepository.getSamplingByPond(pondIndex, "desc");
+            const samplings = (raw || []).sort((a, b) => (Number(b.smpl_doc) || 0) - (Number(a.smpl_doc) || 0));
             if (samplings && samplings.length > 0) {
                 const latest = samplings[0];
                 const dateEl = this.container.querySelector("#wqs-sample-date");

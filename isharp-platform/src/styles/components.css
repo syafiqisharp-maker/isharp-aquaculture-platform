@@ -2735,3 +2735,67 @@
     box-shadow: 0 4px 12px rgba(2, 132, 199, 0.4);
 }
 
+/* ==========================================================================
+   20. EXECUTIVE PRODUCTION & BIOMASS INTELLIGENCE (SLEEK PASTEL THEME)
+   ========================================================================== */
+.sleek-card {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    box-shadow: 0 1px 3px 0 rgba(15, 23, 42, 0.03), 0 4px 14px -2px rgba(15, 23, 42, 0.02);
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.sleek-kpi:hover {
+    box-shadow: 0 8px 24px -4px rgba(15, 23, 42, 0.06);
+    border-color: #cbd5e1;
+    transform: translateY(-1px);
+}
+
+.btn-cohort.active {
+    background-color: #0f172a !important;
+    color: #ffffff !important;
+    box-shadow: 0 2px 6px rgba(15, 23, 42, 0.15) !important;
+}
+
+.btn-cohort:not(.active) {
+    color: #64748b !important;
+    background: transparent !important;
+}
+
+.btn-cohort:not(.active):hover {
+    color: #0f172a !important;
+    background: #e2e8f0 !important;
+}
+
+.tab-pill.active {
+    background-color: #0f172a !important;
+    color: #ffffff !important;
+    box-shadow: 0 2px 6px rgba(15, 23, 42, 0.15) !important;
+}
+
+.tab-pill:not(.active) {
+    color: #64748b !important;
+    background-color: #ffffff !important;
+}
+
+.tab-pill:not(.active):hover {
+    color: #0f172a !important;
+    background-color: #f1f5f9 !important;
+}
+
+.pond-row {
+    transition: background 0.15s ease;
+}
+
+.pond-row:hover {
+    background-color: #f8fafc !important;
+}
+
+.btn-action-gate:hover {
+    background-color: #f8fafc !important;
+    border-color: #94a3b8 !important;
+    color: #0f172a !important;
+}
+
+

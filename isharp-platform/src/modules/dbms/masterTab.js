@@ -145,10 +145,8 @@ export class MasterTab {
 
         // 2. Biometrics Sampling (Latest ABW & Cumulative Feed)
         try {
-            const samples = await SamplingRepository.getSamplingByPond(pond.pond_index);
-            if (samples && samples.length > 0) {
-                // Grab the highest DOC sampling
-                const latest = samples[samples.length - 1];
+            const latest = await SamplingRepository.getLatestSampling(pond.pond_index);
+            if (latest) {
                 const abw = parseFloat(latest.smpl_abw || 0);
                 const doc = latest.smpl_doc;
                 const tfed = parseFloat(latest.smpl_tfed || 0);

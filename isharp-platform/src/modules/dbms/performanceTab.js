@@ -45,10 +45,11 @@ export class PerformanceTab {
         const pond = appState.currentPond;
         if (!pondIndex) return;
 
-        // 1. Fetch live sampling data
+        // 1. Fetch live sampling data in ascending chronological order
         let samplings = [];
         try {
-            samplings = await SamplingRepository.getSamplingByPond(pondIndex);
+            const res = await SamplingRepository.getSamplingByPond(pondIndex, "asc");
+            samplings = (res || []).sort((a, b) => (Number(a.smpl_doc) || 0) - (Number(b.smpl_doc) || 0));
         } catch (err) {
             console.warn("Could not load sampling records for performance tab:", err);
         }

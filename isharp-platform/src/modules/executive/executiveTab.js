@@ -5,6 +5,7 @@
 
 import { appState } from "../../state/appState.js";
 import { PondGridMap } from "./PondGridMap.js";
+import { ExecutiveBiomassView } from "./ExecutiveBiomassView.js";
 
 export class ExecutiveView {
     constructor(containerId = "view-executive") {
@@ -17,9 +18,13 @@ export class ExecutiveView {
         // Initialize 216-Pond Interactive Farm Grid Map
         this.gridMap = new PondGridMap("exec-map-container");
 
+        // Initialize Executive Production & Biomass Intelligence
+        this.biomassView = new ExecutiveBiomassView("exec-production-container", this.gridMap);
+
         // Listen for cycles change to update KPI strip
         appState.subscribe("cyclesLoaded", (cycles) => this.updateKPIs(cycles));
     }
+
 
     render() {
         this.container.innerHTML = `
@@ -148,6 +153,10 @@ export class ExecutiveView {
     }
 
     updateKPIs(cycles) {
+        // PondGridMap evaluates all 216 farm grid ponds and is the authoritative source of truth.
+        if (this.gridMap && this.gridMap.activeCycleMap && this.gridMap.activeCycleMap.size > 0) {
+            return;
+        }
         if (!cycles || cycles.length === 0) return;
 
         const inProd = cycles.filter(c => (c.pond_status || '').toUpperCase() === 'PRODUCTION');

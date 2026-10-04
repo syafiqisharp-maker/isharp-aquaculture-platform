@@ -28,6 +28,7 @@ export class Navbar {
         // Listen for cycles change to update dropdown
         appState.subscribe("filteredCyclesChanged", (cycles) => this.populatePondDropdown(cycles));
         appState.subscribe("cyclesLoaded", (cycles) => this.populatePondDropdown(cycles));
+        appState.subscribe("pondChanged", (pond) => this.onPondChanged(pond));
     }
 
     initRoleSelector() {
@@ -120,6 +121,20 @@ export class Navbar {
         } else if (cycles.length > 0) {
             this.selectPondByIndex(cycles[0].pond_index);
         }
+    }
+
+    onPondChanged(pond) {
+        if (!this.dom.selectPond || !pond || !pond.pond_index) return;
+        const pIdx = String(pond.pond_index);
+        let opt = this.dom.selectPond.querySelector(`option[value="${pIdx}"]`);
+        if (!opt) {
+            opt = document.createElement("option");
+            opt.value = pIdx;
+            const doc = pond.stck_date ? calculateDOC(pond.stck_date, pond.date_close) : null;
+            opt.textContent = `Pond ${pond.pond} - ${pIdx} (${doc !== null ? 'DOC ' + doc : 'DOC —'})`;
+            this.dom.selectPond.appendChild(opt);
+        }
+        this.dom.selectPond.value = pIdx;
     }
 
     async selectPondByIndex(pondIndex) {

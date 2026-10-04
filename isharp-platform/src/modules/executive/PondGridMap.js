@@ -8,7 +8,7 @@ import { PondRepository } from "../../infrastructure/repositories/pondRepository
 import { LabRepository } from "../../infrastructure/repositories/labRepository.js";
 import { SamplingRepository } from "../../infrastructure/repositories/samplingRepository.js";
 import { appState } from "../../state/appState.js";
-import { calculateDOC } from "../../domain/biometrics.js";
+import { calculateDOC, calculateBiomass } from "../../domain/biometrics.js";
 import { Toast } from "../../components/Toast.js";
 
 const CACHE_KEY = "isharp_farm_map_cache_v2";
@@ -660,42 +660,59 @@ export class PondGridMap {
 
         // Fetch on-demand sampling records for this pond
         if (pondIndex) {
-            this.loadDrawerSampling(pondIndex);
+            this.loadDrawerSampling(pondIndex, cycle);
         }
     }
 
     /**
      * Loads biometrics sampling for the drawer.
+     * @param {string} pondIndex
+     * @param {object} [cycle]
      */
-    async loadDrawerSampling(pondIndex) {
+    async loadDrawerSampling(pondIndex, cycle) {
         const container = document.getElementById("drawer-sampling-container");
         if (!container) return;
 
         try {
-            const sampling = await SamplingRepository.getSamplingByPond(pondIndex);
-            if (!sampling || sampling.length === 0) {
+            const latest = await SamplingRepository.getLatestSampling(pondIndex);
+            if (!latest) {
                 container.innerHTML = `<div style="font-size: 0.76rem; color: #94a3b8; padding: 0.5rem;">No net-cast sampling data logged yet for this cycle.</div>`;
                 return;
             }
 
-            const latest = sampling[sampling.length - 1];
+            // Determine biomass (use recorded sampling biomass or calculate fallback from stocking count)
+            let bmsKg = parseFloat(latest.smpl_bms) || 0;
+            if (!bmsKg && cycle) {
+                const pcs = cycle.stck_total || cycle.stck_pcs;
+                if (pcs && latest.smpl_abw && latest.smpl_surv) {
+                    bmsKg = calculateBiomass(pcs, latest.smpl_surv, latest.smpl_abw);
+                }
+            }
+
+            const abwVal = latest.smpl_abw ? `${parseFloat(latest.smpl_abw).toFixed(2)} g` : "—";
+            const bmsVal = bmsKg > 0 ? `${Number(bmsKg).toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 2 })} kg` : "—";
+            const survVal = latest.smpl_surv ? `${parseFloat(latest.smpl_surv).toFixed(1)} %` : "—";
+            const dateVal = latest.smpl_date 
+                ? `${latest.smpl_date}${latest.smpl_doc ? ' (DOC ' + latest.smpl_doc + ')' : ''}` 
+                : "—";
+
             container.innerHTML = `
                 <div class="drawer-stat-grid" style="margin-top: 0.25rem;">
                     <div class="drawer-stat-box" style="background: #ffffff;">
                         <div class="drawer-stat-lbl">Latest ABW</div>
-                        <div class="drawer-stat-val" style="color: #0284c7;">${latest.smpl_abw ? latest.smpl_abw + ' g' : '—'}</div>
+                        <div class="drawer-stat-val" style="color: #0284c7;">${abwVal}</div>
                     </div>
                     <div class="drawer-stat-box" style="background: #ffffff;">
                         <div class="drawer-stat-lbl">Est. Biomass</div>
-                        <div class="drawer-stat-val" style="color: #059669;">${latest.smpl_bms ? Number(latest.smpl_bms).toLocaleString() + ' kg' : '—'}</div>
+                        <div class="drawer-stat-val" style="color: #059669;">${bmsVal}</div>
                     </div>
                     <div class="drawer-stat-box" style="background: #ffffff;">
                         <div class="drawer-stat-lbl">Survival Rate (SR)</div>
-                        <div class="drawer-stat-val">${latest.smpl_surv ? latest.smpl_surv + ' %' : '—'}</div>
+                        <div class="drawer-stat-val">${survVal}</div>
                     </div>
                     <div class="drawer-stat-box" style="background: #ffffff;">
                         <div class="drawer-stat-lbl">Sample Date</div>
-                        <div class="drawer-stat-val" style="font-size: 0.92rem;">${latest.smpl_date || '—'}</div>
+                        <div class="drawer-stat-val" style="font-size: 0.88rem;">${dateVal}</div>
                     </div>
                 </div>
             `;

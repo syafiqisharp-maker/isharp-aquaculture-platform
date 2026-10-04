@@ -9,5 +9,6 @@ export const ENV = {
     APP_NAME: "iSHARP DBMS 2.0",
     FARM_NAME: "Blue Archipelago Berhad • Setiu Farm (SETiU)",
     DEFAULT_ACTIVE_STATUS: "PRODUCTION",
-    API_TIMEOUT_MS: 12000
+    API_TIMEOUT_MS: 25000
 };
+

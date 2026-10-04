@@ -23,7 +23,14 @@ Write-Output "=========================================================="
 # Auto-detect latest Access file if not specified
 if (-not $dbPath -or -not (Test-Path $dbPath)) {
     Write-Output "Scanning for latest Access DB in: $legacyDbDir"
-    $latestFile = Get-ChildItem -Path $legacyDbDir -Filter "*.accdb" | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+    $latestFile = Get-ChildItem -Path $legacyDbDir -Filter "*.accdb" |
+        Sort-Object {
+            if ($_.Name -match '(\d{2})\.(\d{2})\.(\d{2})') {
+                "20$($Matches[1])-$($Matches[2])-$($Matches[3])"
+            } else {
+                $_.LastWriteTime.ToString("yyyy-MM-dd HH:mm:ss")
+            }
+        } -Descending | Select-Object -First 1
     if (-not $latestFile) {
         throw "No .accdb database file found in $legacyDbDir"
     }
@@ -148,7 +155,7 @@ while ($true) {
 Write-Output "  -> Supabase currently tracks $($sbPondIndices.Count) culture cycles."
 
 $cmd = $conn.CreateCommand()
-$cmd.CommandText = "SELECT PondIndex, pond, modl, row, cropno, cycleno, [pond status], [pond active], [date cycle], [date ready], [culture status], [disease status], area, [pond type], [pond usage], [date cleaning], [DateRepair], [date filling], [date culture], [DateBabyBox], [DateQaqc], [date close], [final status], IdleStatus, [water type], Initiative FROM [GrowoutPondMaster]"
+$cmd.CommandText = "SELECT PondIndex, pond, modl, row, cropno, cycleno, [pond status], [pond active], [date cycle], [date ready], [culture status], [disease status], area, [pond type], [pond usage], [date cleaning], [DateRepair], [date filling], [date culture], [DateBabyBox], [DateQaqc], [date close], [final status], IdleStatus, [water type], Initiative, [I HP], [2 HP], [DatePlanStock], [strategy], [date disease], [Initiative1], [Initiative2], [Tested] FROM [GrowoutPondMaster]"
 $reader = $cmd.ExecuteReader()
 
 $masterBatch = @()
@@ -206,6 +213,14 @@ while ($reader.Read()) {
         idle_status = SafeString $reader["IdleStatus"]
         water_type = $(if ($reader["water type"] -ne [DBNull]::Value) { SafeString $reader["water type"] } else { "SEA WATER" })
         initiative = SafeString $reader["Initiative"]
+        initiative1 = SafeString $reader["Initiative1"]
+        initiative2 = SafeString $reader["Initiative2"]
+        strategy = SafeString $reader["strategy"]
+        tested = SafeString $reader["Tested"]
+        aerator_1hp = $(if ($reader["I HP"] -ne [DBNull]::Value) { SafeInt $reader["I HP"] } else { 0 })
+        aerator_2hp = $(if ($reader["2 HP"] -ne [DBNull]::Value) { SafeInt $reader["2 HP"] } else { 0 })
+        date_plan_stock = SafeDate $reader["DatePlanStock"]
+        date_disease = SafeDate $reader["date disease"]
         date_cycle = SafeDate $reader["date cycle"]
         date_cleaning = SafeDate $reader["date cleaning"]
         date_repair = SafeDate $reader["DateRepair"]
@@ -284,23 +299,50 @@ Write-Output "  [OK] Gatekeeper updated: $($accessActiveDict.Count) active ponds
 
 # -------------------------------------------------------------
 # STAGE 3: Incremental GrowoutPondStocking -> pond_stocking_batches
-# Single Source of Truth for all stocking batches
+# Protected against Access indexNo re-sequencing via composite key deduplication
 # -------------------------------------------------------------
 Write-Output ""
-Write-Output "[3/7] Incremental Sync: GrowoutPondStocking -> pond_stocking_batches..."
+Write-Output "[3/7] Incremental Sync: GrowoutPondStocking -> pond_stocking_batches (with deduplication shield)..."
 $maxStocking = Get-SupabaseMaxIndex "pond_stocking_batches"
-$cmd.CommandText = "SELECT PondIndex, stckdate, stcksource, stckspcs, stckpcs, stcktype, stckallow, stcktotal, stcktank, stcksize, stckplstts, BSLine, indexNo FROM [GrowoutPondStocking] WHERE indexNo > $maxStocking ORDER BY indexNo ASC"
+
+# Pre-load existing stocking signatures from Supabase (past 180 days)
+$existingStockingKeys = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
+$stockingCutoff = (Get-Date).AddDays(-180).ToString("yyyy-MM-dd")
+$stockingSigUrl = "$supabaseUrl/rest/v1/pond_stocking_batches?select=pond_index,stck_date,stck_pcs&stck_date=gte.$stockingCutoff&limit=5000"
+try {
+    $existingStockingRes = Invoke-RestMethod -Uri $stockingSigUrl -Headers $headers -Method Get
+    foreach ($row in $existingStockingRes) {
+        $pcs = [math]::Round([decimal]$row.stck_pcs, 0)
+        $existingStockingKeys.Add("$($row.pond_index)_$($row.stck_date)_$pcs") | Out-Null
+    }
+    Write-Output "  -> Loaded $($existingStockingKeys.Count) recent stocking signatures from Supabase."
+} catch {
+    Write-Warning "Could not pre-load stocking signatures: $($_.Exception.Message)"
+}
+
+$cmd.CommandText = "SELECT PondIndex, stckdate, stcksource, stckspcs, stckpcs, stcktype, stckallow, stcktotal, stcktank, stcksize, stckplstts, BSLine, indexNo FROM [GrowoutPondStocking] WHERE stckdate >= DateAdd('d', -180, Date()) OR indexNo > $maxStocking ORDER BY indexNo ASC"
 $reader = $cmd.ExecuteReader()
 $batch = @()
 $newStockingCount = 0
+$skippedStockingDupes = 0
+
 while ($reader.Read()) {
     $pIdx = SafeString $reader["PondIndex"]
     if (-not $pIdx -or -not $sbPondIndices.Contains($pIdx)) { continue }
 
     $stckDate = SafeDate $reader["stckdate"]
+    $stckPcs = SafeDecimal $reader["stckpcs"]
+    $pcsRound = if ($stckPcs -ne $null) { [math]::Round($stckPcs, 0) } else { 0 }
+    $sig = "${pIdx}_${stckDate}_${pcsRound}"
+
+    if ($existingStockingKeys.Contains($sig)) {
+        $skippedStockingDupes++
+        continue
+    }
+    $existingStockingKeys.Add($sig) | Out-Null
+
     $stckSource = SafeString $reader["stcksource"]
     $stckSpecies = $(if ($reader["stckspcs"] -ne [DBNull]::Value) { SafeString $reader["stckspcs"] } else { "P. VANNAMEi" })
-    $stckPcs = SafeDecimal $reader["stckpcs"]
     $stckType = $(if ($reader["stcktype"] -ne [DBNull]::Value) { SafeString $reader["stcktype"] } else { "SPT" })
     $stckAllow = SafeDecimal $reader["stckallow"]
     $stckTotal = SafeDecimal $reader["stcktotal"]
@@ -335,29 +377,60 @@ $reader.Close()
 if ($batch.Count -gt 0) {
     Post-BatchToSupabase "pond_stocking_batches" $batch "index_no"
 }
-Write-Output "  [OK] Added $newStockingCount new stocking batches to pond_stocking_batches (Max ID was $maxStocking)."
+Write-Output "  [OK] Added $newStockingCount new stocking batches to pond_stocking_batches ($skippedStockingDupes existing/re-numbered entries prevented from duplicating)."
 
 
 # -------------------------------------------------------------
 # STAGE 4: Incremental GrowoutPondHarvestDaily -> pond_harvest_daily
+# Protected against Access indexNo re-sequencing via composite key deduplication
 # -------------------------------------------------------------
 Write-Output ""
-Write-Output "[4/7] Incremental Sync: GrowoutPondHarvestDaily..."
+Write-Output "[4/7] Incremental Sync: GrowoutPondHarvestDaily (with deduplication shield)..."
 $maxHarvestDaily = Get-SupabaseMaxIndex "pond_harvest_daily"
-$cmd.CommandText = "SELECT PondIndex, harvdate, harvstts, harvwgt, harvabw, harvRev, harvmtd, indexNo FROM [GrowoutPondHarvestDaily] WHERE indexNo > $maxHarvestDaily ORDER BY indexNo ASC"
+
+# Pre-load existing harvest signatures from Supabase (past 180 days) to guard against Access AutoNumber jumps
+$existingHarvestKeys = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
+$harvestCutoff = (Get-Date).AddDays(-180).ToString("yyyy-MM-dd")
+$harvestSigUrl = "$supabaseUrl/rest/v1/pond_harvest_daily?select=pond_index,harv_date,harv_status,harv_weight&harv_date=gte.$harvestCutoff&limit=5000"
+try {
+    $existingHarvestRes = Invoke-RestMethod -Uri $harvestSigUrl -Headers $headers -Method Get
+    foreach ($row in $existingHarvestRes) {
+        $wt = "{0:F2}" -f [double]$row.harv_weight
+        $existingHarvestKeys.Add("$($row.pond_index)_$($row.harv_date)_$($row.harv_status)_$wt") | Out-Null
+    }
+    Write-Output "  -> Loaded $($existingHarvestKeys.Count) recent harvest signatures from Supabase."
+} catch {
+    Write-Warning "Could not pre-load harvest signatures: $($_.Exception.Message)"
+}
+
+$cmd.CommandText = "SELECT PondIndex, harvdate, harvstts, harvwgt, harvabw, harvRev, harvmtd, indexNo FROM [GrowoutPondHarvestDaily] WHERE harvdate >= DateAdd('d', -180, Date()) OR indexNo > $maxHarvestDaily ORDER BY indexNo ASC"
 $reader = $cmd.ExecuteReader()
 $batch = @()
 $newHarvestDailyCount = 0
+$skippedHarvestDupes = 0
+
 while ($reader.Read()) {
     $pIdx = SafeString $reader["PondIndex"]
     if (-not $pIdx -or -not $sbPondIndices.Contains($pIdx)) { continue }
 
+    $hDate = $(if ($reader["harvdate"] -ne [DBNull]::Value) { SafeDate $reader["harvdate"] } else { "2026-01-01" })
+    $hStts = $(if ($reader["harvstts"] -ne [DBNull]::Value) { SafeString $reader["harvstts"] } else { "TERMINATION" })
+    $hWgt = $(if ($reader["harvwgt"] -ne [DBNull]::Value) { SafeDecimal $reader["harvwgt"] } else { 0.0 })
+    $wtFormatted = "{0:F2}" -f [double]$hWgt
+    $sig = "${pIdx}_${hDate}_${hStts}_${wtFormatted}"
+
+    if ($existingHarvestKeys.Contains($sig)) {
+        $skippedHarvestDupes++
+        continue
+    }
+    $existingHarvestKeys.Add($sig) | Out-Null
+
     $batch += [ordered]@{
         pond_index = $pIdx
         index_no = SafeInt $reader["indexNo"]
-        harv_date = $(if ($reader["harvdate"] -ne [DBNull]::Value) { SafeDate $reader["harvdate"] } else { "2026-01-01" })
-        harv_status = $(if ($reader["harvstts"] -ne [DBNull]::Value) { SafeString $reader["harvstts"] } else { "TERMINATION" })
-        harv_weight = $(if ($reader["harvwgt"] -ne [DBNull]::Value) { SafeDecimal $reader["harvwgt"] } else { 0.0 })
+        harv_date = $hDate
+        harv_status = $hStts
+        harv_weight = $hWgt
         harv_abw = $(if ($reader["harvabw"] -ne [DBNull]::Value) { SafeDecimal $reader["harvabw"] } else { 0.0 })
         harv_revenue = $(if ($reader["harvRev"] -ne [DBNull]::Value) { SafeDecimal $reader["harvRev"] } else { 0.0 })
         harv_method = $(if ($reader["harvmtd"] -ne [DBNull]::Value) { SafeString $reader["harvmtd"] } else { "M" })
@@ -372,27 +445,58 @@ $reader.Close()
 if ($batch.Count -gt 0) {
     Post-BatchToSupabase "pond_harvest_daily" $batch "index_no"
 }
-Write-Output "  [OK] Added $newHarvestDailyCount new harvest daily logs (Max ID was $maxHarvestDaily)."
+Write-Output "  [OK] Added $newHarvestDailyCount new harvest daily logs ($skippedHarvestDupes existing/re-numbered entries prevented from duplicating)."
 
 # -------------------------------------------------------------
 # STAGE 5: Incremental GrowoutPondHarvestSales -> pond_harvest_sales
+# Protected against Access indexNo re-sequencing via composite key deduplication
 # -------------------------------------------------------------
 Write-Output ""
-Write-Output "[5/7] Incremental Sync: GrowoutPondHarvestSales..."
+Write-Output "[5/7] Incremental Sync: GrowoutPondHarvestSales (with deduplication shield)..."
 $maxHarvestSales = Get-SupabaseMaxIndex "pond_harvest_sales"
-$cmd.CommandText = "SELECT indexNo, HvtPondIndx, HvtDate, HvtABW, GoodWGT, GoodPRC, [2ndGradeWGT], [2ndGradePRC], SmallWGT, BelowWGT, RubbishwGT, RawWGT, HvtSLS, HvtBuyer FROM [GrowoutPondHarvestSales] WHERE indexNo > $maxHarvestSales ORDER BY indexNo ASC"
+
+# Pre-load existing sales signatures from Supabase (past 90 days)
+$existingSalesKeys = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
+$salesCutoff = (Get-Date).AddDays(-90).ToString("yyyy-MM-dd")
+$salesSigUrl = "$supabaseUrl/rest/v1/pond_harvest_sales?select=pond_index,hvt_date,hvt_buyer,raw_wgt&hvt_date=gte.$salesCutoff&limit=5000"
+try {
+    $existingSalesRes = Invoke-RestMethod -Uri $salesSigUrl -Headers $headers -Method Get
+    foreach ($row in $existingSalesRes) {
+        $rw = "{0:F2}" -f [double]$row.raw_wgt
+        $existingSalesKeys.Add("$($row.pond_index)_$($row.hvt_date)_$($row.hvt_buyer)_$rw") | Out-Null
+    }
+    Write-Output "  -> Loaded $($existingSalesKeys.Count) recent sales signatures from Supabase."
+} catch {
+    Write-Warning "Could not pre-load sales signatures: $($_.Exception.Message)"
+}
+
+$cmd.CommandText = "SELECT indexNo, HvtPondIndx, HvtDate, HvtABW, GoodWGT, GoodPRC, [2ndGradeWGT], [2ndGradePRC], SmallWGT, BelowWGT, RubbishwGT, RawWGT, HvtSLS, HvtBuyer FROM [GrowoutPondHarvestSales] WHERE HvtDate >= DateAdd('d', -90, Date()) OR indexNo > $maxHarvestSales ORDER BY indexNo ASC"
 $reader = $cmd.ExecuteReader()
 $batch = @()
 $newHarvestSalesCount = 0
+$skippedSalesDupes = 0
+
 while ($reader.Read()) {
     $pIdx = SafeString $reader["HvtPondIndx"]
     if (-not $pIdx -or -not $sbPondIndices.Contains($pIdx)) { continue }
 
+    $hvtDate = SafeDate $reader["HvtDate"]
+    $hvtBuyer = SafeString $reader["HvtBuyer"]
+    $rawWgt = SafeDecimal $reader["RawWGT"]
+    $rwFormatted = if ($rawWgt -ne $null) { "{0:F2}" -f [double]$rawWgt } else { "0.00" }
+    $sig = "${pIdx}_${hvtDate}_${hvtBuyer}_${rwFormatted}"
+
+    if ($existingSalesKeys.Contains($sig)) {
+        $skippedSalesDupes++
+        continue
+    }
+    $existingSalesKeys.Add($sig) | Out-Null
+
     $batch += [ordered]@{
         pond_index = $pIdx
         index_no = SafeInt $reader["indexNo"]
-        hvt_date = SafeDate $reader["HvtDate"]
-        hvt_buyer = SafeString $reader["HvtBuyer"]
+        hvt_date = $hvtDate
+        hvt_buyer = $hvtBuyer
         hvt_abw = SafeDecimal $reader["HvtABW"]
         good_wgt = SafeDecimal $reader["GoodWGT"]
         good_prc = SafeDecimal $reader["GoodPRC"]
@@ -401,7 +505,7 @@ while ($reader.Read()) {
         small_wgt = SafeDecimal $reader["SmallWGT"]
         below_wgt = SafeDecimal $reader["BelowWGT"]
         rubbish_wgt = SafeDecimal $reader["RubbishwGT"]
-        raw_wgt = SafeDecimal $reader["RawWGT"]
+        raw_wgt = $rawWgt
         net_sales = SafeDecimal $reader["HvtSLS"]
     }
     $newHarvestSalesCount++
@@ -414,30 +518,60 @@ $reader.Close()
 if ($batch.Count -gt 0) {
     Post-BatchToSupabase "pond_harvest_sales" $batch "index_no"
 }
-Write-Output "  [OK] Added $newHarvestSalesCount new harvest sales logs (Max ID was $maxHarvestSales)."
+Write-Output "  [OK] Added $newHarvestSalesCount new harvest sales logs ($skippedSalesDupes existing/re-numbered entries prevented from duplicating)."
 
 # -------------------------------------------------------------
 # STAGE 6: Incremental GrowoutPondIssues -> pond_issues & Notes
+# Protected against Access indexNo re-sequencing via composite key deduplication
 # -------------------------------------------------------------
 Write-Output ""
-Write-Output "[6/7] Incremental Sync: GrowoutPondIssues and Notes..."
+Write-Output "[6/7] Incremental Sync: GrowoutPondIssues and Notes (with deduplication shield)..."
 $maxIssues = Get-SupabaseMaxIndex "pond_issues"
-$cmd.CommandText = "SELECT PondIndex, issuedate, issueCat, issuestts, issuetest, issueflag, issueGrade, issueNote, indexNo FROM [GrowoutPondIssues] WHERE indexNo > $maxIssues ORDER BY indexNo ASC"
+
+# Pre-load existing issue signatures from Supabase (past 90 days)
+$existingIssueKeys = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
+$issueCutoff = (Get-Date).AddDays(-90).ToString("yyyy-MM-dd")
+$issueSigUrl = "$supabaseUrl/rest/v1/pond_issues?select=pond_index,issue_date,issue_category,issue_status,issue_flag&issue_date=gte.$issueCutoff&limit=5000"
+try {
+    $existingIssueRes = Invoke-RestMethod -Uri $issueSigUrl -Headers $headers -Method Get
+    foreach ($row in $existingIssueRes) {
+        $existingIssueKeys.Add("$($row.pond_index)_$($row.issue_date)_$($row.issue_category)_$($row.issue_status)_$($row.issue_flag)") | Out-Null
+    }
+    Write-Output "  -> Loaded $($existingIssueKeys.Count) recent pathology signatures from Supabase."
+} catch {
+    Write-Warning "Could not pre-load issue signatures: $($_.Exception.Message)"
+}
+
+$cmd.CommandText = "SELECT PondIndex, issuedate, issueCat, issuestts, issuetest, issueflag, issueGrade, issueNote, indexNo FROM [GrowoutPondIssues] WHERE issuedate >= DateAdd('d', -90, Date()) OR indexNo > $maxIssues ORDER BY indexNo ASC"
 $reader = $cmd.ExecuteReader()
 $batch = @()
 $newIssuesCount = 0
+$skippedIssueDupes = 0
+
 while ($reader.Read()) {
     $pIdx = SafeString $reader["PondIndex"]
     if (-not $pIdx -or -not $sbPondIndices.Contains($pIdx)) { continue }
 
+    $iDate = $(if ($reader["issuedate"] -ne [DBNull]::Value) { SafeDate $reader["issuedate"] } else { "2026-01-01" })
+    $iCat = $(if ($reader["issueCat"] -ne [DBNull]::Value) { SafeString $reader["issueCat"] } else { "DISEASE" })
+    $iStts = $(if ($reader["issuestts"] -ne [DBNull]::Value) { SafeString $reader["issuestts"] } else { "EHP" })
+    $iFlag = $(if ($reader["issueflag"] -ne [DBNull]::Value) { SafeString $reader["issueflag"] } else { "GREEN" })
+    $sig = "${pIdx}_${iDate}_${iCat}_${iStts}_${iFlag}"
+
+    if ($existingIssueKeys.Contains($sig)) {
+        $skippedIssueDupes++
+        continue
+    }
+    $existingIssueKeys.Add($sig) | Out-Null
+
     $batch += [ordered]@{
         pond_index = $pIdx
         index_no = SafeInt $reader["indexNo"]
-        issue_date = $(if ($reader["issuedate"] -ne [DBNull]::Value) { SafeDate $reader["issuedate"] } else { "2026-01-01" })
-        issue_category = $(if ($reader["issueCat"] -ne [DBNull]::Value) { SafeString $reader["issueCat"] } else { "DISEASE" })
-        issue_status = $(if ($reader["issuestts"] -ne [DBNull]::Value) { SafeString $reader["issuestts"] } else { "EHP" })
+        issue_date = $iDate
+        issue_category = $iCat
+        issue_status = $iStts
         issue_test = $(if ($reader["issuetest"] -ne [DBNull]::Value) { SafeString $reader["issuetest"] } else { "MICROSCOPY" })
-        issue_flag = $(if ($reader["issueflag"] -ne [DBNull]::Value) { SafeString $reader["issueflag"] } else { "GREEN" })
+        issue_flag = $iFlag
         issue_grade = $(if ($reader["issueGrade"] -ne [DBNull]::Value) { SafeString $reader["issueGrade"] } else { "G0" })
         issue_note = $(if ($reader["issueNote"] -ne [DBNull]::Value) { SafeString $reader["issueNote"] } else { "NEGATIVE" })
     }
@@ -451,7 +585,7 @@ $reader.Close()
 if ($batch.Count -gt 0) {
     Post-BatchToSupabase "pond_issues" $batch "index_no"
 }
-Write-Output "  [OK] Added $newIssuesCount new pathology issues (Max ID was $maxIssues)."
+Write-Output "  [OK] Added $newIssuesCount new pathology issues ($skippedIssueDupes existing/re-numbered entries prevented from duplicating)."
 
 # Check notes
 $maxNotes = Get-SupabaseMaxIndex "pond_notes"
@@ -484,23 +618,51 @@ Write-Output "  [OK] Added $newNotesCount new pond notes (Max ID was $maxNotes).
 
 # -------------------------------------------------------------
 # STAGE 7: Incremental GrowoutPondSampling -> biometrics_sampling
+# Protected against Access indexNo re-sequencing via composite key deduplication
 # -------------------------------------------------------------
 Write-Output ""
-Write-Output "[7/7] Incremental Sync: GrowoutPondSampling (Biometrics)..."
+Write-Output "[7/7] Incremental Sync: GrowoutPondSampling (Biometrics, with deduplication shield)..."
 $maxSampling = Get-SupabaseMaxIndex "biometrics_sampling"
-$cmd.CommandText = "SELECT PondIndex, smpldate, SmplDoc, smplabw, smplsurv, SmplDFed, SmplTFed, Psmpldate, PSmplDoc, Psmplabw, Psmplsurv, PSmplDFed, PSmplTFed, sttgabw, sttgsurv, sttgbms, sttgDFed, sttgTFed, smplbms, indexNo FROM [GrowoutPondSampling] WHERE indexNo > $maxSampling ORDER BY indexNo ASC"
+
+# Pre-load existing sampling signatures from Supabase (past 90 days)
+$existingSamplingKeys = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
+$samplingCutoff = (Get-Date).AddDays(-90).ToString("yyyy-MM-dd")
+$samplingSigUrl = "$supabaseUrl/rest/v1/biometrics_sampling?select=pond_index,smpl_date,smpl_doc&smpl_date=gte.$samplingCutoff&limit=5000"
+try {
+    $existingSamplingRes = Invoke-RestMethod -Uri $samplingSigUrl -Headers $headers -Method Get
+    foreach ($row in $existingSamplingRes) {
+        $existingSamplingKeys.Add("$($row.pond_index)_$($row.smpl_date)_$($row.smpl_doc)") | Out-Null
+    }
+    Write-Output "  -> Loaded $($existingSamplingKeys.Count) recent sampling signatures from Supabase."
+} catch {
+    Write-Warning "Could not pre-load sampling signatures: $($_.Exception.Message)"
+}
+
+$cmd.CommandText = "SELECT PondIndex, smpldate, SmplDoc, smplabw, smplsurv, SmplDFed, SmplTFed, Psmpldate, PSmplDoc, Psmplabw, Psmplsurv, PSmplDFed, PSmplTFed, sttgabw, sttgsurv, sttgbms, sttgDFed, sttgTFed, smplbms, indexNo FROM [GrowoutPondSampling] WHERE smpldate >= DateAdd('d', -90, Date()) OR indexNo > $maxSampling ORDER BY indexNo ASC"
 $reader = $cmd.ExecuteReader()
 $batch = @()
 $newSamplingCount = 0
+$skippedSamplingDupes = 0
+
 while ($reader.Read()) {
     $pIdx = SafeString $reader["PondIndex"]
     if (-not $pIdx -or -not $sbPondIndices.Contains($pIdx)) { continue }
 
+    $sDate = $(if ($reader["smpldate"] -ne [DBNull]::Value) { SafeDate $reader["smpldate"] } else { "2026-01-01" })
+    $sDoc = $(if ($reader["SmplDoc"] -ne [DBNull]::Value) { SafeInt $reader["SmplDoc"] } else { 0 })
+    $sig = "${pIdx}_${sDate}_${sDoc}"
+
+    if ($existingSamplingKeys.Contains($sig)) {
+        $skippedSamplingDupes++
+        continue
+    }
+    $existingSamplingKeys.Add($sig) | Out-Null
+
     $batch += [ordered]@{
         pond_index = $pIdx
         index_no = SafeInt $reader["indexNo"]
-        smpl_date = $(if ($reader["smpldate"] -ne [DBNull]::Value) { SafeDate $reader["smpldate"] } else { "2026-01-01" })
-        smpl_doc = $(if ($reader["SmplDoc"] -ne [DBNull]::Value) { SafeInt $reader["SmplDoc"] } else { 0 })
+        smpl_date = $sDate
+        smpl_doc = $sDoc
         smpl_abw = $(if ($reader["smplabw"] -ne [DBNull]::Value) { SafeDecimal $reader["smplabw"] } else { 0.0 })
         smpl_surv = SafeDecimal $reader["smplsurv"]
         smpl_dfed = SafeDecimal $reader["SmplDFed"]
@@ -528,7 +690,154 @@ $reader.Close()
 if ($batch.Count -gt 0) {
     Post-BatchToSupabase "biometrics_sampling" $batch "index_no"
 }
-Write-Output "  [OK] Added $newSamplingCount new biometrics samplings (Max ID was $maxSampling)."
+Write-Output "  [OK] Added $newSamplingCount new biometrics samplings ($skippedSamplingDupes existing/re-numbered entries prevented from duplicating)."
+
+# -------------------------------------------------------------
+# STAGE 8: Synchronize Paddlewheel Aerator Inventory (pond_aerator_inventory)
+# Source: [MNA-PWA Status]
+# -------------------------------------------------------------
+Write-Output ""
+Write-Output "[8/10] Synchronizing Paddlewheel Aerator Inventory (pond_aerator_inventory)..."
+$cmd.CommandText = "SELECT [Pond Index], [1HP], [2HP] FROM [MNA-PWA Status] WHERE [Pond Index] IS NOT NULL"
+$reader = $cmd.ExecuteReader()
+$aeratorBatch = @()
+$aeratorCount = 0
+while ($reader.Read()) {
+    $pIdx = SafeString $reader["Pond Index"]
+    if (-not $pIdx -or -not $sbPondIndices.Contains($pIdx)) { continue }
+    $pLabel = if ($pIdx.Length -ge 7) { "$($pIdx.Substring(1,2)).$($pIdx.Substring(3,2)).$($pIdx.Substring(5,2))" } else { $pIdx }
+
+    $u1 = SafeInt $reader["1HP"]
+    $u2 = SafeInt $reader["2HP"]
+    $nowStr = (Get-Date).ToString("yyyy-MM-ddTHH:mm:ss+08:00")
+
+    if ($u1 -ne $null -and $u1 -ge 0) {
+        $aeratorBatch += [ordered]@{
+            pond_index = $pIdx
+            pond = $pLabel
+            aerator_model = "1.0 HP Paddlewheel"
+            hp = 1.0
+            total_units = $u1
+            active_units = $u1
+            updated_at = $nowStr
+        }
+    }
+    if ($u2 -ne $null -and $u2 -ge 0) {
+        $aeratorBatch += [ordered]@{
+            pond_index = $pIdx
+            pond = $pLabel
+            aerator_model = "2.0 HP Paddlewheel"
+            hp = 2.0
+            total_units = $u2
+            active_units = $u2
+            updated_at = $nowStr
+        }
+    }
+    $aeratorCount++
+    if ($aeratorBatch.Count -ge 500) {
+        Post-BatchToSupabase "pond_aerator_inventory" $aeratorBatch "pond_index,aerator_model,hp"
+        $aeratorBatch = @()
+    }
+}
+$reader.Close()
+if ($aeratorBatch.Count -gt 0) {
+    Post-BatchToSupabase "pond_aerator_inventory" $aeratorBatch "pond_index,aerator_model,hp"
+}
+Write-Output "  [OK] Synchronized aerator configurations for $aeratorCount pond cycles."
+
+# -------------------------------------------------------------
+# STAGE 9: Incremental Legacy Feed Preservation -> growout_pond_feed_legacy
+# -------------------------------------------------------------
+Write-Output ""
+Write-Output "[9/10] Incremental Sync: GrowoutPondFeed -> growout_pond_feed_legacy..."
+$maxFeed = Get-SupabaseMaxIndex "growout_pond_feed_legacy"
+$cmd.CommandText = "SELECT indexNo, PondIndex, [date], feed, quantity FROM [GrowoutPondFeed] WHERE indexNo > $maxFeed ORDER BY indexNo ASC"
+$reader = $cmd.ExecuteReader()
+$batch = @()
+$newFeedCount = 0
+while ($reader.Read()) {
+    $pIdx = SafeString $reader["PondIndex"]
+    if (-not $pIdx) { continue }
+    $pLabel = if ($pIdx.Length -ge 7) { "$($pIdx.Substring(1,2)).$($pIdx.Substring(3,2)).$($pIdx.Substring(5,2))" } else { $pIdx }
+
+    $batch += [ordered]@{
+        index_no = SafeInt $reader["indexNo"]
+        pond_index = $pIdx
+        pond = $pLabel
+        feed_date = SafeDate $reader["date"]
+        feed_type = SafeString $reader["feed"]
+        quantity_kg = $(if ($reader["quantity"] -ne [DBNull]::Value) { SafeDecimal $reader["quantity"] } else { 0.0 })
+    }
+    $newFeedCount++
+    if ($batch.Count -ge 500) {
+        Post-BatchToSupabase "growout_pond_feed_legacy" $batch "index_no"
+        $batch = @()
+    }
+}
+$reader.Close()
+if ($batch.Count -gt 0) {
+    Post-BatchToSupabase "growout_pond_feed_legacy" $batch "index_no"
+}
+Write-Output "  [OK] Preserved $newFeedCount daily feed entries in growout_pond_feed_legacy (Max ID was $maxFeed)."
+
+# -------------------------------------------------------------
+# STAGE 10: Incremental Final Cycle Audits -> growout_pond_final_legacy
+# -------------------------------------------------------------
+Write-Output ""
+Write-Output "[10/10] Incremental Sync: GrowoutPondFinal -> growout_pond_final_legacy..."
+$maxFinal = Get-SupabaseMaxIndex "growout_pond_final_legacy"
+$cmd.CommandText = "SELECT indexNo, PondIndex, farm, module, row, pond, [crop no], [cycle no], [pond status], [pond active], area, [date cycle], [date close], [final date], [final status], [final doc], [final abw], [final kg], [final pieces], [final adg], [final awg], [final fcr], [final sr], [total feed], [total harvest no], [harvest method], [feed brand], BSLine, [stock date], [stock total fry], [stock density] FROM [GrowoutPondFinal] WHERE indexNo > $maxFinal ORDER BY indexNo ASC"
+$reader = $cmd.ExecuteReader()
+$batch = @()
+$newFinalCount = 0
+while ($reader.Read()) {
+    $pIdx = SafeString $reader["PondIndex"]
+    if (-not $pIdx) { continue }
+    $pLabel = if ($pIdx.Length -ge 7) { "$($pIdx.Substring(1,2)).$($pIdx.Substring(3,2)).$($pIdx.Substring(5,2))" } else { SafeString $reader["pond"] }
+
+    $batch += [ordered]@{
+        index_no = SafeInt $reader["indexNo"]
+        pond_index = $pIdx
+        pond = $pLabel
+        modl = SafeString $reader["module"]
+        row_no = SafeString $reader["row"]
+        crop_no = SafeString $reader["crop no"]
+        cycle_no = SafeString $reader["cycle no"]
+        pond_status = SafeString $reader["pond status"]
+        pond_active = SafeString $reader["pond active"]
+        area = SafeDecimal $reader["area"]
+        date_cycle = SafeDate $reader["date cycle"]
+        date_close = SafeDate $reader["date close"]
+        final_date = SafeDate $reader["final date"]
+        final_status = SafeString $reader["final status"]
+        final_doc = SafeInt $reader["final doc"]
+        final_abw = SafeDecimal $reader["final abw"]
+        final_kg = SafeDecimal $reader["final kg"]
+        final_pieces = SafeDecimal $reader["final pieces"]
+        final_adg = SafeDecimal $reader["final adg"]
+        final_awg = SafeDecimal $reader["final awg"]
+        final_fcr = SafeDecimal $reader["final fcr"]
+        final_sr = SafeDecimal $reader["final sr"]
+        total_feed = SafeDecimal $reader["total feed"]
+        total_harvest_no = SafeInt $reader["total harvest no"]
+        harvest_method = SafeString $reader["harvest method"]
+        feed_brand = SafeString $reader["feed brand"]
+        bs_line = SafeString $reader["BSLine"]
+        stock_date = SafeDate $reader["stock date"]
+        stock_total_fry = SafeDecimal $reader["stock total fry"]
+        stock_density = SafeDecimal $reader["stock density"]
+    }
+    $newFinalCount++
+    if ($batch.Count -ge 500) {
+        Post-BatchToSupabase "growout_pond_final_legacy" $batch "index_no"
+        $batch = @()
+    }
+}
+$reader.Close()
+if ($batch.Count -gt 0) {
+    Post-BatchToSupabase "growout_pond_final_legacy" $batch "index_no"
+}
+Write-Output "  [OK] Preserved $newFinalCount finalized cycle audits in growout_pond_final_legacy (Max ID was $maxFinal)."
 
 $conn.Close()
 
@@ -543,5 +852,8 @@ Write-Output "  New Harvest Sales Records:    $newHarvestSalesCount"
 Write-Output "  New Pathology Issues:         $newIssuesCount"
 Write-Output "  New Pond Notes:               $newNotesCount"
 Write-Output "  New Biometrics Samplings:     $newSamplingCount"
+Write-Output "  Aerator Cycles Synced:        $aeratorCount"
+Write-Output "  Daily Feed Records Synced:    $newFeedCount"
+Write-Output "  Final Cycle Audits Synced:    $newFinalCount"
 Write-Output "  Finish Time: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')"
 Write-Output "=========================================================="
