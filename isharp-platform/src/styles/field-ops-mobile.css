@@ -125,26 +125,51 @@
     }
 
     .field-ops-header {
-        padding: 0.85rem 1rem !important;
+        padding: 0.6rem 0.85rem !important;
         border-radius: 14px !important;
-        flex-direction: column !important;
-        align-items: stretch !important;
-        gap: 0.85rem !important;
+        display: flex !important;
+        flex-direction: row !important;
+        flex-wrap: nowrap !important;
+        justify-content: space-between !important;
+        align-items: center !important;
+        gap: 0.5rem !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
     }
 
     .field-ops-header-top {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        width: 100%;
+        display: flex !important;
+        align-items: center !important;
+        gap: 0.5rem !important;
+        flex: 1 1 auto !important;
+        min-width: 0 !important;
+    }
+
+    .field-ops-header-top h1,
+    .field-ops-header h1 {
+        font-size: 1.02rem !important;
+        font-weight: 800 !important;
+        white-space: nowrap !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+        margin: 0 !important;
+        line-height: 1.2 !important;
     }
 
     .field-ops-header-controls {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        width: 100%;
-        gap: 0.5rem;
+        display: flex !important;
+        align-items: center !important;
+        flex-shrink: 0 !important;
+        margin-left: auto !important;
+    }
+
+    .field-ops-header .btn-action {
+        padding: 0.38rem 0.65rem !important;
+        font-size: 0.74rem !important;
+        white-space: nowrap !important;
+        flex-shrink: 0 !important;
+        min-height: 32px !important;
+        border-radius: 8px !important;
     }
 
     /* ==========================================================================
@@ -771,14 +796,63 @@ input[type="number"] {
     position: relative;
 }
 
-/* Clear solid/gradient backgrounds on inner wrapper containers */
+/* Clear solid/gradient backgrounds on inner wrapper containers & position above bubble layer */
+#view-field-ops > *:not(.bubble-layer):not(#aero-global-bubble-layer),
 #view-field-ops .field-ops-workspace,
 #view-field-ops .field-ops-login-stage,
 #view-field-ops .pond-wqs-wrapper,
-#view-field-ops .mgmt-entry-wrapper,
-#view-field-ops .daily-records-page-wrapper {
+#view-field-ops .mgmt-entry-wrapper {
+    position: relative !important;
+    z-index: 2 !important;
     background: transparent !important;
     background-image: none !important;
+}
+
+/* Daily records mount & wrapper: unconstrained stacking context so modal can escape */
+#view-field-ops #field-ops-daily-records-mount {
+    position: relative;
+    z-index: 9999 !important;
+}
+
+#view-field-ops .daily-records-page-wrapper {
+    position: static !important;
+    z-index: auto !important;
+    background: transparent !important;
+    background-image: none !important;
+}
+
+#view-field-ops #field-ops-daily-records-mount.daily-mount-modal-only {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    height: 100dvh !important;
+    z-index: 10050 !important;
+    background: transparent !important;
+    pointer-events: none !important;
+    overflow: hidden !important;
+}
+
+#view-field-ops #field-ops-daily-records-mount.daily-mount-modal-only .daily-records-page-wrapper {
+    padding: 0 !important;
+    margin: 0 !important;
+    max-width: none !important;
+    display: block !important;
+}
+
+#view-field-ops #field-ops-daily-records-mount.daily-mount-modal-only .daily-records-page-wrapper > *:not(#modal-daily-entry) {
+    display: none !important;
+}
+
+#view-field-ops #field-ops-daily-records-mount.daily-mount-modal-only #modal-daily-entry {
+    pointer-events: auto !important;
+}
+
+/* Hide header whenever daily entry modal is open so it cannot block or overlap the modal */
+#view-field-ops.has-modal-open .field-ops-header,
+#view-field-ops:has(#modal-daily-entry:not(.hidden):not([style*="display: none"]):not([style*="display:none"])) .field-ops-header {
+    display: none !important;
 }
 
 /* Typography Mapping per Frutiger Aero Preview Standard */
@@ -808,17 +882,20 @@ input[type="number"] {
     font-variant-numeric: tabular-nums;
 }
 
-/* Primary Translucent Aero Glass Containers */
+/* Primary Translucent Aero Glass Containers — Elevated above rising bubbles */
 #view-field-ops .field-ops-header,
 #view-field-ops .wqs-nav-bar,
 #view-field-ops .mgmt-header-bar,
+#view-field-ops .mgmt-nav-bar,
 #view-field-ops .field-ops-toolbar,
 #view-field-ops .field-ops-row-section,
 #view-field-ops .glass-card,
 #view-field-ops .field-ops-pond-tile,
 #view-field-ops .module-select-card,
 #view-field-ops .mgmt-card,
-#view-field-ops .daily-entry-card {
+#view-field-ops .daily-entry-card,
+#view-field-ops .sensor-aero-card,
+#view-field-ops .feeding-horizon-banner {
     background: var(--aero-card-bg) !important;
     backdrop-filter: blur(var(--glass-blur)) saturate(180%) brightness(105%) !important;
     -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(180%) brightness(105%) !important;
@@ -827,6 +904,7 @@ input[type="number"] {
     box-shadow: var(--aero-card-shadow) !important;
     position: relative !important;
     overflow: hidden !important;
+    z-index: 3 !important;
 }
 
 /* Header & Nav Bars: Organic Asymmetric Liquid Shell */
@@ -1036,25 +1114,47 @@ input[type="number"] {
     background: radial-gradient(circle at 35% 30%, #fde68a 0%, #f59e0b 60%, #b45309 100%) !important;
     color: rgba(245, 158, 11, 0.6) !important;
 }
+#view-field-ops .orb-crimson,
+#view-field-ops .orb-red {
+    background: radial-gradient(circle at 35% 30%, #fecaca 0%, #ef4444 60%, #b91c1c 100%) !important;
+    color: rgba(239, 68, 68, 0.6) !important;
+    box-shadow: 0 0 8px rgba(239, 68, 68, 0.7), inset 0 -2px 3px rgba(0, 0, 0, 0.35) !important;
+}
 #view-field-ops .orb-idle {
     background: radial-gradient(circle at 35% 30%, #f1f5f9 0%, #cbd5e1 60%, #64748b 100%) !important;
     color: rgba(100, 116, 139, 0.4) !important;
 }
 
-/* Dynamic Ambient Micro-Bubble System (+50% Scale) */
+#view-field-ops .pond-doc-badge-neutral {
+    font-size: 0.68rem !important;
+    font-weight: 800 !important;
+    background: #e0f2fe !important;
+    color: #0284c7 !important;
+    border: 1px solid #bae6fd !important;
+    padding: 0.2rem 0.55rem !important;
+    border-radius: 999px !important;
+    box-shadow: inset 0 1px 1px #fff !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    white-space: nowrap !important;
+}
+
+/* Dynamic Ambient Micro-Bubble System (+50% Scale) — Positioned behind cards (z-index: 1) */
 .bubble-layer,
-#view-field-ops .bubble-layer {
+#view-field-ops .bubble-layer,
+#aero-global-bubble-layer {
     position: fixed !important;
     top: 0 !important;
     left: 0 !important;
     width: 100vw !important;
     height: 100vh !important;
     pointer-events: none !important;
-    z-index: 5 !important;
+    z-index: 1 !important;
     overflow: hidden !important;
 }
 .aero-bubble,
-#view-field-ops .aero-bubble {
+#view-field-ops .aero-bubble,
+#aero-global-bubble-layer .aero-bubble {
     position: absolute !important;
     bottom: -80px !important;
     border-radius: 50% !important;
@@ -1062,14 +1162,33 @@ input[type="number"] {
     box-shadow: inset 0 2px 4px rgba(255, 255, 255, 0.98), 0 4px 14px rgba(2, 132, 199, 0.32) !important;
     pointer-events: none !important;
     will-change: transform, opacity !important;
+    animation-duration: 18s;
+    animation-timing-function: linear;
+    animation-iteration-count: infinite;
 }
 
 .aero-bubble.lazy-1,
-#view-field-ops .aero-bubble.lazy-1 { animation: rise-lazy-wobble-1 linear infinite !important; }
+#view-field-ops .aero-bubble.lazy-1,
+#aero-global-bubble-layer .aero-bubble.lazy-1 {
+    animation-name: rise-lazy-wobble-1 !important;
+    animation-timing-function: linear !important;
+    animation-iteration-count: infinite !important;
+}
 .aero-bubble.lazy-2,
-#view-field-ops .aero-bubble.lazy-2 { animation: rise-lazy-wobble-2 linear infinite !important; }
+#view-field-ops .aero-bubble.lazy-2,
+#aero-global-bubble-layer .aero-bubble.lazy-2 {
+    animation-name: rise-lazy-wobble-2 !important;
+    animation-timing-function: linear !important;
+    animation-iteration-count: infinite !important;
+}
 .aero-bubble.burst-bubble,
-#view-field-ops .aero-bubble.burst-bubble { animation: rise-burst cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards !important; }
+#view-field-ops .aero-bubble.burst-bubble,
+#aero-global-bubble-layer .aero-bubble.burst-bubble {
+    animation-name: rise-burst !important;
+    animation-timing-function: cubic-bezier(0.25, 0.46, 0.45, 0.94) !important;
+    animation-fill-mode: forwards !important;
+    animation-iteration-count: 1 !important;
+}
 
 @keyframes rise-lazy-wobble-1 {
     0% { transform: translate3d(0, 0, 0) scale(0.75); opacity: 0; }
@@ -1193,8 +1312,8 @@ input[type="number"] {
     background: rgba(7, 38, 66, 0.55) !important;
     backdrop-filter: blur(10px) !important;
     -webkit-backdrop-filter: blur(10px) !important;
-    z-index: 10050 !important;
-    display: flex !important;
+    z-index: 99999 !important;
+    display: flex;
     justify-content: center !important;
     align-items: flex-end !important;
     padding: 0 !important;
@@ -1205,6 +1324,12 @@ input[type="number"] {
         align-items: center !important;
         padding: 20px !important;
     }
+}
+
+#view-field-ops .modal-backdrop-aero.hidden,
+#view-field-ops .modal-backdrop-aero[style*="display: none"],
+#view-field-ops .modal-backdrop-aero[style*="display:none"] {
+    display: none !important;
 }
 
 #view-field-ops .modal-sheet-aero {
@@ -1403,4 +1528,67 @@ input[type="number"] {
     display: flex !important;
     gap: 8px !important;
     flex-shrink: 0 !important;
+}
+
+
+/* ==========================================================================
+   DESKTOP LOGBOOK LEDGER READABILITY (>=769px ONLY — mobile cards untouched)
+   Fixes: generic .glass-card 28% !important background made the table
+   see-through; empty-day text was too faint; badges wrapped.
+   ========================================================================== */
+@media (min-width: 769px) {
+    /* Frosted, mostly opaque surface (beats generic .glass-card rule) */
+    #view-field-ops .glass-card.logbook-ledger-card {
+        background: rgba(255, 255, 255, 0.93) !important;
+        backdrop-filter: blur(18px) saturate(140%) !important;
+        -webkit-backdrop-filter: blur(18px) saturate(140%) !important;
+    }
+
+    #view-field-ops .logbook-table-container {
+        background: #ffffff;
+        border: 1px solid #cbd5e1 !important;
+    }
+
+    /* Slightly larger type for the desktop table */
+    #view-field-ops .logbook-table-container table {
+        font-size: 0.9rem !important;
+    }
+    #view-field-ops .logbook-table-container thead th {
+        font-size: 0.78rem !important;
+        background: #f1f5f9;
+        color: #1e293b !important;
+        white-space: nowrap;
+    }
+    #view-field-ops .logbook-table-container td span {
+        font-size: 0.8rem !important;
+    }
+    #view-field-ops .logbook-table-container td button {
+        font-size: 0.8rem !important;
+        padding: 0.3rem 0.7rem !important;
+    }
+
+    /* Solid rows, zebra striping, today highlight, hover */
+    #view-field-ops .logbook-table-container tbody tr.logbook-row {
+        background: #ffffff;
+        transition: background 0.15s ease;
+    }
+    #view-field-ops .logbook-table-container tbody tr.logbook-row:nth-child(even) {
+        background: #f8fafc;
+    }
+    #view-field-ops .logbook-table-container tbody tr.logbook-row.is-today {
+        background: #ecfdf3;
+        box-shadow: inset 3px 0 0 #16a34a;
+    }
+    #view-field-ops .logbook-table-container tbody tr.logbook-row:hover {
+        background: #e0f2fe;
+    }
+
+    /* No wrapping of badges / compact cells; treatments may wrap */
+    #view-field-ops .logbook-table-container td {
+        white-space: nowrap;
+        vertical-align: middle;
+    }
+    #view-field-ops .logbook-table-container td.cell-wrap {
+        white-space: normal;
+    }
 }

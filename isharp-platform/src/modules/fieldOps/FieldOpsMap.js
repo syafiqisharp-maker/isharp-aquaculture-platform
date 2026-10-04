@@ -7,6 +7,7 @@
 
 import { calculateDOC } from "../../domain/biometrics.js";
 import { calculateTotalActiveHP } from "../../domain/aeration.js";
+import { evaluateFeedingAction } from "../../domain/feedingAction.js";
 import { supabase } from "../../infrastructure/supabase.js";
 import { StaffRepository } from "../../infrastructure/repositories/staffRepository.js";
 
@@ -70,15 +71,23 @@ export class FieldOpsMap {
                             <span class="btn-text-full">All 24 Ponds</span>
                             <span class="btn-text-short">All</span>
                         </button>
-                        <button type="button" class="btn-filter-action" data-action-filter="PRODUCTION" style="font-size: 0.74rem; font-weight: 700; padding: 0.35rem 0.8rem; border-radius: 999px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;">
-                            <span class="aero-orb orb-emerald"></span> In Culture
+                        <button type="button" class="btn-filter-action" data-action-filter="PRODUCTION" style="font-size: 0.74rem; font-weight: 700; padding: 0.35rem 0.8rem; border-radius: 999px; cursor: pointer;">
+                            <span>In Culture</span>
                         </button>
-                        <button type="button" class="btn-filter-action" data-action-filter="UNLOGGED" style="font-size: 0.74rem; font-weight: 700; padding: 0.35rem 0.8rem; border-radius: 999px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;">
-                            <span class="aero-orb orb-amber"></span> Pending Log
+                        <button type="button" class="btn-filter-action" data-action-filter="UNLOGGED" style="font-size: 0.74rem; font-weight: 700; padding: 0.35rem 0.8rem; border-radius: 999px; cursor: pointer;">
+                            <span>Pending Log</span>
                         </button>
-                        <button type="button" class="btn-filter-action" data-action-filter="IDLE" style="font-size: 0.74rem; font-weight: 700; padding: 0.35rem 0.8rem; border-radius: 999px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;">
-                            <span class="aero-orb orb-idle"></span> Idle
+                        <button type="button" class="btn-filter-action" data-action-filter="IDLE" style="font-size: 0.74rem; font-weight: 700; padding: 0.35rem 0.8rem; border-radius: 999px; cursor: pointer;">
+                            <span>Idle</span>
                         </button>
+
+                        <!-- Feeding Action Plan Legend -->
+                        <div class="feeding-action-legend" style="display: inline-flex; align-items: center; gap: 0.55rem; font-size: 0.7rem; font-weight: 700; color: #475569; margin-left: 0.35rem; padding-left: 0.5rem; border-left: 1px solid #cbd5e1;">
+                            <span style="font-size: 0.68rem; font-weight: 800; color: #64748b;">Action:</span>
+                            <span title="Normal Feeding (Optimal DO & Water Quality)" style="display: inline-flex; align-items: center; gap: 4px;"><span class="aero-orb orb-emerald"></span> Normal</span>
+                            <span title="Careful Feeding (Borderline DO / Weather Caution)" style="display: inline-flex; align-items: center; gap: 4px;"><span class="aero-orb orb-amber"></span> Caution</span>
+                            <span title="Reduce / Cut Feed (Critical DO / Rain Alert)" style="display: inline-flex; align-items: center; gap: 4px;"><span class="aero-orb orb-crimson"></span> Cut Feed</span>
+                        </div>
                     </div>
 
                     <!-- Center/Right: Daily Progress & Rapid Log + Search and Refresh -->
@@ -152,8 +161,12 @@ export class FieldOpsMap {
         const r2Str = String(r2Num).padStart(2, "0");
 
         try {
-            // Fetch all non-closed cycles in this module from unified view view_growout_pond_cycles
-            const cycles = await supabase.request(`view_growout_pond_cycles?modl=eq.${modStr}&pond_status=neq.CLOSE&select=pond_index,pond,modl,row_no,cycle_no,crop_no,pond_status,stck_date,date_close,area,aerator_1hp,aerator_2hp,stck_species,bs_line,pm_staff_no,sv_staff_no,rl_staff_no,po_staff_no,support_staff_no`);
+            // Fetch all non-closed cycles in this module from unified view view_growout_pond_cycles (newest cycles first)
+            const cycles = await supabase.request(`view_growout_pond_cycles?modl=eq.${modStr}&pond_status=neq.CLOSE&order=pond_index.desc&select=pond_index,pond,modl,row_no,cycle_no,crop_no,pond_status,stck_date,date_close,area,aerator_1hp,aerator_2hp,stck_species,bs_line,pm_staff_no,sv_staff_no,rl_staff_no,po_staff_no,support_staff_no`);
+
+            if (Array.isArray(cycles)) {
+                cycles.sort((a, b) => String(b.pond_index || "").localeCompare(String(a.pond_index || "")));
+            }
 
             // Fetch staff directory into memory for quick name resolution
             await StaffRepository.getStaffDirectory();
@@ -178,8 +191,41 @@ export class FieldOpsMap {
                 }
             }
 
+            // Fetch latest meteorological mast weather telemetry
+            let latestWeather = null;
+            try {
+                const wRows = await supabase.request(`weather_logs?order=recorded_at.desc&limit=1`);
+                if (Array.isArray(wRows) && wRows.length > 0) {
+                    latestWeather = wRows[0];
+                }
+            } catch (e) {
+                console.warn("Unable to load latest weather for module map:", e);
+            }
+
+            // Fetch latest water_quality_logs across active ponds in this module
+            const telemetryMap = new Map();
+            try {
+                const wqRows = await supabase.request(`water_quality_logs?order=recorded_at.desc&limit=100`);
+                if (Array.isArray(wqRows)) {
+                    wqRows.forEach(row => {
+                        if (row && row.pond_index && !telemetryMap.has(row.pond_index)) {
+                            telemetryMap.set(row.pond_index, {
+                                do_ppm: row.do_ppm !== null && row.do_ppm !== undefined ? parseFloat(row.do_ppm) : null,
+                                ph: row.ph !== null && row.ph !== undefined ? parseFloat(row.ph) : null,
+                                water_temp_c: row.water_temp_c !== null && row.water_temp_c !== undefined ? parseFloat(row.water_temp_c) : null
+                            });
+                        }
+                    });
+                }
+            } catch (e) {
+                console.warn("Unable to load water_quality_logs for module map:", e);
+            }
+
             // Construct 24 expected ponds for this module (2 rows x 12 ponds)
             this.pondsData.clear();
+
+            const rainToday = latestWeather ? parseFloat(latestWeather.rainfall_mm || 0) : 0;
+            const luxVal = latestWeather && latestWeather.lux !== undefined ? parseFloat(latestWeather.lux) : 55000;
 
             for (let r of [r1Str, r2Str]) {
                 for (let p = 1; p <= 12; p++) {
@@ -207,6 +253,40 @@ export class FieldOpsMap {
                         ? (todayRecordsMap.get(cycleRecord.pond_index) || todayRecordsMap.get(pondLabel) || null)
                         : null;
 
+                    const pondTelemetry = cycleRecord?.pond_index ? (telemetryMap.get(cycleRecord.pond_index) || null) : null;
+
+                    // Evaluate Feeding Action Plan based on water quality parameters & weather
+                    let evalResult;
+                    if (isIdle) {
+                        evalResult = { level: "idle", badgeText: "Idle", color: "#94a3b8", title: "Pond Idle" };
+                    } else if (!pondTelemetry) {
+                        // Sensor hardware awaiting deployment per Rule 7: evaluate meteorological mast weather
+                        evalResult = evaluateFeedingAction({
+                            rainToday,
+                            luxVal,
+                            isIdle: false
+                        });
+                    } else {
+                        evalResult = evaluateFeedingAction({
+                            doMin: pondTelemetry.do_ppm !== null ? pondTelemetry.do_ppm - 0.45 : 5.0,
+                            doCurrent: pondTelemetry.do_ppm !== null ? pondTelemetry.do_ppm : 5.0,
+                            phDelta: 0.25,
+                            tempMax: pondTelemetry.water_temp_c ? pondTelemetry.water_temp_c + 0.8 : 30.0,
+                            tempDelta: 1.0,
+                            rainToday,
+                            rain7d: 14.0,
+                            luxVal,
+                            isIdle: false
+                        });
+                    }
+
+                    let orbClass = "orb-idle";
+                    if (!isIdle) {
+                        if (evalResult.level === "critical") orbClass = "orb-crimson";
+                        else if (evalResult.level === "caution") orbClass = "orb-amber";
+                        else orbClass = "orb-emerald";
+                    }
+
                     this.pondsData.set(pondLabel, {
                         pondLabel,
                         rowNo: r,
@@ -224,7 +304,10 @@ export class FieldOpsMap {
                         totalHP,
                         u1,
                         u2,
-                        todayRecord
+                        todayRecord,
+                        telemetry: pondTelemetry,
+                        feedingAction: evalResult,
+                        orbClass
                     });
                 }
             }
@@ -371,6 +454,11 @@ export class FieldOpsMap {
         const doc = calculateDOC(cycleRecord.stck_date, cycleRecord.date_close);
         const area = parseFloat(cycleRecord.area) || 0.50;
 
+        // Resolve Cycle Number primarily from pond_index suffix (e.g. 2020304.04 -> 04), falling back to cycle_no
+        const cycleNumber = (cycleRecord.pond_index && cycleRecord.pond_index.includes("."))
+            ? cycleRecord.pond_index.split(".")[1]
+            : (cycleRecord.cycle_no !== undefined && cycleRecord.cycle_no !== null ? String(cycleRecord.cycle_no).padStart(2, "0") : "—");
+
         // Resolve DO & pH Telemetry (Real IoT value or standby placeholder per Rule 7)
         const doValue = data.telemetry?.do_ppm !== undefined && data.telemetry?.do_ppm !== null
             ? parseFloat(data.telemetry.do_ppm).toFixed(1)
@@ -400,8 +488,8 @@ export class FieldOpsMap {
                                     <span class="aero-orb orb-idle"></span>
                                     <span style="color: #94a3b8 !important; font-weight: 700 !important; text-shadow: none !important;">${pondLabel}</span>
                                 </div>
-                                <div style="font-size: 0.68rem; font-weight: 600; color: #94a3b8; margin-top: 0.15rem; letter-spacing: 0.03em;">
-                                    DORMANT
+                                <div style="font-size: 0.68rem; font-weight: 700; color: #64748b; margin-top: 0.15rem;">
+                                    Cycle ${cycleNumber}
                                 </div>
                             </div>
                             <span class="pond-badge-idle">
@@ -455,14 +543,14 @@ export class FieldOpsMap {
                     <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.4rem;">
                         <div>
                             <div class="pond-no-box" style="font-size: 1.1rem; font-weight: 900; line-height: 1.1; display: flex; align-items: center; gap: 6px;">
-                                <span class="aero-orb ${todayRecord ? 'orb-emerald' : 'orb-amber'}"></span>
+                                <span class="aero-orb ${data.orbClass || 'orb-emerald'}" title="Feeding Action: ${data.feedingAction?.badgeText || 'Normal Feed'}"></span>
                                 <span>${pondLabel}</span>
                             </div>
                             <div style="font-size: 0.68rem; font-weight: 700; color: #64748b; margin-top: 0.15rem;">
-                                Cycle ${cycleRecord.cycle_no || (cycleRecord.pond_index ? cycleRecord.pond_index.split(".")[1] : '—')}
+                                Cycle ${cycleNumber}
                             </div>
                         </div>
-                        <span style="font-size: 0.68rem; font-weight: 800; background: ${todayRecord ? '#dcfce7' : '#fef3c7'}; color: ${todayRecord ? '#166534' : '#92400e'}; padding: 0.2rem 0.55rem; border-radius: 999px; box-shadow: inset 0 1px 1px #fff; border: 1px solid ${todayRecord ? '#86efac' : '#fde68a'};">
+                        <span class="pond-doc-badge-neutral">
                             DOC ${doc}
                         </span>
                     </div>
@@ -504,7 +592,7 @@ export class FieldOpsMap {
                         ` : `
                             <div style="background: #fffbeb; border: 1px solid #fde68a; border-radius: 6px; padding: 0.25rem 0.45rem; display: flex; align-items: center; justify-content: space-between; margin-top: 0.35rem; font-size: 0.64rem; font-weight: 800; color: #b45309;">
                                 <span>⏳ Pending Today</span>
-                                <span>DOC ${doc}</span>
+                                <span>— kg</span>
                             </div>
                         `}
                     </div>

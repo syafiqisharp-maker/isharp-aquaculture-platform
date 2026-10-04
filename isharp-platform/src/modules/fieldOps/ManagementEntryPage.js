@@ -16,6 +16,7 @@ import { InventoryRepository } from "../../infrastructure/repositories/inventory
 import { calculateTotalActiveHP, calculateAerationDensity } from "../../domain/aeration.js";
 import { calculateDOC } from "../../domain/biometrics.js";
 import { Toast } from "../../components/Toast.js";
+import { OfflineSync } from "./offlineSync.js";
 
 export class ManagementEntryPage {
     /**
@@ -86,14 +87,6 @@ export class ManagementEntryPage {
                                 Management &amp; Personnel Entry
                             </h1>
                         </div>
-                        <p style="margin: 0.35rem 0 0 0; font-size: 0.84rem; color: #64748b;">
-                            Update assigned personnel, active paddlewheels (1HP &amp; 2HP), feeding hardware, and pond condition for <strong>Pond ${pondLabel}</strong>.
-                        </p>
-                    </div>
-                    <div>
-                        <span style="font-size: 0.74rem; font-weight: 700; color: #0369a1; background: #f0f9ff; border: 1px solid #bae6fd; padding: 0.3rem 0.75rem; border-radius: 8px;">
-                            Single Source of Truth: DBMS &amp; Supabase
-                        </span>
                     </div>
                 </div>
 
@@ -108,9 +101,7 @@ export class ManagementEntryPage {
                         <div>
                             <h2 style="margin: 0; font-size: 1.05rem; font-weight: 800; color: #0284c7; display: flex; align-items: center; gap: 0.45rem;">
                                 <span>👥 Assigned Pond Personnel</span>
-                                <span style="font-size: 0.7rem; font-weight: 700; background: #dcfce7; color: #15803d; padding: 0.15rem 0.5rem; border-radius: 6px;">Incentive Tracked</span>
                             </h2>
-                            <span style="font-size: 0.75rem; color: #64748b;">Enter 4-digit Staff ID (e.g. 0042, 1157). Name resolves automatically from pond_staff master directory.</span>
                         </div>
                     </div>
 
@@ -161,7 +152,6 @@ export class ManagementEntryPage {
                             <h2 style="margin: 0; font-size: 1.05rem; font-weight: 800; color: #0284c7; display: flex; align-items: center; gap: 0.45rem;">
                                 <span>⚡ Active Paddlewheels</span>
                             </h2>
-                            <span style="font-size: 0.75rem; color: #64748b;">Farm standard: 1.0 HP and 2.0 HP paddlewheels only. Updates growout_pond_master.</span>
                         </div>
                         <div id="mgmt-aeration-badge" style="font-size: 0.82rem; font-weight: 800; color: #0284c7; background: #e0f2fe; border: 1px solid #bae6fd; padding: 0.35rem 0.85rem; border-radius: 8px;">
                             Total: ${initialTotalHP} HP (${initialDensity} HP/Ha)
@@ -200,7 +190,6 @@ export class ManagementEntryPage {
                             <h2 style="margin: 0; font-size: 1.05rem; font-weight: 800; color: #0284c7; display: flex; align-items: center; gap: 0.45rem;">
                                 <span>🛠️ Feeding Hardware &amp; Pond Infrastructure</span>
                             </h2>
-                            <span style="font-size: 0.75rem; color: #64748b;">Track feed delivery apparatus and field hut readiness. Stored in pond_inventories.</span>
                         </div>
                     </div>
 
@@ -464,7 +453,38 @@ export class ManagementEntryPage {
 
         } catch (err) {
             console.error("Management Entry Save Error:", err);
-            Toast.error(`Failed to save: ${err.message}`);
+            const isNetworkErr = !OfflineSync.isOnline() || err.name === "AbortError" || /failed to fetch|network|timeout|connection/i.test(err.message || "");
+            if (isNetworkErr) {
+                // Queue staff & aerators to growout_pond_master
+                OfflineSync.queueRequest(`growout_pond_master?pond_index=eq.${encodeURIComponent(pondIndex)}`, {
+                    method: "PATCH",
+                    body: { ...staffAssignments, aerator_1hp: u1, aerator_2hp: u2 }
+                }, { type: "management_master", pondIndex });
+
+                // Queue equipment & notes to pond_inventories
+                OfflineSync.queueRequest("pond_inventories?on_conflict=pond_index", {
+                    method: "POST",
+                    headers: { "Prefer": "resolution=merge-duplicates" },
+                    body: {
+                        pond_index: pondIndex,
+                        pond: pondLabel || pondIndex,
+                        feeding_tray_count: trayCount,
+                        autofeeder_count: feederCount,
+                        hut_condition: hutCondition,
+                        notes: notesText,
+                        updated_at: new Date().toISOString()
+                    }
+                }, { type: "management_inventory", pondIndex });
+
+                Object.assign(pond, staffAssignments, { aerator_1hp: u1, aerator_2hp: u2 });
+                Toast.info(`📡 Saved locally (Offline). Will sync when connection is restored!`);
+                if (typeof this.callbacks.onSaved === "function") this.callbacks.onSaved(pond);
+                setTimeout(() => {
+                    if (typeof this.callbacks.onBackToPond === "function") this.callbacks.onBackToPond(pond);
+                }, 800);
+            } else {
+                Toast.error(`Failed to save: ${err.message}`);
+            }
         } finally {
             this.isSaving = false;
             if (btnSave) {

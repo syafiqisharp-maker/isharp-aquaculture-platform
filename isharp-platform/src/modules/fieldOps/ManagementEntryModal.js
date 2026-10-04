@@ -9,6 +9,7 @@ import { StaffRepository } from "../../infrastructure/repositories/staffReposito
 import { InventoryRepository } from "../../infrastructure/repositories/inventoryRepository.js";
 import { calculateTotalActiveHP, calculateAerationDensity } from "../../domain/aeration.js";
 import { Toast } from "../../components/Toast.js";
+import { OfflineSync } from "./offlineSync.js";
 
 export class ManagementEntryModal {
     /**
@@ -39,7 +40,6 @@ export class ManagementEntryModal {
                             <span style="font-size: 1.3rem;">📝</span>
                             <h3 id="mgmt-modal-title" style="margin: 0; font-size: 1.15rem; color: #0f172a; font-weight: 800;">Management Entry</h3>
                         </div>
-                        <span id="mgmt-modal-subtitle" style="font-size: 0.76rem; color: #64748b;">Update crew, aerators, feeders, and hut condition for this pond</span>
                     </div>
                     <button type="button" id="btn-close-mgmt-modal" class="btn-close" aria-label="Close" style="background: none; border: none; font-size: 1.4rem; color: #64748b; cursor: pointer;">&times;</button>
                 </div>
@@ -52,9 +52,7 @@ export class ManagementEntryModal {
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.6rem;">
                             <h4 style="font-size: 0.84rem; font-weight: 800; color: #0284c7; margin: 0; display: flex; align-items: center; gap: 0.35rem;">
                                 <span>👥 Assigned Pond Personnel</span>
-                                <span style="font-size: 0.68rem; font-weight: 600; color: #166534; background: #dcfce7; padding: 0.1rem 0.4rem; border-radius: 4px;">Incentive Tracked</span>
                             </h4>
-                            <span style="font-size: 0.7rem; color: #64748b;">Single Source of Truth with DBMS</span>
                         </div>
 
                         <div style="display: flex; flex-direction: column; gap: 0.5rem;">
@@ -102,7 +100,7 @@ export class ManagementEntryModal {
                             </div>
                         </div>
 
-                        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.65rem;">
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.65rem;">
                             <div class="form-group" style="margin: 0;">
                                 <label style="font-size: 0.72rem; font-weight: 700; color: #475569;">1.0 HP Units</label>
                                 <input type="number" id="mgmt-aerator-1hp" class="form-control" min="0" max="20" placeholder="0" style="text-align: center; font-weight: 700;">
@@ -110,10 +108,6 @@ export class ManagementEntryModal {
                             <div class="form-group" style="margin: 0;">
                                 <label style="font-size: 0.72rem; font-weight: 700; color: #475569;">2.0 HP Units</label>
                                 <input type="number" id="mgmt-aerator-2hp" class="form-control" min="0" max="20" placeholder="0" style="text-align: center; font-weight: 700;">
-                            </div>
-                            <div class="form-group" style="margin: 0;">
-                                <label style="font-size: 0.72rem; font-weight: 700; color: #475569;">4.0 HP Units</label>
-                                <input type="number" id="mgmt-aerator-4hp" class="form-control" min="0" max="20" placeholder="0" style="text-align: center; font-weight: 700;">
                             </div>
                         </div>
                     </div>
@@ -206,13 +200,12 @@ export class ManagementEntryModal {
             idEl.addEventListener("blur", lookup);
         });
 
-        // Aerator real-time recalculation
+        // Aerator real-time recalculation (Rule 6: 1.0 HP & 2.0 HP farm standard)
         const u1 = this.modalEl.querySelector("#mgmt-aerator-1hp");
         const u2 = this.modalEl.querySelector("#mgmt-aerator-2hp");
-        const u4 = this.modalEl.querySelector("#mgmt-aerator-4hp");
 
         const updateHP = () => {
-            const totalHP = calculateTotalActiveHP(u1.value, u2.value, u4.value);
+            const totalHP = calculateTotalActiveHP(u1?.value || 0, u2?.value || 0);
             const area = this.currentPond?.area || 0.5;
             const density = calculateAerationDensity(totalHP, area);
             const badge = this.modalEl.querySelector("#mgmt-aeration-calc-badge");
@@ -221,9 +214,11 @@ export class ManagementEntryModal {
             }
         };
 
-        [u1, u2, u4].forEach(el => {
-            el.addEventListener("input", updateHP);
-            el.addEventListener("change", updateHP);
+        [u1, u2].forEach(el => {
+            if (el) {
+                el.addEventListener("input", updateHP);
+                el.addEventListener("change", updateHP);
+            }
         });
 
         // Submit Save
@@ -242,7 +237,10 @@ export class ManagementEntryModal {
         const cycleNo = pond.cycle_no || (pond.pond_index ? pond.pond_index.split(".")[1] : "—");
         
         this.modalEl.querySelector("#mgmt-modal-title").textContent = `Management Entry — Pond ${pondTitle}`;
-        this.modalEl.querySelector("#mgmt-modal-subtitle").textContent = `Cycle ${cycleNo} · Area: ${pond.area || 0.5} Ha · Status: ${pond.pond_status || 'PRODUCTION'}`;
+        const subTitleEl = this.modalEl.querySelector("#mgmt-modal-subtitle");
+        if (subTitleEl) {
+            subTitleEl.textContent = `Cycle ${cycleNo} · Area: ${pond.area || 0.5} Ha · Status: ${pond.pond_status || 'PRODUCTION'}`;
+        }
 
         this.modalEl.style.display = "flex";
         this.clearForm();
@@ -272,9 +270,10 @@ export class ManagementEntryModal {
             if (nameEl) nameEl.value = "";
         });
 
-        this.modalEl.querySelector("#mgmt-aerator-1hp").value = 0;
-        this.modalEl.querySelector("#mgmt-aerator-2hp").value = 0;
-        this.modalEl.querySelector("#mgmt-aerator-4hp").value = 0;
+        const a1 = this.modalEl.querySelector("#mgmt-aerator-1hp");
+        const a2 = this.modalEl.querySelector("#mgmt-aerator-2hp");
+        if (a1) a1.value = 0;
+        if (a2) a2.value = 0;
         this.modalEl.querySelector("#mgmt-tray-count").value = 4;
         this.modalEl.querySelector("#mgmt-feeder-count").value = 2;
         this.modalEl.querySelector("#mgmt-hut-condition").value = "OK";
@@ -316,18 +315,12 @@ export class ManagementEntryModal {
     async loadAerators(pond) {
         const u1 = parseInt(pond.aerator_1hp || 0, 10);
         const u2 = parseInt(pond.aerator_2hp || 0, 10);
-        this.modalEl.querySelector("#mgmt-aerator-1hp").value = u1;
-        this.modalEl.querySelector("#mgmt-aerator-2hp").value = u2;
+        const a1 = this.modalEl.querySelector("#mgmt-aerator-1hp");
+        const a2 = this.modalEl.querySelector("#mgmt-aerator-2hp");
+        if (a1) a1.value = u1;
+        if (a2) a2.value = u2;
 
-        try {
-            const aerators = await InventoryRepository.getAerators(pond.pond_index);
-            const a4 = aerators.find(a => parseFloat(a.hp) === 4.0);
-            if (a4) {
-                this.modalEl.querySelector("#mgmt-aerator-4hp").value = a4.total_units || 0;
-            }
-        } catch {}
-
-        const totalHP = calculateTotalActiveHP(u1, u2, this.modalEl.querySelector("#mgmt-aerator-4hp").value);
+        const totalHP = calculateTotalActiveHP(u1, u2);
         const density = calculateAerationDensity(totalHP, pond.area || 0.5);
         const badge = this.modalEl.querySelector("#mgmt-aeration-calc-badge");
         if (badge) badge.textContent = `Total: ${totalHP} HP (${density} HP/Ha)`;
@@ -383,22 +376,20 @@ export class ManagementEntryModal {
             };
             await StaffRepository.saveCycleStaff(pondIndex, staffAssignments);
 
-            // 2. Save Aerator Inventory
-            const u1 = parseInt(this.modalEl.querySelector("#mgmt-aerator-1hp").value || 0, 10);
-            const u2 = parseInt(this.modalEl.querySelector("#mgmt-aerator-2hp").value || 0, 10);
-            const u4 = parseInt(this.modalEl.querySelector("#mgmt-aerator-4hp").value || 0, 10);
+            // 2. Save Aerator Inventory (Rule 6: 1.0 HP & 2.0 HP farm standard)
+            const u1 = parseInt(this.modalEl.querySelector("#mgmt-aerator-1hp")?.value || 0, 10);
+            const u2 = parseInt(this.modalEl.querySelector("#mgmt-aerator-2hp")?.value || 0, 10);
             const aeratorList = [
                 { hp: 1, total_units: u1 },
-                { hp: 2, total_units: u2 },
-                { hp: 4, total_units: u4 }
+                { hp: 2, total_units: u2 }
             ];
-            await InventoryRepository.syncAeratorInventory(pondIndex, aeratorList);
+            await InventoryRepository.syncAeratorInventory(pondIndex, pondLabel, aeratorList);
 
             // 3. Save Equipment Inventory & Hut Condition
-            const trayCount = parseInt(this.modalEl.querySelector("#mgmt-tray-count").value || 0, 10);
-            const feederCount = parseInt(this.modalEl.querySelector("#mgmt-feeder-count").value || 0, 10);
-            const hutCondition = this.modalEl.querySelector("#mgmt-hut-condition").value;
-            const notesText = this.modalEl.querySelector("#mgmt-notes").value;
+            const trayCount = parseInt(this.modalEl.querySelector("#mgmt-tray-count")?.value || 0, 10);
+            const feederCount = parseInt(this.modalEl.querySelector("#mgmt-feeder-count")?.value || 0, 10);
+            const hutCondition = this.modalEl.querySelector("#mgmt-hut-condition")?.value || "OK";
+            const notesText = this.modalEl.querySelector("#mgmt-notes")?.value || "";
 
             await InventoryRepository.savePondInventory(pondIndex, pondLabel, {
                 feeding_tray_count: trayCount,
@@ -418,14 +409,53 @@ export class ManagementEntryModal {
                 this.onSaved({
                     pondIndex,
                     staffAssignments,
-                    aerators: { u1, u2, u4 },
+                    aerators: { u1, u2 },
                     inventory: { trayCount, feederCount, hutCondition, notesText }
                 });
             }
 
         } catch (err) {
             console.error("Management Entry Save Error:", err);
-            Toast.error(`Failed to save: ${err.message}`);
+            const isNetworkErr = !OfflineSync.isOnline() || err.name === "AbortError" || /failed to fetch|network|timeout|connection/i.test(err.message || "");
+            if (isNetworkErr) {
+                // Queue staff & aerators to growout_pond_master
+                OfflineSync.queueRequest(`growout_pond_master?pond_index=eq.${encodeURIComponent(pondIndex)}`, {
+                    method: "PATCH",
+                    body: { ...staffAssignments, aerator_1hp: u1, aerator_2hp: u2 }
+                }, { type: "management_master", pondIndex });
+
+                // Queue equipment & notes to pond_inventories
+                OfflineSync.queueRequest("pond_inventories?on_conflict=pond_index", {
+                    method: "POST",
+                    headers: { "Prefer": "resolution=merge-duplicates" },
+                    body: {
+                        pond_index: pondIndex,
+                        pond: pondLabel || pondIndex,
+                        feeding_tray_count: trayCount,
+                        autofeeder_count: feederCount,
+                        hut_condition: hutCondition,
+                        notes: notesText,
+                        updated_at: new Date().toISOString()
+                    }
+                }, { type: "management_inventory", pondIndex });
+
+                this.currentPond.aerator_1hp = u1;
+                this.currentPond.aerator_2hp = u2;
+
+                Toast.info(`📡 Saved locally (Offline). Will sync when connection is restored!`);
+                this.close();
+
+                if (typeof this.onSaved === "function") {
+                    this.onSaved({
+                        pondIndex,
+                        staffAssignments,
+                        aerators: { u1, u2 },
+                        inventory: { trayCount, feederCount, hutCondition, notesText }
+                    });
+                }
+            } else {
+                Toast.error(`Failed to save: ${err.message}`);
+            }
         } finally {
             this.isSaving = false;
             btnSubmit.disabled = false;

@@ -10,6 +10,7 @@ import { ManagementEntryPage } from "./ManagementEntryPage.js";
 import { DailyRecordsPage } from "./DailyRecordsPage.js";
 import { supabase } from "../../infrastructure/supabase.js";
 import { Toast } from "../../components/Toast.js";
+import { appState } from "../../state/appState.js";
 
 const SESSION_KEY = "isharp_field_ops_module";
 
@@ -24,6 +25,13 @@ export class FieldOpsView {
         this.currentModule = parseInt(sessionStorage.getItem(SESSION_KEY) || "0", 10);
         this.activePond = null;
         this.moduleData = [];
+
+        // Re-ensure bubble layer anytime FieldOps becomes active
+        appState.subscribe("viewChanged", (viewName) => {
+            if (viewName === "field-ops") {
+                this.ensureBubbleLayer();
+            }
+        });
 
         this.render();
     }
@@ -204,34 +212,20 @@ export class FieldOpsView {
             <div class="field-ops-workspace" style="min-height: 100vh; padding: 1.25rem 2rem; background: transparent;">
                 
                 <!-- Main Header Bar -->
-                <header class="field-ops-header flex-between" style="background: rgba(255, 255, 255, 0.9); backdrop-filter: blur(16px); border: 1px solid rgba(255, 255, 255, 1); border-radius: 18px; padding: 0.85rem 1.5rem; margin-bottom: 1.25rem; box-shadow: 0 4px 20px rgba(2, 132, 199, 0.08); flex-wrap: wrap; gap: 0.75rem;">
+                <header class="field-ops-header flex-between" style="background: rgba(255, 255, 255, 0.9); backdrop-filter: blur(16px); border: 1px solid rgba(255, 255, 255, 1); border-radius: 18px; padding: 0.85rem 1.5rem; margin-bottom: 1.25rem; box-shadow: 0 4px 20px rgba(2, 132, 199, 0.08); flex-wrap: nowrap; gap: 0.5rem;">
                     
                     <!-- Left: Navigation & Branding -->
                     <div class="field-ops-header-top" style="display: flex; align-items: center; gap: 0.85rem;">
                         <button type="button" class="btn-action btn-secondary" data-nav-view="portal" style="font-size: 0.78rem; font-weight: 700; padding: 0.45rem 0.85rem; border-radius: 8px;">
                             <span>← Portal</span>
                         </button>
-                        <div>
-                            <div style="display: flex; align-items: center; gap: 0.45rem; flex-wrap: wrap;">
-                                <h1 style="margin: 0; font-size: 1.2rem; font-weight: 900; color: #0f172a;">
-                                    Field Ops — M${modStr}
-                                </h1>
-                                <span style="font-size: 0.7rem; font-weight: 800; background: #0284c7; color: #ffffff; padding: 0.15rem 0.5rem; border-radius: 6px;">
-                                    24 PONDS
-                                </span>
-                            </div>
-                            <span style="font-size: 0.72rem; color: #64748b;" class="hide-mobile">
-                                Live Water Quality Station Telemetry &amp; Feeding Action Plans
-                            </span>
-                        </div>
+                        <h1 style="margin: 0; font-size: 1.2rem; font-weight: 900; color: #0f172a;">
+                            Field Ops — M${modStr}
+                        </h1>
                     </div>
 
-                    <!-- Right: Supervisor Info & Module Switch -->
+                    <!-- Right: Module Switch -->
                     <div class="field-ops-header-controls" style="display: flex; align-items: center; gap: 0.65rem;">
-                        <div style="display: flex; align-items: center; gap: 0.35rem; background: rgba(240, 249, 255, 0.9); border: 1px solid #bae6fd; padding: 0.35rem 0.65rem; border-radius: 8px; font-size: 0.76rem; font-weight: 700; color: #0369a1;">
-                            <span>👤</span>
-                            <span>M${modStr} Supervisor</span>
-                        </div>
                         <button type="button" id="btn-switch-module" class="btn-action btn-secondary" style="font-size: 0.76rem; font-weight: 700; padding: 0.45rem 0.8rem; border-radius: 8px;">
                             <span>🔓 Switch</span>
                         </button>
@@ -364,26 +358,49 @@ export class FieldOpsView {
     }
 
     /**
-     * Mounts the dynamic ambient micro-bubble layer (+50% Scale)
+     * Mounts the dynamic ambient micro-bubble layer (+50% Scale) behind cards
      */
     ensureBubbleLayer() {
-        let layer = document.getElementById("aero-global-bubble-layer");
+        if (!this.container) return;
+
+        let layer = this.bubbleLayer || document.getElementById("aero-global-bubble-layer");
         if (!layer) {
             layer = document.createElement("div");
             layer.id = "aero-global-bubble-layer";
             layer.className = "bubble-layer";
+        }
+        this.bubbleLayer = layer;
+
+        // Clean up any stale layer directly in body
+        const staleGlobal = document.body.querySelector(":scope > #aero-global-bubble-layer");
+        if (staleGlobal && staleGlobal !== layer) {
+            staleGlobal.remove();
+        }
+
+        // Mount inside this.container at the very beginning (behind content wrappers & cards)
+        if (layer.parentElement !== this.container) {
+            this.container.prepend(layer);
+        }
+
+        // Populate vibrant, immediate-floating ambient bubbles if empty
+        if (!layer.innerHTML || layer.children.length === 0) {
             layer.innerHTML = `
-                <div class="aero-bubble lazy-1" style="left: 8%; width: 30px; height: 30px; animation-duration: 18s; animation-delay: 0s;"></div>
-                <div class="aero-bubble lazy-2" style="left: 23%; width: 42px; height: 42px; animation-duration: 24s; animation-delay: 2s;"></div>
-                <div class="aero-bubble lazy-1" style="left: 45%; width: 23px; height: 23px; animation-duration: 16s; animation-delay: 0.5s;"></div>
-                <div class="aero-bubble lazy-2" style="left: 60%; width: 36px; height: 36px; animation-duration: 21s; animation-delay: 4s;"></div>
-                <div class="aero-bubble lazy-1" style="left: 74%; width: 33px; height: 33px; animation-duration: 19s; animation-delay: 1.5s;"></div>
-                <div class="aero-bubble lazy-2" style="left: 88%; width: 27px; height: 27px; animation-duration: 15s; animation-delay: 0s;"></div>
-                <div class="aero-bubble lazy-1" style="left: 36%; width: 21px; height: 21px; animation-duration: 26s; animation-delay: 3s;"></div>
-                <div class="aero-bubble lazy-2" style="left: 15%; width: 34px; height: 34px; animation-duration: 17s; animation-delay: 1s;"></div>
-                <div class="aero-bubble lazy-1" style="left: 52%; width: 28px; height: 28px; animation-duration: 22s; animation-delay: 2.5s;"></div>
+                <div class="aero-bubble lazy-1" style="left: 5%; width: 28px; height: 28px; animation-duration: 18s !important; animation-delay: -3s !important;"></div>
+                <div class="aero-bubble lazy-2" style="left: 12%; width: 42px; height: 42px; animation-duration: 24s !important; animation-delay: -14s !important;"></div>
+                <div class="aero-bubble lazy-1" style="left: 20%; width: 20px; height: 20px; animation-duration: 16s !important; animation-delay: -7s !important;"></div>
+                <div class="aero-bubble lazy-2" style="left: 29%; width: 36px; height: 36px; animation-duration: 21s !important; animation-delay: -18s !important;"></div>
+                <div class="aero-bubble lazy-1" style="left: 38%; width: 24px; height: 24px; animation-duration: 17s !important; animation-delay: -4s !important;"></div>
+                <div class="aero-bubble lazy-2" style="left: 47%; width: 48px; height: 48px; animation-duration: 25s !important; animation-delay: -12s !important;"></div>
+                <div class="aero-bubble lazy-1" style="left: 56%; width: 32px; height: 32px; animation-duration: 19s !important; animation-delay: -9s !important;"></div>
+                <div class="aero-bubble lazy-2" style="left: 65%; width: 22px; height: 22px; animation-duration: 15s !important; animation-delay: -2s !important;"></div>
+                <div class="aero-bubble lazy-1" style="left: 73%; width: 38px; height: 38px; animation-duration: 22s !important; animation-delay: -16s !important;"></div>
+                <div class="aero-bubble lazy-2" style="left: 82%; width: 26px; height: 26px; animation-duration: 18s !important; animation-delay: -8s !important;"></div>
+                <div class="aero-bubble lazy-1" style="left: 90%; width: 34px; height: 34px; animation-duration: 20s !important; animation-delay: -1s !important;"></div>
+                <div class="aero-bubble lazy-2" style="left: 16%; width: 30px; height: 30px; animation-duration: 23s !important; animation-delay: -10s !important;"></div>
+                <div class="aero-bubble lazy-1" style="left: 52%; width: 18px; height: 18px; animation-duration: 16s !important; animation-delay: -15s !important;"></div>
+                <div class="aero-bubble lazy-2" style="left: 77%; width: 44px; height: 44px; animation-duration: 26s !important; animation-delay: -20s !important;"></div>
+                <div class="aero-bubble lazy-1" style="left: 86%; width: 22px; height: 22px; animation-duration: 17s !important; animation-delay: -5s !important;"></div>
             `;
-            document.body.appendChild(layer);
         }
         layer.style.display = "block";
 
@@ -395,7 +412,7 @@ export class FieldOpsView {
     }
 
     triggerAerationBurst(clusterOriginX = null) {
-        const layer = document.getElementById("aero-global-bubble-layer") || (this.container ? this.container.querySelector(".bubble-layer") : null);
+        const layer = this.bubbleLayer || document.getElementById("aero-global-bubble-layer") || (this.container ? this.container.querySelector(".bubble-layer") : null);
         if (!layer) return;
 
         const origin = clusterOriginX !== null ? clusterOriginX : (12 + Math.random() * 76);
@@ -415,8 +432,8 @@ export class FieldOpsView {
             bubble.style.width = `${size}px`;
             bubble.style.height = `${size}px`;
             bubble.style.setProperty("--drift-x", `${drift}px`);
-            bubble.style.animationDuration = `${duration.toFixed(2)}s`;
-            bubble.style.animationDelay = `${delay.toFixed(2)}s`;
+            bubble.style.setProperty("animation-duration", `${duration.toFixed(2)}s`, "important");
+            bubble.style.setProperty("animation-delay", `${delay.toFixed(2)}s`, "important");
 
             layer.appendChild(bubble);
 

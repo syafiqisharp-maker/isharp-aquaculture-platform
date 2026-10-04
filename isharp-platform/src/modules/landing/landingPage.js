@@ -188,23 +188,26 @@ export class LandingPage {
 
     /**
      * Spawns translucent floating Frutiger Aero bubbles at varying depths and speeds
+     * Reduced by 70% (from 20 down to 6) for subtle crystalline atmosphere
      */
     initBubbles() {
         const chamber = document.getElementById("bubble-chamber");
         if (!chamber) return;
 
-        const bubbleCount = 20;
+        const bubbleCount = 6;
         chamber.innerHTML = "";
 
         for (let i = 0; i < bubbleCount; i++) {
             const bubble = document.createElement("div");
             bubble.className = "aero-bubble";
 
-            const size = Math.floor(Math.random() * 45) + 16;
-            const left = Math.random() * 96;
-            const duration = Math.random() * 8 + 7;
-            const delay = Math.random() * 6;
-            const opacity = (Math.random() * 0.4 + 0.35).toFixed(2);
+            const size = Math.floor(Math.random() * 40) + 18;
+            // Distribute across screen width with organic jitter
+            const left = Math.min(94, Math.max(4, Math.floor((i / bubbleCount) * 86 + 6 + (Math.random() * 8 - 4))));
+            const duration = (Math.random() * 8 + 10).toFixed(2);
+            // Stagger negative delays so all 6 bubbles appear immediately across vertical space
+            const delay = (-(Math.random() * 0.85 + 0.1) * duration).toFixed(2);
+            const opacity = (Math.random() * 0.35 + 0.35).toFixed(2);
 
             bubble.style.width = `${size}px`;
             bubble.style.height = `${size}px`;

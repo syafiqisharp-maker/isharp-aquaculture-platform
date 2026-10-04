@@ -15,6 +15,7 @@ import { DailyRecordsRepository } from "../../infrastructure/repositories/dailyR
 import { MineralProbioticRepository } from "../../infrastructure/repositories/mineralProbioticRepository.js";
 import { calculateDOC } from "../../domain/biometrics.js";
 import { Toast } from "../../components/Toast.js";
+import { OfflineSync } from "./offlineSync.js";
 
 /**
  * Returns YYYY-MM-DD in local time without UTC offset skew
@@ -381,7 +382,7 @@ export class DailyRecordsPage {
                 </div>
 
                 <!-- 4. CONTINUOUS SCROLLABLE LOGBOOK LEDGER (From Day 1 to Today) -->
-                <section class="glass-card" style="background: rgba(255, 255, 255, 0.95); border: 1px solid #e2e8f0; border-radius: 16px; padding: 1.25rem 1.4rem; box-shadow: 0 4px 16px rgba(0, 0, 0, 0.04);">
+                <section class="glass-card logbook-ledger-card" style="background: rgba(255, 255, 255, 0.95); border: 1px solid #e2e8f0; border-radius: 16px; padding: 1.25rem 1.4rem; box-shadow: 0 4px 16px rgba(0, 0, 0, 0.04);">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; border-bottom: 1px solid #f1f5f9; padding-bottom: 0.6rem; flex-wrap: wrap; gap: 0.5rem;">
                         <div style="display: flex; align-items: center; gap: 0.6rem;">
                             <h2 style="margin: 0; font-size: 1.05rem; font-weight: 800; color: #0284c7;">
@@ -411,9 +412,9 @@ export class DailyRecordsPage {
                                     <th style="padding: 0.75rem 0.85rem; border-bottom: 2px solid #cbd5e1; width: 95px;">Feed (kg)</th>
                                     <th style="padding: 0.75rem 0.85rem; border-bottom: 2px solid #cbd5e1; width: 100px;">Tray Left</th>
                                     <th style="padding: 0.75rem 0.85rem; border-bottom: 2px solid #cbd5e1; width: 95px;">Water Lvl</th>
-                                    <th style="padding: 0.75rem 0.85rem; border-bottom: 2px solid #cbd5e1; width: 120px;">Colour</th>
-                                    <th style="padding: 0.75rem 0.85rem; border-bottom: 2px solid #cbd5e1; min-width: 180px;">Minerals Applied</th>
-                                    <th style="padding: 0.75rem 0.85rem; border-bottom: 2px solid #cbd5e1; min-width: 180px;">Probiotics Applied</th>
+                                    <th style="padding: 0.75rem 0.85rem; border-bottom: 2px solid #cbd5e1; min-width: 130px;">Colour</th>
+                                    <th style="padding: 0.75rem 0.85rem; border-bottom: 2px solid #cbd5e1; min-width: 200px;">Minerals Applied</th>
+                                    <th style="padding: 0.75rem 0.85rem; border-bottom: 2px solid #cbd5e1; min-width: 200px;">Probiotics Applied</th>
                                     <th style="padding: 0.75rem 0.85rem; border-bottom: 2px solid #cbd5e1; width: 95px;">Mort. (kg)</th>
                                     <th style="padding: 0.75rem 0.85rem; border-bottom: 2px solid #cbd5e1; min-width: 140px;">Remarks</th>
                                     <th style="padding: 0.75rem 0.85rem; border-bottom: 2px solid #cbd5e1; width: 85px; text-align: center;">Action</th>
@@ -427,7 +428,7 @@ export class DailyRecordsPage {
                 </section>
 
                 <!-- 5. ENTRY / EDIT MODAL (100% FRUTIGER AERO PREVIEW PARITY) -->
-                <div id="modal-daily-entry" class="modal-backdrop-aero" style="display: none;">
+                <div id="modal-daily-entry" class="modal-backdrop-aero hidden" style="display: none !important;">
                     <form id="form-daily-record" class="modal-sheet-aero" novalidate style="margin: 0;">
                         
                         <!-- Modal Sheet Header with Pond Title & Close -->
@@ -437,7 +438,7 @@ export class DailyRecordsPage {
                                     <span style="font-size: 1.25rem;">⚡</span>
                                     <span id="modal-entry-title">Pond ${pondLabel} — Daily Log</span>
                                 </div>
-                                <span id="modal-entry-subtitle" style="font-size: 0.72rem; color: #64748b; margin-left: 28px; display: block;">1-tap rapid field logging</span>
+                                <span id="modal-entry-subtitle" style="font-size: 0.72rem; color: #64748b; margin-left: 28px; display: block;"></span>
                             </div>
                             <button type="button" id="btn-close-entry-modal" class="aero-btn aero-btn-secondary" style="padding: 4px 12px; min-height: 32px; font-size: 0.78rem;">
                                 ✕ Close
@@ -803,7 +804,7 @@ export class DailyRecordsPage {
         const { dateStr, doc, isToday, record, treatments } = row;
         const formattedDate = formatLocalDateDisplay(dateStr);
 
-        const rowBg = isToday ? 'background: #f0fdf4;' : '';
+        const rowClass = isToday ? 'logbook-row is-today' : 'logbook-row';
         const docBadge = isToday
             ? `<span style="font-size: 0.72rem; font-weight: 800; background: #16a34a; color: #ffffff; padding: 0.15rem 0.5rem; border-radius: 999px;">DOC ${doc} (Today)</span>`
             : `<span style="font-size: 0.72rem; font-weight: 700; background: #e0f2fe; color: #0369a1; padding: 0.15rem 0.5rem; border-radius: 999px;">DOC ${doc}</span>`;
@@ -812,7 +813,7 @@ export class DailyRecordsPage {
         const mineralsList = treatments.filter(t => t.category === 'MINERAL');
         const probioticsList = treatments.filter(t => t.category === 'PROBIOTIC');
 
-        let mineralsBadges = '<span style="color: #94a3b8;">None</span>';
+        let mineralsBadges = '<span style="color: #64748b;">None</span>';
         if (mineralsList.length > 0) {
             mineralsBadges = `
                 <div style="display: flex; flex-wrap: wrap; gap: 0.3rem;">
@@ -825,7 +826,7 @@ export class DailyRecordsPage {
             `;
         }
 
-        let probioticsBadges = '<span style="color: #94a3b8;">None</span>';
+        let probioticsBadges = '<span style="color: #64748b;">None</span>';
         if (probioticsList.length > 0) {
             probioticsBadges = `
                 <div style="display: flex; flex-wrap: wrap; gap: 0.3rem;">
@@ -841,17 +842,17 @@ export class DailyRecordsPage {
         if (!record && treatments.length === 0) {
             // Empty / Unlogged Day
             return `
-                <tr class="logbook-row" style="border-bottom: 1px dashed #e2e8f0; ${rowBg} transition: background 0.15s ease;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='${isToday ? '#f0fdf4' : ''}'">
+                <tr class="${rowClass}" style="border-bottom: 1px solid #e2e8f0;">
                     <td style="padding: 0.65rem 0.85rem; font-weight: 700;">${docBadge}</td>
                     <td style="padding: 0.65rem 0.85rem; color: #64748b; font-weight: 600;">${formattedDate}</td>
-                    <td style="padding: 0.65rem 0.85rem; color: #94a3b8;">—</td>
-                    <td style="padding: 0.65rem 0.85rem; color: #94a3b8;">—</td>
-                    <td style="padding: 0.65rem 0.85rem; color: #94a3b8;">—</td>
-                    <td style="padding: 0.65rem 0.85rem; color: #94a3b8;">—</td>
-                    <td style="padding: 0.65rem 0.85rem; color: #94a3b8;">—</td>
-                    <td style="padding: 0.65rem 0.85rem; color: #94a3b8;">—</td>
-                    <td style="padding: 0.65rem 0.85rem; color: #94a3b8;">—</td>
-                    <td style="padding: 0.65rem 0.85rem; color: #94a3b8; font-style: italic; font-size: 0.76rem;">No log recorded</td>
+                    <td style="padding: 0.65rem 0.85rem; color: #64748b;">—</td>
+                    <td style="padding: 0.65rem 0.85rem; color: #64748b;">—</td>
+                    <td style="padding: 0.65rem 0.85rem; color: #64748b;">—</td>
+                    <td style="padding: 0.65rem 0.85rem; color: #64748b;">—</td>
+                    <td style="padding: 0.65rem 0.85rem; color: #64748b;">—</td>
+                    <td style="padding: 0.65rem 0.85rem; color: #64748b;">—</td>
+                    <td style="padding: 0.65rem 0.85rem; color: #64748b;">—</td>
+                    <td style="padding: 0.65rem 0.85rem; color: #64748b; font-style: italic; font-size: 0.76rem;">No log recorded</td>
                     <td style="padding: 0.65rem 0.85rem; text-align: center;">
                         <button type="button" class="btn-log-day btn-action btn-secondary" data-date="${dateStr}" style="font-size: 0.72rem; font-weight: 700; padding: 0.2rem 0.55rem;">
                             <span>+ Log</span>
@@ -901,15 +902,15 @@ export class DailyRecordsPage {
         const remarksText = (record && record.remarks) ? record.remarks : '—';
 
         return `
-            <tr class="logbook-row" style="border-bottom: 1px solid #e2e8f0; ${rowBg} transition: background 0.15s ease;" onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='${isToday ? '#f0fdf4' : ''}'">
+            <tr class="${rowClass}" style="border-bottom: 1px solid #e2e8f0;">
                 <td style="padding: 0.65rem 0.85rem; font-weight: 700;">${docBadge}</td>
                 <td style="padding: 0.65rem 0.85rem; font-weight: 700; color: #0f172a;">${formattedDate}</td>
                 <td style="padding: 0.65rem 0.85rem; font-weight: 800; color: #0369a1;">${feedText}</td>
                 <td style="padding: 0.65rem 0.85rem;">${remnantBadge}</td>
                 <td style="padding: 0.65rem 0.85rem; color: #475569; font-weight: 600;">${waterLvl}</td>
                 <td style="padding: 0.65rem 0.85rem;">${colourBadge}</td>
-                <td style="padding: 0.65rem 0.85rem;">${mineralsBadges}</td>
-                <td style="padding: 0.65rem 0.85rem;">${probioticsBadges}</td>
+                <td class="cell-wrap" style="padding: 0.65rem 0.85rem;">${mineralsBadges}</td>
+                <td class="cell-wrap" style="padding: 0.65rem 0.85rem;">${probioticsBadges}</td>
                 <td style="padding: 0.65rem 0.85rem;">${mortBadge}</td>
                 <td style="padding: 0.65rem 0.85rem; color: #475569; max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${remarksText}">
                     ${remarksText}
@@ -1005,11 +1006,15 @@ export class DailyRecordsPage {
     }
 
     closeModal() {
-        const modal = this.container.querySelector("#modal-daily-entry");
-        if (modal) modal.style.display = "none";
+        const modal = (this.container && this.container.querySelector("#modal-daily-entry")) || document.getElementById("modal-daily-entry");
+        if (modal) {
+            modal.style.setProperty("display", "none", "important");
+            modal.classList.add("hidden");
+        }
+        document.getElementById("view-field-ops")?.classList.remove("has-modal-open");
         if (this.isModalOnlyMode) {
             this.isModalOnlyMode = false;
-            if (this.callbacks.onCloseQuickModal) {
+            if (this.callbacks && typeof this.callbacks.onCloseQuickModal === "function") {
                 this.callbacks.onCloseQuickModal();
             }
         }
@@ -1156,15 +1161,43 @@ export class DailyRecordsPage {
             });
         });
 
-        // Modal Close Buttons
-        const modal = this.container.querySelector("#modal-daily-entry");
-        const btnClose = this.container.querySelector("#btn-close-entry-modal");
-        const btnCancel = this.container.querySelector("#btn-cancel-modal");
-        if (btnClose) btnClose.addEventListener("click", () => this.closeModal());
-        if (btnCancel) btnCancel.addEventListener("click", () => this.closeModal());
+        // Modal Close Buttons (Direct Click + Event Delegation + Keyboard Escape)
+        const modal = (this.container && this.container.querySelector("#modal-daily-entry")) || document.getElementById("modal-daily-entry");
+        const btnClose = this.container ? this.container.querySelector("#btn-close-entry-modal") : document.getElementById("btn-close-entry-modal");
+        const btnCancel = this.container ? this.container.querySelector("#btn-cancel-modal") : document.getElementById("btn-cancel-modal");
+        
+        if (btnClose) {
+            btnClose.addEventListener("click", (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                this.closeModal();
+            });
+        }
+        if (btnCancel) {
+            btnCancel.addEventListener("click", (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                this.closeModal();
+            });
+        }
         if (modal) {
             modal.addEventListener("click", (e) => {
-                if (e.target === modal) this.closeModal();
+                if (e.target === modal || e.target.closest("#btn-close-entry-modal") || e.target.closest("#btn-cancel-modal")) {
+                    e.preventDefault();
+                    this.closeModal();
+                }
+            });
+        }
+
+        if (!this._hasBoundEscapeKey) {
+            this._hasBoundEscapeKey = true;
+            document.addEventListener("keydown", (e) => {
+                if (e.key === "Escape") {
+                    const m = (this.container && this.container.querySelector("#modal-daily-entry")) || document.getElementById("modal-daily-entry");
+                    if (m && m.style.display !== "none" && !m.classList.contains("hidden")) {
+                        this.closeModal();
+                    }
+                }
             });
         }
 
@@ -1184,7 +1217,7 @@ export class DailyRecordsPage {
                 this.container.classList.remove("daily-mount-modal-only");
                 const mapMount = document.getElementById("field-ops-map-mount");
                 if (mapMount) mapMount.style.display = "none";
-                if (modal) modal.style.display = "none";
+                this.closeModal();
                 this.renderView();
             });
         }
@@ -1348,10 +1381,9 @@ export class DailyRecordsPage {
                         await DailyRecordsRepository.deleteRecord(this.activeModalRecord.id);
                         Toast.success("Daily record deleted.");
                         if (this.callbacks.onRecordSaved) this.callbacks.onRecordSaved();
-                        if (this.isModalOnlyMode) {
-                            this.closeModal();
-                        } else {
-                            if (modal) modal.style.display = "none";
+                        const wasModalOnly = this.isModalOnlyMode;
+                        this.closeModal();
+                        if (!wasModalOnly) {
                             await this.render(this.currentPond, this.activePondsList);
                         }
                     } catch (err) {
@@ -1417,7 +1449,7 @@ export class DailyRecordsPage {
      */
     openEntryModal(targetDate, existingRecord = null, options = { autoFocusFeed: true }) {
         this.activeModalRecord = existingRecord;
-        const modal = this.container.querySelector("#modal-daily-entry");
+        const modal = (this.container && this.container.querySelector("#modal-daily-entry")) || document.getElementById("modal-daily-entry");
         const titleEl = this.container.querySelector("#modal-entry-title");
         const subTitleEl = this.container.querySelector("#modal-entry-subtitle");
         const inputDate = this.container.querySelector("#input-entry-date");
@@ -1518,7 +1550,9 @@ export class DailyRecordsPage {
 
         const sheetBody = modal.querySelector(".modal-sheet-body") || modal.querySelector(".modal-dialog");
         if (sheetBody) sheetBody.scrollTop = 0;
-        modal.style.display = "flex";
+        modal.classList.remove("hidden");
+        modal.style.setProperty("display", "flex", "important");
+        document.getElementById("view-field-ops")?.classList.add("has-modal-open");
 
         const isMobileViewport = window.innerWidth <= 768;
         if (options.autoFocusFeed && !isMobileViewport && !inputFeed.value) {
@@ -1630,12 +1664,46 @@ export class DailyRecordsPage {
                 this.closeModal();
             } else {
                 Toast.success(`Daily record & treatments for ${logDate} saved!`);
-                this.container.querySelector("#modal-daily-entry").style.display = "none";
+                this.closeModal();
                 await this.render(this.currentPond, this.activePondsList);
             }
         } catch (err) {
             console.error("Save error:", err);
-            Toast.error("Failed to save daily record: " + err.message);
+            const isNetworkErr = !OfflineSync.isOnline() || err.name === "AbortError" || /failed to fetch|network|timeout|connection/i.test(err.message || "");
+            if (isNetworkErr) {
+                // Queue daily record for deferred sync
+                OfflineSync.queueRequest("daily_pond_records?on_conflict=pond_index,log_date", {
+                    method: "POST",
+                    headers: { "Prefer": "resolution=merge-duplicates" },
+                    body: dailyPayload
+                }, { type: "daily_record", pondIndex, logDate });
+
+                // Queue treatments if any
+                const validTreatments = treatmentsPayload.filter(it => it.name && parseFloat(it.amount) > 0);
+                if (validTreatments.length > 0) {
+                    const treatmentRows = validTreatments.map(it => ({
+                        pond_index: pondIndex,
+                        pond: pondName,
+                        log_date: logDate,
+                        category: it.category === 'PROBIOTIC' ? 'PROBIOTIC' : 'MINERAL',
+                        item_name: String(it.name).trim().toUpperCase(),
+                        amount: parseFloat(it.amount),
+                        unit: it.unit || (it.category === 'PROBIOTIC' ? 'L' : 'KG'),
+                        remarks: it.remarks || null,
+                        updated_at: new Date().toISOString()
+                    }));
+                    OfflineSync.queueRequest("mineral_probiotic_used", {
+                        method: "POST",
+                        body: treatmentRows
+                    }, { type: "treatments", pondIndex, logDate });
+                }
+
+                Toast.info(`📡 Saved locally (Offline). Will sync when connection is restored!`);
+                if (this.callbacks.onRecordSaved) this.callbacks.onRecordSaved();
+                this.closeModal();
+            } else {
+                Toast.error("Failed to save daily record: " + err.message);
+            }
         } finally {
             if (btnSave) {
                 btnSave.disabled = false;
