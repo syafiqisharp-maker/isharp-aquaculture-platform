@@ -3,7 +3,7 @@
 > **Target Audience:** Field Operators, Row Leaders, and Field Supervisors  
 > **Hardware Target:** Mobile Smartphones & Rugged Outdoor Field Tablets  
 > **Single Source of Truth:** Cloud Supabase Database (`public` schema)  
-> **Last Updated:** 2026-10-01
+> **Last Updated:** 2026-10-04
 
 ---
 
@@ -158,6 +158,9 @@ Designed to satisfy both **Field Workers** (who need to log 12–24 ponds in und
 | **2026-10-01 12:15** | Modal Containment | Fix Mobile Scroll & Sticky Footer Docking | Resolved modal body overflow containment so the dialog scrolls smoothly on iOS/Android while keeping the action buttons (`Cancel`, `Save`, `Save & Next`) pinned to the bottom dock without squashing inputs. |
 | **2026-10-01 12:35** | 24-Pond Map UX | High-Contrast Distinction for Inactive / Idle Ponds (Option A) | Implemented Option A "Drained Pool Glass & Dashed Perimeter": idle ponds use a subtle dashed border (`1.5px dashed rgba(148,163,184,0.65)`), recessed silver status bead, and muted `#94a3b8` typography, creating immediate visual contrast against vibrant active production pond tiles. |
 | **2026-10-01 12:48** | Telemetry Grid | DO & pH Telemetry Pill Strip with Rule 7 Placeholders | Added twin telemetry pills (`🫧 DO: -- mg/L` and `🧪 pH: -- pH`) to active pond cards in `FieldOpsMap.js`, binding real sensor telemetry when available while displaying clean non-fabricated placeholders per Rule 7. |
+| **2026-10-04 08:55** | Concurrency & Data Pipelines | Supabase Connection Audit & 15-User Concurrency Stress Test | Verified all 17 tables/views. Fixed `InventoryRepository` signature mismatch and eliminated 4.0 HP paddlewheels (Rule 6). Added treatment rollback on failed inserts in `MineralProbioticRepository`. Created `offlineSync.js` queue engine. Ran 15-user stress test (`scripts/stress_15_users.mjs`) delivering 137.2 RPS with 0 errors across 275 operations (p95 < 85ms). Documented in `CONCURRENCY_REPORT.md`. |
+| **2026-10-04 09:15** | UI/UX & Desktop Readability | Fix Desktop Logbook Ledger Readability without impacting Mobile | Addressed desktop (>768px) table low-contrast readability issue caused by `.glass-card` 28% transparency. Scoped `@media (min-width: 769px)` rules in `field-ops-mobile.css`: 93% frosted white surface, solid white rows with subtle zebra striping, today row highlight, no-wrap columns, high-contrast text (#64748b on empty cells), and slightly enlarged typography (0.9rem). Mobile timeline cards remain completely untouched. |
+| **2026-10-04 10:20** | Visual Hierarchy | Ambient Bubble Refinements | Scoped bubble layer into DOM container hierarchy to prevent body overflow; tuned bubble frequency on landing page down by 70% (from 20 to 6) for a clean crystalline atmosphere with organic vertical staggering. |
 
 ---
 
@@ -166,8 +169,14 @@ Designed to satisfy both **Field Workers** (who need to log 12–24 ponds in und
 - **Vite Production Bundler:**
   ```bash
   cmd.exe /c "npm run build"
-  # Output: 53 modules transformed cleanly (dist/index.html 89.75 kB, CSS 94.36 kB, JS 326.31 kB, 0 errors)
+  # Output: 54 modules transformed cleanly (dist/index.html 89.75 kB, CSS 99.02 kB, JS 334.54 kB, 0 errors)
   ```
-- **Database Schema Integrity:** Verified via Supabase `information_schema.columns` and round-trip queries on `public.daily_pond_records` and `public.mineral_probiotic_used`.
+- **Concurrency & Stress Suite:**
+  ```bash
+  cmd.exe /c "npm run test"
+  # Output: 15 simultaneous virtual field users, 275 operations, 0 errors, 137.2 RPS, p95 < 85ms
+  ```
+- **Database Schema Integrity:** Verified via Supabase `information_schema.columns` and round-trip queries on `public.daily_pond_records`, `public.pond_inventories`, and `public.mineral_probiotic_used`.
 - **Git Branch:** `feature/field-ops-frutiger-aero` (isolated feature branch, undergoing 7-day field soak testing before merging to `main`).
+
 
