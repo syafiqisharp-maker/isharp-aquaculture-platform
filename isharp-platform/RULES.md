@@ -141,3 +141,55 @@ Every modification action must respect user roles defined in `src/config/permiss
 - **Observed Water Colour Swatches (True 3D CSS Orbs + Simple Names)**:
   - Never use generic Unicode emojis (`🟢`, `🟤`, `⚪`) to represent multiple distinct water colours.
   - Always render custom `.water-swatch-orb` radial-gradient spheres paired with the 8 standardized simple names: **`Lt Green`**, **`Green`**, **`Dk Green`**, **`Brn Green`**, **`Tea`**, **`Brown`**, **`Clear`**, and **`Turbid`**.
+
+---
+
+## 11. Centralized DOM Contracts & Zero Magic String Policy
+
+- **All DOM element IDs must be registered in `src/config/domContracts.js`**:
+  - Never hardcode element ID strings like `document.getElementById("btn-submit-create-cycle")` directly inside controllers or components.
+  - Query elements via `DOM_IDS.<GROUP>.<ELEMENT_KEY>` (e.g., `document.getElementById(DOM_IDS.LIFECYCLE.BTN_SUBMIT_CREATE_CYCLE)`).
+- **Mandatory Contract Validation**:
+  - Every component or controller constructor MUST call `validateContract(ComponentName, DOM_IDS.<GROUP>)` upon instantiation.
+  - If any expected DOM element is missing from the document, `validateContract()` prints an actionable warning into the console with the missing ID and group.
+
+---
+
+## 12. Modular Tab Template Architecture
+
+- **`index.html` must remain a lightweight shell (<50 lines)**:
+  - Do NOT embed massive HTML markup or inline forms directly inside `index.html`.
+  - All 10 DBMS tab interfaces reside in isolated template modules under `src/modules/dbms/templates/`:
+    1. `masterTabTemplate.js`
+    2. `laboratoryTabTemplate.js`
+    3. `stockingTabTemplate.js`
+    4. `feedingTabTemplate.js`
+    5. `samplingTabTemplate.js`
+    6. `performanceTabTemplate.js`
+    7. `harvestTabTemplate.js`
+    8. `lifecycleTabTemplate.js`
+    9. `staffTabTemplate.js`
+    10. `utilitiesTabTemplate.js`
+    11. `modalsTemplate.js` (Excel paste, Terminate, Revive modals)
+    12. `dbmsShellTemplate.js` (Root command OS shell)
+- **Extending or Modifying Tabs**:
+  - Human developers modifying tab UI layout should edit only the specific tab template file. Controllers bind to elements using `DOM_IDS`.
+
+---
+
+## 13. Automated Domain Unit Testing Standard
+
+- **Zero Regression on Aquaculture Math**:
+  - All pure domain functions in `src/domain/` (`biometrics.js`, `aeration.js`, `feeding.js`, `rollover.js`) must be accompanied by unit tests in `tests/domain.test.js`.
+  - Use Node.js native test runner (`node --test tests/*.test.js` or `npm test`).
+  - No external test frameworks (Jest, Mocha, Vitest) are permitted for domain unit testing to prevent dependency bloat.
+  - Tests must cover edge cases: zero division, leap years, negative biomass gain, empty cycle strings, and inactive status flags.
+
+---
+
+## 14. Staff Allocation & Remarks Layout Standard
+
+- **Single-Column Grid Containment**:
+  - On `#tab-staff`, the **Assigned Pond Personnel** card and the **Operational Logbook & Remarks** card must stack in a **single vertical column** (`flex-direction: column; width: 100%;`).
+  - Do NOT wrap these two cards into a horizontal two-column split, ensuring personnel ID entry and logbook entries have maximum horizontal breathing room for readability.
+
