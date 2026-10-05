@@ -1,0 +1,972 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>iSHARP DBMS 2.0 — Concept A: Modern Command OS Prototype</title>
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800;900&family=Space+Grotesk:wght@600;700&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="src/styles/tokens.css">
+    <link rel="stylesheet" href="src/styles/base.css">
+    <link rel="stylesheet" href="src/styles/components.css">
+    <style>
+        /* ==========================================================================
+           CONCEPT A: MODERN COMMAND OS — STYLES
+           ========================================================================== */
+        body {
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(135deg, #e0f2fe 0%, #f0fdf4 40%, #f8fafc 100%);
+            font-family: var(--font-sans, 'Plus Jakarta Sans', sans-serif);
+            color: #0f172a;
+            overflow: hidden;
+            height: 100vh;
+        }
+
+        .command-os-layout {
+            display: flex;
+            height: 100vh;
+            width: 100vw;
+            overflow: hidden;
+        }
+
+        /* --------------------------------------------------------------------------
+           1. LEFT COMMAND SIDEBAR (Glass Crystalline Surface)
+           -------------------------------------------------------------------------- */
+        .sidebar {
+            width: 275px;
+            background: rgba(255, 255, 255, 0.88);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-right: 1px solid rgba(186, 230, 253, 0.85);
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            box-shadow: 2px 0 12px rgba(12, 74, 110, 0.04);
+            z-index: 100;
+            flex-shrink: 0;
+        }
+
+        /* Brand & Identity Header */
+        .sidebar-brand-block {
+            padding: 1rem 1.15rem 0.85rem 1.15rem;
+            border-bottom: 1px solid rgba(186, 230, 253, 0.7);
+            background: linear-gradient(180deg, rgba(255, 255, 255, 0.95) 0%, rgba(240, 249, 255, 0.6) 100%);
+        }
+
+        .brand-capsule-row {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .brand-logo-glass {
+            background: #ffffff;
+            border: 1px solid rgba(186, 230, 253, 0.95);
+            border-radius: 10px;
+            padding: 3px 8px;
+            box-shadow: 0 2px 6px rgba(12, 74, 110, 0.06);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .brand-logo-glass img {
+            height: 24px;
+            width: auto;
+            object-fit: contain;
+        }
+
+        .brand-titles-col {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .brand-title-wrap {
+            display: flex;
+            align-items: center;
+            gap: 0.35rem;
+        }
+
+        .brand-title-wrap .title {
+            font-size: 1.15rem;
+            font-weight: 800;
+            color: #0284c7;
+            letter-spacing: -0.02em;
+        }
+
+        .brand-title-wrap .badge-v2 {
+            font-size: 0.65rem;
+            font-weight: 800;
+            background: linear-gradient(180deg, #38bdf8 0%, #0284c7 100%);
+            color: #ffffff;
+            padding: 1px 6px;
+            border-radius: 999px;
+            letter-spacing: 0.02em;
+        }
+
+        .brand-subline {
+            font-size: 0.68rem;
+            color: #64748b;
+            font-weight: 600;
+        }
+
+        /* Scrollable Sidebar Nav Body */
+        .sidebar-scroll-body {
+            flex: 1;
+            overflow-y: auto;
+            padding: 0.85rem 0.85rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1.1rem;
+            scrollbar-width: thin;
+        }
+
+        .sidebar-section-title {
+            font-size: 0.65rem;
+            font-weight: 800;
+            letter-spacing: 0.08em;
+            color: #94a3b8;
+            text-transform: uppercase;
+            padding: 0 0.5rem;
+            margin-bottom: 0.35rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        /* Pond Explorer Tree */
+        .pond-explorer-box {
+            background: rgba(240, 249, 255, 0.65);
+            border: 1px solid rgba(186, 230, 253, 0.8);
+            border-radius: 12px;
+            padding: 0.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+        }
+
+        .module-group-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.35rem 0.5rem;
+            font-size: 0.76rem;
+            font-weight: 700;
+            color: #0369a1;
+            cursor: pointer;
+            border-radius: 6px;
+            transition: background 0.15s;
+        }
+
+        .module-group-header:hover {
+            background: rgba(224, 242, 254, 0.7);
+        }
+
+        .pond-tree-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0.2rem;
+            padding-left: 0.5rem;
+        }
+
+        .pond-tree-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.35rem 0.6rem;
+            border-radius: 8px;
+            font-size: 0.78rem;
+            font-weight: 600;
+            color: #334155;
+            cursor: pointer;
+            transition: all 0.18s;
+            text-decoration: none;
+        }
+
+        .pond-tree-item:hover {
+            background: #ffffff;
+            color: #0284c7;
+            transform: translateX(2px);
+        }
+
+        .pond-tree-item.active {
+            background: linear-gradient(180deg, #38bdf8 0%, #0284c7 100%);
+            color: #ffffff;
+            font-weight: 700;
+            box-shadow: 0 3px 8px rgba(2, 132, 199, 0.3);
+            text-shadow: 0 1px 1px rgba(0, 30, 60, 0.4);
+        }
+
+        .pond-tree-item .status-dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: #10b981;
+            box-shadow: 0 0 6px #10b981;
+        }
+
+        .pond-tree-item.active .status-dot {
+            background: #ffffff;
+            box-shadow: 0 0 6px #ffffff;
+        }
+
+        .pond-tree-item .doc-tag {
+            font-size: 0.68rem;
+            font-family: var(--font-mono);
+            opacity: 0.85;
+        }
+
+        /* Workstream Nav List */
+        .nav-category {
+            display: flex;
+            flex-direction: column;
+            gap: 0.2rem;
+        }
+
+        .nav-item-btn {
+            display: flex;
+            align-items: center;
+            gap: 0.65rem;
+            padding: 0.45rem 0.75rem;
+            border-radius: 10px;
+            font-size: 0.82rem;
+            font-weight: 600;
+            color: #475569;
+            background: transparent;
+            border: 1px solid transparent;
+            cursor: pointer;
+            transition: all 0.18s;
+            text-align: left;
+            width: 100%;
+        }
+
+        .nav-item-btn:hover {
+            background: rgba(255, 255, 255, 0.9);
+            color: #0284c7;
+            border-color: rgba(186, 230, 253, 0.7);
+            transform: translateX(2px);
+        }
+
+        .nav-item-btn.active {
+            background: #ffffff;
+            color: #0369a1;
+            font-weight: 800;
+            border-color: rgba(56, 189, 248, 0.8);
+            box-shadow: 0 2px 8px rgba(12, 74, 110, 0.06), inset 0 1px 0 #ffffff;
+        }
+
+        .nav-item-btn .nav-icon {
+            font-size: 1rem;
+            line-height: 1;
+            display: inline-flex;
+            align-items: center;
+        }
+
+        .nav-item-btn .nav-badge {
+            margin-left: auto;
+            font-size: 0.62rem;
+            font-weight: 800;
+            background: #e0f2fe;
+            color: #0369a1;
+            padding: 1px 6px;
+            border-radius: 999px;
+        }
+
+        /* Sidebar Footer (User Role & View Switchers) */
+        .sidebar-footer {
+            padding: 0.85rem 1.15rem;
+            border-top: 1px solid rgba(186, 230, 253, 0.75);
+            background: rgba(255, 255, 255, 0.9);
+            display: flex;
+            flex-direction: column;
+            gap: 0.65rem;
+        }
+
+        .role-pill-frame {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: #f8fafc;
+            border: 1px solid rgba(186, 230, 253, 0.85);
+            padding: 0.35rem 0.65rem;
+            border-radius: 8px;
+            font-size: 0.76rem;
+            font-weight: 700;
+            color: #334155;
+        }
+
+        .portal-switch-cluster {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 0.35rem;
+        }
+
+        .btn-portal-micro {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.2rem;
+            padding: 0.4rem 0.2rem;
+            background: #ffffff;
+            border: 1px solid rgba(186, 230, 253, 0.85);
+            border-radius: 8px;
+            color: #0369a1;
+            font-size: 0.65rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.15s;
+            text-decoration: none;
+        }
+
+        .btn-portal-micro:hover {
+            background: #e0f2fe;
+            border-color: #38bdf8;
+            transform: translateY(-1px);
+        }
+
+        /* --------------------------------------------------------------------------
+           2. MAIN COMMAND STAGE (Full Viewport Workspace)
+           -------------------------------------------------------------------------- */
+        .main-stage {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            background: transparent;
+        }
+
+        /* Top Command Micro-Bar (Just 46px tall!) */
+        .command-bar {
+            height: 48px;
+            padding: 0 1.5rem;
+            background: rgba(255, 255, 255, 0.94);
+            backdrop-filter: blur(16px);
+            border-bottom: 1px solid rgba(186, 230, 253, 0.85);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: 0 1px 4px rgba(12, 74, 110, 0.03);
+            flex-shrink: 0;
+            z-index: 50;
+        }
+
+        .command-bar-left {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .breadcrumb-trail {
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            font-size: 0.82rem;
+            font-weight: 700;
+            color: #64748b;
+        }
+
+        .breadcrumb-trail .current-pond {
+            color: #0284c7;
+            font-family: var(--font-mono);
+            font-size: 0.95rem;
+            font-weight: 800;
+        }
+
+        .command-bar-center {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .spotlight-search-pill {
+            display: flex;
+            align-items: center;
+            gap: 0.45rem;
+            background: #f1f5f9;
+            border: 1px solid rgba(186, 230, 253, 0.9);
+            padding: 0.3rem 0.85rem;
+            border-radius: 999px;
+            font-size: 0.78rem;
+            color: #64748b;
+            cursor: pointer;
+            transition: all 0.2s;
+            width: 280px;
+        }
+
+        .spotlight-search-pill:hover {
+            background: #ffffff;
+            border-color: #38bdf8;
+            box-shadow: 0 2px 8px rgba(2, 132, 199, 0.15);
+        }
+
+        .spotlight-search-pill kbd {
+            margin-left: auto;
+            background: #ffffff;
+            border: 1px solid #cbd5e1;
+            padding: 1px 5px;
+            border-radius: 4px;
+            font-size: 0.65rem;
+            font-family: var(--font-mono);
+            font-weight: 700;
+            color: #475569;
+        }
+
+        .command-bar-right {
+            display: flex;
+            align-items: center;
+            gap: 0.65rem;
+        }
+
+        /* Workspace Content Area (Maximized Screen Real Estate) */
+        .workspace-canvas {
+            flex: 1;
+            overflow-y: auto;
+            padding: 1.5rem 2rem 2rem 2rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
+        /* Hero Banner with Integrated Quick Filters */
+        .stage-hero-banner {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.9) 0%, rgba(240, 249, 255, 0.85) 100%);
+            border: 1px solid rgba(186, 230, 253, 0.9);
+            padding: 0.85rem 1.25rem;
+            border-radius: 16px;
+            box-shadow: 0 4px 16px rgba(12, 74, 110, 0.05);
+        }
+
+        .hero-telemetry-cluster {
+            display: flex;
+            align-items: center;
+            gap: 1.25rem;
+        }
+
+        .hero-metric-chip {
+            display: flex;
+            flex-direction: column;
+            gap: 0.15rem;
+        }
+
+        .hero-metric-chip .metric-label {
+            font-size: 0.62rem;
+            font-weight: 800;
+            color: #94a3b8;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+        }
+
+        .hero-metric-chip .metric-value {
+            font-size: 1rem;
+            font-weight: 800;
+            font-family: var(--font-mono);
+            color: #0f172a;
+        }
+
+        /* Bento KPI 5-Grid */
+        .bento-kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 1rem;
+        }
+
+        .bento-kpi-card {
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(186, 230, 253, 0.85);
+            border-radius: 14px;
+            padding: 1rem 1.15rem;
+            box-shadow: 0 2px 8px rgba(12, 74, 110, 0.04), inset 0 1px 0 #ffffff;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            height: 95px;
+            transition: all 0.2s;
+        }
+
+        .bento-kpi-card:hover {
+            transform: translateY(-2px);
+            border-color: #38bdf8;
+            box-shadow: 0 6px 18px rgba(2, 132, 199, 0.12), inset 0 1px 0 #ffffff;
+        }
+
+        .bento-card-top {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .bento-card-title {
+            font-size: 0.68rem;
+            font-weight: 800;
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .bento-card-icon {
+            font-size: 1.1rem;
+        }
+
+        .bento-card-val {
+            font-size: 1.45rem;
+            font-weight: 800;
+            font-family: var(--font-mono);
+            color: #0369a1;
+            line-height: 1.1;
+        }
+
+        .bento-card-foot {
+            font-size: 0.68rem;
+            color: #64748b;
+            font-weight: 600;
+        }
+
+        /* 2-Column Operational Deck */
+        .operation-split-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.25rem;
+            align-items: start;
+        }
+
+        .operation-panel {
+            background: rgba(255, 255, 255, 0.92);
+            backdrop-filter: blur(14px);
+            border: 1px solid rgba(186, 230, 253, 0.85);
+            border-radius: 16px;
+            padding: 1.25rem 1.4rem;
+            box-shadow: 0 4px 16px rgba(12, 74, 110, 0.04), inset 0 1px 0 #ffffff;
+        }
+
+        .panel-heading-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 1.1rem;
+            padding-bottom: 0.65rem;
+            border-bottom: 1px solid rgba(186, 230, 253, 0.7);
+        }
+
+        .panel-heading-row h3 {
+            margin: 0;
+            font-size: 1.05rem;
+            font-weight: 800;
+            color: #0f172a;
+        }
+
+        .panel-heading-row .sub {
+            font-size: 0.74rem;
+            color: #64748b;
+            font-weight: 500;
+        }
+
+        .form-grid-dates {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 0.85rem;
+        }
+
+        .pwa-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+
+        .pwa-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.75rem 1rem;
+            background: rgba(240, 249, 255, 0.6);
+            border: 1px solid rgba(186, 230, 253, 0.75);
+            border-radius: 10px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="command-os-layout">
+
+        <!-- ====================================================================
+             1. LEFT COMMAND SIDEBAR (Collapsible Navigator)
+             ==================================================================== -->
+        <aside class="sidebar" role="navigation">
+            
+            <!-- Top Brand Badge -->
+            <div class="sidebar-brand-block">
+                <div class="brand-capsule-row">
+                    <div class="brand-logo-glass">
+                        <img src="/assets/blue-archipelago-logo.png" alt="Blue Archipelago" onerror="this.src='https://www.bluearchipelago.com/wp-content/uploads/2022/06/blue-archipelago-logo-color.png';">
+                    </div>
+                    <div class="brand-titles-col">
+                        <div class="brand-title-wrap">
+                            <span class="title">iSHARP</span>
+                            <span class="badge-v2">OS 2.0</span>
+                        </div>
+                        <span class="brand-subline">Setiu Farm (SETiU)</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Scrollable Explorer & Navigation -->
+            <div class="sidebar-scroll-body">
+                
+                <!-- Section 1: Spatial Pond Tree Navigator -->
+                <div>
+                    <div class="sidebar-section-title">
+                        <span>Pond Explorer</span>
+                        <span>139 Ponds</span>
+                    </div>
+                    <div class="pond-explorer-box">
+                        <div class="module-group-header">
+                            <span>▼ Module 01 (Setiu East)</span>
+                            <span style="font-size:0.65rem; color:#0284c7;">12 Ponds</span>
+                        </div>
+                        <div class="pond-tree-list">
+                            <a class="pond-tree-item active" href="#/dbms">
+                                <div style="display:flex; align-items:center; gap:0.45rem;">
+                                    <span class="status-dot"></span>
+                                    <span>Pond 01.01.01</span>
+                                </div>
+                                <span class="doc-tag">DOC 32</span>
+                            </a>
+                            <a class="pond-tree-item" href="#/dbms">
+                                <div style="display:flex; align-items:center; gap:0.45rem;">
+                                    <span class="status-dot"></span>
+                                    <span>Pond 01.01.02</span>
+                                </div>
+                                <span class="doc-tag">DOC 45</span>
+                            </a>
+                            <a class="pond-tree-item" href="#/dbms">
+                                <div style="display:flex; align-items:center; gap:0.45rem;">
+                                    <span class="status-dot" style="background:#eab308; box-shadow:0 0 6px #eab308;"></span>
+                                    <span>Pond 01.01.03</span>
+                                </div>
+                                <span class="doc-tag">DOC 88</span>
+                            </a>
+                        </div>
+                        <div class="module-group-header" style="color:#64748b;">
+                            <span>▶ Module 02 (Setiu Central)</span>
+                            <span style="font-size:0.65rem;">12 Ponds</span>
+                        </div>
+                        <div class="module-group-header" style="color:#64748b;">
+                            <span>▶ Module 03 (Setiu West)</span>
+                            <span style="font-size:0.65rem;">12 Ponds</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Section 2: Farm Workspaces & Operations -->
+                <div>
+                    <div class="sidebar-section-title">Pond Workstreams</div>
+                    <div class="nav-category">
+                        <button class="nav-item-btn active">
+                            <span class="nav-icon">📊</span>
+                            <span>Master Cycle</span>
+                            <span class="nav-badge">Live</span>
+                        </button>
+                        <button class="nav-item-btn">
+                            <span class="nav-icon">🦐</span>
+                            <span>Stocking & PL</span>
+                        </button>
+                        <button class="nav-item-btn">
+                            <span class="nav-icon">🌾</span>
+                            <span>Daily Feeding</span>
+                        </button>
+                        <button class="nav-item-btn">
+                            <span class="nav-icon">🚜</span>
+                            <span>Harvest Log</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Section 3: Laboratory & Biometrics -->
+                <div>
+                    <div class="sidebar-section-title">Quality & Biometrics</div>
+                    <div class="nav-category">
+                        <button class="nav-item-btn">
+                            <span class="nav-icon">🔬</span>
+                            <span>Lab & Pathology</span>
+                            <span class="nav-badge" style="background:#dcfce7; color:#15803d;">Normal</span>
+                        </button>
+                        <button class="nav-item-btn">
+                            <span class="nav-icon">⚖️</span>
+                            <span>Weekly Sampling</span>
+                        </button>
+                        <button class="nav-item-btn">
+                            <span class="nav-icon">📈</span>
+                            <span>Performance Curves</span>
+                        </button>
+                        <button class="nav-item-btn">
+                            <span class="nav-icon">🔄</span>
+                            <span>Lifecycle & Prep</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Section 4: Administration -->
+                <div>
+                    <div class="sidebar-section-title">Management</div>
+                    <div class="nav-category">
+                        <button class="nav-item-btn">
+                            <span class="nav-icon">👔</span>
+                            <span>Staff Personnel</span>
+                        </button>
+                        <button class="nav-item-btn">
+                            <span class="nav-icon">⚙️</span>
+                            <span>Utilities & Motors</span>
+                        </button>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Bottom Role Bar & Cross-Platform Switchers -->
+            <div class="sidebar-footer">
+                <div class="role-pill-frame">
+                    <span>👑 Role: Planner</span>
+                    <span style="color:#0284c7; font-size:0.7rem; cursor:pointer;">Switch ▾</span>
+                </div>
+                <div class="portal-switch-cluster">
+                    <a href="/#/portal" class="btn-portal-micro">
+                        <span style="font-size:0.85rem;">◂</span>
+                        <span>Portal</span>
+                    </a>
+                    <a href="/#/executive" class="btn-portal-micro">
+                        <span style="font-size:0.85rem;">🗺️</span>
+                        <span>216-Map</span>
+                    </a>
+                    <a href="/#/field-ops" class="btn-portal-micro">
+                        <span style="font-size:0.85rem;">💧</span>
+                        <span>Field Ops</span>
+                    </a>
+                </div>
+            </div>
+
+        </aside>
+
+        <!-- ====================================================================
+             2. MAIN COMMAND STAGE (Maximized Vertical Canvas)
+             ==================================================================== -->
+        <main class="main-stage">
+            
+            <!-- Ultra-Slim Top Command Bar (48px) -->
+            <header class="command-bar">
+                <!-- Left: Breadcrumb & Pond Status -->
+                <div class="command-bar-left">
+                    <div class="breadcrumb-trail">
+                        <span>Setiu Farm</span>
+                        <span>/</span>
+                        <span>Module 01</span>
+                        <span>/</span>
+                        <span class="current-pond">Pond 01.01.01</span>
+                    </div>
+                    <span class="status-pill status-production" style="font-size:0.68rem; padding:2px 8px;">PRODUCTION</span>
+                    <span class="active-pill active-yes" style="font-size:0.65rem; padding:2px 6px;">ACTIVE</span>
+                </div>
+
+                <!-- Center: Global Spotlight Search -->
+                <div class="command-bar-center">
+                    <div class="spotlight-search-pill" title="Press Ctrl + K to jump to any pond">
+                        <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.3">
+                            <circle cx="11" cy="11" r="8"></circle>
+                            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                        </svg>
+                        <span>Jump to any pond or cycle...</span>
+                        <kbd>Ctrl K</kbd>
+                    </div>
+                    <button class="btn-nav-step" title="Previous Pond">‹</button>
+                    <button class="btn-nav-step" title="Next Pond">›</button>
+                    <button class="btn-icon" style="width:26px; height:26px;" title="Sync Cloud Data">↻</button>
+                </div>
+
+                <!-- Right: Quick Telemetry Chips & Actions -->
+                <div class="command-bar-right">
+                    <span class="doc-box" style="font-size:0.75rem; padding:2px 8px;">DOC 32</span>
+                    <span class="disease-pill disease-ok" style="font-size:0.7rem; padding:2px 8px;">🛡️ Pathogen Negative</span>
+                    <button class="btn-action btn-excel" style="padding:0.32rem 0.75rem; font-size:0.75rem;">
+                        <span>📄 Paste Excel</span>
+                    </button>
+                </div>
+            </header>
+
+            <!-- Main Scrollable Canvas Area -->
+            <div class="workspace-canvas">
+                
+                <!-- Bento KPI Snapshots Grid (5 Cards) -->
+                <div class="bento-kpi-grid">
+                    <div class="bento-kpi-card">
+                        <div class="bento-card-top">
+                            <span class="bento-card-title">Species / Line</span>
+                            <span class="bento-card-icon">🧬</span>
+                        </div>
+                        <div class="bento-card-val" style="font-size:1.15rem; color:#0f172a;">P. VANNAMEi</div>
+                        <div class="bento-card-foot">Standard Line (Syaqua)</div>
+                    </div>
+
+                    <div class="bento-kpi-card">
+                        <div class="bento-card-top">
+                            <span class="bento-card-title">Stocked Fry</span>
+                            <span class="bento-card-icon">🦐</span>
+                        </div>
+                        <div class="bento-card-val">435,510</div>
+                        <div class="bento-card-foot">87 PL/m² (0.5 Ha Pond)</div>
+                    </div>
+
+                    <div class="bento-kpi-card">
+                        <div class="bento-card-top">
+                            <span class="bento-card-title">Average Body Wt</span>
+                            <span class="bento-card-icon">⚖️</span>
+                        </div>
+                        <div class="bento-card-val">—</div>
+                        <div class="bento-card-foot">First sampling at DOC 35</div>
+                    </div>
+
+                    <div class="bento-kpi-card">
+                        <div class="bento-card-top">
+                            <span class="bento-card-title">Cumulative Feed</span>
+                            <span class="bento-card-icon">🌾</span>
+                        </div>
+                        <div class="bento-card-val">25.0 <span style="font-size:0.9rem; font-weight:600;">kg</span></div>
+                        <div class="bento-card-foot">Feeding protocol on track</div>
+                    </div>
+
+                    <div class="bento-kpi-card">
+                        <div class="bento-card-top">
+                            <span class="bento-card-title">Harvest Biomass</span>
+                            <span class="bento-card-icon">🚜</span>
+                        </div>
+                        <div class="bento-card-val">0.0 <span style="font-size:0.9rem; font-weight:600;">kg</span></div>
+                        <div class="bento-card-foot">Status: Active In-Culture</div>
+                    </div>
+                </div>
+
+                <!-- 2-Column Operational Work Deck -->
+                <div class="operation-split-grid">
+                    
+                    <!-- Left Panel: Pond Preparation Milestones -->
+                    <div class="operation-panel">
+                        <div class="panel-heading-row">
+                            <div>
+                                <h3>Pond Preparation Dates</h3>
+                                <span class="sub">Cycle milestones from dry-out to stocking</span>
+                            </div>
+                            <button class="btn-action btn-save" style="padding:0.35rem 0.8rem; font-size:0.75rem;">
+                                <span>💾 Save Milestones</span>
+                            </button>
+                        </div>
+                        <div class="form-grid-dates">
+                            <div class="form-group">
+                                <label>Cycle Start Date</label>
+                                <input type="date" class="form-control" value="2026-07-31">
+                            </div>
+                            <div class="form-group">
+                                <label>Pond Cleaning</label>
+                                <input type="date" class="form-control" value="2026-08-10">
+                            </div>
+                            <div class="form-group">
+                                <label>Liner Repair</label>
+                                <input type="date" class="form-control" value="2026-08-15">
+                            </div>
+                            <div class="form-group">
+                                <label>Water Filling</label>
+                                <input type="date" class="form-control" value="2026-08-18">
+                            </div>
+                            <div class="form-group">
+                                <label>Water Culture</label>
+                                <input type="date" class="form-control" value="2026-08-19">
+                            </div>
+                            <div class="form-group">
+                                <label>Baby Box Setup</label>
+                                <input type="date" class="form-control" value="2026-09-02">
+                            </div>
+                            <div class="form-group">
+                                <label>Lab QA/QC Approval</label>
+                                <input type="date" class="form-control" value="2026-09-02">
+                            </div>
+                            <div class="form-group">
+                                <label>Pond Ready Date</label>
+                                <input type="date" class="form-control" value="2026-09-02">
+                            </div>
+                            <div class="form-group">
+                                <label>Stocking Date</label>
+                                <input type="date" class="form-control">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Right Panel: Paddlewheel Aeration Inventory (PWA) -->
+                    <div class="operation-panel">
+                        <div class="panel-heading-row">
+                            <div>
+                                <h3>Paddlewheel Aeration (PWA)</h3>
+                                <span class="sub">Motor configuration & dissolved oxygen support</span>
+                            </div>
+                            <button class="btn-action btn-save" style="padding:0.35rem 0.8rem; font-size:0.75rem;">
+                                <span>💾 Save PWA</span>
+                            </button>
+                        </div>
+                        <div class="pwa-list">
+                            <div class="pwa-row">
+                                <div>
+                                    <div style="font-weight:700; font-size:0.86rem; color:#0f172a;">1.0 HP Paddlewheels</div>
+                                    <div style="font-size:0.7rem; color:#64748b;">[1 HP] Nursery / small pond setups</div>
+                                </div>
+                                <div style="display:flex; align-items:center; gap:0.5rem;">
+                                    <button class="btn-nav-step">-</button>
+                                    <span style="font-family:var(--font-mono); font-weight:800; font-size:0.95rem; min-width:24px; text-align:center;">4</span>
+                                    <button class="btn-nav-step">+</button>
+                                    <span style="font-size:0.75rem; color:#64748b;">units</span>
+                                </div>
+                            </div>
+
+                            <div class="pwa-row">
+                                <div>
+                                    <div style="font-weight:700; font-size:0.86rem; color:#0f172a;">2.0 HP Paddlewheels</div>
+                                    <div style="font-size:0.7rem; color:#64748b;">[2 HP] Standard high-flow aeration</div>
+                                </div>
+                                <div style="display:flex; align-items:center; gap:0.5rem;">
+                                    <button class="btn-nav-step">-</button>
+                                    <span style="font-family:var(--font-mono); font-weight:800; font-size:0.95rem; min-width:24px; text-align:center;">2</span>
+                                    <button class="btn-nav-step">+</button>
+                                    <span style="font-size:0.75rem; color:#64748b;">units</span>
+                                </div>
+                            </div>
+
+                            <div class="pwa-row">
+                                <div>
+                                    <div style="font-weight:700; font-size:0.86rem; color:#0f172a;">4.0 HP Central Aerators</div>
+                                    <div style="font-size:0.7rem; color:#64748b;">Heavy central spiral aerators</div>
+                                </div>
+                                <div style="display:flex; align-items:center; gap:0.5rem;">
+                                    <button class="btn-nav-step">-</button>
+                                    <span style="font-family:var(--font-mono); font-weight:800; font-size:0.95rem; min-width:24px; text-align:center;">0</span>
+                                    <button class="btn-nav-step">+</button>
+                                    <span style="font-size:0.75rem; color:#64748b;">units</span>
+                                </div>
+                            </div>
+
+                            <div style="margin-top:0.5rem; padding:0.65rem 1rem; background:linear-gradient(135deg, #e0f2fe 0%, #bae6fd 100%); border:1px solid #7dd3fc; border-radius:10px; display:flex; justify-content:space-between; align-items:center;">
+                                <span style="font-size:0.78rem; font-weight:800; color:#0369a1;">TOTAL PWA AERATION</span>
+                                <span style="font-size:1.1rem; font-weight:800; font-family:var(--font-mono); color:#0284c7;">8.0 HP <span style="font-size:0.75rem; font-weight:700;">(16.0 HP/Ha)</span></span>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+
+            </div>
+
+        </main>
+
+    </div>
+
+</body>
+</html>

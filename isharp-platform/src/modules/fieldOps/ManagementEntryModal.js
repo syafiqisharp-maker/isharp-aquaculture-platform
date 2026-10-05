@@ -58,9 +58,9 @@ export class ManagementEntryModal {
                         <div style="display: flex; flex-direction: column; gap: 0.5rem;">
                             <!-- PM -->
                             <div class="mgmt-staff-row" style="display: grid; grid-template-columns: 110px 95px 1fr; gap: 0.45rem; align-items: center;">
-                                <label style="font-size: 0.75rem; font-weight: 700; color: #334155; margin: 0;">👔 Manager</label>
+                                <label style="font-size: 0.75rem; font-weight: 700; color: #334155; margin: 0;">👔 Asst Manager</label>
                                 <input type="text" id="mgmt-staff-pm-id" list="staff-directory-datalist" class="form-control" placeholder="ID" title="Enter ID (0042)" maxlength="6" style="font-size: 0.8rem; font-weight: 700; text-align: center;">
-                                <input type="text" id="mgmt-staff-pm-name" class="form-control" placeholder="Manager Name" readonly style="background: rgba(255, 255, 255, 0.85); font-size: 0.78rem;">
+                                <input type="text" id="mgmt-staff-pm-name" class="form-control" placeholder="Asst Manager Name" readonly style="background: rgba(255, 255, 255, 0.85); font-size: 0.78rem;">
                             </div>
                             <!-- SV -->
                             <div class="mgmt-staff-row" style="display: grid; grid-template-columns: 110px 95px 1fr; gap: 0.45rem; align-items: center;">

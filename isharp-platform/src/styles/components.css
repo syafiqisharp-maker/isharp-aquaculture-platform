@@ -11,7 +11,7 @@
     align-items: center;
     justify-content: space-between;
     gap: 0.75rem;
-    padding: 0.5rem 1.25rem;
+    padding: 0.45rem 1.5rem;
     background: rgba(255, 255, 255, 0.94);
     backdrop-filter: blur(16px);
     -webkit-backdrop-filter: blur(16px);
@@ -42,6 +42,38 @@
     border: 1px solid rgba(255, 255, 255, 0.8);
     position: relative;
     overflow: hidden;
+}
+
+/* Official BAB Logo Capsule Frame */
+.brand-logo-badge.brand-logo-capsule {
+    width: auto;
+    height: 38px;
+    padding: 2px 10px;
+    border-radius: var(--radius-md);
+    background: rgba(255, 255, 255, 0.96);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    box-shadow: 0 2px 8px rgba(12, 74, 110, 0.08), inset 0 1px 1px #ffffff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid rgba(186, 230, 253, 0.95);
+    position: relative;
+    overflow: hidden;
+    transition: var(--transition-fast);
+}
+
+.brand-logo-badge.brand-logo-capsule:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(2, 132, 199, 0.18), inset 0 1px 1px #ffffff;
+}
+
+.brand-official-logo {
+    height: 28px;
+    width: auto;
+    max-width: 140px;
+    object-fit: contain;
+    filter: drop-shadow(0 1px 2px rgba(0, 30, 60, 0.08));
 }
 
 .brand-logo-badge::after {
@@ -96,12 +128,25 @@
 .header-pond-selector {
     display: flex;
     align-items: center;
-    gap: 0.35rem;
-    background: #ffffff;
-    padding: 0.25rem 0.5rem;
+    gap: 0.45rem;
+    background: rgba(255, 255, 255, 0.95);
+    padding: 0.2rem 0.45rem;
     border-radius: var(--radius-full);
-    border: 1.5px solid rgba(186, 230, 253, 0.9);
-    box-shadow: 0 1px 4px rgba(12, 74, 110, 0.06), inset 0 1px 1px rgba(0, 30, 60, 0.03);
+    border: 1.5px solid rgba(186, 230, 253, 0.95);
+    box-shadow: 0 2px 8px rgba(12, 74, 110, 0.05), inset 0 1px 1px #ffffff;
+}
+
+.search-input-shell {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0 0.4rem 0 0.25rem;
+    border-right: 1px solid rgba(186, 230, 253, 0.8);
+}
+
+.search-input-shell .search-icon {
+    color: var(--aero-sky-600);
+    flex-shrink: 0;
 }
 
 .pond-search-input {
@@ -110,14 +155,25 @@
     background: transparent;
     font-size: 0.82rem;
     color: var(--text-primary);
-    padding: 0.2rem 0.4rem;
-    width: 130px;
+    padding: 0.2rem 0.2rem;
+    width: 110px;
     font-family: var(--font-sans);
-    font-weight: 500;
+    font-weight: 600;
+    transition: width 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.pond-search-input:focus {
+    width: 155px;
 }
 
 .pond-search-input::placeholder {
     color: var(--text-dim);
+}
+
+.pond-nav-group {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
 }
 
 .btn-nav-step {
@@ -216,6 +272,53 @@
     padding: 0.3rem 0.65rem;
     border-radius: var(--radius-full);
     box-shadow: var(--shadow-glass-sm), var(--gloss-top);
+}
+
+/* Cross-Portal View Switcher Cluster */
+.portal-nav-cluster {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.2rem;
+    background: rgba(240, 249, 255, 0.75);
+    padding: 0.15rem 0.25rem;
+    border-radius: var(--radius-full);
+    border: 1px solid rgba(186, 230, 253, 0.85);
+    box-shadow: inset 0 1px 2px rgba(12, 74, 110, 0.04);
+}
+
+.portal-nav-cluster .btn-portal-back {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.3rem 0.65rem;
+    border-radius: var(--radius-full);
+    font-size: 0.75rem;
+    font-weight: 700;
+    border: 1px solid transparent;
+    background: transparent;
+    color: #0369a1;
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    white-space: nowrap;
+    box-shadow: none;
+}
+
+.portal-nav-cluster .btn-portal-back:hover {
+    background: #ffffff;
+    border-color: rgba(186, 230, 253, 0.95);
+    color: #0284c7;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 6px rgba(2, 132, 199, 0.15);
+}
+
+.portal-nav-cluster .btn-portal-back.btn-to-map {
+    color: #0e7490;
+}
+
+.portal-nav-cluster .btn-portal-back.btn-to-map:hover {
+    background: #ffffff;
+    border-color: #7dd3fc;
+    color: #0284c7;
 }
 
 .role-badge-label {
@@ -341,8 +444,92 @@
 }
 
 /* ==========================================================================
-   3. EXECUTIVE FILTER BAR
+   3. UNIFIED DBMS CONTROL DECK (Integrated Telemetry + Filters)
    ========================================================================== */
+.dbms-control-deck {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.65rem;
+    padding: 0.28rem 1.25rem;
+    background: rgba(240, 249, 255, 0.94);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border-bottom: 1px solid rgba(186, 230, 253, 0.85);
+    box-shadow: 0 1px 4px rgba(12, 74, 110, 0.04);
+    flex-wrap: nowrap;
+    position: relative;
+    z-index: 90;
+    overflow-x: auto;
+    scrollbar-width: none;
+}
+
+.dbms-control-deck::-webkit-scrollbar {
+    display: none;
+}
+
+.dbms-control-deck .master-banner {
+    background: transparent;
+    border: none;
+    box-shadow: none;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    flex-shrink: 0;
+}
+
+.dbms-control-deck .banner-grid {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: nowrap;
+}
+
+.dbms-control-deck .banner-item {
+    padding-right: 0.5rem;
+    border-right: 1px solid rgba(186, 230, 253, 0.75);
+}
+
+.dbms-control-deck .banner-item:last-child {
+    border-right: none;
+    padding-right: 0;
+}
+
+.deck-divider {
+    width: 1px;
+    height: 22px;
+    background: rgba(186, 230, 253, 0.95);
+    flex-shrink: 0;
+}
+
+.dbms-control-deck .executive-filter-bar {
+    background: transparent;
+    border: none;
+    box-shadow: none;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    flex-shrink: 0;
+}
+
+.dbms-control-deck .filter-controls-cluster {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    flex-wrap: nowrap;
+}
+
+.dbms-control-deck .filter-item {
+    padding: 0.16rem 0.5rem;
+    gap: 0.25rem;
+}
+
+.dbms-control-deck .filter-dropdown {
+    font-size: 0.76rem;
+}
+
+/* Standalone Fallback for Executive Filter Bar */
 .executive-filter-bar {
     display: flex;
     align-items: center;
@@ -783,6 +970,21 @@
     transition: var(--transition-fast);
 }
 
+.tab-icon {
+    font-size: 0.95rem;
+    line-height: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    filter: drop-shadow(0 1px 1px rgba(0, 30, 60, 0.15));
+}
+
+.tab-btn.active .tab-icon {
+    filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.3));
+    transform: scale(1.08);
+    transition: transform var(--transition-fast);
+}
+
 /* Active 3D Aero Tab State */
 .tab-btn.active {
     background: var(--btn-primary-gradient);
@@ -937,23 +1139,35 @@
 }
 
 .form-control {
-    background: rgba(255, 255, 255, 0.70);
-    border: 1px solid rgba(255, 255, 255, 0.85);
+    background: rgba(255, 255, 255, 0.92);
+    border: 1.5px solid rgba(186, 230, 253, 0.9);
     border-radius: var(--radius-sm);
-    padding: 8px 12px;
+    padding: 7px 11px;
     color: var(--text-primary);
     font-family: var(--font-sans);
-    font-size: 0.88rem;
+    font-size: 0.86rem;
     font-weight: 600;
     transition: var(--transition-fast);
     outline: none;
-    box-shadow: inset 0 1px 3px rgba(0, 30, 60, 0.08), 0 1px 0 rgba(255, 255, 255, 0.9);
+    box-shadow: inset 0 1px 2px rgba(12, 74, 110, 0.05), 0 1px 0 rgba(255, 255, 255, 0.95);
 }
 
 .form-control:focus {
-    background: rgba(255, 255, 255, 0.92);
+    background: #ffffff;
     border-color: var(--aero-sky-500);
-    box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.25), inset 0 1px 2px rgba(0, 30, 60, 0.05);
+    box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.22), inset 0 1px 2px rgba(0, 30, 60, 0.04);
+}
+
+input[type="date"]::-webkit-calendar-picker-indicator {
+    cursor: pointer;
+    opacity: 0.75;
+    filter: invert(35%) sepia(85%) saturate(750%) hue-rotate(160deg) brightness(95%) contrast(90%);
+    transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+input[type="date"]::-webkit-calendar-picker-indicator:hover {
+    opacity: 1;
+    transform: scale(1.1);
 }
 
 .divider {

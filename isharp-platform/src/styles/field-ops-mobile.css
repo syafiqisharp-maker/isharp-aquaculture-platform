@@ -58,12 +58,31 @@
         max-width: 100vw !important;
         -webkit-overflow-scrolling: touch;
         box-sizing: border-box !important;
+        background-attachment: scroll !important;
     }
 
     #view-field-ops *,
     #view-field-ops *::before,
     #view-field-ops *::after {
         box-sizing: border-box !important;
+    }
+
+    /* Mobile GPU Acceleration: Eliminate multi-layer backdrop-filter bottleneck for silky 60fps */
+    #view-field-ops .field-ops-header,
+    #view-field-ops .wqs-nav-bar,
+    #view-field-ops .mgmt-header-bar,
+    #view-field-ops .mgmt-nav-bar,
+    #view-field-ops .field-ops-toolbar,
+    #view-field-ops .field-ops-row-section,
+    #view-field-ops .glass-card,
+    #view-field-ops .field-ops-pond-tile,
+    #view-field-ops .module-select-card,
+    #view-field-ops .mgmt-card,
+    #view-field-ops .daily-entry-card,
+    #view-field-ops .sensor-aero-card {
+        backdrop-filter: none !important;
+        -webkit-backdrop-filter: none !important;
+        background: rgba(255, 255, 255, 0.95) !important;
     }
 
     /* Minimum touch target size (44px) for interactive elements in Field Ops */
@@ -882,7 +901,7 @@ input[type="number"] {
     font-variant-numeric: tabular-nums;
 }
 
-/* Primary Translucent Aero Glass Containers — Elevated above rising bubbles */
+/* Primary Translucent Aero Glass Containers */
 #view-field-ops .field-ops-header,
 #view-field-ops .wqs-nav-bar,
 #view-field-ops .mgmt-header-bar,
@@ -890,7 +909,6 @@ input[type="number"] {
 #view-field-ops .field-ops-toolbar,
 #view-field-ops .field-ops-row-section,
 #view-field-ops .glass-card,
-#view-field-ops .field-ops-pond-tile,
 #view-field-ops .module-select-card,
 #view-field-ops .mgmt-card,
 #view-field-ops .daily-entry-card,
@@ -905,6 +923,20 @@ input[type="number"] {
     position: relative !important;
     overflow: hidden !important;
     z-index: 3 !important;
+}
+
+/* High-Performance 24-Pond Tiles: Zero backdrop-filter overhead for instant 60fps mobile rendering */
+#view-field-ops .field-ops-pond-tile {
+    background: rgba(255, 255, 255, 0.95) !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    border: var(--aero-card-border) !important;
+    border-bottom: var(--aero-card-border-b) !important;
+    box-shadow: 0 4px 14px rgba(2, 132, 199, 0.12) !important;
+    position: relative !important;
+    overflow: hidden !important;
+    z-index: 3 !important;
+    contain: content;
 }
 
 /* Header & Nav Bars: Organic Asymmetric Liquid Shell */
@@ -955,31 +987,33 @@ input[type="number"] {
     pointer-events: none !important;
 }
 
-/* Option A: Drained Basin Idle Pond Styles */
+/* Option A: Drained Basin Idle Pond Styles — Zero blur overhead */
 #view-field-ops .field-ops-pond-tile.pond-idle {
-    background: rgba(241, 245, 249, 0.45) !important;
-    backdrop-filter: blur(8px) !important;
-    -webkit-backdrop-filter: blur(8px) !important;
+    background: rgba(241, 245, 249, 0.85) !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
     border: 1.5px dashed rgba(148, 163, 184, 0.65) !important;
     border-bottom: 2px dashed rgba(148, 163, 184, 0.75) !important;
     border-radius: 20px 10px 20px 10px !important;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04) !important;
-    opacity: 0.72 !important;
+    opacity: 0.82 !important;
     padding: 0.85rem 0.95rem !important;
     min-height: 162px !important;
     display: flex !important;
     flex-direction: column !important;
     justify-content: space-between !important;
     cursor: pointer !important;
-    transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1) !important;
+    transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s ease !important;
 }
 
-#view-field-ops .field-ops-pond-tile.pond-idle:hover {
-    opacity: 0.96 !important;
-    transform: translateY(-2px) !important;
-    border-color: #94a3b8 !important;
-    background: rgba(248, 250, 252, 0.75) !important;
-    box-shadow: 0 6px 18px rgba(100, 116, 139, 0.16) !important;
+@media (hover: hover) {
+    #view-field-ops .field-ops-pond-tile.pond-idle:hover {
+        opacity: 0.98 !important;
+        transform: translateY(-2px) !important;
+        border-color: #94a3b8 !important;
+        background: rgba(248, 250, 252, 0.95) !important;
+        box-shadow: 0 6px 18px rgba(100, 116, 139, 0.16) !important;
+    }
 }
 
 #view-field-ops .field-ops-pond-tile.pond-idle::before {
@@ -1074,11 +1108,13 @@ input[type="number"] {
     transform: translateY(1.5px) scale(0.97) !important;
 }
 
-/* Micro-Hover & Active Physical Bounce */
-#view-field-ops .field-ops-pond-tile:hover,
-#view-field-ops .module-select-card:hover {
-    transform: translateY(-4px) scale(1.02) !important;
-    box-shadow: 0 16px 34px rgba(2, 132, 199, 0.28), inset 0 2px 2px #fff !important;
+/* Micro-Hover (Desktops/Pointers Only) & Active Physical Bounce */
+@media (hover: hover) {
+    #view-field-ops .field-ops-pond-tile:hover,
+    #view-field-ops .module-select-card:hover {
+        transform: translateY(-3px) scale(1.01) !important;
+        box-shadow: 0 12px 24px rgba(2, 132, 199, 0.22), inset 0 2px 2px #fff !important;
+    }
 }
 #view-field-ops .field-ops-pond-tile:active,
 #view-field-ops .module-select-card:active {
@@ -1139,81 +1175,17 @@ input[type="number"] {
     white-space: nowrap !important;
 }
 
-/* Dynamic Ambient Micro-Bubble System (+50% Scale) — Positioned behind cards (z-index: 1) */
+/* Ambient Micro-Bubble System Disabled for Field Ops (Maximizes Mobile Frame Rate) */
 .bubble-layer,
 #view-field-ops .bubble-layer,
-#aero-global-bubble-layer {
-    position: fixed !important;
-    top: 0 !important;
-    left: 0 !important;
-    width: 100vw !important;
-    height: 100vh !important;
-    pointer-events: none !important;
-    z-index: 1 !important;
-    overflow: hidden !important;
-}
+#aero-global-bubble-layer,
 .aero-bubble,
 #view-field-ops .aero-bubble,
 #aero-global-bubble-layer .aero-bubble {
-    position: absolute !important;
-    bottom: -80px !important;
-    border-radius: 50% !important;
-    background: radial-gradient(circle at 35% 30%, rgba(255, 255, 255, 0.98) 0%, rgba(186, 230, 253, 0.65) 55%, rgba(2, 132, 199, 0.38) 100%) !important;
-    box-shadow: inset 0 2px 4px rgba(255, 255, 255, 0.98), 0 4px 14px rgba(2, 132, 199, 0.32) !important;
+    display: none !important;
+    animation: none !important;
     pointer-events: none !important;
-    will-change: transform, opacity !important;
-    animation-duration: 18s;
-    animation-timing-function: linear;
-    animation-iteration-count: infinite;
-}
-
-.aero-bubble.lazy-1,
-#view-field-ops .aero-bubble.lazy-1,
-#aero-global-bubble-layer .aero-bubble.lazy-1 {
-    animation-name: rise-lazy-wobble-1 !important;
-    animation-timing-function: linear !important;
-    animation-iteration-count: infinite !important;
-}
-.aero-bubble.lazy-2,
-#view-field-ops .aero-bubble.lazy-2,
-#aero-global-bubble-layer .aero-bubble.lazy-2 {
-    animation-name: rise-lazy-wobble-2 !important;
-    animation-timing-function: linear !important;
-    animation-iteration-count: infinite !important;
-}
-.aero-bubble.burst-bubble,
-#view-field-ops .aero-bubble.burst-bubble,
-#aero-global-bubble-layer .aero-bubble.burst-bubble {
-    animation-name: rise-burst !important;
-    animation-timing-function: cubic-bezier(0.25, 0.46, 0.45, 0.94) !important;
-    animation-fill-mode: forwards !important;
-    animation-iteration-count: 1 !important;
-}
-
-@keyframes rise-lazy-wobble-1 {
-    0% { transform: translate3d(0, 0, 0) scale(0.75); opacity: 0; }
-    10% { opacity: 0.85; }
-    35% { transform: translate3d(14px, -35vh, 0) scale(0.9); }
-    65% { transform: translate3d(-10px, -70vh, 0) scale(1.05); opacity: 0.85; }
-    90% { opacity: 0.7; }
-    100% { transform: translate3d(8px, -112vh, 0) scale(1.15); opacity: 0; }
-}
-
-@keyframes rise-lazy-wobble-2 {
-    0% { transform: translate3d(0, 0, 0) scale(0.8); opacity: 0; }
-    12% { opacity: 0.9; }
-    40% { transform: translate3d(-16px, -40vh, 0) scale(0.95); }
-    70% { transform: translate3d(12px, -75vh, 0) scale(1.1); opacity: 0.8; }
-    92% { opacity: 0.65; }
-    100% { transform: translate3d(-6px, -112vh, 0) scale(1.2); opacity: 0; }
-}
-
-@keyframes rise-burst {
-    0% { transform: translate3d(0, 0, 0) scale(0.45); opacity: 0; }
-    15% { opacity: 0.95; }
-    50% { opacity: 0.9; }
-    85% { opacity: 0.75; }
-    100% { transform: translate3d(var(--drift-x, 0px), -115vh, 0) scale(1.25); opacity: 0; }
+    visibility: hidden !important;
 }
 
 /* Feeding Horizon Banner & 4-Sensor Grid in WQS Detail */

@@ -161,64 +161,49 @@ export class FieldOpsMap {
         const r2Str = String(r2Num).padStart(2, "0");
 
         try {
-            // Fetch all non-closed cycles in this module from unified view view_growout_pond_cycles (newest cycles first)
-            const cycles = await supabase.request(`view_growout_pond_cycles?modl=eq.${modStr}&pond_status=neq.CLOSE&order=pond_index.desc&select=pond_index,pond,modl,row_no,cycle_no,crop_no,pond_status,stck_date,date_close,area,aerator_1hp,aerator_2hp,stck_species,bs_line,pm_staff_no,sv_staff_no,rl_staff_no,po_staff_no,support_staff_no`);
+            const todayStr = getLocalDateStr();
 
-            if (Array.isArray(cycles)) {
+            // Fetch cycles, staff directory, today's records, weather, and water quality telemetry concurrently
+            const [cyclesRes, staffRes, todayRowsRes, weatherRes, wqRes] = await Promise.allSettled([
+                supabase.request(`view_growout_pond_cycles?modl=eq.${modStr}&pond_status=neq.CLOSE&order=pond_index.desc&select=pond_index,pond,modl,row_no,cycle_no,crop_no,pond_status,stck_date,date_close,area,aerator_1hp,aerator_2hp,stck_species,bs_line,pm_staff_no,sv_staff_no,rl_staff_no,po_staff_no,support_staff_no`),
+                StaffRepository.getStaffDirectory(),
+                supabase.request(`daily_pond_records?log_date=eq.${todayStr}&pond=like.${modStr}.%&select=id,pond_index,pond,log_date,feed_kg,feed_tray_remnant_pct,water_level_cm,water_colour,mortality_kg`),
+                supabase.request(`weather_logs?order=recorded_at.desc&limit=1`),
+                supabase.request(`water_quality_logs?order=recorded_at.desc&limit=100`)
+            ]);
+
+            const cycles = cyclesRes.status === "fulfilled" && Array.isArray(cyclesRes.value) ? cyclesRes.value : [];
+            if (cycles.length > 0) {
                 cycles.sort((a, b) => String(b.pond_index || "").localeCompare(String(a.pond_index || "")));
             }
 
-            // Fetch staff directory into memory for quick name resolution
-            await StaffRepository.getStaffDirectory();
-
-            // Fetch today's daily_pond_records for active ponds in this module
-            const todayStr = getLocalDateStr();
+            // Map today's daily_pond_records for active ponds in this module
             const todayRecordsMap = new Map();
-            const activeIndices = (cycles || [])
-                .filter(c => c && (c.pond_status || "").toUpperCase() !== "IDLE" && c.stck_date && c.pond_index)
-                .map(c => c.pond_index);
-
-            if (activeIndices.length > 0) {
-                try {
-                    const inList = activeIndices.map(idx => `"${idx}"`).join(",");
-                    const todayRows = await supabase.request(`daily_pond_records?log_date=eq.${todayStr}&pond_index=in.(${inList})&select=id,pond_index,pond,log_date,feed_kg,feed_tray_remnant_pct,water_level_cm,water_colour,mortality_kg`);
-                    (todayRows || []).forEach(r => {
-                        if (r.pond_index) todayRecordsMap.set(r.pond_index, r);
-                        if (r.pond) todayRecordsMap.set(r.pond, r);
-                    });
-                } catch (e) {
-                    console.warn("Unable to load today's records summary for module map:", e);
-                }
+            if (todayRowsRes.status === "fulfilled" && Array.isArray(todayRowsRes.value)) {
+                todayRowsRes.value.forEach(r => {
+                    if (r.pond_index) todayRecordsMap.set(r.pond_index, r);
+                    if (r.pond) todayRecordsMap.set(r.pond, r);
+                });
             }
 
-            // Fetch latest meteorological mast weather telemetry
+            // Resolve latest weather telemetry
             let latestWeather = null;
-            try {
-                const wRows = await supabase.request(`weather_logs?order=recorded_at.desc&limit=1`);
-                if (Array.isArray(wRows) && wRows.length > 0) {
-                    latestWeather = wRows[0];
-                }
-            } catch (e) {
-                console.warn("Unable to load latest weather for module map:", e);
+            if (weatherRes.status === "fulfilled" && Array.isArray(weatherRes.value) && weatherRes.value.length > 0) {
+                latestWeather = weatherRes.value[0];
             }
 
-            // Fetch latest water_quality_logs across active ponds in this module
+            // Map latest water quality logs per pond
             const telemetryMap = new Map();
-            try {
-                const wqRows = await supabase.request(`water_quality_logs?order=recorded_at.desc&limit=100`);
-                if (Array.isArray(wqRows)) {
-                    wqRows.forEach(row => {
-                        if (row && row.pond_index && !telemetryMap.has(row.pond_index)) {
-                            telemetryMap.set(row.pond_index, {
-                                do_ppm: row.do_ppm !== null && row.do_ppm !== undefined ? parseFloat(row.do_ppm) : null,
-                                ph: row.ph !== null && row.ph !== undefined ? parseFloat(row.ph) : null,
-                                water_temp_c: row.water_temp_c !== null && row.water_temp_c !== undefined ? parseFloat(row.water_temp_c) : null
-                            });
-                        }
-                    });
-                }
-            } catch (e) {
-                console.warn("Unable to load water_quality_logs for module map:", e);
+            if (wqRes.status === "fulfilled" && Array.isArray(wqRes.value)) {
+                wqRes.value.forEach(row => {
+                    if (row && row.pond_index && !telemetryMap.has(row.pond_index)) {
+                        telemetryMap.set(row.pond_index, {
+                            do_ppm: row.do_ppm !== null && row.do_ppm !== undefined ? parseFloat(row.do_ppm) : null,
+                            ph: row.ph !== null && row.ph !== undefined ? parseFloat(row.ph) : null,
+                            water_temp_c: row.water_temp_c !== null && row.water_temp_c !== undefined ? parseFloat(row.water_temp_c) : null
+                        });
+                    }
+                });
             }
 
             // Construct 24 expected ponds for this module (2 rows x 12 ponds)
@@ -536,7 +521,7 @@ export class FieldOpsMap {
                 flex-direction: column;
                 justify-content: space-between;
                 min-height: 176px;
-            " onmouseover="this.style.transform='translateY(-3px)'; this.style.boxShadow='0 8px 20px ${shadowGlow}';" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 14px ${shadowGlow}';">
+            ">
                 
                 <!-- Tile Header: High-Contrast Pond Code & DOC Badge -->
                 <div>

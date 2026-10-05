@@ -34,189 +34,219 @@
             <!-- Top App Bar -->
             <header class="app-header">
                 <div class="brand-cluster">
-                    <button id="btn-back-to-portal-dbms" class="btn-portal-back" type="button" data-nav-view="portal" title="Return to Portal Landing Page">
-                        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
-                            <line x1="19" y1="12" x2="5" y2="12"></line>
-                            <polyline points="12 19 5 12 12 5"></polyline>
-                        </svg>
-                        <span>Back to Portal</span>
-                    </button>
-                    <button id="btn-to-executive-map" class="btn-portal-back btn-to-map" type="button" data-nav-view="executive" title="Switch directly to Executive 216-Pond Farm Map">
-                        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                            <polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"></polygon>
-                            <line x1="8" y1="2" x2="8" y2="18"></line>
-                            <line x1="16" y1="6" x2="16" y2="22"></line>
-                        </svg>
-                        <span>Executive Map</span>
-                    </button>
-                    <button id="btn-to-field-ops" class="btn-portal-back btn-to-map" type="button" data-nav-view="field-ops" title="Switch directly to Supervisor Field Operations (24 Ponds)">
-                        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"></path>
-                            <path d="M12 9v4"></path>
-                            <path d="M12 17h.01"></path>
-                        </svg>
-                        <span>Field Operations</span>
-                    </button>
-                    <div class="brand-logo-badge" title="iSHARP Aquaculture Platform">
-                    <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="#ffffff" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" style="filter: drop-shadow(0 2px 4px rgba(0,30,60,0.3));">
-                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/>
-                    </svg>
-                </div>
-                <div class="brand-titles">
-                    <div class="brand-row">
-                        <span class="brand-name">iSHARP</span>
-                        <span class="brand-tag">DBMS v2.0</span>
+                    <div class="brand-logo-badge brand-logo-capsule" title="Blue Archipelago Berhad">
+                        <img 
+                            src="/assets/blue-archipelago-logo.png" 
+                            alt="Blue Archipelago Berhad" 
+                            class="brand-official-logo"
+                            onerror="this.onerror=null; this.src='https://www.bluearchipelago.com/wp-content/uploads/2022/06/blue-archipelago-logo-color.png';"
+                        />
                     </div>
-                    <span class="brand-sub">Blue Archipelago Berhad • Setiu Farm (SETiU)</span>
-                </div>
-            </div>
-
-            <!-- Global Pond Selector & Cycle Navigation -->
-            <div class="header-pond-selector">
-                <input type="text" id="input-pond-search" class="pond-search-input" placeholder="Search pond (e.g. 01.02.12)..." title="Filter cycles or search by pond number" />
-                <button id="btn-prev-pond" class="btn-nav-step" title="Previous Pond (Ctrl + Left)">‹</button>
-                <div class="select-wrapper">
-                    <select id="select-pond-index" class="pond-master-dropdown" aria-label="Select Pond Cycle">
-                        <option value="" disabled selected>Loading pond cycles from Supabase...</option>
-                    </select>
-                </div>
-                <button id="btn-next-pond" class="btn-nav-step" title="Next Pond (Ctrl + Right)">›</button>
-                <button id="btn-refresh-master" class="btn-icon" title="Refresh all data from cloud">
-                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.19"/>
-                    </svg>
-                </button>
-            </div>
-
-            <!-- Header Action Controls -->
-            <div class="header-actions">
-                <button id="btn-open-excel-modal" class="btn-action btn-excel">
-                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                        <polyline points="14 2 14 8 20 8"></polyline>
-                        <line x1="8" y1="13" x2="16" y2="13"></line>
-                        <line x1="8" y1="17" x2="16" y2="17"></line>
-                        <polyline points="10 9 9 9 8 9"></polyline>
-                    </svg>
-                    <span>Paste Excel Data</span>
-                </button>
-            </div>
-        </header>
-
-        <!-- EXECUTIVE FILTER BAR (Filter by Status, Module, State) -->
-        <section class="executive-filter-bar" aria-label="Pond Filters">
-            <div class="filter-controls-cluster">
-                <div class="filter-item">
-                    <span class="filter-icon">
-                        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path>
-                            <line x1="7" y1="7" x2="7.01" y2="7"></line>
-                        </svg>
-                    </span>
-                    <label for="filter-pond-status">Status:</label>
-                    <select id="filter-pond-status" class="filter-dropdown">
-                        <option value="ALL">All Statuses (Archive)</option>
-                        <option value="PRODUCTION" selected>PRODUCTION (Active Crop)</option>
-                        <option value="iDLE">IDLE (Dry / Ready)</option>
-                        <option value="CLOSE">CLOSE (Harvested)</option>
-                        <option value="MAINTENANCE">MAINTENANCE</option>
-                        <option value="RESERVOIR">RESERVOIR</option>
-                        <option value="PREPARATION">PREPARATION</option>
-                    </select>
-                </div>
-
-                <div class="filter-item">
-                    <span class="filter-icon">
-                        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                            <rect x="3" y="3" width="7" height="7"></rect>
-                            <rect x="14" y="3" width="7" height="7"></rect>
-                            <rect x="14" y="14" width="7" height="7"></rect>
-                            <rect x="3" y="14" width="7" height="7"></rect>
-                        </svg>
-                    </span>
-                    <label for="filter-pond-module">Module:</label>
-                    <select id="filter-pond-module" class="filter-dropdown">
-                        <option value="ALL">All Modules</option>
-                        <option value="01">Module 01</option>
-                        <option value="02">Module 02</option>
-                        <option value="03">Module 03</option>
-                        <option value="04">Module 04</option>
-                        <option value="05">Module 05</option>
-                        <option value="06">Module 06</option>
-                        <option value="07">Module 07</option>
-                        <option value="08">Module 08</option>
-                        <option value="09">Module 09</option>
-                        <option value="10">Module 10</option>
-                        <option value="11">Module 11</option>
-                    </select>
-                </div>
-
-                <div class="filter-item">
-                    <span class="filter-icon">
-                        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                            <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
-                        </svg>
-                    </span>
-                    <label for="filter-pond-active">Cycle State:</label>
-                    <select id="filter-pond-active" class="filter-dropdown">
-                        <option value="ALL">All States</option>
-                        <option value="ACTiVE" selected>Active Cycles</option>
-                        <option value="iN ACTiVE">Archived / Closed</option>
-                    </select>
-                </div>
-
-                <button id="btn-reset-filters" class="btn-filter-reset" title="Reset all filters">
-                    <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:middle; margin-right:3px;">
-                        <line x1="18" y1="6" x2="6" y2="18"></line>
-                        <line x1="6" y1="6" x2="18" y2="18"></line>
-                    </svg>
-                    <span>Reset</span>
-                </button>
-            </div>
-
-            <div class="filter-feedback">
-                <span id="filtered-count-badge" class="filter-count-badge">Loading...</span>
-            </div>
-        </section>
-
-        <!-- Master Status Bar (Always Visible Anchor) -->
-        <section class="master-banner">
-            <div class="banner-grid">
-                <!-- Pond Primary Identifiers -->
-                <div class="banner-item id-block">
-                    <span class="label">POND IDENTIFIER</span>
-                    <div class="val-group">
-                        <span id="badge-pond-label" class="val-highlight">01.02.12</span>
-                        <span id="badge-pond-index" class="val-sub">2010212.43</span>
+                    <div class="brand-titles">
+                        <div class="brand-row">
+                            <span class="brand-name">iSHARP</span>
+                            <span class="brand-tag">DBMS v2.0</span>
+                        </div>
+                        <span class="brand-sub">Blue Archipelago Berhad • Setiu Farm (SETiU)</span>
                     </div>
                 </div>
 
-                <!-- Status & Active Flags -->
-                <div class="banner-item">
-                    <span class="label">STATUS / LIFECYCLE</span>
-                    <div class="val-group status-badges">
-                        <span id="badge-pond-status" class="status-pill status-production">PRODUCTION</span>
-                        <span id="badge-pond-active" class="active-pill active-yes">ACTiVE</span>
+                <!-- Global Pond Selector & Cycle Navigation -->
+                <div class="header-pond-selector">
+                    <div class="search-input-shell">
+                        <svg class="search-icon" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="11" cy="11" r="8"></circle>
+                            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                        </svg>
+                        <input type="text" id="input-pond-search" class="pond-search-input" placeholder="Search pond #..." title="Filter cycles or search by pond number" />
+                    </div>
+                    <div class="pond-nav-group">
+                        <button id="btn-prev-pond" class="btn-nav-step" title="Previous Pond (Ctrl + Left)">‹</button>
+                        <div class="select-wrapper">
+                            <select id="select-pond-index" class="pond-master-dropdown" aria-label="Select Pond Cycle">
+                                <option value="" disabled selected>Loading pond cycles from Supabase...</option>
+                            </select>
+                        </div>
+                        <button id="btn-next-pond" class="btn-nav-step" title="Next Pond (Ctrl + Right)">›</button>
+                        <button id="btn-refresh-master" class="btn-icon" title="Refresh all data from cloud">
+                            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.19"/>
+                            </svg>
+                        </button>
                     </div>
                 </div>
 
-                <!-- Cycle & DOC Counter with Option A Cycle History Dropdown -->
-                <div class="banner-item">
-                    <span class="label">CYCLE &amp; DOC</span>
-                    <div class="val-group num-group">
-                        <select id="select-cycle-history" class="cycle-history-dropdown" title="12-Year Historical Cycles for this Pond">
-                            <option value="">Loading cycles...</option>
+                <!-- Header Action Controls & View Switchers -->
+                <div class="header-actions">
+                    <div class="role-badge-container">
+                        <span class="role-badge-label">Role:</span>
+                        <select id="select-user-role" class="role-select" aria-label="Select User Role">
+                            <option value="PLANNER">👑 Planner (100% Edit)</option>
+                            <option value="SUPERVISOR">📋 Supervisor (Inventory)</option>
+                            <option value="LAB_TECH">🔬 Lab Tech (Lab Only)</option>
+                            <option value="VIEWER">👁️ Viewer (Read Only)</option>
                         </select>
-                        <span class="doc-box">DOC <span id="badge-doc">0</span></span>
+                    </div>
+
+                    <nav class="portal-nav-cluster" aria-label="Switch Views">
+                        <button id="btn-back-to-portal-dbms" class="btn-portal-back" type="button" data-nav-view="portal" title="Return to Portal Landing Page">
+                            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+                                <line x1="19" y1="12" x2="5" y2="12"></line>
+                                <polyline points="12 19 5 12 12 5"></polyline>
+                            </svg>
+                            <span>Portal</span>
+                        </button>
+                        <button id="btn-to-executive-map" class="btn-portal-back btn-to-map" type="button" data-nav-view="executive" title="Switch directly to Executive 216-Pond Farm Map">
+                            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                <polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"></polygon>
+                                <line x1="8" y1="2" x2="8" y2="18"></line>
+                                <line x1="16" y1="6" x2="16" y2="22"></line>
+                            </svg>
+                            <span>Executive</span>
+                        </button>
+                        <button id="btn-to-field-ops" class="btn-portal-back btn-to-map" type="button" data-nav-view="field-ops" title="Switch directly to Supervisor Field Operations (24 Ponds)">
+                            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"></path>
+                                <path d="M12 9v4"></path>
+                                <path d="M12 17h.01"></path>
+                            </svg>
+                            <span>Field Ops</span>
+                        </button>
+                    </nav>
+
+                    <button id="btn-open-excel-modal" class="btn-action btn-excel" title="Paste Excel Data">
+                        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                            <polyline points="14 2 14 8 20 8"></polyline>
+                            <line x1="8" y1="13" x2="16" y2="13"></line>
+                            <line x1="8" y1="17" x2="16" y2="17"></line>
+                            <polyline points="10 9 9 9 8 9"></polyline>
+                        </svg>
+                        <span>Paste Excel</span>
+                    </button>
+                </div>
+            </header>
+
+        <!-- UNIFIED CONTROL DECK: Selected Pond Telemetry (Left) + Farm Filters (Right) -->
+        <section class="dbms-control-deck" aria-label="Pond Telemetry & Filter Controls">
+            <!-- Left Wing: Active Pond Telemetry -->
+            <div class="master-banner" aria-label="Active Pond Telemetry">
+                <div class="banner-grid">
+                    <!-- Pond Primary Identifiers -->
+                    <div class="banner-item id-block">
+                        <span class="label">POND:</span>
+                        <div class="val-group">
+                            <span id="badge-pond-label" class="val-highlight">01.01.01</span>
+                            <span id="badge-pond-index" class="val-sub">2010101.40</span>
+                        </div>
+                    </div>
+
+                    <!-- Status & Active Flags -->
+                    <div class="banner-item">
+                        <span class="label">STATUS:</span>
+                        <div class="val-group status-badges">
+                            <span id="badge-pond-status" class="status-pill status-production">PRODUCTION</span>
+                            <span id="badge-pond-active" class="active-pill active-yes">ACTIVE</span>
+                        </div>
+                    </div>
+
+                    <!-- Cycle & DOC Counter -->
+                    <div class="banner-item">
+                        <span class="label">CYCLE:</span>
+                        <div class="val-group num-group">
+                            <select id="select-cycle-history" class="cycle-history-dropdown" title="Historical Cycles for this Pond">
+                                <option value="">Loading cycles...</option>
+                            </select>
+                            <span class="doc-box">DOC <span id="badge-doc">0</span></span>
+                        </div>
+                    </div>
+
+                    <!-- Biosecurity & Health Status -->
+                    <div class="banner-item disease-block" title="Click to view Biosecurity & Disease Pathology Logbook">
+                        <span class="label">HEALTH:</span>
+                        <div class="val-group">
+                            <span id="badge-disease-status" class="disease-pill disease-ok">Pathogen Negative</span>
+                        </div>
                     </div>
                 </div>
+            </div>
 
-                <!-- Biosecurity & Health Status -->
-                <div class="banner-item disease-block" title="Click to view Biosecurity & Disease Pathology Logbook">
-                    <span class="label">PATHOLOGY / BIOSECURITY</span>
-                    <div class="val-group">
-                        <span id="badge-disease-status" class="disease-pill disease-ok">Pathogen Negative (Normal)</span>
+            <!-- Vertical Hairline Divider -->
+            <div class="deck-divider" aria-hidden="true"></div>
+
+            <!-- Right Wing: Farm Filter Controls -->
+            <div class="executive-filter-bar" aria-label="Farm Filters">
+                <div class="filter-controls-cluster">
+                    <div class="filter-item">
+                        <span class="filter-icon">
+                            <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path>
+                                <line x1="7" y1="7" x2="7.01" y2="7"></line>
+                            </svg>
+                        </span>
+                        <label for="filter-pond-status">Status:</label>
+                        <select id="filter-pond-status" class="filter-dropdown">
+                            <option value="ALL">All Statuses</option>
+                            <option value="PRODUCTION" selected>PRODUCTION</option>
+                            <option value="iDLE">IDLE</option>
+                            <option value="CLOSE">CLOSE</option>
+                            <option value="MAINTENANCE">MAINTENANCE</option>
+                            <option value="RESERVOIR">RESERVOIR</option>
+                            <option value="PREPARATION">PREPARATION</option>
+                        </select>
                     </div>
+
+                    <div class="filter-item">
+                        <span class="filter-icon">
+                            <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                <rect x="3" y="3" width="7" height="7"></rect>
+                                <rect x="14" y="3" width="7" height="7"></rect>
+                                <rect x="14" y="14" width="7" height="7"></rect>
+                                <rect x="3" y="14" width="7" height="7"></rect>
+                            </svg>
+                        </span>
+                        <label for="filter-pond-module">Mod:</label>
+                        <select id="filter-pond-module" class="filter-dropdown">
+                            <option value="ALL">All Modules</option>
+                            <option value="01">Module 01</option>
+                            <option value="02">Module 02</option>
+                            <option value="03">Module 03</option>
+                            <option value="04">Module 04</option>
+                            <option value="05">Module 05</option>
+                            <option value="06">Module 06</option>
+                            <option value="07">Module 07</option>
+                            <option value="08">Module 08</option>
+                            <option value="09">Module 09</option>
+                            <option value="10">Module 10</option>
+                            <option value="11">Module 11</option>
+                        </select>
+                    </div>
+
+                    <div class="filter-item">
+                        <span class="filter-icon">
+                            <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+                            </svg>
+                        </span>
+                        <label for="filter-pond-active">State:</label>
+                        <select id="filter-pond-active" class="filter-dropdown">
+                            <option value="ALL">All States</option>
+                            <option value="ACTiVE" selected>Active</option>
+                            <option value="iN ACTiVE">Archived</option>
+                        </select>
+                    </div>
+
+                    <button id="btn-reset-filters" class="btn-filter-reset" title="Reset all filters">
+                        <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="18" y1="6" x2="6" y2="18"></line>
+                            <line x1="6" y1="6" x2="18" y2="18"></line>
+                        </svg>
+                        <span>Reset</span>
+                    </button>
+                </div>
+
+                <div class="filter-feedback">
+                    <span id="filtered-count-badge" class="filter-count-badge">Loading...</span>
                 </div>
             </div>
         </section>
@@ -224,43 +254,43 @@
         <!-- 10-Tab Navigation Ribbon (Ungrouped 1 to 10) -->
         <nav class="master-tab-ribbon" role="tablist">
             <button class="tab-btn active" data-tab="tab-master" role="tab" id="btn-tab-master">
-                <span class="tab-num">1</span>
+                <span class="tab-icon">📊</span>
                 <span class="tab-label">Master</span>
             </button>
             <button class="tab-btn" data-tab="tab-laboratory" role="tab" id="btn-tab-laboratory">
-                <span class="tab-num">2</span>
+                <span class="tab-icon">🔬</span>
                 <span class="tab-label">Laboratory</span>
             </button>
             <button class="tab-btn" data-tab="tab-stocking" role="tab" id="btn-tab-stocking">
-                <span class="tab-num">3</span>
+                <span class="tab-icon">🦐</span>
                 <span class="tab-label">Stocking</span>
             </button>
             <button class="tab-btn" data-tab="tab-feeding" role="tab" id="btn-tab-feeding">
-                <span class="tab-num">4</span>
+                <span class="tab-icon">🌾</span>
                 <span class="tab-label">Feeding</span>
             </button>
             <button class="tab-btn" data-tab="tab-sampling" role="tab" id="btn-tab-sampling">
-                <span class="tab-num">5</span>
+                <span class="tab-icon">⚖️</span>
                 <span class="tab-label">Sampling</span>
             </button>
             <button class="tab-btn" data-tab="tab-performance" role="tab" id="btn-tab-performance">
-                <span class="tab-num">6</span>
+                <span class="tab-icon">📈</span>
                 <span class="tab-label">Performance</span>
             </button>
             <button class="tab-btn" data-tab="tab-harvest" role="tab" id="btn-tab-harvest">
-                <span class="tab-num">7</span>
+                <span class="tab-icon">🚜</span>
                 <span class="tab-label">Harvest</span>
             </button>
             <button class="tab-btn" data-tab="tab-lifecycle" role="tab" id="btn-tab-lifecycle">
-                <span class="tab-num">8</span>
+                <span class="tab-icon">🔄</span>
                 <span class="tab-label">Pond Lifecycle</span>
             </button>
             <button class="tab-btn" data-tab="tab-staff" role="tab" id="btn-tab-staff">
-                <span class="tab-num">9</span>
-                <span class="tab-label">Staff+Remarks</span>
+                <span class="tab-icon">👔</span>
+                <span class="tab-label">Staff &amp; Remarks</span>
             </button>
             <button class="tab-btn" data-tab="tab-utilities" role="tab" id="btn-tab-utilities">
-                <span class="tab-num">10</span>
+                <span class="tab-icon">⚙️</span>
                 <span class="tab-label">Utilities</span>
             </button>
         </nav>
@@ -988,11 +1018,11 @@
                         <!-- Staff ID Entry Grid -->
                         <div class="staff-allocation-form" style="display: flex; flex-direction: column; gap: 0.6rem;">
                             
-                            <!-- 1. Pond Manager (PM) -->
+                            <!-- 1. Asst Manager (PM) -->
                             <div class="staff-entry-row" style="display: grid; grid-template-columns: 120px 105px 1fr; gap: 0.5rem; align-items: center;">
-                                <label style="font-size: 0.75rem; font-weight: 700; color: #334155; margin: 0;">👔 Pond Manager</label>
+                                <label style="font-size: 0.75rem; font-weight: 700; color: #334155; margin: 0;">👔 Asst Manager</label>
                                 <input type="text" id="input-pm-id" list="staff-directory-datalist" class="form-control" placeholder="ID (e.g. 0042)" style="font-size: 0.8rem; font-weight: 700; text-align: center; letter-spacing: 0.05em;">
-                                <input type="text" id="input-pm-name" class="form-control" placeholder="Manager Name will appear" readonly style="background: rgba(248, 250, 252, 0.85); font-size: 0.8rem; color: #0f172a; font-weight: 600;">
+                                <input type="text" id="input-pm-name" class="form-control" placeholder="Asst Manager Name will appear" readonly style="background: rgba(248, 250, 252, 0.85); font-size: 0.8rem; color: #0f172a; font-weight: 600;">
                             </div>
 
                             <!-- 2. Field Supervisor (SV) -->

@@ -107,11 +107,11 @@ export class ManagementEntryPage {
 
                     <div style="display: grid; grid-template-columns: 1fr; gap: 0.85rem;">
                         
-                        <!-- Manager (PM) -->
+                        <!-- Asst Manager (PM) -->
                         <div class="mgmt-staff-row" style="display: grid; grid-template-columns: 140px 130px 1fr; gap: 0.85rem; align-items: center; background: #f8fafc; padding: 0.65rem 0.9rem; border-radius: 10px; border: 1px solid #e2e8f0;">
-                            <label style="font-size: 0.82rem; font-weight: 700; color: #334155; margin: 0;">👔 Farm Manager</label>
+                            <label style="font-size: 0.82rem; font-weight: 700; color: #334155; margin: 0;">👔 Asst Manager</label>
                             <input type="text" id="mgmt-pm-id" list="mgmt-staff-datalist" class="form-control" placeholder="ID" title="Enter 4-digit staff ID (e.g. 0042)" maxlength="6" value="${pond.pm_staff_no || ''}" style="font-size: 0.85rem; font-weight: 700; text-align: center; background: #ffffff;">
-                            <input type="text" id="mgmt-pm-name" class="form-control" placeholder="Manager Name (Auto-resolved)" readonly style="background: rgba(241, 245, 249, 0.8); font-size: 0.84rem; color: #0f172a; font-weight: 600;">
+                            <input type="text" id="mgmt-pm-name" class="form-control" placeholder="Asst Manager Name (Auto-resolved)" readonly style="background: rgba(241, 245, 249, 0.8); font-size: 0.84rem; color: #0f172a; font-weight: 600;">
                         </div>
 
                         <!-- Supervisor (SV) -->

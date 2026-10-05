@@ -26,12 +26,9 @@ export class FieldOpsView {
         this.activePond = null;
         this.moduleData = [];
 
-        // Re-ensure bubble layer anytime FieldOps becomes active
-        appState.subscribe("viewChanged", (viewName) => {
-            if (viewName === "field-ops") {
-                this.ensureBubbleLayer();
-            }
-        });
+        // Ensure any legacy bubble layer is removed for optimal mobile performance
+        const legacyBubbleLayer = document.getElementById("aero-global-bubble-layer");
+        if (legacyBubbleLayer) legacyBubbleLayer.remove();
 
         this.render();
     }
@@ -74,7 +71,7 @@ export class FieldOpsView {
                         const r1 = String((m - 1) * 2 + 1).padStart(2, "0");
                         const r2 = String((m - 1) * 2 + 2).padStart(2, "0");
                         return `
-                            <div class="module-select-card" data-module-no="${m}" style="background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.95); border-radius: 18px; padding: 1.25rem 1rem; text-align: center; cursor: pointer; transition: transform 0.25s ease, box-shadow 0.25s ease; box-shadow: 0 8px 24px rgba(2, 132, 199, 0.08);" onmouseover="this.style.transform='translateY(-4px)'; this.style.boxShadow='0 14px 32px rgba(2, 132, 199, 0.16)';" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 8px 24px rgba(2, 132, 199, 0.08)';">
+                            <div class="module-select-card" data-module-no="${m}" style="border-radius: 18px; padding: 1.25rem 1rem; text-align: center; cursor: pointer; transition: transform 0.2s ease, box-shadow 0.2s ease;">
                                 <div style="width: 52px; height: 52px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #ffffff 0%, #38bdf8 60%, #0284c7 100%); margin: 0 auto 0.75rem auto; display: flex; align-items: center; justify-content: center; box-shadow: inset 0 2px 4px #ffffff, 0 4px 12px rgba(2, 132, 199, 0.25);">
                                     <span style="font-size: 1.2rem; font-weight: 900; color: #ffffff;">${mStr}</span>
                                 </div>
@@ -119,7 +116,6 @@ export class FieldOpsView {
         `;
 
         this.bindLoginEvents();
-        this.ensureBubbleLayer();
     }
 
     bindLoginEvents() {
@@ -353,101 +349,5 @@ export class FieldOpsView {
                 this.dailyRecordsPage.openQuickModal(targetPond, activePondsList);
             }
         );
-
-        this.ensureBubbleLayer();
-    }
-
-    /**
-     * Mounts the dynamic ambient micro-bubble layer (+50% Scale) behind cards
-     */
-    ensureBubbleLayer() {
-        if (!this.container) return;
-
-        let layer = this.bubbleLayer || document.getElementById("aero-global-bubble-layer");
-        if (!layer) {
-            layer = document.createElement("div");
-            layer.id = "aero-global-bubble-layer";
-            layer.className = "bubble-layer";
-        }
-        this.bubbleLayer = layer;
-
-        // Clean up any stale layer directly in body
-        const staleGlobal = document.body.querySelector(":scope > #aero-global-bubble-layer");
-        if (staleGlobal && staleGlobal !== layer) {
-            staleGlobal.remove();
-        }
-
-        // Mount inside this.container at the very beginning (behind content wrappers & cards)
-        if (layer.parentElement !== this.container) {
-            this.container.prepend(layer);
-        }
-
-        // Populate vibrant, immediate-floating ambient bubbles if empty
-        if (!layer.innerHTML || layer.children.length === 0) {
-            layer.innerHTML = `
-                <div class="aero-bubble lazy-1" style="left: 5%; width: 28px; height: 28px; animation-duration: 18s !important; animation-delay: -3s !important;"></div>
-                <div class="aero-bubble lazy-2" style="left: 12%; width: 42px; height: 42px; animation-duration: 24s !important; animation-delay: -14s !important;"></div>
-                <div class="aero-bubble lazy-1" style="left: 20%; width: 20px; height: 20px; animation-duration: 16s !important; animation-delay: -7s !important;"></div>
-                <div class="aero-bubble lazy-2" style="left: 29%; width: 36px; height: 36px; animation-duration: 21s !important; animation-delay: -18s !important;"></div>
-                <div class="aero-bubble lazy-1" style="left: 38%; width: 24px; height: 24px; animation-duration: 17s !important; animation-delay: -4s !important;"></div>
-                <div class="aero-bubble lazy-2" style="left: 47%; width: 48px; height: 48px; animation-duration: 25s !important; animation-delay: -12s !important;"></div>
-                <div class="aero-bubble lazy-1" style="left: 56%; width: 32px; height: 32px; animation-duration: 19s !important; animation-delay: -9s !important;"></div>
-                <div class="aero-bubble lazy-2" style="left: 65%; width: 22px; height: 22px; animation-duration: 15s !important; animation-delay: -2s !important;"></div>
-                <div class="aero-bubble lazy-1" style="left: 73%; width: 38px; height: 38px; animation-duration: 22s !important; animation-delay: -16s !important;"></div>
-                <div class="aero-bubble lazy-2" style="left: 82%; width: 26px; height: 26px; animation-duration: 18s !important; animation-delay: -8s !important;"></div>
-                <div class="aero-bubble lazy-1" style="left: 90%; width: 34px; height: 34px; animation-duration: 20s !important; animation-delay: -1s !important;"></div>
-                <div class="aero-bubble lazy-2" style="left: 16%; width: 30px; height: 30px; animation-duration: 23s !important; animation-delay: -10s !important;"></div>
-                <div class="aero-bubble lazy-1" style="left: 52%; width: 18px; height: 18px; animation-duration: 16s !important; animation-delay: -15s !important;"></div>
-                <div class="aero-bubble lazy-2" style="left: 77%; width: 44px; height: 44px; animation-duration: 26s !important; animation-delay: -20s !important;"></div>
-                <div class="aero-bubble lazy-1" style="left: 86%; width: 22px; height: 22px; animation-duration: 17s !important; animation-delay: -5s !important;"></div>
-            `;
-        }
-        layer.style.display = "block";
-
-        if (!this.bubbleSchedulerActive) {
-            this.bubbleSchedulerActive = true;
-            setTimeout(() => this.triggerAerationBurst(35), 400);
-            this.scheduleNextBurst();
-        }
-    }
-
-    triggerAerationBurst(clusterOriginX = null) {
-        const layer = this.bubbleLayer || document.getElementById("aero-global-bubble-layer") || (this.container ? this.container.querySelector(".bubble-layer") : null);
-        if (!layer) return;
-
-        const origin = clusterOriginX !== null ? clusterOriginX : (12 + Math.random() * 76);
-        const bubbleCount = 8 + Math.floor(Math.random() * 6);
-
-        for (let i = 0; i < bubbleCount; i++) {
-            const bubble = document.createElement("div");
-            bubble.className = "aero-bubble burst-bubble";
-
-            const size = 12 + Math.floor(Math.random() * 24); // 12px to 36px
-            const spread = (Math.random() - 0.5) * 90;
-            const drift = (Math.random() - 0.5) * 80;
-            const duration = 4.0 + Math.random() * 2.8;
-            const delay = Math.random() * 0.8;
-
-            bubble.style.left = `calc(${origin}% + ${spread}px)`;
-            bubble.style.width = `${size}px`;
-            bubble.style.height = `${size}px`;
-            bubble.style.setProperty("--drift-x", `${drift}px`);
-            bubble.style.setProperty("animation-duration", `${duration.toFixed(2)}s`, "important");
-            bubble.style.setProperty("animation-delay", `${delay.toFixed(2)}s`, "important");
-
-            layer.appendChild(bubble);
-
-            setTimeout(() => {
-                if (bubble.parentNode) bubble.parentNode.removeChild(bubble);
-            }, (duration + delay + 0.5) * 1000);
-        }
-    }
-
-    scheduleNextBurst() {
-        const nextTimeMs = 12000 + Math.random() * 10000;
-        this.burstTimeout = setTimeout(() => {
-            this.triggerAerationBurst();
-            this.scheduleNextBurst();
-        }, nextTimeMs);
     }
 }

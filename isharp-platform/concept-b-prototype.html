@@ -1,0 +1,935 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>iSHARP DBMS 2.0 — Concept B: Frutiger Aero Extreme HUD</title>
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800;900&family=Space+Grotesk:wght@600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="src/styles/tokens.css">
+    <link rel="stylesheet" href="src/styles/base.css">
+    <style>
+        /* ==========================================================================
+           CONCEPT B: FRUTIGER AERO EXTREME — SPATIAL AQUA HUD
+           ========================================================================== */
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            height: 100vh;
+            width: 100vw;
+            overflow: hidden;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background: 
+                radial-gradient(circle at 50% 0%, rgba(255, 255, 255, 0.75) 0%, rgba(186, 230, 253, 0.35) 30%, transparent 60%),
+                radial-gradient(circle at 10% 20%, rgba(56, 189, 248, 0.3) 0%, transparent 45%),
+                radial-gradient(circle at 90% 20%, rgba(16, 185, 129, 0.25) 0%, transparent 45%),
+                linear-gradient(180deg, #cbebfb 0%, #a6dff7 25%, #76cded 60%, #4cb8e0 100%);
+            background-attachment: fixed;
+            color: #0f172a;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            position: relative;
+        }
+
+        /* Ambient Sunlit Caustic Shimmer */
+        body::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 340px;
+            background: radial-gradient(ellipse 70% 50% at 50% -10%, rgba(255, 255, 255, 0.9) 0%, rgba(255, 255, 255, 0) 70%);
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        /* --------------------------------------------------------------------------
+           1. TOP FLOATING ISLAND BAR
+           -------------------------------------------------------------------------- */
+        .hud-header {
+            position: relative;
+            z-index: 20;
+            padding: 0.75rem 2rem 0.5rem 2rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .hud-brand-pill {
+            display: flex;
+            align-items: center;
+            gap: 0.85rem;
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.95);
+            border-radius: 999px;
+            padding: 0.4rem 1.15rem 0.4rem 0.6rem;
+            box-shadow: 
+                0 6px 20px rgba(7, 89, 133, 0.12),
+                0 1px 3px rgba(255, 255, 255, 0.9),
+                inset 0 1px 1px #ffffff;
+        }
+
+        .hud-logo-capsule {
+            background: #ffffff;
+            border-radius: 999px;
+            padding: 3px 12px;
+            border: 1px solid rgba(186, 230, 253, 0.9);
+            box-shadow: 0 2px 6px rgba(12, 74, 110, 0.08);
+            display: flex;
+            align-items: center;
+        }
+
+        .hud-logo-capsule img {
+            height: 24px;
+            width: auto;
+            object-fit: contain;
+        }
+
+        .hud-brand-title {
+            font-size: 1.15rem;
+            font-weight: 800;
+            color: #0284c7;
+            letter-spacing: -0.02em;
+        }
+
+        .hud-tag {
+            font-size: 0.68rem;
+            font-weight: 800;
+            background: linear-gradient(180deg, #38bdf8 0%, #0284c7 100%);
+            color: #ffffff;
+            padding: 2px 7px;
+            border-radius: 999px;
+            box-shadow: 0 2px 6px rgba(2, 132, 199, 0.35);
+        }
+
+        /* Top Center Telemetry Capsule */
+        .hud-telemetry-capsule {
+            display: flex;
+            align-items: center;
+            gap: 0.85rem;
+            background: rgba(255, 255, 255, 0.82);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.9);
+            padding: 0.35rem 1.25rem;
+            border-radius: 999px;
+            box-shadow: 0 4px 14px rgba(7, 89, 133, 0.1), inset 0 1px 1px #ffffff;
+        }
+
+        .hud-pond-name {
+            font-size: 1.05rem;
+            font-weight: 800;
+            font-family: 'JetBrains Mono', monospace;
+            color: #0369a1;
+        }
+
+        .hud-badge {
+            font-size: 0.7rem;
+            font-weight: 800;
+            padding: 3px 9px;
+            border-radius: 999px;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+
+        .hud-badge-prod {
+            background: linear-gradient(180deg, #a7f3d0 0%, #34d399 100%);
+            color: #065f46;
+            border: 1px solid #6ee7b7;
+            box-shadow: 0 2px 6px rgba(16, 185, 129, 0.3);
+        }
+
+        .hud-badge-doc {
+            background: linear-gradient(180deg, #bae6fd 0%, #38bdf8 100%);
+            color: #075985;
+            border: 1px solid #7dd3fc;
+            box-shadow: 0 2px 6px rgba(14, 165, 233, 0.3);
+        }
+
+        /* Top Right Controls */
+        .hud-top-right {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .hud-action-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.45rem;
+            padding: 0.45rem 1rem;
+            border-radius: 999px;
+            font-size: 0.78rem;
+            font-weight: 700;
+            border: 1px solid rgba(255, 255, 255, 0.95);
+            background: linear-gradient(180deg, rgba(255, 255, 255, 0.95) 0%, rgba(224, 242, 254, 0.85) 100%);
+            color: #0369a1;
+            box-shadow: 0 4px 12px rgba(2, 132, 199, 0.15), inset 0 1px 1px #ffffff;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-decoration: none;
+        }
+
+        .hud-action-pill:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 18px rgba(2, 132, 199, 0.25);
+            background: #ffffff;
+        }
+
+        /* --------------------------------------------------------------------------
+           2. PANORAMIC 3D POND CAROUSEL (Interactive Spatial Strip)
+           -------------------------------------------------------------------------- */
+        .panoramic-pond-carousel {
+            position: relative;
+            z-index: 10;
+            padding: 0.3rem 2rem 0.6rem 2rem;
+            display: flex;
+            align-items: center;
+            gap: 0.85rem;
+            overflow-x: auto;
+            scrollbar-width: none;
+        }
+
+        .panoramic-pond-carousel::-webkit-scrollbar {
+            display: none;
+        }
+
+        .pond-hud-card {
+            flex: 0 0 160px;
+            height: 72px;
+            border-radius: 14px;
+            background: linear-gradient(180deg, rgba(255, 255, 255, 0.85) 0%, rgba(240, 249, 255, 0.7) 100%);
+            backdrop-filter: blur(12px);
+            border: 1.5px solid rgba(255, 255, 255, 0.9);
+            box-shadow: 0 4px 12px rgba(7, 89, 133, 0.08), inset 0 1px 1px #ffffff;
+            padding: 0.55rem 0.75rem;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            cursor: pointer;
+            transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* Sunlit water caustics shimmer undercard */
+        .pond-hud-card::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: radial-gradient(circle at 80% 20%, rgba(56, 189, 248, 0.15) 0%, transparent 60%);
+            pointer-events: none;
+        }
+
+        .pond-hud-card:hover {
+            transform: translateY(-3px) scale(1.03);
+            border-color: #38bdf8;
+            box-shadow: 0 8px 24px rgba(2, 132, 199, 0.22), inset 0 1px 1px #ffffff;
+            background: rgba(255, 255, 255, 0.95);
+        }
+
+        .pond-hud-card.active {
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(186, 230, 253, 0.9) 100%);
+            border: 2px solid #0284c7;
+            box-shadow: 0 8px 24px rgba(2, 132, 199, 0.35), 0 0 12px rgba(56, 189, 248, 0.5), inset 0 1px 2px #ffffff;
+            transform: translateY(-2px);
+        }
+
+        .pond-hud-card.active::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, #38bdf8, #0284c7);
+        }
+
+        .card-hud-top {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .card-hud-pond {
+            font-size: 0.85rem;
+            font-weight: 800;
+            font-family: 'JetBrains Mono', monospace;
+            color: #0f172a;
+        }
+
+        .card-hud-doc {
+            font-size: 0.68rem;
+            font-weight: 800;
+            background: #e0f2fe;
+            color: #0369a1;
+            padding: 1px 6px;
+            border-radius: 6px;
+        }
+
+        .card-hud-bottom {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 0.68rem;
+            font-weight: 700;
+        }
+
+        .status-light {
+            display: flex;
+            align-items: center;
+            gap: 0.3rem;
+            color: #059669;
+        }
+
+        .status-bulb {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: #10b981;
+            box-shadow: 0 0 6px #10b981;
+        }
+
+        /* --------------------------------------------------------------------------
+           3. CENTRAL COMMAND GLASS STAGE
+           -------------------------------------------------------------------------- */
+        .hud-stage {
+            flex: 1;
+            position: relative;
+            z-index: 10;
+            padding: 0 2rem 5.5rem 2rem;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 1.1rem;
+            scrollbar-width: none;
+        }
+
+        .hud-stage::-webkit-scrollbar {
+            display: none;
+        }
+
+        /* Bento KPI Row (Crystalline Glass Pills) */
+        .hud-kpi-row {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 1rem;
+        }
+
+        .hud-kpi-tile {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.95);
+            border-radius: 18px;
+            padding: 0.95rem 1.15rem;
+            box-shadow: 0 6px 20px rgba(7, 89, 133, 0.08), inset 0 1px 1px #ffffff;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            height: 92px;
+            position: relative;
+            overflow: hidden;
+            transition: all 0.2s;
+        }
+
+        .hud-kpi-tile::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 40%;
+            background: linear-gradient(180deg, rgba(255, 255, 255, 0.8) 0%, rgba(255, 255, 255, 0) 100%);
+            pointer-events: none;
+        }
+
+        .hud-kpi-tile:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 28px rgba(2, 132, 199, 0.16);
+            border-color: #7dd3fc;
+        }
+
+        .hud-kpi-tile .label {
+            font-size: 0.65rem;
+            font-weight: 800;
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .hud-kpi-tile .val {
+            font-size: 1.4rem;
+            font-weight: 800;
+            font-family: 'JetBrains Mono', monospace;
+            color: #0284c7;
+        }
+
+        .hud-kpi-tile .sub {
+            font-size: 0.68rem;
+            font-weight: 600;
+            color: #64748b;
+        }
+
+        /* 2-Column Split Bento Cards */
+        .hud-cards-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.25rem;
+        }
+
+        .hud-glass-panel {
+            background: rgba(255, 255, 255, 0.88);
+            backdrop-filter: blur(24px);
+            border: 1px solid rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 1.35rem 1.5rem;
+            box-shadow: 0 8px 30px rgba(7, 89, 133, 0.08), inset 0 1px 1px #ffffff;
+        }
+
+        .panel-top-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 1.15rem;
+            padding-bottom: 0.75rem;
+            border-bottom: 1px solid rgba(186, 230, 253, 0.7);
+        }
+
+        .panel-top-bar h3 {
+            font-size: 1.08rem;
+            font-weight: 800;
+            color: #0f172a;
+        }
+
+        .panel-top-bar span {
+            font-size: 0.74rem;
+            color: #64748b;
+            font-weight: 500;
+        }
+
+        .form-dates-3col {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 0.85rem;
+        }
+
+        .form-control-aero {
+            background: rgba(255, 255, 255, 0.95);
+            border: 1.5px solid rgba(186, 230, 253, 0.95);
+            border-radius: 10px;
+            padding: 8px 11px;
+            font-family: inherit;
+            font-size: 0.84rem;
+            font-weight: 600;
+            color: #0f172a;
+            outline: none;
+            width: 100%;
+            box-shadow: inset 0 1px 2px rgba(12, 74, 110, 0.04), 0 1px 0 #ffffff;
+            transition: all 0.2s;
+        }
+
+        .form-control-aero:focus {
+            border-color: #0284c7;
+            box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.3);
+        }
+
+        /* 3D Gel Save Button */
+        .btn-gel-emerald {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.45rem;
+            background: linear-gradient(180deg, #34d399 0%, #10b981 60%, #059669 100%);
+            color: #ffffff;
+            border: 1px solid rgba(255, 255, 255, 0.9);
+            padding: 0.42rem 1rem;
+            border-radius: 999px;
+            font-size: 0.78rem;
+            font-weight: 800;
+            cursor: pointer;
+            box-shadow: 0 4px 14px rgba(16, 185, 129, 0.4), inset 0 1px 1px #ffffff;
+            text-shadow: 0 1px 2px rgba(4, 120, 87, 0.6);
+            transition: all 0.2s;
+        }
+
+        .btn-gel-emerald:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 18px rgba(16, 185, 129, 0.55);
+        }
+
+        /* PWA Stepper Rows */
+        .pwa-tile-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.75rem 1rem;
+            background: rgba(240, 249, 255, 0.7);
+            border: 1px solid rgba(186, 230, 253, 0.85);
+            border-radius: 12px;
+            margin-bottom: 0.65rem;
+        }
+
+        /* --------------------------------------------------------------------------
+           4. FLOATING 3D GLASS DOCK (Frutiger Aero Iconic Island)
+           -------------------------------------------------------------------------- */
+        .hud-glass-dock-wrapper {
+            position: fixed;
+            bottom: 14px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 100;
+        }
+
+        .hud-glass-dock {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: rgba(255, 255, 255, 0.82);
+            backdrop-filter: blur(28px);
+            -webkit-backdrop-filter: blur(28px);
+            border: 1.5px solid rgba(255, 255, 255, 0.95);
+            padding: 0.45rem 0.85rem;
+            border-radius: 999px;
+            box-shadow: 
+                0 12px 36px rgba(7, 89, 133, 0.22),
+                0 2px 8px rgba(255, 255, 255, 0.8),
+                inset 0 1px 2px #ffffff;
+        }
+
+        .dock-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.18rem;
+            padding: 0.35rem 0.75rem;
+            border-radius: 14px;
+            cursor: pointer;
+            transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+            color: #475569;
+            text-decoration: none;
+            position: relative;
+        }
+
+        .dock-item .dock-icon {
+            font-size: 1.35rem;
+            transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+            filter: drop-shadow(0 2px 4px rgba(0, 30, 60, 0.15));
+        }
+
+        .dock-item .dock-label {
+            font-size: 0.65rem;
+            font-weight: 700;
+            white-space: nowrap;
+        }
+
+        .dock-item:hover {
+            transform: translateY(-8px) scale(1.15);
+            color: #0284c7;
+        }
+
+        .dock-item:hover .dock-icon {
+            transform: scale(1.2);
+        }
+
+        .dock-item.active {
+            background: linear-gradient(180deg, #38bdf8 0%, #0284c7 100%);
+            color: #ffffff;
+            box-shadow: 0 6px 18px rgba(2, 132, 199, 0.4), inset 0 1px 1px #ffffff;
+            transform: translateY(-4px);
+        }
+
+        .dock-item.active .dock-label {
+            color: #ffffff;
+            text-shadow: 0 1px 1px rgba(0, 30, 60, 0.4);
+        }
+
+        .dock-separator {
+            width: 1px;
+            height: 28px;
+            background: rgba(186, 230, 253, 0.9);
+            margin: 0 0.15rem;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- 1. TOP FLOATING ISLAND BAR -->
+    <header class="hud-header">
+        
+        <!-- Left: Official Corporate Logo & App Branding -->
+        <div class="hud-brand-pill">
+            <div class="hud-logo-capsule">
+                <img src="/assets/blue-archipelago-logo.png" alt="Blue Archipelago" onerror="this.src='https://www.bluearchipelago.com/wp-content/uploads/2022/06/blue-archipelago-logo-color.png';">
+            </div>
+            <span class="hud-brand-title">iSHARP</span>
+            <span class="hud-tag">AERO HUD</span>
+        </div>
+
+        <!-- Center: Active Telemetry HUD Anchor -->
+        <div class="hud-telemetry-capsule">
+            <span style="font-size:0.75rem; color:#64748b; font-weight:700;">ACTIVE:</span>
+            <span class="hud-pond-name">Pond 01.01.01</span>
+            <span class="hud-badge hud-badge-prod">PRODUCTION</span>
+            <span class="hud-badge hud-badge-doc">DOC 32</span>
+            <span style="font-size:0.75rem; color:#059669; font-weight:700;">🛡️ Negative</span>
+        </div>
+
+        <!-- Right: Actions & Portal Navigation -->
+        <div class="hud-top-right">
+            <a href="/#/executive" class="hud-action-pill">
+                <span>🗺️ 216-Map</span>
+            </a>
+            <a href="/#/field-ops" class="hud-action-pill">
+                <span>💧 Field Ops</span>
+            </a>
+            <button class="hud-action-pill" style="background: linear-gradient(180deg, #38bdf8 0%, #0284c7 100%); color:#ffffff; border-color:#7dd3fc;">
+                <span>📄 Paste Excel</span>
+            </button>
+        </div>
+
+    </header>
+
+    <!-- 2. PANORAMIC 3D POND CAROUSEL (Spatial Farm Selector) -->
+    <div class="panoramic-pond-carousel">
+        
+        <!-- Pond 1 (ACTIVE) -->
+        <div class="pond-hud-card active">
+            <div class="card-hud-top">
+                <span class="card-hud-pond">01.01.01</span>
+                <span class="card-hud-doc">DOC 32</span>
+            </div>
+            <div class="card-hud-bottom">
+                <span class="status-light"><span class="status-bulb"></span>Active</span>
+                <span style="font-size:0.62rem; color:#64748b;">435k PL</span>
+            </div>
+        </div>
+
+        <!-- Pond 2 -->
+        <div class="pond-hud-card">
+            <div class="card-hud-top">
+                <span class="card-hud-pond">01.01.02</span>
+                <span class="card-hud-doc">DOC 45</span>
+            </div>
+            <div class="card-hud-bottom">
+                <span class="status-light"><span class="status-bulb"></span>Active</span>
+                <span style="font-size:0.62rem; color:#64748b;">420k PL</span>
+            </div>
+        </div>
+
+        <!-- Pond 3 -->
+        <div class="pond-hud-card">
+            <div class="card-hud-top">
+                <span class="card-hud-pond">01.01.03</span>
+                <span class="card-hud-doc" style="background:#fef3c7; color:#b45309;">DOC 88</span>
+            </div>
+            <div class="card-hud-bottom">
+                <span class="status-light" style="color:#d97706;"><span class="status-bulb" style="background:#f59e0b; box-shadow:0 0 6px #f59e0b;"></span>Harvest Due</span>
+                <span style="font-size:0.62rem; color:#64748b;">18.5g</span>
+            </div>
+        </div>
+
+        <!-- Pond 4 -->
+        <div class="pond-hud-card">
+            <div class="card-hud-top">
+                <span class="card-hud-pond">01.01.04</span>
+                <span class="card-hud-doc">DOC 12</span>
+            </div>
+            <div class="card-hud-bottom">
+                <span class="status-light"><span class="status-bulb"></span>Nursery</span>
+                <span style="font-size:0.62rem; color:#64748b;">500k PL</span>
+            </div>
+        </div>
+
+        <!-- Pond 5 -->
+        <div class="pond-hud-card">
+            <div class="card-hud-top">
+                <span class="card-hud-pond">01.01.05</span>
+                <span class="card-hud-doc" style="background:#f1f5f9; color:#64748b;">IDLE</span>
+            </div>
+            <div class="card-hud-bottom">
+                <span style="color:#64748b;">Dry-out</span>
+                <span style="font-size:0.62rem; color:#64748b;">0 PL</span>
+            </div>
+        </div>
+
+        <!-- Pond 6 -->
+        <div class="pond-hud-card">
+            <div class="card-hud-top">
+                <span class="card-hud-pond">01.01.06</span>
+                <span class="card-hud-doc">DOC 54</span>
+            </div>
+            <div class="card-hud-bottom">
+                <span class="status-light"><span class="status-bulb"></span>Active</span>
+                <span style="font-size:0.62rem; color:#64748b;">410k PL</span>
+            </div>
+        </div>
+
+        <!-- Pond 7 -->
+        <div class="pond-hud-card">
+            <div class="card-hud-top">
+                <span class="card-hud-pond">01.01.07</span>
+                <span class="card-hud-doc">DOC 60</span>
+            </div>
+            <div class="card-hud-bottom">
+                <span class="status-light"><span class="status-bulb"></span>Active</span>
+                <span style="font-size:0.62rem; color:#64748b;">395k PL</span>
+            </div>
+        </div>
+
+        <!-- Pond 8 -->
+        <div class="pond-hud-card">
+            <div class="card-hud-top">
+                <span class="card-hud-pond">01.01.08</span>
+                <span class="card-hud-doc">DOC 30</span>
+            </div>
+            <div class="card-hud-bottom">
+                <span class="status-light"><span class="status-bulb"></span>Active</span>
+                <span style="font-size:0.62rem; color:#64748b;">450k PL</span>
+            </div>
+        </div>
+
+        <!-- Pond 9 -->
+        <div class="pond-hud-card">
+            <div class="card-hud-top">
+                <span class="card-hud-pond">01.01.09</span>
+                <span class="card-hud-doc">DOC 41</span>
+            </div>
+            <div class="card-hud-bottom">
+                <span class="status-light"><span class="status-bulb"></span>Active</span>
+                <span style="font-size:0.62rem; color:#64748b;">430k PL</span>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- 3. CENTRAL COMMAND GLASS STAGE -->
+    <main class="hud-stage">
+        
+        <!-- Bento KPI Grid (5 Pills) -->
+        <div class="hud-kpi-row">
+            <div class="hud-kpi-tile">
+                <div class="label">
+                    <span>Species / Line</span>
+                    <span>🧬</span>
+                </div>
+                <div class="val" style="font-size:1.15rem; color:#0f172a;">P. VANNAMEi</div>
+                <div class="sub">Standard Line (Syaqua)</div>
+            </div>
+
+            <div class="hud-kpi-tile">
+                <div class="label">
+                    <span>Stocked Fry</span>
+                    <span>🦐</span>
+                </div>
+                <div class="val">435,510</div>
+                <div class="sub">87 PL/m² (0.5 Ha Pond)</div>
+            </div>
+
+            <div class="hud-kpi-tile">
+                <div class="label">
+                    <span>Average Body Wt</span>
+                    <span>⚖️</span>
+                </div>
+                <div class="val">—</div>
+                <div class="sub">First sampling at DOC 35</div>
+            </div>
+
+            <div class="hud-kpi-tile">
+                <div class="label">
+                    <span>Cumulative Feed</span>
+                    <span>🌾</span>
+                </div>
+                <div class="val">25.0 <span style="font-size:0.9rem;">kg</span></div>
+                <div class="sub">Feeding protocol on track</div>
+            </div>
+
+            <div class="hud-kpi-tile">
+                <div class="label">
+                    <span>Harvest Biomass</span>
+                    <span>🚜</span>
+                </div>
+                <div class="val">0.0 <span style="font-size:0.9rem;">kg</span></div>
+                <div class="sub">Status: Active In-Culture</div>
+            </div>
+        </div>
+
+        <!-- 2-Column Split Bento Cards -->
+        <div class="hud-cards-grid">
+            
+            <!-- Left: Pond Preparation Dates -->
+            <div class="hud-glass-panel">
+                <div class="panel-top-bar">
+                    <div>
+                        <h3>Pond Preparation Dates</h3>
+                        <span>Cycle milestones from dry-out to stocking</span>
+                    </div>
+                    <button class="btn-gel-emerald">
+                        <span>💾 Save Milestones</span>
+                    </button>
+                </div>
+                <div class="form-dates-3col">
+                    <div>
+                        <label style="font-size:0.74rem; font-weight:700; color:#475569; display:block; margin-bottom:4px;">Cycle Start</label>
+                        <input type="date" class="form-control-aero" value="2026-07-31">
+                    </div>
+                    <div>
+                        <label style="font-size:0.74rem; font-weight:700; color:#475569; display:block; margin-bottom:4px;">Pond Cleaning</label>
+                        <input type="date" class="form-control-aero" value="2026-08-10">
+                    </div>
+                    <div>
+                        <label style="font-size:0.74rem; font-weight:700; color:#475569; display:block; margin-bottom:4px;">Liner Repair</label>
+                        <input type="date" class="form-control-aero" value="2026-08-15">
+                    </div>
+                    <div>
+                        <label style="font-size:0.74rem; font-weight:700; color:#475569; display:block; margin-bottom:4px;">Water Filling</label>
+                        <input type="date" class="form-control-aero" value="2026-08-18">
+                    </div>
+                    <div>
+                        <label style="font-size:0.74rem; font-weight:700; color:#475569; display:block; margin-bottom:4px;">Water Culture</label>
+                        <input type="date" class="form-control-aero" value="2026-08-19">
+                    </div>
+                    <div>
+                        <label style="font-size:0.74rem; font-weight:700; color:#475569; display:block; margin-bottom:4px;">Baby Box Setup</label>
+                        <input type="date" class="form-control-aero" value="2026-09-02">
+                    </div>
+                    <div>
+                        <label style="font-size:0.74rem; font-weight:700; color:#475569; display:block; margin-bottom:4px;">Lab QA/QC Approval</label>
+                        <input type="date" class="form-control-aero" value="2026-09-02">
+                    </div>
+                    <div>
+                        <label style="font-size:0.74rem; font-weight:700; color:#475569; display:block; margin-bottom:4px;">Pond Ready Date</label>
+                        <input type="date" class="form-control-aero" value="2026-09-02">
+                    </div>
+                    <div>
+                        <label style="font-size:0.74rem; font-weight:700; color:#475569; display:block; margin-bottom:4px;">Target Stocking</label>
+                        <input type="date" class="form-control-aero">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right: Paddlewheel Inventory (PWA) -->
+            <div class="hud-glass-panel">
+                <div class="panel-top-bar">
+                    <div>
+                        <h3>Paddlewheel Aeration (PWA)</h3>
+                        <span>Configuration & dissolved oxygen support</span>
+                    </div>
+                    <button class="btn-gel-emerald">
+                        <span>💾 Save PWA</span>
+                    </button>
+                </div>
+                <div>
+                    <div class="pwa-tile-row">
+                        <div>
+                            <div style="font-weight:700; font-size:0.86rem; color:#0f172a;">1.0 HP Paddlewheels</div>
+                            <div style="font-size:0.7rem; color:#64748b;">[1 HP] Nursery / small pond setups</div>
+                        </div>
+                        <div style="display:flex; align-items:center; gap:0.5rem;">
+                            <button style="width:26px; height:26px; border-radius:50%; border:1px solid #bae6fd; background:#ffffff; font-weight:bold; cursor:pointer;">-</button>
+                            <span style="font-family:'JetBrains Mono'; font-weight:800; font-size:0.95rem; min-width:24px; text-align:center;">4</span>
+                            <button style="width:26px; height:26px; border-radius:50%; border:1px solid #bae6fd; background:#ffffff; font-weight:bold; cursor:pointer;">+</button>
+                            <span style="font-size:0.75rem; color:#64748b;">units</span>
+                        </div>
+                    </div>
+
+                    <div class="pwa-tile-row">
+                        <div>
+                            <div style="font-weight:700; font-size:0.86rem; color:#0f172a;">2.0 HP Paddlewheels</div>
+                            <div style="font-size:0.7rem; color:#64748b;">[2 HP] Standard high-flow aeration</div>
+                        </div>
+                        <div style="display:flex; align-items:center; gap:0.5rem;">
+                            <button style="width:26px; height:26px; border-radius:50%; border:1px solid #bae6fd; background:#ffffff; font-weight:bold; cursor:pointer;">-</button>
+                            <span style="font-family:'JetBrains Mono'; font-weight:800; font-size:0.95rem; min-width:24px; text-align:center;">2</span>
+                            <button style="width:26px; height:26px; border-radius:50%; border:1px solid #bae6fd; background:#ffffff; font-weight:bold; cursor:pointer;">+</button>
+                            <span style="font-size:0.75rem; color:#64748b;">units</span>
+                        </div>
+                    </div>
+
+                    <div class="pwa-tile-row">
+                        <div>
+                            <div style="font-weight:700; font-size:0.86rem; color:#0f172a;">4.0 HP Central Aerators</div>
+                            <div style="font-size:0.7rem; color:#64748b;">Heavy central spiral aerators</div>
+                        </div>
+                        <div style="display:flex; align-items:center; gap:0.5rem;">
+                            <button style="width:26px; height:26px; border-radius:50%; border:1px solid #bae6fd; background:#ffffff; font-weight:bold; cursor:pointer;">-</button>
+                            <span style="font-family:'JetBrains Mono'; font-weight:800; font-size:0.95rem; min-width:24px; text-align:center;">0</span>
+                            <button style="width:26px; height:26px; border-radius:50%; border:1px solid #bae6fd; background:#ffffff; font-weight:bold; cursor:pointer;">+</button>
+                            <span style="font-size:0.75rem; color:#64748b;">units</span>
+                        </div>
+                    </div>
+
+                    <div style="margin-top:0.65rem; padding:0.65rem 1rem; background:linear-gradient(135deg, #e0f2fe 0%, #bae6fd 100%); border:1.5px solid #7dd3fc; border-radius:12px; display:flex; justify-content:space-between; align-items:center;">
+                        <span style="font-size:0.78rem; font-weight:800; color:#0369a1;">TOTAL PWA AERATION</span>
+                        <span style="font-size:1.1rem; font-weight:800; font-family:'JetBrains Mono'; color:#0284c7;">8.0 HP <span style="font-size:0.75rem; font-weight:700;">(16.0 HP/Ha)</span></span>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+    </main>
+
+    <!-- 4. FLOATING 3D GLASS DOCK (Frutiger Aero Iconic Island) -->
+    <div class="hud-glass-dock-wrapper">
+        <nav class="hud-glass-dock" role="navigation" aria-label="Workstream Dock">
+            <a class="dock-item active" href="#">
+                <span class="dock-icon">📊</span>
+                <span class="dock-label">Master</span>
+            </a>
+            <a class="dock-item" href="#">
+                <span class="dock-icon">🔬</span>
+                <span class="dock-label">Laboratory</span>
+            </a>
+            <a class="dock-item" href="#">
+                <span class="dock-icon">🦐</span>
+                <span class="dock-label">Stocking</span>
+            </a>
+            <a class="dock-item" href="#">
+                <span class="dock-icon">🌾</span>
+                <span class="dock-label">Feeding</span>
+            </a>
+            <a class="dock-item" href="#">
+                <span class="dock-icon">⚖️</span>
+                <span class="dock-label">Sampling</span>
+            </a>
+            <div class="dock-separator"></div>
+            <a class="dock-item" href="#">
+                <span class="dock-icon">📈</span>
+                <span class="dock-label">Performance</span>
+            </a>
+            <a class="dock-item" href="#">
+                <span class="dock-icon">🚜</span>
+                <span class="dock-label">Harvest</span>
+            </a>
+            <a class="dock-item" href="#">
+                <span class="dock-icon">🔄</span>
+                <span class="dock-label">Lifecycle</span>
+            </a>
+            <div class="dock-separator"></div>
+            <a class="dock-item" href="#">
+                <span class="dock-icon">👔</span>
+                <span class="dock-label">Staff</span>
+            </a>
+            <a class="dock-item" href="#">
+                <span class="dock-icon">⚙️</span>
+                <span class="dock-label">Utilities</span>
+            </a>
+        </nav>
+    </div>
+
+</body>
+</html>
