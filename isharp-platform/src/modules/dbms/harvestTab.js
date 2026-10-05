@@ -6,17 +6,20 @@
 import { appState } from "../../state/appState.js";
 import { HarvestRepository } from "../../infrastructure/repositories/harvestRepository.js";
 import { Toast } from "../../components/Toast.js";
+import { DOM_IDS, validateContract } from "../../config/domContracts.js";
 
 export class HarvestTab {
     constructor(onOpenExcel) {
         this.onOpenExcel = onOpenExcel;
+        validateContract("HarvestTab", DOM_IDS.HARVEST);
+
         this.dom = {
-            tbodyHarvest: document.getElementById("tbody-harvest"),
-            tbodySales: document.getElementById("tbody-harvest-sales"),
-            totalWeight: document.getElementById("stat-harvest-weight"),
-            totalRevenue: document.getElementById("stat-harvest-revenue"),
-            meanAbw: document.getElementById("stat-harvest-abw"),
-            btnAddHarvest: document.getElementById("btn-add-harvest-event")
+            tbodyHarvest: document.getElementById(DOM_IDS.HARVEST.TBODY_HARVEST),
+            tbodySales: document.getElementById(DOM_IDS.HARVEST.TBODY_SALES),
+            totalWeight: document.getElementById(DOM_IDS.HARVEST.TOTAL_WEIGHT),
+            totalRevenue: document.getElementById(DOM_IDS.HARVEST.TOTAL_REVENUE),
+            meanAbw: document.getElementById(DOM_IDS.HARVEST.MEAN_ABW),
+            btnAddHarvest: document.getElementById(DOM_IDS.HARVEST.BTN_ADD_HARVEST)
         };
 
         this.bindEvents();

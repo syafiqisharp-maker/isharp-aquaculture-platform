@@ -11,47 +11,48 @@ import { SamplingRepository } from "../../infrastructure/repositories/samplingRe
 import { HarvestRepository } from "../../infrastructure/repositories/harvestRepository.js";
 import { hasPermission, PERMISSIONS } from "../../config/permissions.js";
 import { Toast } from "../../components/Toast.js";
+import { DOM_IDS } from "../../config/domContracts.js";
 
 export class MasterTab {
     constructor() {
         this.dom = {
             // Milestone Inputs
-            inputDateCycle: document.getElementById("input-date-cycle"),
-            inputDateCleaning: document.getElementById("input-date-cleaning"),
-            inputDateRepair: document.getElementById("input-date-repair"),
-            inputDateFilling: document.getElementById("input-date-filling"),
-            inputDateCulture: document.getElementById("input-date-culture"),
-            inputDateBabyBox: document.getElementById("input-date-babybox"),
-            inputDateQaqc: document.getElementById("input-date-qaqc"),
-            inputDateReady: document.getElementById("input-date-ready"),
-            inputDatePlanStock: document.getElementById("input-date-plan-stock"),
-            inputIdleDays: document.getElementById("input-idle-days"),
-            inputIdleStatus: document.getElementById("input-idle-status"),
-            inputWaterType: document.getElementById("input-water-type"),
+            inputDateCycle: document.getElementById(DOM_IDS.MASTER.INPUT_DATE_CYCLE),
+            inputDateCleaning: document.getElementById(DOM_IDS.MASTER.INPUT_DATE_CLEANING),
+            inputDateRepair: document.getElementById(DOM_IDS.MASTER.INPUT_DATE_REPAIR),
+            inputDateFilling: document.getElementById(DOM_IDS.MASTER.INPUT_DATE_FILLING),
+            inputDateCulture: document.getElementById(DOM_IDS.MASTER.INPUT_DATE_CULTURE),
+            inputDateBabyBox: document.getElementById(DOM_IDS.MASTER.INPUT_DATE_BABYBOX),
+            inputDateQaqc: document.getElementById(DOM_IDS.MASTER.INPUT_DATE_QAQC),
+            inputDateReady: document.getElementById(DOM_IDS.MASTER.INPUT_DATE_READY),
+            inputDatePlanStock: document.getElementById(DOM_IDS.MASTER.INPUT_DATE_PLAN_STOCK),
+            inputIdleDays: document.getElementById(DOM_IDS.MASTER.INPUT_IDLE_DAYS),
+            inputIdleStatus: document.getElementById(DOM_IDS.MASTER.INPUT_IDLE_STATUS),
+            inputWaterType: document.getElementById(DOM_IDS.MASTER.INPUT_WATER_TYPE),
 
             // Aerator Steppers
-            aerator1hp: document.getElementById("aerator-1hp-units"),
-            aerator2hp: document.getElementById("aerator-2hp-units"),
-            aerator4hp: document.getElementById("aerator-4hp-units"),
-            summaryTotalActiveHp: document.getElementById("summary-total-active-hp"),
-            badgeTotalHp: document.getElementById("badge-total-hp"),
+            aerator1hp: document.getElementById(DOM_IDS.MASTER.AERATOR_1HP),
+            aerator2hp: document.getElementById(DOM_IDS.MASTER.AERATOR_2HP),
+            aerator4hp: document.getElementById(DOM_IDS.MASTER.AERATOR_4HP),
+            summaryTotalActiveHp: document.getElementById(DOM_IDS.MASTER.SUMMARY_ACTIVE_HP),
+            badgeTotalHp: document.getElementById(DOM_IDS.BANNER.BADGE_TOTAL_HP),
 
             // Snapshots
-            snapSpecies: document.getElementById("badge-species") || document.getElementById("snap-species"),
-            snapGenetic: document.getElementById("badge-genetic") || document.getElementById("snap-genetic"),
-            snapStockedPcs: document.getElementById("snap-stocked-pcs"),
-            snapStockedFoot: document.getElementById("snap-stocked-foot"),
-            snapLatestAbw: document.getElementById("snap-latest-abw"),
-            snapAbwFoot: document.getElementById("snap-abw-foot"),
-            snapTotalFeed: document.getElementById("snap-total-feed"),
-            snapFeedFoot: document.getElementById("snap-feed-foot"),
-            snapTotalHarvest: document.getElementById("snap-total-harvest"),
-            snapHarvestFoot: document.getElementById("snap-harvest-foot"),
-            snapCycleStatus: document.getElementById("snap-cycle-status")
+            snapSpecies: document.getElementById(DOM_IDS.BANNER.BADGE_SPECIES) || document.getElementById("snap-species"),
+            snapGenetic: document.getElementById(DOM_IDS.BANNER.BADGE_GENETIC) || document.getElementById("snap-genetic"),
+            snapStockedPcs: document.getElementById(DOM_IDS.MASTER.SNAP_STOCKED_PCS),
+            snapStockedFoot: document.getElementById(DOM_IDS.MASTER.SNAP_STOCKED_FOOT),
+            snapLatestAbw: document.getElementById(DOM_IDS.MASTER.SNAP_LATEST_ABW),
+            snapAbwFoot: document.getElementById(DOM_IDS.MASTER.SNAP_ABW_FOOT),
+            snapTotalFeed: document.getElementById(DOM_IDS.MASTER.SNAP_TOTAL_FEED),
+            snapFeedFoot: document.getElementById(DOM_IDS.MASTER.SNAP_FEED_FOOT),
+            snapTotalHarvest: document.getElementById(DOM_IDS.MASTER.SNAP_TOTAL_HARVEST),
+            snapHarvestFoot: document.getElementById(DOM_IDS.MASTER.SNAP_HARVEST_FOOT),
+            snapCycleStatus: document.getElementById(DOM_IDS.MASTER.SNAP_CYCLE_STATUS)
         };
 
-        this.btnSave = document.getElementById("btn-save-master");
-        this.btnSaveAerators = document.getElementById("btn-save-aerators");
+        this.btnSave = document.getElementById(DOM_IDS.MASTER.BTN_SAVE_MASTER);
+        this.btnSaveAerators = document.getElementById(DOM_IDS.MASTER.BTN_SAVE_AERATORS);
 
         this.bindEvents();
         appState.subscribe("pondChanged", (pond) => this.render(pond));

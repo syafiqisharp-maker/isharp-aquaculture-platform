@@ -9,6 +9,7 @@ import { FeedRepository } from "../../infrastructure/repositories/feedRepository
 import { HarvestRepository } from "../../infrastructure/repositories/harvestRepository.js";
 import { LabRepository } from "../../infrastructure/repositories/labRepository.js";
 import { Toast } from "../../components/Toast.js";
+import { DOM_IDS, validateContract } from "../../config/domContracts.js";
 
 export const EXCEL_SCHEMAS = {
     sampling: {
@@ -47,16 +48,18 @@ export class ExcelModal {
         this.activeCategory = "sampling";
         this.parsedRows = [];
 
+        validateContract("ExcelModal", DOM_IDS.EXCEL_MODAL);
+
         this.dom = {
-            modal: document.getElementById("modal-excel-paste"),
-            categorySelect: document.getElementById("excel-target-category"),
-            textarea: document.getElementById("excel-paste-textarea"),
-            parsedCount: document.getElementById("excel-parsed-count"),
-            thead: document.getElementById("thead-excel-preview"),
-            tbody: document.getElementById("tbody-excel-preview"),
-            btnCommit: document.getElementById("btn-commit-excel"),
-            btnClose: document.getElementById("btn-close-excel-modal"),
-            btnCloseIcon: document.getElementById("btn-modal-close-icon")
+            modal: document.getElementById(DOM_IDS.EXCEL_MODAL.MODAL),
+            categorySelect: document.getElementById(DOM_IDS.EXCEL_MODAL.CATEGORY_SELECT),
+            textarea: document.getElementById(DOM_IDS.EXCEL_MODAL.TEXTAREA),
+            parsedCount: document.getElementById(DOM_IDS.EXCEL_MODAL.PARSED_COUNT),
+            thead: document.getElementById(DOM_IDS.EXCEL_MODAL.THEAD),
+            tbody: document.getElementById(DOM_IDS.EXCEL_MODAL.TBODY),
+            btnCommit: document.getElementById(DOM_IDS.EXCEL_MODAL.BTN_COMMIT),
+            btnClose: document.getElementById(DOM_IDS.EXCEL_MODAL.BTN_CLOSE),
+            btnCloseIcon: document.getElementById(DOM_IDS.EXCEL_MODAL.BTN_CLOSE_ICON)
         };
 
         this.injectTemplateHelperUI();

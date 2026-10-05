@@ -7,17 +7,18 @@
 import { appState } from "../state/appState.js";
 import { calculateDOC } from "../domain/biometrics.js";
 import { formatPondLabel } from "../domain/rollover.js";
+import { DOM_IDS } from "../config/domContracts.js";
 
 export class PondTreeNav {
     constructor(onSelectPond) {
         this.onSelectPond = onSelectPond;
-        this.container = document.getElementById("sidebar-pond-tree");
-        this.sidebarEl = document.getElementById("command-sidebar");
-        this.toggleBtn = document.getElementById("btn-toggle-sidebar");
-        this.searchInput = document.getElementById("sidebar-pond-search");
-        this.countBadge = document.getElementById("sidebar-pond-count");
-        this.btnToggleAll = document.getElementById("btn-toggle-all-modules");
-        this.labelToggleAll = document.getElementById("label-toggle-all-modules");
+        this.container = document.getElementById(DOM_IDS.SIDEBAR.TREE_ROOT);
+        this.sidebarEl = document.getElementById(DOM_IDS.SIDEBAR.CONTAINER);
+        this.toggleBtn = document.getElementById(DOM_IDS.SIDEBAR.TOGGLE_BTN);
+        this.searchInput = document.getElementById(DOM_IDS.SIDEBAR.SIDEBAR_SEARCH);
+        this.countBadge = document.getElementById(DOM_IDS.SIDEBAR.COUNT_BADGE);
+        this.btnToggleAll = document.getElementById(DOM_IDS.SIDEBAR.TOGGLE_ALL_BTN);
+        this.labelToggleAll = document.getElementById(DOM_IDS.SIDEBAR.TOGGLE_ALL_LABEL);
 
         this.collapsedModules = new Set();
         this.searchQuery = "";

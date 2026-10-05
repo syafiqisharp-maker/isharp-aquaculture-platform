@@ -7,23 +7,26 @@ import { appState } from "../../state/appState.js";
 import { PondRepository } from "../../infrastructure/repositories/pondRepository.js";
 import { hasPermission, PERMISSIONS } from "../../config/permissions.js";
 import { Toast } from "../../components/Toast.js";
+import { DOM_IDS, validateContract } from "../../config/domContracts.js";
 
 export class StockingTab {
     constructor() {
+        validateContract("StockingTab", DOM_IDS.STOCKING);
+
         this.dom = {
-            stckDate: document.getElementById("input-stck-date"),
-            stckSource: document.getElementById("input-stck-source"),
-            stckSpecies: document.getElementById("input-stck-species"),
-            stckNetto: document.getElementById("input-stck-netto"),
-            stckAllow: document.getElementById("input-stck-allow"),
-            stckGross: document.getElementById("input-stck-gross"),
-            stckLine: document.getElementById("input-stck-line"),
-            stckSize: document.getElementById("input-stck-size"),
-            stckTank: document.getElementById("input-stck-tank"),
-            tbodyBatches: document.getElementById("tbody-stocking-batches")
+            stckDate: document.getElementById(DOM_IDS.STOCKING.STCK_DATE),
+            stckSource: document.getElementById(DOM_IDS.STOCKING.STCK_SOURCE),
+            stckSpecies: document.getElementById(DOM_IDS.STOCKING.STCK_SPECIES),
+            stckNetto: document.getElementById(DOM_IDS.STOCKING.STCK_NETTO),
+            stckAllow: document.getElementById(DOM_IDS.STOCKING.STCK_ALLOW),
+            stckGross: document.getElementById(DOM_IDS.STOCKING.STCK_GROSS),
+            stckLine: document.getElementById(DOM_IDS.STOCKING.STCK_LINE),
+            stckSize: document.getElementById(DOM_IDS.STOCKING.STCK_SIZE),
+            stckTank: document.getElementById(DOM_IDS.STOCKING.STCK_TANK),
+            tbodyBatches: document.getElementById(DOM_IDS.STOCKING.TBODY_BATCHES)
         };
 
-        this.btnSave = document.getElementById("btn-save-stocking");
+        this.btnSave = document.getElementById(DOM_IDS.STOCKING.BTN_SAVE);
 
         this.bindEvents();
         appState.subscribe("pondChanged", (pond) => this.render(pond));

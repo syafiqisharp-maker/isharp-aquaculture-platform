@@ -8,18 +8,19 @@ import { ROLES, getRoleMeta } from "../config/permissions.js";
 import { PondRepository } from "../infrastructure/repositories/pondRepository.js";
 import { calculateDOC } from "../domain/biometrics.js";
 import { Toast } from "./Toast.js";
+import { DOM_IDS } from "../config/domContracts.js";
 
 export class Navbar {
     constructor(onOpenExcel) {
         this.onOpenExcel = onOpenExcel;
 
         this.dom = {
-            selectPond: document.getElementById("select-pond-index"),
-            btnPrev: document.getElementById("btn-prev-pond"),
-            btnNext: document.getElementById("btn-next-pond"),
-            btnRefresh: document.getElementById("btn-refresh-master"),
-            btnExcel: document.getElementById("btn-open-excel-modal"),
-            selectRole: document.getElementById("select-user-role")
+            selectPond: document.getElementById(DOM_IDS.NAV.SELECT_POND),
+            btnPrev: document.getElementById(DOM_IDS.NAV.BTN_PREV),
+            btnNext: document.getElementById(DOM_IDS.NAV.BTN_NEXT),
+            btnRefresh: document.getElementById(DOM_IDS.NAV.BTN_REFRESH),
+            btnExcel: document.getElementById(DOM_IDS.NAV.BTN_EXCEL),
+            selectRole: document.getElementById(DOM_IDS.NAV.SELECT_ROLE)
         };
 
         this.initRoleSelector();

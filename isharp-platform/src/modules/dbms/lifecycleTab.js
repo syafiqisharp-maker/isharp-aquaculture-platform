@@ -8,6 +8,7 @@ import { appState } from "../../state/appState.js";
 import { PondRepository } from "../../infrastructure/repositories/pondRepository.js";
 import { isCycleClosed, parsePondIndex } from "../../domain/rollover.js";
 import { Toast } from "../../components/Toast.js";
+import { DOM_IDS, validateContract } from "../../config/domContracts.js";
 
 export class LifecycleTab {
     constructor(onSelectPond) {
@@ -15,61 +16,63 @@ export class LifecycleTab {
         this.distinctPonds = [];
         this.selectedPondHistory = [];
 
+        validateContract("LifecycleTab", DOM_IDS.LIFECYCLE);
+
         this.dom = {
             // Current Cycle Status Widget
-            currentIndex: document.getElementById("lifecycle-current-index"),
-            currentPond: document.getElementById("lifecycle-current-pond"),
-            statusBadge: document.getElementById("lifecycle-status-badge"),
-            activeBadge: document.getElementById("lifecycle-active-badge"),
-            docVal: document.getElementById("lifecycle-doc-val"),
-            stockDate: document.getElementById("lifecycle-stock-date"),
-            closeDate: document.getElementById("lifecycle-close-date"),
-            areaVal: document.getElementById("lifecycle-area-val"),
+            currentIndex: document.getElementById(DOM_IDS.LIFECYCLE.CURRENT_INDEX),
+            currentPond: document.getElementById(DOM_IDS.LIFECYCLE.CURRENT_POND),
+            statusBadge: document.getElementById(DOM_IDS.LIFECYCLE.STATUS_BADGE),
+            activeBadge: document.getElementById(DOM_IDS.LIFECYCLE.ACTIVE_BADGE),
+            docVal: document.getElementById(DOM_IDS.LIFECYCLE.DOC_VAL),
+            stockDate: document.getElementById(DOM_IDS.LIFECYCLE.STOCK_DATE),
+            closeDate: document.getElementById(DOM_IDS.LIFECYCLE.CLOSE_DATE),
+            areaVal: document.getElementById(DOM_IDS.LIFECYCLE.AREA_VAL),
             
             // Action Buttons
-            btnTerminateRollover: document.getElementById("btn-lifecycle-terminate-rollover"),
-            btnTerminateOnly: document.getElementById("btn-lifecycle-terminate-only"),
-            btnReviveAction: document.getElementById("btn-lifecycle-revive-action"),
-            calloutStatusTitle: document.getElementById("lifecycle-callout-title"),
-            calloutStatusDesc: document.getElementById("lifecycle-callout-desc"),
+            btnTerminateRollover: document.getElementById(DOM_IDS.LIFECYCLE.BTN_TERMINATE_ROLLOVER),
+            btnTerminateOnly: document.getElementById(DOM_IDS.LIFECYCLE.BTN_TERMINATE_ONLY),
+            btnReviveAction: document.getElementById(DOM_IDS.LIFECYCLE.BTN_REVIVE_ACTION),
+            calloutStatusTitle: document.getElementById(DOM_IDS.LIFECYCLE.CALLOUT_TITLE),
+            calloutStatusDesc: document.getElementById(DOM_IDS.LIFECYCLE.CALLOUT_DESC),
 
             // Termination Modal
-            modalTerminate: document.getElementById("modal-terminate-options"),
-            terminateModalPondIndex: document.getElementById("terminate-modal-pond-index"),
-            terminateDateInput: document.getElementById("terminate-date-input"),
-            terminateStatusSelect: document.getElementById("terminate-status-select"),
-            radioRolloverYes: document.getElementById("radio-rollover-yes"),
-            radioRolloverNo: document.getElementById("radio-rollover-no"),
-            btnConfirmTerminate: document.getElementById("btn-confirm-terminate-execution"),
-            btnCancelTerminate: document.getElementById("btn-cancel-terminate-modal"),
-            btnCloseTerminateIcon: document.getElementById("btn-close-terminate-icon"),
+            modalTerminate: document.getElementById(DOM_IDS.LIFECYCLE.MODAL_TERMINATE),
+            terminateModalPondIndex: document.getElementById(DOM_IDS.LIFECYCLE.TERMINATE_POND_INDEX),
+            terminateDateInput: document.getElementById(DOM_IDS.LIFECYCLE.TERMINATE_DATE_INPUT),
+            terminateStatusSelect: document.getElementById(DOM_IDS.LIFECYCLE.TERMINATE_STATUS_SELECT),
+            radioRolloverYes: document.getElementById(DOM_IDS.LIFECYCLE.RADIO_ROLLOVER_YES),
+            radioRolloverNo: document.getElementById(DOM_IDS.LIFECYCLE.RADIO_ROLLOVER_NO),
+            btnConfirmTerminate: document.getElementById(DOM_IDS.LIFECYCLE.BTN_CONFIRM_TERMINATE),
+            btnCancelTerminate: document.getElementById(DOM_IDS.LIFECYCLE.BTN_CANCEL_TERMINATE),
+            btnCloseTerminateIcon: document.getElementById(DOM_IDS.LIFECYCLE.BTN_CLOSE_TERMINATE_ICON),
 
             // Revive Modal
-            modalRevive: document.getElementById("modal-revive-cycle"),
-            reviveModalPondIndex: document.getElementById("revive-modal-pond-index"),
-            reviveModalPondName: document.getElementById("revive-modal-pond-name"),
-            reviveModalCycleCode: document.getElementById("revive-modal-cycle-code"),
-            reviveModalNextCycle: document.getElementById("revive-modal-next-cycle"),
-            btnConfirmReviveDelete: document.getElementById("btn-confirm-revive-delete"),
-            btnConfirmReviveKeep: document.getElementById("btn-confirm-revive-keep"),
-            btnCloseReviveModal: document.getElementById("btn-close-revive-modal"),
-            btnCloseReviveModalIcon: document.getElementById("btn-close-revive-modal-icon"),
+            modalRevive: document.getElementById(DOM_IDS.LIFECYCLE.MODAL_REVIVE),
+            reviveModalPondIndex: document.getElementById(DOM_IDS.LIFECYCLE.REVIVE_POND_INDEX),
+            reviveModalPondName: document.getElementById(DOM_IDS.LIFECYCLE.REVIVE_POND_NAME),
+            reviveModalCycleCode: document.getElementById(DOM_IDS.LIFECYCLE.REVIVE_CYCLE_CODE),
+            reviveModalNextCycle: document.getElementById(DOM_IDS.LIFECYCLE.REVIVE_NEXT_CYCLE),
+            btnConfirmReviveDelete: document.getElementById(DOM_IDS.LIFECYCLE.BTN_CONFIRM_REVIVE_DELETE),
+            btnConfirmReviveKeep: document.getElementById(DOM_IDS.LIFECYCLE.BTN_CONFIRM_REVIVE_KEEP),
+            btnCloseReviveModal: document.getElementById(DOM_IDS.LIFECYCLE.BTN_CLOSE_REVIVE_MODAL),
+            btnCloseReviveModalIcon: document.getElementById(DOM_IDS.LIFECYCLE.BTN_CLOSE_REVIVE_MODAL_ICON),
 
             // Custom Cycle Registration Form
-            selectCreatePond: document.getElementById("select-create-pond"),
-            inputCustomPond: document.getElementById("input-create-custom-pond"),
-            customPondWrap: document.getElementById("wrap-create-custom-pond"),
-            inputCycleNo: document.getElementById("input-create-cycle-no"),
-            hintCycleSuggestion: document.getElementById("hint-create-cycle-suggestion"),
-            selectCreateStatus: document.getElementById("select-create-status"),
-            inputCreateArea: document.getElementById("input-create-area"),
-            inputCreateStockDate: document.getElementById("input-create-stock-date"),
-            btnSubmitCreateCycle: document.getElementById("btn-submit-create-cycle"),
+            selectCreatePond: document.getElementById(DOM_IDS.LIFECYCLE.SELECT_CREATE_POND),
+            inputCustomPond: document.getElementById(DOM_IDS.LIFECYCLE.INPUT_CUSTOM_POND),
+            customPondWrap: document.getElementById(DOM_IDS.LIFECYCLE.WRAP_CUSTOM_POND),
+            inputCycleNo: document.getElementById(DOM_IDS.LIFECYCLE.INPUT_CYCLE_NO),
+            hintCycleSuggestion: document.getElementById(DOM_IDS.LIFECYCLE.HINT_CYCLE_SUGGESTION),
+            selectCreateStatus: document.getElementById(DOM_IDS.LIFECYCLE.SELECT_CREATE_STATUS),
+            inputCreateArea: document.getElementById(DOM_IDS.LIFECYCLE.INPUT_CREATE_AREA),
+            inputCreateStockDate: document.getElementById(DOM_IDS.LIFECYCLE.INPUT_CREATE_STOCK_DATE),
+            btnSubmitCreateCycle: document.getElementById(DOM_IDS.LIFECYCLE.BTN_SUBMIT_CREATE_CYCLE),
 
             // Cycle Registry Table
-            tableRegistry: document.getElementById("table-cycle-registry"),
-            tbodyRegistry: document.getElementById("tbody-cycle-registry"),
-            registryPondTitle: document.getElementById("registry-pond-title")
+            tableRegistry: document.getElementById(DOM_IDS.LIFECYCLE.TABLE_REGISTRY),
+            tbodyRegistry: document.getElementById(DOM_IDS.LIFECYCLE.TBODY_REGISTRY),
+            registryPondTitle: document.getElementById(DOM_IDS.LIFECYCLE.REGISTRY_POND_TITLE)
         };
 
         this.bindEvents();

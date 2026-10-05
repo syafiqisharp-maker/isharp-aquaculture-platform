@@ -8,19 +8,22 @@ import { appState } from "../../state/appState.js";
 import { SamplingRepository } from "../../infrastructure/repositories/samplingRepository.js";
 import { calculateADG, calculateBiomass, getStandardABW } from "../../domain/biometrics.js";
 import { calculateFCR } from "../../domain/feeding.js";
+import { DOM_IDS, validateContract } from "../../config/domContracts.js";
 
 export class PerformanceTab {
     constructor() {
+        validateContract("PerformanceTab", DOM_IDS.PERFORMANCE);
+
         this.dom = {
-            canvas: document.getElementById("growthChart") || document.getElementById("growth-curve-canvas"),
-            kpiAdg: document.getElementById("kpi-adg"),
-            kpiAdgSub: document.getElementById("kpi-adg-sub"),
-            kpiFcr: document.getElementById("kpi-fcr"),
-            kpiFcrSub: document.getElementById("kpi-fcr-sub"),
-            kpiBiomass: document.getElementById("kpi-biomass"),
-            kpiBiomassSub: document.getElementById("kpi-biomass-sub"),
-            kpiProjDoc: document.getElementById("kpi-proj-doc"),
-            kpiProjDocSub: document.getElementById("kpi-proj-doc-sub")
+            canvas: document.getElementById(DOM_IDS.PERFORMANCE.CANVAS) || document.getElementById("growth-curve-canvas"),
+            kpiAdg: document.getElementById(DOM_IDS.PERFORMANCE.KPI_ADG),
+            kpiAdgSub: document.getElementById(DOM_IDS.PERFORMANCE.KPI_ADG_SUB),
+            kpiFcr: document.getElementById(DOM_IDS.PERFORMANCE.KPI_FCR),
+            kpiFcrSub: document.getElementById(DOM_IDS.PERFORMANCE.KPI_FCR_SUB),
+            kpiBiomass: document.getElementById(DOM_IDS.PERFORMANCE.KPI_BIOMASS),
+            kpiBiomassSub: document.getElementById(DOM_IDS.PERFORMANCE.KPI_BIOMASS_SUB),
+            kpiProjDoc: document.getElementById(DOM_IDS.PERFORMANCE.KPI_PROJ_DOC),
+            kpiProjDocSub: document.getElementById(DOM_IDS.PERFORMANCE.KPI_PROJ_DOC_SUB)
         };
 
         this.ctx = this.dom.canvas ? this.dom.canvas.getContext("2d") : null;

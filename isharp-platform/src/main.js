@@ -16,6 +16,7 @@ import { ViewRouter } from "./routing/viewRouter.js";
 import { LandingPage } from "./modules/landing/landingPage.js";
 import { ExecutiveView } from "./modules/executive/executiveTab.js";
 import { FieldOpsView } from "./modules/fieldOps/fieldOpsView.js";
+import { DbmsView } from "./modules/dbms/dbmsView.js";
 
 // Tab Modules (System 2: iSHARP DBMS)
 import { MasterTab } from "./modules/dbms/masterTab.js";
@@ -38,10 +39,11 @@ class App {
         try {
             console.log("🦐 Bootstrapping iSHARP DBMS 2.0 (Frutiger Aero Edition)...");
 
-            // 0. Initialize View Router, Landing Page, Executive Dashboard, and Field Operations
+            // 0. Initialize View Router, Landing Page, Executive Dashboard, Field Operations, and DBMS View
             this.landingPage = new LandingPage("view-portal");
             this.executiveView = new ExecutiveView("view-executive");
             this.fieldOpsView = new FieldOpsView("view-field-ops");
+            this.dbmsView = new DbmsView("view-dbms");
             this.router = new ViewRouter();
             this.landingPage.setRouter(this.router);
 

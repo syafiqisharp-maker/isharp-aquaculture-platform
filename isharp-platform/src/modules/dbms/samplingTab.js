@@ -7,14 +7,15 @@ import { appState } from "../../state/appState.js";
 import { SamplingRepository } from "../../infrastructure/repositories/samplingRepository.js";
 import { calculateADG } from "../../domain/biometrics.js";
 import { Toast } from "../../components/Toast.js";
+import { DOM_IDS } from "../../config/domContracts.js";
 
 export class SamplingTab {
     constructor(onOpenExcel) {
         this.onOpenExcel = onOpenExcel;
         this.dom = {
-            tbody: document.getElementById("tbody-sampling"),
-            snapLatestAbw: document.getElementById("snap-latest-abw"),
-            btnExcelSampling: document.getElementById("btn-excel-sampling-tab")
+            tbody: document.getElementById(DOM_IDS.SAMPLING.TBODY_SAMPLING),
+            snapLatestAbw: document.getElementById(DOM_IDS.MASTER.SNAP_LATEST_ABW),
+            btnExcelSampling: document.getElementById(DOM_IDS.SAMPLING.BTN_EXCEL_TAB)
         };
 
         this.injectExcelButtonIfMissing();

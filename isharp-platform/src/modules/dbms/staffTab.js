@@ -8,35 +8,36 @@ import { appState } from "../../state/appState.js";
 import { InventoryRepository } from "../../infrastructure/repositories/inventoryRepository.js";
 import { StaffRepository } from "../../infrastructure/repositories/staffRepository.js";
 import { Toast } from "../../components/Toast.js";
+import { DOM_IDS } from "../../config/domContracts.js";
 
 export class StaffTab {
     constructor() {
         this.dom = {
-            tabPane: document.getElementById("tab-staff"),
-            cycleBadge: document.getElementById("staff-cycle-badge"),
-            datalist: document.getElementById("staff-directory-datalist"),
+            tabPane: document.getElementById(DOM_IDS.STAFF.TAB_PANE),
+            cycleBadge: document.getElementById(DOM_IDS.STAFF.CYCLE_BADGE),
+            datalist: document.getElementById(DOM_IDS.STAFF.DATALIST),
 
             // ID Inputs
-            inputPmId: document.getElementById("input-pm-id"),
-            inputSvId: document.getElementById("input-sv-id"),
-            inputRlId: document.getElementById("input-rl-id"),
-            inputPoId: document.getElementById("input-po-id"),
-            inputSupportId: document.getElementById("input-support-id"),
+            inputPmId: document.getElementById(DOM_IDS.STAFF.INPUT_PM_ID),
+            inputSvId: document.getElementById(DOM_IDS.STAFF.INPUT_SV_ID),
+            inputRlId: document.getElementById(DOM_IDS.STAFF.INPUT_RL_ID),
+            inputPoId: document.getElementById(DOM_IDS.STAFF.INPUT_PO_ID),
+            inputSupportId: document.getElementById(DOM_IDS.STAFF.INPUT_SUPPORT_ID),
 
             // Name Outputs
-            inputPmName: document.getElementById("input-pm-name"),
-            inputSvName: document.getElementById("input-sv-name"),
-            inputRlName: document.getElementById("input-rl-name"),
-            inputPoName: document.getElementById("input-po-name"),
-            inputSupportName: document.getElementById("input-support-name"),
+            inputPmName: document.getElementById(DOM_IDS.STAFF.INPUT_PM_NAME),
+            inputSvName: document.getElementById(DOM_IDS.STAFF.INPUT_SV_NAME),
+            inputRlName: document.getElementById(DOM_IDS.STAFF.INPUT_RL_NAME),
+            inputPoName: document.getElementById(DOM_IDS.STAFF.INPUT_PO_NAME),
+            inputSupportName: document.getElementById(DOM_IDS.STAFF.INPUT_SUPPORT_NAME),
 
             // Action Buttons
-            btnSave: document.getElementById("btn-save-staff"),
-            btnReset: document.getElementById("btn-reset-staff"),
+            btnSave: document.getElementById(DOM_IDS.STAFF.BTN_SAVE),
+            btnReset: document.getElementById(DOM_IDS.STAFF.BTN_RESET),
 
             // Operational Notes
-            notesContainer: document.getElementById("notes-feed-container"),
-            textareaNotes: document.getElementById("textarea-notes")
+            notesContainer: document.getElementById(DOM_IDS.STAFF.NOTES_CONTAINER),
+            textareaNotes: document.getElementById(DOM_IDS.STAFF.TEXTAREA_NOTES)
         };
 
         this.currentPond = null;

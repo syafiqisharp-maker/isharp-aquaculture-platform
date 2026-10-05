@@ -8,24 +8,25 @@ import { calculateDOC } from "../domain/biometrics.js";
 import { formatPondLabel } from "../domain/rollover.js";
 import { PondRepository } from "../infrastructure/repositories/pondRepository.js";
 import { LabRepository } from "../infrastructure/repositories/labRepository.js";
+import { DOM_IDS } from "../config/domContracts.js";
 
 export class MasterBanner {
     constructor(onSelectCycle) {
         this.onSelectCycle = onSelectCycle;
         this.dom = {
-            badgePondIndex: document.getElementById("badge-pond-index"),
-            badgePondLabel: document.getElementById("badge-pond-label"),
-            badgePondStatus: document.getElementById("badge-pond-status"),
-            badgePondActive: document.getElementById("badge-pond-active"),
-            badgeSpecies: document.getElementById("badge-species") || document.getElementById("snap-species"),
-            badgeGenetic: document.getElementById("badge-genetic") || document.getElementById("snap-genetic"),
+            badgePondIndex: document.getElementById(DOM_IDS.BANNER.BADGE_POND_INDEX),
+            badgePondLabel: document.getElementById(DOM_IDS.BANNER.BADGE_POND_LABEL),
+            badgePondStatus: document.getElementById(DOM_IDS.BANNER.BADGE_POND_STATUS),
+            badgePondActive: document.getElementById(DOM_IDS.BANNER.BADGE_POND_ACTIVE),
+            badgeSpecies: document.getElementById(DOM_IDS.BANNER.BADGE_SPECIES) || document.getElementById("snap-species"),
+            badgeGenetic: document.getElementById(DOM_IDS.BANNER.BADGE_GENETIC) || document.getElementById("snap-genetic"),
             badgeCycleNo: document.getElementById("badge-cycle-no"),
-            selectCycleHistory: document.getElementById("select-cycle-history"),
+            selectCycleHistory: document.getElementById(DOM_IDS.NAV.CYCLE_HISTORY),
             badgeCropNo: document.getElementById("badge-crop-no"),
-            badgeDoc: document.getElementById("badge-doc"),
+            badgeDoc: document.getElementById(DOM_IDS.BANNER.BADGE_DOC),
             badgeArea: document.getElementById("badge-area"),
-            badgeTotalHp: document.getElementById("badge-total-hp"),
-            badgeDiseaseStatus: document.getElementById("badge-disease-status")
+            badgeTotalHp: document.getElementById(DOM_IDS.BANNER.BADGE_TOTAL_HP),
+            badgeDiseaseStatus: document.getElementById(DOM_IDS.BANNER.BADGE_DISEASE_STATUS)
         };
 
         if (this.dom.selectCycleHistory) {

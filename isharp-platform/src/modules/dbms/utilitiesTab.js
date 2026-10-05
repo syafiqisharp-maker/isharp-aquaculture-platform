@@ -7,11 +7,14 @@ import { appState } from "../../state/appState.js";
 import { SamplingRepository } from "../../infrastructure/repositories/samplingRepository.js";
 import { hasPermission, PERMISSIONS } from "../../config/permissions.js";
 import { Toast } from "../../components/Toast.js";
+import { DOM_IDS, validateContract } from "../../config/domContracts.js";
 
 export class UtilitiesTab {
     constructor() {
+        validateContract("UtilitiesTab", DOM_IDS.UTILITIES);
+
         this.dom = {
-            tabPane: document.getElementById("tab-utilities")
+            tabPane: document.getElementById(DOM_IDS.UTILITIES.TAB_PANE)
         };
 
         this.bindEvents();

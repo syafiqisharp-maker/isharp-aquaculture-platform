@@ -6,13 +6,14 @@
 import { appState } from "../../state/appState.js";
 import { FeedRepository } from "../../infrastructure/repositories/feedRepository.js";
 import { Toast } from "../../components/Toast.js";
+import { DOM_IDS } from "../../config/domContracts.js";
 
 export class FeedingTab {
     constructor(onOpenExcel) {
         this.onOpenExcel = onOpenExcel;
         this.dom = {
-            tbody: document.getElementById("tbody-feed"),
-            snapTotalFeed: document.getElementById("snap-total-feed")
+            tbody: document.getElementById(DOM_IDS.FEEDING.TBODY_FEED),
+            snapTotalFeed: document.getElementById(DOM_IDS.MASTER.SNAP_TOTAL_FEED)
         };
 
         this.injectExcelButtonIfMissing();

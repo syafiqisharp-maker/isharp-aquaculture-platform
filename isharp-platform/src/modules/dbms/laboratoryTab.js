@@ -6,14 +6,17 @@
 import { appState } from "../../state/appState.js";
 import { LabRepository } from "../../infrastructure/repositories/labRepository.js";
 import { hasPermission, PERMISSIONS } from "../../config/permissions.js";
+import { DOM_IDS, validateContract } from "../../config/domContracts.js";
 
 export class LaboratoryTab {
     constructor(onOpenExcel) {
         this.onOpenExcel = onOpenExcel;
+        validateContract("LaboratoryTab", DOM_IDS.LABORATORY);
+
         this.dom = {
-            tabPane: document.getElementById("tab-laboratory"),
-            tbodyIssues: document.getElementById("tbody-issues"),
-            btnAddLab: document.getElementById("btn-add-lab-record")
+            tabPane: document.getElementById(DOM_IDS.LABORATORY.TAB_PANE),
+            tbodyIssues: document.getElementById(DOM_IDS.LABORATORY.TBODY_ISSUES),
+            btnAddLab: document.getElementById(DOM_IDS.LABORATORY.BTN_ADD_LAB)
         };
 
         this.bindEvents();
