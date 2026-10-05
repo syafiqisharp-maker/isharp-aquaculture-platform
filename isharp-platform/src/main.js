@@ -10,6 +10,7 @@ import { Toast } from "./components/Toast.js";
 import { Navbar } from "./components/Navbar.js";
 import { ExecutiveFilterBar } from "./components/ExecutiveFilterBar.js";
 import { MasterBanner } from "./components/MasterBanner.js";
+import { PondTreeNav } from "./components/PondTreeNav.js";
 import { ExcelModal } from "./features/excelImporter/excelModal.js";
 import { ViewRouter } from "./routing/viewRouter.js";
 import { LandingPage } from "./modules/landing/landingPage.js";
@@ -57,6 +58,21 @@ class App {
             this.filterBar = new ExecutiveFilterBar();
             this.masterBanner = new MasterBanner((pondIndex) => {
                 this.navbar.selectPondByIndex(pondIndex);
+            });
+            this.pondTree = new PondTreeNav((pondIndex) => {
+                this.navbar.selectPondByIndex(pondIndex);
+            });
+
+            // Global Quick-Jump Keyboard Shortcut (Ctrl+K or Cmd+K)
+            window.addEventListener("keydown", (e) => {
+                if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
+                    const searchInput = document.getElementById("input-pond-search") || document.getElementById("sidebar-pond-search");
+                    if (searchInput) {
+                        e.preventDefault();
+                        searchInput.focus();
+                        if (searchInput.select) searchInput.select();
+                    }
+                }
             });
 
             // 2. Initialize Tab Controllers
