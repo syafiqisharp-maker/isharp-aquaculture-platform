@@ -26,6 +26,15 @@ export class FieldOpsView {
         this.activePond = null;
         this.moduleData = [];
 
+        // Track scroll positions across sub-views to restore position on "Back" navigation
+        this.currentSubView = "map";
+        this.subViewScrollPositions = {
+            map: 0,
+            detail: 0,
+            mgmt: 0,
+            daily: 0
+        };
+
         // Ensure any legacy bubble layer is removed for optimal mobile performance
         const legacyBubbleLayer = document.getElementById("aero-global-bubble-layer");
         if (legacyBubbleLayer) legacyBubbleLayer.remove();
@@ -259,24 +268,43 @@ export class FieldOpsView {
         const mgmtMount = this.container.querySelector("#field-ops-management-mount");
         const dailyMount = this.container.querySelector("#field-ops-daily-records-mount");
 
-        // Helper to switch cleanly between the 4 views
-        const showView = (viewName) => {
+        // Helper to switch cleanly between the 4 views with scroll position retention
+        const showView = (viewName, { isBack = false } = {}) => {
+            const currentY = window.scrollY || window.pageYOffset || document.documentElement.scrollTop || 0;
+
+            // Remember scroll position of outgoing view
+            if (this.currentSubView) {
+                this.subViewScrollPositions[this.currentSubView] = currentY;
+            }
+
+            this.currentSubView = viewName;
+
             if (dailyMount) dailyMount.classList.remove("daily-mount-modal-only");
             if (mapMount) mapMount.style.display = viewName === "map" ? "block" : "none";
             if (detailMount) detailMount.style.display = viewName === "detail" ? "block" : "none";
             if (mgmtMount) mgmtMount.style.display = viewName === "mgmt" ? "block" : "none";
             if (dailyMount) dailyMount.style.display = viewName === "daily" ? "block" : "none";
-            window.scrollTo({ top: 0, behavior: "smooth" });
+
+            if (isBack) {
+                const targetY = this.subViewScrollPositions[viewName] || 0;
+                window.scrollTo(0, targetY);
+                requestAnimationFrame(() => {
+                    window.scrollTo(0, targetY);
+                });
+            } else {
+                // Forward navigation starts at top of the newly opened view
+                window.scrollTo(0, 0);
+            }
         };
 
         // 1. Dedicated Daily Records Logbook Page
         this.dailyRecordsPage = new DailyRecordsPage("field-ops-daily-records-mount", {
             onBackToPond: (pond) => {
-                showView("detail");
+                showView("detail", { isBack: true });
                 this.pondDetail.render(pond);
             },
             onBackToMap: () => {
-                showView("map");
+                showView("map", { isBack: true });
                 this.mapComponent.loadModulePonds();
             },
             onRecordSaved: () => {
@@ -298,11 +326,11 @@ export class FieldOpsView {
         // 2. Dedicated Management Entry Page
         this.managementPage = new ManagementEntryPage("field-ops-management-mount", {
             onBackToPond: (pond) => {
-                showView("detail");
+                showView("detail", { isBack: true });
                 this.pondDetail.render(pond);
             },
             onBackToMap: () => {
-                showView("map");
+                showView("map", { isBack: true });
                 this.mapComponent.loadModulePonds();
             },
             onSaved: (updatedPond) => {
@@ -316,17 +344,17 @@ export class FieldOpsView {
         // 3. Pond WQS Detail View
         this.pondDetail = new PondWqsDetail("field-ops-detail-mount", {
             onBack: () => {
-                showView("map");
+                showView("map", { isBack: true });
             },
             onOpenDailyRecords: (targetPond) => {
                 this.activePond = targetPond;
-                showView("daily");
+                showView("daily", { isBack: false });
                 const activePonds = this.mapComponent ? this.mapComponent.getActivePondsList() : [];
                 this.dailyRecordsPage.render(targetPond, activePonds);
             },
             onOpenManagement: (targetPond) => {
                 this.activePond = targetPond;
-                showView("mgmt");
+                showView("mgmt", { isBack: false });
                 this.managementPage.render(targetPond);
             }
         });
@@ -337,7 +365,7 @@ export class FieldOpsView {
             this.currentModule,
             (pond, telemetry) => {
                 this.activePond = pond;
-                showView("detail");
+                showView("detail", { isBack: false });
                 this.pondDetail.render(pond, telemetry);
             },
             (targetPond, activePondsList) => {

@@ -23,6 +23,7 @@ export class PondTreeNav {
         this.collapsedModules = new Set();
         this.searchQuery = "";
         this.allModulesList = [];
+        this.initialLoadCollapsed = true;
 
         this.initSidebarToggle();
         this.initToggleAll();
@@ -156,14 +157,19 @@ export class PondTreeNav {
         const moduleKeys = Object.keys(groups).sort();
         this.allModulesList = moduleKeys;
 
+        // On first load, collapse all modules so the user sees the active pond count per module
+        if (this.initialLoadCollapsed && moduleKeys.length > 0) {
+            moduleKeys.forEach(m => this.collapsedModules.add(m));
+            this.initialLoadCollapsed = false;
+        }
+
         moduleKeys.forEach(mod => {
             const pondList = groups[mod];
             const isCollapsed = this.collapsedModules.has(mod);
             const modTitle = this.getModuleName(mod);
-            const hasActivePond = pondList.some(c => String(c.pond_index) === activePondIdx);
 
-            // Auto-expand module if it contains the active pond
-            const showCollapsed = isCollapsed && !hasActivePond;
+            // Keep collapsed unless user expands it or searches
+            const showCollapsed = isCollapsed && !this.searchQuery;
 
             html += `
                 <div class="module-group ${showCollapsed ? 'collapsed' : ''}" data-mod="${mod}">
@@ -189,7 +195,7 @@ export class PondTreeNav {
                 }
 
                 html += `
-                    <div class="pond-tree-item status-${status} ${isActive ? 'active' : ''}" 
+                    <div class="pond-tree-item ${isActive ? 'active' : ''}" 
                          data-pond-index="${c.pond_index}" 
                          title="Pond ${formattedPond} — ${c.status || 'Active'} (${docText})">
                         <div style="display: flex; align-items: center; gap: 0.45rem;">

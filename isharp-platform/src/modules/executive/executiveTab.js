@@ -117,7 +117,7 @@ export class ExecutiveView {
                                 <div class="placeholder-icon">📊</div>
                                 <div class="placeholder-title">Executive Biomass &amp; Capacity Analytics (Phase 3)</div>
                                 <p class="placeholder-desc">
-                                    Live standing crop biomass tonnage, culture stage distribution (Early, Mid, Finishing), and upcoming harvest pipeline based on active production ponds.
+                                    Live current crop biomass tonnage, culture stage distribution (Early, Mid, Finishing), and upcoming harvest pipeline based on active production ponds.
                                 </p>
                             </div>
                         </div>

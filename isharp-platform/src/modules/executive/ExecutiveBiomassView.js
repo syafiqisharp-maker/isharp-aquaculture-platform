@@ -191,7 +191,7 @@ export class ExecutiveBiomassView {
 
         const optimumTons = Math.round(optimumList.reduce((acc, p) => acc + (p.biomassKg || 0), 0) / 100) / 10;
         const minimumTons = Math.round(minimumList.reduce((acc, p) => acc + (p.biomassKg || 0), 0) / 100) / 10;
-        const standingBiomassTons = Math.round(this.evaluatedPonds.reduce((acc, p) => acc + (p.biomassKg || 0), 0) / 100) / 10;
+        const currentBiomassTons = Math.round(this.evaluatedPonds.reduce((acc, p) => acc + (p.biomassKg || 0), 0) / 100) / 10;
         const activePondsCount = this.evaluatedPonds.length;
 
         this.container.innerHTML = `
@@ -318,17 +318,17 @@ export class ExecutiveBiomassView {
                         </div>
                     </div>
 
-                    <!-- Tile 6: Live Standing Crop -->
+                    <!-- Tile 6: Live Current Crop -->
                     <div class="sleek-card sleek-kpi" style="padding: 1rem 1.15rem; background: linear-gradient(180deg, #ffffff 65%, #f0f9ff 100%); border-color: #e0f2fe;">
                         <div style="display: flex; justify-content: space-between; align-items: center;">
-                            <span style="font-size: 0.68rem; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.04em;">Live Standing Crop</span>
+                            <span style="font-size: 0.68rem; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.04em;">Live Current Crop</span>
                             <span style="display: inline-flex; align-items: center; gap: 4px; padding: 0.15rem 0.45rem; border-radius: 9999px; font-size: 0.65rem; font-weight: 700; background: #f0f9ff; color: #0369a1; border: 1px solid #bae6fd;">
                                 <span style="width: 5px; height: 5px; border-radius: 50%; background: #0284c7;"></span>
                                 Farm
                             </span>
                         </div>
                         <div style="margin-top: 0.4rem; display: flex; align-items: baseline; gap: 0.4rem;">
-                            <span style="font-size: 1.65rem; font-weight: 800; color: #0f172a; font-family: ui-monospace, monospace;">${standingBiomassTons.toLocaleString()}</span>
+                            <span style="font-size: 1.65rem; font-weight: 800; color: #0f172a; font-family: ui-monospace, monospace;">${currentBiomassTons.toLocaleString()}</span>
                             <span style="font-size: 0.75rem; color: #64748b; font-weight: 600;">Tons</span>
                         </div>
                         <div style="margin-top: 0.35rem; padding-top: 0.4rem; border-top: 1px solid #f1f5f9; display: flex; justify-content: space-between; font-size: 0.72rem;">

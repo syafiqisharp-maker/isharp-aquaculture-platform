@@ -5,10 +5,13 @@
 
 import { appState } from "../../state/appState.js";
 import { calculateTotalActiveHP, calculateAerationDensity } from "../../domain/aeration.js";
+import { calculateDOC, getEffectiveBiomassGain } from "../../domain/biometrics.js";
+import { calculateFCR } from "../../domain/feeding.js";
 import { InventoryRepository } from "../../infrastructure/repositories/inventoryRepository.js";
 import { PondRepository } from "../../infrastructure/repositories/pondRepository.js";
 import { SamplingRepository } from "../../infrastructure/repositories/samplingRepository.js";
 import { HarvestRepository } from "../../infrastructure/repositories/harvestRepository.js";
+import { LabRepository } from "../../infrastructure/repositories/labRepository.js";
 import { hasPermission, PERMISSIONS } from "../../config/permissions.js";
 import { Toast } from "../../components/Toast.js";
 import { DOM_IDS } from "../../config/domContracts.js";
@@ -37,13 +40,28 @@ export class MasterTab {
             summaryTotalActiveHp: document.getElementById(DOM_IDS.MASTER.SUMMARY_ACTIVE_HP),
             badgeTotalHp: document.getElementById(DOM_IDS.BANNER.BADGE_TOTAL_HP),
 
-            // Snapshots
-            snapSpecies: document.getElementById(DOM_IDS.BANNER.BADGE_SPECIES) || document.getElementById("snap-species"),
-            snapGenetic: document.getElementById(DOM_IDS.BANNER.BADGE_GENETIC) || document.getElementById("snap-genetic"),
-            snapStockedPcs: document.getElementById(DOM_IDS.MASTER.SNAP_STOCKED_PCS),
-            snapStockedFoot: document.getElementById(DOM_IDS.MASTER.SNAP_STOCKED_FOOT),
+            // Hero Snapshot Cards (Row 1 & Row 2)
+            snapSpecies: document.getElementById(DOM_IDS.MASTER.SNAP_SPECIES) || document.getElementById(DOM_IDS.BANNER.BADGE_SPECIES) || document.getElementById("snap-species"),
+            snapGenetic: document.getElementById(DOM_IDS.MASTER.SNAP_SPECIES_FOOT) || document.getElementById(DOM_IDS.BANNER.BADGE_GENETIC) || document.getElementById("snap-genetic"),
+            snapHatcherySource: document.getElementById(DOM_IDS.MASTER.SNAP_HATCHERY_SOURCE),
+            snapHatcheryFoot: document.getElementById(DOM_IDS.MASTER.SNAP_HATCHERY_FOOT),
+            snapDocVal: document.getElementById(DOM_IDS.MASTER.SNAP_DOC),
+            snapDocFoot: document.getElementById(DOM_IDS.MASTER.SNAP_DOC_FOOT),
             snapLatestAbw: document.getElementById(DOM_IDS.MASTER.SNAP_LATEST_ABW),
             snapAbwFoot: document.getElementById(DOM_IDS.MASTER.SNAP_ABW_FOOT),
+            snapFcrVal: document.getElementById(DOM_IDS.MASTER.SNAP_FCR),
+            snapFcrFoot: document.getElementById(DOM_IDS.MASTER.SNAP_FCR_FOOT),
+            snapBiomassHarvestVal: document.getElementById(DOM_IDS.MASTER.SNAP_BIOMASS_HARVEST),
+            snapBiomassHarvestTitle: document.getElementById(DOM_IDS.MASTER.SNAP_BIOMASS_HARVEST_TITLE),
+            snapBiomassHarvestFoot: document.getElementById(DOM_IDS.MASTER.SNAP_BIOMASS_HARVEST_FOOT),
+            snapDiseaseStatusVal: document.getElementById(DOM_IDS.MASTER.SNAP_DISEASE_STATUS),
+            snapDiseaseStatusFoot: document.getElementById(DOM_IDS.MASTER.SNAP_DISEASE_STATUS_FOOT),
+            snapInitiativeVal: document.getElementById(DOM_IDS.MASTER.SNAP_INITIATIVE),
+            snapInitiativeFoot: document.getElementById(DOM_IDS.MASTER.SNAP_INITIATIVE_FOOT),
+
+            // Legacy hidden trackers
+            snapStockedPcs: document.getElementById(DOM_IDS.MASTER.SNAP_STOCKED_PCS),
+            snapStockedFoot: document.getElementById(DOM_IDS.MASTER.SNAP_STOCKED_FOOT),
             snapTotalFeed: document.getElementById(DOM_IDS.MASTER.SNAP_TOTAL_FEED),
             snapFeedFoot: document.getElementById(DOM_IDS.MASTER.SNAP_FEED_FOOT),
             snapTotalHarvest: document.getElementById(DOM_IDS.MASTER.SNAP_TOTAL_HARVEST),
@@ -107,11 +125,21 @@ export class MasterTab {
      * Loads live cycle metrics (Stocking, Biometrics Sampling, and Harvest) from Supabase.
      * @param {object} pond 
      */
+    /**
+     * Loads live cycle metrics for the 8 Hero Snapshot Cards:
+     * Row 1: 1. Species/Line, 2. Hatchery/Source, 3. DOC, 4. ABW, 5. FCR
+     * Row 2: 6. Current Biomass or Harvest Biomass, 7. Disease Status, 8. Initiative / Special Trial
+     * @param {object} pond 
+     */
     async loadSnapshots(pond) {
         if (!pond) return;
 
-        // 0. Species & Genetic Line
         const isProd = (pond.pond_status || pond.status || "").toUpperCase() === "PRODUCTION";
+        const isClosed = (pond.pond_status || pond.status || "").toUpperCase() === "CLOSE";
+
+        // ==========================================
+        // ROW 1: CARD 1 — Species / Line
+        // ==========================================
         const species = pond.species || pond.stck_species;
         if (this.dom.snapSpecies) {
             this.dom.snapSpecies.textContent = (species && species !== "—") ? species : (isProd ? "P. VANNAMEi" : "—");
@@ -121,84 +149,246 @@ export class MasterTab {
             this.dom.snapGenetic.textContent = (genetic && genetic !== "—") ? genetic : (isProd ? "Standard Line" : "—");
         }
 
-        // 1. Stocked Pieces & Density
-        const pcs = parseInt(pond.stck_netto || pond.stck_pcs || 0, 10);
-        if (this.dom.snapStockedPcs) {
-            this.dom.snapStockedPcs.textContent = !isNaN(pcs) && pcs > 0 ? `${pcs.toLocaleString()} pcs` : "—";
+        // ==========================================
+        // ROW 1: CARD 2 — Hatchery / Source
+        // ==========================================
+        const hatchery = pond.pl_origin || pond.stck_source;
+        if (this.dom.snapHatcherySource) {
+            this.dom.snapHatcherySource.textContent = (hatchery && hatchery !== "—") ? hatchery : (isProd ? "Hatchery" : "—");
         }
-        if (this.dom.snapStockedFoot) {
-            const areaHa = parseFloat(pond.area || 0);
-            if (areaHa > 0 && pcs > 0) {
-                const areaM2 = (areaHa <= 10) ? areaHa * 10000 : areaHa;
-                const density = Math.round(pcs / areaM2);
-                this.dom.snapStockedFoot.textContent = `${density} PL/m² (${areaHa} Ha)`;
-            } else {
-                this.dom.snapStockedFoot.textContent = "Gross PL count";
-            }
+        if (this.dom.snapHatcheryFoot) {
+            const tank = pond.stck_tank ? `Tank: ${pond.stck_tank}` : "";
+            const size = pond.stck_size ? `Size: ${pond.stck_size}` : "";
+            const details = [tank, size].filter(Boolean).join(" · ");
+            this.dom.snapHatcheryFoot.textContent = details || "PL Delivery Manifest";
         }
 
-        // Cycle Status Badge
+        // ==========================================
+        // ROW 1: CARD 3 — DOC (Days of Culture)
+        // ==========================================
+        let calculatedDoc = 0;
+        if (pond.stck_date && String(pond.stck_date).trim() !== "") {
+            calculatedDoc = calculateDOC(pond.stck_date, pond.date_close || null);
+            if (this.dom.snapDocVal) this.dom.snapDocVal.textContent = `${calculatedDoc}`;
+            if (this.dom.snapDocFoot) this.dom.snapDocFoot.textContent = `Stocked: ${pond.stck_date}`;
+        } else {
+            if (this.dom.snapDocVal) this.dom.snapDocVal.textContent = isProd ? "0" : "—";
+            if (this.dom.snapDocFoot) this.dom.snapDocFoot.textContent = isProd ? "Awaiting Stocking" : "Pond Not Stocked";
+        }
+
+        // Status badge tracking
         if (this.dom.snapCycleStatus) {
             const status = (pond.pond_status || "PRODUCTION").toUpperCase();
             this.dom.snapCycleStatus.textContent = status;
             this.dom.snapCycleStatus.className = `status-badge ${status === 'PRODUCTION' ? 'status-production' : status === 'CLOSE' ? 'status-close' : 'status-idle'}`;
         }
 
-        // 2. Biometrics Sampling (Latest ABW & Cumulative Feed)
-        try {
-            const latest = await SamplingRepository.getLatestSampling(pond.pond_index);
-            if (latest) {
-                const abw = parseFloat(latest.smpl_abw || 0);
-                const doc = latest.smpl_doc;
-                const tfed = parseFloat(latest.smpl_tfed || 0);
-
-                if (this.dom.snapLatestAbw) {
-                    this.dom.snapLatestAbw.textContent = abw > 0 ? `${abw.toFixed(2)} g` : "—";
-                }
-                if (this.dom.snapAbwFoot) {
-                    this.dom.snapAbwFoot.textContent = doc ? `DOC ${doc} sampling` : "Latest biometrics";
-                }
-                if (this.dom.snapTotalFeed) {
-                    this.dom.snapTotalFeed.textContent = tfed > 0 ? `${Math.round(tfed).toLocaleString()} kg` : "—";
-                }
-                if (this.dom.snapFeedFoot) {
-                    this.dom.snapFeedFoot.textContent = doc ? `Cumulative feed (DOC ${doc})` : "Cumulative feed";
-                }
-            } else {
-                if (this.dom.snapLatestAbw) this.dom.snapLatestAbw.textContent = "—";
-                if (this.dom.snapAbwFoot) this.dom.snapAbwFoot.textContent = "No sampling yet";
-                if (this.dom.snapTotalFeed) this.dom.snapTotalFeed.textContent = "0 kg";
-                if (this.dom.snapFeedFoot) this.dom.snapFeedFoot.textContent = "Cumulative feed";
-            }
-        } catch (err) {
-            console.warn("Could not load biometrics sampling for snapshot:", err);
-            if (this.dom.snapLatestAbw) this.dom.snapLatestAbw.textContent = "—";
-            if (this.dom.snapTotalFeed) this.dom.snapTotalFeed.textContent = "—";
+        // Stocked Pieces fallback
+        const pcs = parseInt(pond.stck_netto || pond.stck_pcs || 0, 10);
+        if (this.dom.snapStockedPcs) {
+            this.dom.snapStockedPcs.textContent = !isNaN(pcs) && pcs > 0 ? `${pcs.toLocaleString()} pcs` : "—";
         }
 
-        // 3. Harvest Summary (Actual Harvest kg & Revenue)
+        // ==========================================
+        // FETCH SAMPLING & HARVEST DATA
+        // ==========================================
+        let latestSampling = null;
+        let harvestSummary = { hasHarvest: false, totalWeightKg: 0, totalRevenue: 0 };
+
         try {
-            const harvest = await HarvestRepository.getHarvestSummary(pond.pond_index);
-            if (harvest.hasHarvest) {
-                if (this.dom.snapTotalHarvest) {
-                    this.dom.snapTotalHarvest.textContent = `${harvest.totalWeightKg.toLocaleString()} kg`;
-                }
-                if (this.dom.snapHarvestFoot) {
-                    this.dom.snapHarvestFoot.textContent = harvest.totalRevenue > 0
-                        ? `RM ${harvest.totalRevenue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-                        : "Harvest logged";
-                }
-            } else {
-                if (this.dom.snapTotalHarvest) {
-                    this.dom.snapTotalHarvest.textContent = "0.0 kg";
-                }
-                if (this.dom.snapHarvestFoot) {
-                    this.dom.snapHarvestFoot.textContent = pond.pond_status === "CLOSE" ? "Cycle closed" : "Status: IN CULTURE";
-                }
-            }
+            latestSampling = await SamplingRepository.getLatestSampling(pond.pond_index);
+        } catch (err) {
+            console.warn("Could not load biometrics sampling for snapshot:", err);
+        }
+
+        try {
+            harvestSummary = await HarvestRepository.getHarvestSummary(pond.pond_index);
         } catch (err) {
             console.warn("Could not load harvest summary for snapshot:", err);
-            if (this.dom.snapTotalHarvest) this.dom.snapTotalHarvest.textContent = "0.0 kg";
+        }
+
+        const abw = latestSampling ? parseFloat(latestSampling.smpl_abw || 0) : 0;
+        const totalFeedKg = latestSampling ? parseFloat(latestSampling.smpl_tfed || 0) : 0;
+        const currentBiomassKg = latestSampling ? parseFloat(latestSampling.smpl_bms || 0) : 0;
+        const samplingDoc = latestSampling ? latestSampling.smpl_doc : null;
+
+        // Legacy total feed element tracker
+        if (this.dom.snapTotalFeed) {
+            this.dom.snapTotalFeed.textContent = totalFeedKg > 0 ? `${Math.round(totalFeedKg).toLocaleString()} kg` : "0 kg";
+        }
+
+        // ==========================================
+        // ROW 1: CARD 4 — ABW (Average Body Weight)
+        // ==========================================
+        if (this.dom.snapLatestAbw) {
+            this.dom.snapLatestAbw.textContent = abw > 0 ? `${abw.toFixed(2)} g` : "—";
+        }
+        if (this.dom.snapAbwFoot) {
+            this.dom.snapAbwFoot.textContent = samplingDoc ? `DOC ${samplingDoc} sampling` : (isProd ? "Awaiting sampling" : "No sampling data");
+        }
+
+        // ==========================================
+        // ROW 1: CARD 5 — FCR (Feed Conversion Ratio)
+        // ==========================================
+        // Effective Gain:
+        // - If closed or final termination harvest logged: total harvested kg
+        // - If active with partial harvest: current biomass + partial harvest kg
+        // - Else: current biomass
+        const effectiveBiomass = getEffectiveBiomassGain(pond, latestSampling, harvestSummary);
+        const fcr = calculateFCR(totalFeedKg, effectiveBiomass.effectiveGainKg);
+
+        if (this.dom.snapFcrVal) {
+            if (fcr > 0) {
+                this.dom.snapFcrVal.textContent = fcr.toFixed(2);
+                this.dom.snapFcrVal.style.color = fcr <= 1.5 ? "#059669" : fcr <= 1.8 ? "#d97706" : "#dc2626";
+            } else {
+                this.dom.snapFcrVal.textContent = "—";
+                this.dom.snapFcrVal.style.color = "#64748b";
+            }
+        }
+        if (this.dom.snapFcrFoot) {
+            if (effectiveBiomass.hasPartial) {
+                this.dom.snapFcrFoot.textContent = `Current: ${Math.round(effectiveBiomass.currentBiomassKg).toLocaleString()} kg + Partial: ${Math.round(effectiveBiomass.partialWeightKg).toLocaleString()} kg`;
+            } else if (effectiveBiomass.isFinal) {
+                this.dom.snapFcrFoot.textContent = `Total Harvest: ${Math.round(effectiveBiomass.totalHarvestKg).toLocaleString()} kg`;
+            } else {
+                this.dom.snapFcrFoot.textContent = totalFeedKg > 0 ? `Total Feed: ${Math.round(totalFeedKg).toLocaleString()} kg` : "Feed: 0 kg";
+            }
+        }
+
+        // ==========================================
+        // ROW 2: CARD 6 — Current Biomass or Harvest Biomass
+        // ==========================================
+        if (effectiveBiomass.isFinal) {
+            if (this.dom.snapBiomassHarvestTitle) {
+                this.dom.snapBiomassHarvestTitle.textContent = isClosed ? "Final Harvest Biomass" : "Harvested Biomass";
+            }
+            if (this.dom.snapBiomassHarvestVal) {
+                this.dom.snapBiomassHarvestVal.textContent = `${Math.round(effectiveBiomass.totalHarvestKg).toLocaleString()} kg`;
+            }
+            if (this.dom.snapBiomassHarvestFoot) {
+                this.dom.snapBiomassHarvestFoot.textContent = harvestSummary.totalRevenue > 0
+                    ? `Gross Revenue: RM ${harvestSummary.totalRevenue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                    : (isClosed ? "Status: CYCLE CLOSED" : "Termination Harvest logged");
+            }
+        } else {
+            if (this.dom.snapBiomassHarvestTitle) {
+                this.dom.snapBiomassHarvestTitle.textContent = "Current Biomass";
+            }
+            if (this.dom.snapBiomassHarvestVal) {
+                this.dom.snapBiomassHarvestVal.textContent = effectiveBiomass.currentBiomassKg > 0
+                    ? `${Math.round(effectiveBiomass.currentBiomassKg).toLocaleString()} kg`
+                    : (isProd ? "—" : "0.0 kg");
+            }
+            if (this.dom.snapBiomassHarvestFoot) {
+                if (effectiveBiomass.hasPartial) {
+                    const survStr = latestSampling && latestSampling.smpl_surv ? ` | Est. Surv: ${parseFloat(latestSampling.smpl_surv).toFixed(1)}%` : "";
+                    this.dom.snapBiomassHarvestFoot.textContent = `Partial Harvest: ${Math.round(effectiveBiomass.partialWeightKg).toLocaleString()} kg${survStr}`;
+                } else if (effectiveBiomass.currentBiomassKg > 0 && latestSampling && latestSampling.smpl_surv) {
+                    this.dom.snapBiomassHarvestFoot.textContent = `Est. Survival: ${parseFloat(latestSampling.smpl_surv).toFixed(1)}% (DOC ${samplingDoc})`;
+                } else {
+                    this.dom.snapBiomassHarvestFoot.textContent = isClosed ? "Status: CYCLE CLOSED" : (isProd ? "Status: IN CULTURE" : "Status: IDLE / PREPARATION");
+                }
+            }
+        }
+
+        // ==========================================
+        // ROW 2: CARD 7 — Disease Status
+        // ==========================================
+        await this.loadDiseaseCard(pond.pond_index);
+
+        // ==========================================
+        // ROW 2: CARD 8 — Initiative / Special Trial
+        // ==========================================
+        const initList = [pond.initiative, pond.initiative1, pond.initiative2]
+            .map(s => (s || "").trim())
+            .filter(Boolean);
+
+        if (this.dom.snapInitiativeVal) {
+            if (initList.length > 0) {
+                this.dom.snapInitiativeVal.textContent = initList[0];
+                this.dom.snapInitiativeVal.style.color = "#0369a1";
+                this.dom.snapInitiativeVal.title = initList.join(" | ");
+            } else {
+                this.dom.snapInitiativeVal.textContent = "Standard SOP";
+                this.dom.snapInitiativeVal.style.color = "#64748b";
+                this.dom.snapInitiativeVal.title = "No special trials assigned to this cycle";
+            }
+        }
+        if (this.dom.snapInitiativeFoot) {
+            if (initList.length > 1) {
+                this.dom.snapInitiativeFoot.textContent = `+ ${initList.slice(1).join(" · ")}`;
+            } else if (initList.length === 1) {
+                this.dom.snapInitiativeFoot.textContent = "1 Active Farm Trial logged";
+            } else {
+                this.dom.snapInitiativeFoot.textContent = "No active experimental trials";
+            }
+        }
+    }
+
+    /**
+     * Loads Biosecurity Pathology records from LabRepository for Hero Card 7
+     * @param {string} pondIndex 
+     */
+    async loadDiseaseCard(pondIndex) {
+        if (!this.dom.snapDiseaseStatusVal) return;
+
+        if (!pondIndex) {
+            this.dom.snapDiseaseStatusVal.innerHTML = `<span class="disease-pill disease-ok" style="font-size:0.85rem; padding: 2px 10px;">Pathogen Negative</span>`;
+            if (this.dom.snapDiseaseStatusFoot) this.dom.snapDiseaseStatusFoot.textContent = "No pond selected";
+            return;
+        }
+
+        try {
+            const issues = await LabRepository.getIssuesByPond(pondIndex);
+            if (!issues || issues.length === 0) {
+                this.dom.snapDiseaseStatusVal.innerHTML = `<span class="disease-pill disease-ok" style="font-size:0.85rem; padding: 2px 10px;">Pathogen Negative</span>`;
+                if (this.dom.snapDiseaseStatusFoot) this.dom.snapDiseaseStatusFoot.textContent = "Clean biosecurity · 0 active pathogen alerts";
+                return;
+            }
+
+            // Check for red/critical/positive pathogen issues
+            const redIssues = issues.filter(r => {
+                const flag = (r.issue_flag || "").toUpperCase();
+                const note = (r.issue_note || "").toUpperCase();
+                return flag === "RED" || flag === "CRITICAL" || note.includes("POSIT");
+            });
+
+            if (redIssues.length > 0) {
+                const primary = redIssues[0];
+                let pathogen = primary.issue_status || primary.issue_test || primary.issue_category || "Pathogen";
+                if (["ACTIVE", "CRITICAL", "POSITIVE", "DISEASE", "PATHOLOGY"].includes(pathogen.toUpperCase())) {
+                    pathogen = primary.issue_test || primary.issue_category || "Pathogen";
+                }
+                const grade = primary.issue_grade && primary.issue_grade.toUpperCase() !== "G0" ? ` (${primary.issue_grade})` : "";
+
+                this.dom.snapDiseaseStatusVal.innerHTML = `<span class="disease-pill disease-danger" style="font-size:0.85rem; padding: 2px 10px;">⚠️ ${pathogen} Alert${grade}</span>`;
+                if (this.dom.snapDiseaseStatusFoot) {
+                    this.dom.snapDiseaseStatusFoot.textContent = `${redIssues.length} active alert(s) · ${primary.issue_date || 'Recent'}`;
+                }
+                return;
+            }
+
+            // Check for warning/yellow issues
+            const yellowIssues = issues.filter(r => (r.issue_flag || "").toUpperCase() === "YELLOW");
+            if (yellowIssues.length > 0) {
+                const primary = yellowIssues[0];
+                const label = primary.issue_status || primary.issue_test || "Caution Flag";
+                this.dom.snapDiseaseStatusVal.innerHTML = `<span class="disease-pill disease-warning" style="font-size:0.85rem; padding: 2px 10px;">🟡 ${label} (Watch)</span>`;
+                if (this.dom.snapDiseaseStatusFoot) {
+                    this.dom.snapDiseaseStatusFoot.textContent = `${yellowIssues.length} cautionary log(s) · Monitor closely`;
+                }
+                return;
+            }
+
+            // Otherwise clean
+            this.dom.snapDiseaseStatusVal.innerHTML = `<span class="disease-pill disease-ok" style="font-size:0.85rem; padding: 2px 10px;">Pathogen Negative</span>`;
+            if (this.dom.snapDiseaseStatusFoot) this.dom.snapDiseaseStatusFoot.textContent = "Tested · Negative laboratory records";
+
+        } catch (err) {
+            console.warn("Could not load disease card status:", err);
+            this.dom.snapDiseaseStatusVal.innerHTML = `<span class="disease-pill disease-ok" style="font-size:0.85rem; padding: 2px 10px;">Pathogen Negative</span>`;
+            if (this.dom.snapDiseaseStatusFoot) this.dom.snapDiseaseStatusFoot.textContent = "Laboratory logbook synced";
         }
     }
 

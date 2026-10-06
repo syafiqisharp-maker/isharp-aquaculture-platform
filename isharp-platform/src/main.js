@@ -95,8 +95,14 @@ class App {
             this.bindTabNavigation();
 
             // 4. Initial Cloud Sync
-            Toast.info("Connecting to Supabase Cloud PostgreSQL...");
-            await this.loadInitialData();
+            const isFieldOpsRoute = window.location.hash.toLowerCase().includes("field-ops");
+            if (isFieldOpsRoute) {
+                // Background non-blocking sync for Field Ops on mobile devices
+                this.loadInitialData().catch(err => console.warn("Background DBMS sync deferred:", err));
+            } else {
+                Toast.info("Connecting to Supabase Cloud PostgreSQL...");
+                await this.loadInitialData();
+            }
 
         } catch (err) {
             console.error("App bootstrap error:", err);
@@ -106,10 +112,25 @@ class App {
 
     bindTabNavigation() {
         const tabBtns = document.querySelectorAll(".tab-btn");
+        const canvas = document.querySelector(".workspace-canvas");
+        const tabScrollPositions = {};
+
+        // When a new pond is selected, reset tab scroll positions so it starts fresh at top
+        appState.subscribe("pondChanged", () => {
+            Object.keys(tabScrollPositions).forEach(k => delete tabScrollPositions[k]);
+            if (canvas) canvas.scrollTop = 0;
+        });
+
         tabBtns.forEach(btn => {
             btn.addEventListener("click", () => {
                 const targetTab = btn.dataset.tab;
                 if (!targetTab) return;
+
+                // Save scroll position of current active tab
+                const currentTab = appState.activeTab;
+                if (canvas && currentTab) {
+                    tabScrollPositions[currentTab] = canvas.scrollTop;
+                }
 
                 // Toggle active buttons
                 tabBtns.forEach(b => b.classList.remove("active"));
@@ -124,6 +145,12 @@ class App {
 
                 // Update state
                 appState.setActiveTab(targetTab);
+
+                // Restore scroll position for target tab
+                if (canvas) {
+                    const savedY = tabScrollPositions[targetTab] || 0;
+                    canvas.scrollTop = savedY;
+                }
             });
         });
     }

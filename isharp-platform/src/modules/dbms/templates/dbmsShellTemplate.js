@@ -59,8 +59,7 @@ export function getDbmsShellHtml() {
                         <select id="filter-pond-status" class="sidebar-filter-select" title="Filter by Culture Status">
                             <option value="ALL">All Statuses</option>
                             <option value="PRODUCTION" selected>PRODUCTION</option>
-                            <option value="iDLE">IDLE</option>
-                            <option value="CLOSE">CLOSE</option>
+                            <option value="IDLE">IDLE</option>
                             <option value="MAINTENANCE">MAINTENANCE</option>
                             <option value="RESERVOIR">RESERVOIR</option>
                             <option value="PREPARATION">PREPARATION</option>
@@ -83,8 +82,8 @@ export function getDbmsShellHtml() {
                     <div class="sidebar-filter-row">
                         <select id="filter-pond-active" class="sidebar-filter-select" title="Filter Active / Archived">
                             <option value="ALL">All States</option>
-                            <option value="ACTiVE" selected>Active Only</option>
-                            <option value="iN ACTiVE">Archived</option>
+                            <option value="ACTIVE" selected>Active Only</option>
+                            <option value="INACTIVE">Archived</option>
                         </select>
                         <button id="btn-reset-filters" class="btn-filter-reset" title="Reset all filters" style="padding: 2px 6px; font-size: 0.68rem; border-radius: 6px;">
                             <span>Reset</span>
@@ -100,7 +99,7 @@ export function getDbmsShellHtml() {
                         <div style="display: flex; align-items: center; gap: 0.4rem;">
                             <span id="sidebar-pond-count">Loading...</span>
                             <button id="btn-toggle-all-modules" class="btn-micro-toggle" title="Collapse or Expand all modules in Pond Explorer" type="button">
-                                <span id="label-toggle-all-modules">⊟ Collapse</span>
+                                <span id="label-toggle-all-modules">⊞ Expand</span>
                             </button>
                         </div>
                     </div>
@@ -238,10 +237,6 @@ export function getDbmsShellHtml() {
 
                 <!-- Right: Quick Telemetry Chips & Actions -->
                 <div class="command-bar-right">
-                    <span class="doc-box" style="font-size:0.75rem; padding:2px 8px;">DOC <span id="badge-doc">0</span></span>
-                    <div class="disease-block" title="Click to view Biosecurity & Disease Pathology Logbook" style="cursor:pointer;">
-                        <span id="badge-disease-status" class="disease-pill disease-ok" style="font-size:0.7rem; padding:2px 8px;">Pathogen Negative</span>
-                    </div>
                     <button id="btn-open-excel-modal" class="btn-action btn-excel" style="padding:0.3rem 0.75rem; font-size:0.75rem;" title="Paste Excel Data">
                         <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2">
                             <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>

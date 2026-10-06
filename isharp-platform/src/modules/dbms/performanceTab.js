@@ -146,7 +146,9 @@ export class PerformanceTab {
         // 4. Projected Harvest DOC
         const currentAbw = parseFloat(latest.smpl_abw) || 0;
         const currentDoc = parseInt(latest.smpl_doc, 10) || 0;
-        const targetAbw = 25.0; // Standard 25g target
+        const species = pond?.species || pond?.stck_species || "VAN";
+        const isMonodon = String(species).toUpperCase().includes("MON");
+        const targetAbw = isMonodon ? 33.0 : 25.0; // Monodon 33g (30-count) vs Vannamei 25g (40-count)
 
         if (currentAbw > 0 && adg > 0.05) {
             const gramsLeft = Math.max(0, targetAbw - currentAbw);
@@ -154,10 +156,11 @@ export class PerformanceTab {
             const projectedDoc = currentDoc + daysLeft;
 
             if (this.dom.kpiProjDoc) this.dom.kpiProjDoc.textContent = `DOC ${projectedDoc}`;
-            if (this.dom.kpiProjDocSub) this.dom.kpiProjDocSub.textContent = `~${daysLeft} days to harvest (Target: 25.0 g)`;
+            if (this.dom.kpiProjDocSub) this.dom.kpiProjDocSub.textContent = `~${daysLeft} days to harvest (Target: ${targetAbw.toFixed(1)} g • ${isMonodon ? 'Monodon' : 'Vannamei'})`;
         } else {
-            if (this.dom.kpiProjDoc) this.dom.kpiProjDoc.textContent = "DOC 95";
-            if (this.dom.kpiProjDocSub) this.dom.kpiProjDocSub.textContent = "Target weight: 25.0 g";
+            const defaultDoc = isMonodon ? "DOC 125" : "DOC 95";
+            if (this.dom.kpiProjDoc) this.dom.kpiProjDoc.textContent = defaultDoc;
+            if (this.dom.kpiProjDocSub) this.dom.kpiProjDocSub.textContent = `Target weight: ${targetAbw.toFixed(1)} g (${isMonodon ? 'Monodon' : 'Vannamei'})`;
         }
     }
 
@@ -169,6 +172,9 @@ export class PerformanceTab {
         this.ctx = this.dom.canvas.getContext("2d");
         const canvas = this.dom.canvas;
         const ctx = this.ctx;
+
+        const species = pond?.species || pond?.stck_species || "VAN";
+        const isMonodon = String(species).toUpperCase().includes("MON");
 
         // Container sizing with device pixel ratio
         const container = canvas.parentElement;
@@ -193,8 +199,11 @@ export class PerformanceTab {
         const plotWidth = w - padLeft - padRight;
         const plotHeight = h - padTop - padBottom;
 
-        const maxDOC = 120;
-        const maxABW = 30;
+        // Species-specific axis ceilings: Monodon runs to DOC 140+ and 40g+
+        const maxDOC = isMonodon ? 140 : 120;
+        const maxABW = isMonodon ? 40 : 30;
+        const abwStep = isMonodon ? 5 : 5;
+        const docStep = 20;
 
         const getX = (doc) => padLeft + (doc / maxDOC) * plotWidth;
         const getY = (abw) => padTop + plotHeight - (abw / maxABW) * plotHeight;
@@ -206,7 +215,7 @@ export class PerformanceTab {
         ctx.font = "bold 11px 'JetBrains Mono', monospace";
         ctx.textAlign = "right";
 
-        for (let abw = 0; abw <= maxABW; abw += 5) {
+        for (let abw = 0; abw <= maxABW; abw += abwStep) {
             const y = getY(abw);
             ctx.beginPath();
             ctx.moveTo(padLeft, y);
@@ -218,7 +227,7 @@ export class PerformanceTab {
         ctx.textAlign = "center";
         ctx.font = "bold 11px Inter, sans-serif";
         ctx.fillStyle = "#334155";
-        for (let doc = 0; doc <= maxDOC; doc += 20) {
+        for (let doc = 0; doc <= maxDOC; doc += docStep) {
             const x = getX(doc);
             ctx.beginPath();
             ctx.moveTo(x, padTop);
@@ -234,7 +243,7 @@ export class PerformanceTab {
         ctx.setLineDash([6, 4]);
 
         for (let doc = 0; doc <= maxDOC; doc += 2) {
-            const targetABW = getStandardABW(doc);
+            const targetABW = getStandardABW(doc, species);
             const x = getX(doc);
             const y = getY(Math.min(maxABW, targetABW));
             if (doc === 0) ctx.moveTo(x, y);

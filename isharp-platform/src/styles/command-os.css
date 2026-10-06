@@ -390,24 +390,11 @@
 }
 
 .pond-tree-item .status-dot {
-    width: 7px;
-    height: 7px;
+    width: 6px;
+    height: 6px;
     border-radius: 50%;
-    background: #10b981;
-    box-shadow: 0 0 6px #10b981;
-    flex-shrink: 0;
-}
-
-.pond-tree-item.status-idle .status-dot,
-.pond-tree-item.status-preparation .status-dot {
-    background: #eab308;
-    box-shadow: 0 0 6px #eab308;
-}
-
-.pond-tree-item.status-close .status-dot,
-.pond-tree-item.status-maintenance .status-dot {
     background: #94a3b8;
-    box-shadow: 0 0 6px #94a3b8;
+    flex-shrink: 0;
 }
 
 .pond-tree-item.active .status-dot {
@@ -660,7 +647,8 @@
 }
 
 .pond-dropdown-capsule {
-    display: none; /* Synced proxy behind Sidebar Pond Tree & Steppers */
+    display: flex;
+    align-items: center;
 }
 
 .command-bar-right {
@@ -752,21 +740,37 @@
    4. BENTO KPI GRID (5-Card High-Contrast Strip)
    -------------------------------------------------------------------------- */
 .bento-kpi-grid {
-    display: grid;
-    grid-template-columns: repeat(5, 1fr);
-    gap: 0.9rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.85rem;
     margin-bottom: 1.25rem;
 }
 
-@media (max-width: 1400px) {
-    .bento-kpi-grid {
-        grid-template-columns: repeat(3, 1fr);
+.bento-row-1 {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 0.85rem;
+}
+
+.bento-row-2 {
+    display: grid;
+    grid-template-columns: 1.2fr 1.2fr 1.6fr;
+    gap: 0.85rem;
+}
+
+@media (max-width: 1300px) {
+    .bento-row-1 {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+    .bento-row-2 {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 }
 
-@media (max-width: 900px) {
-    .bento-kpi-grid {
-        grid-template-columns: repeat(2, 1fr);
+@media (max-width: 850px) {
+    .bento-row-1,
+    .bento-row-2 {
+        grid-template-columns: repeat(1, minmax(0, 1fr));
     }
 }
 

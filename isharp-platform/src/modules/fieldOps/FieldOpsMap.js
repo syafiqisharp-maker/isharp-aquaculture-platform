@@ -37,6 +37,7 @@ export class FieldOpsMap {
         this.searchTerm = "";
 
         this.pondsData = new Map(); // pondLabel -> { pond, cycleRecord, isIdle, operatorName, totalHP, todayRecord }
+        this.lastLoadedModule = null;
         this.isLoading = false;
 
         this.initStructure();
@@ -45,7 +46,9 @@ export class FieldOpsMap {
 
     setModule(modNo) {
         this.moduleNo = modNo;
-        this.loadModulePonds();
+        this.lastLoadedModule = null;
+        this.pondsData.clear();
+        this.loadModulePonds({ forceRefresh: true });
     }
 
     getActivePondsList() {
@@ -139,13 +142,18 @@ export class FieldOpsMap {
 
         const btnRefresh = this.container.querySelector("#btn-refresh-field-ops");
         if (btnRefresh) {
-            btnRefresh.addEventListener("click", () => this.loadModulePonds());
+            btnRefresh.addEventListener("click", () => this.loadModulePonds({ forceRefresh: true }));
         }
     }
 
-    async loadModulePonds() {
+    async loadModulePonds({ forceRefresh = false } = {}) {
         const gridMount = this.container.querySelector("#field-ops-grid-mount");
-        if (gridMount && this.pondsData.size === 0) {
+        const hasCachedData = this.pondsData.size > 0 && this.lastLoadedModule === this.moduleNo;
+
+        // Instant 0ms cache-first render: keep screen active with zero delay!
+        if (hasCachedData && !forceRefresh) {
+            this.renderGrid();
+        } else if (gridMount && !hasCachedData) {
             gridMount.innerHTML = `
                 <div style="text-align: center; color: #64748b; padding: 3rem 0;">
                     <div class="spinner-sm" style="margin: 0 auto 0.75rem auto;"></div>
@@ -297,6 +305,7 @@ export class FieldOpsMap {
                 }
             }
 
+            this.lastLoadedModule = this.moduleNo;
             this.renderGrid();
 
         } catch (err) {

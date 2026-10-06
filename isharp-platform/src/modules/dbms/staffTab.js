@@ -35,6 +35,12 @@ export class StaffTab {
             btnSave: document.getElementById(DOM_IDS.STAFF.BTN_SAVE),
             btnReset: document.getElementById(DOM_IDS.STAFF.BTN_RESET),
 
+            // Initiatives & Special Trials
+            inputInitiative: document.getElementById(DOM_IDS.STAFF.INPUT_INITIATIVE),
+            inputInitiative1: document.getElementById(DOM_IDS.STAFF.INPUT_INITIATIVE1),
+            inputInitiative2: document.getElementById(DOM_IDS.STAFF.INPUT_INITIATIVE2),
+            btnSaveInitiative: document.getElementById(DOM_IDS.STAFF.BTN_SAVE_INITIATIVE),
+
             // Operational Notes
             notesContainer: document.getElementById(DOM_IDS.STAFF.NOTES_CONTAINER),
             textareaNotes: document.getElementById(DOM_IDS.STAFF.TEXTAREA_NOTES)
@@ -42,6 +48,7 @@ export class StaffTab {
 
         this.currentPond = null;
         this.isSaving = false;
+        this.isSavingInitiative = false;
 
         this.init();
         appState.subscribe("pondChanged", (pond) => this.render(pond));
@@ -57,6 +64,10 @@ export class StaffTab {
         // Bind Save and Reset actions
         if (this.dom.btnSave) {
             this.dom.btnSave.addEventListener("click", () => this.handleSave());
+        }
+
+        if (this.dom.btnSaveInitiative) {
+            this.dom.btnSaveInitiative.addEventListener("click", () => this.handleSaveInitiatives());
         }
 
         if (this.dom.btnReset) {
@@ -129,11 +140,36 @@ export class StaffTab {
         // Start with clean form
         this.clearForm();
 
+        // Load initiatives (trial titles) for this cycle
+        this.loadInitiatives(pond);
+
         // Load saved personnel from growout_pond_master for this cycle
         await this.loadCyclePersonnel(pond.pond_index);
 
         // Load historical field remarks & operational logbook
         await this.loadNotes(pond.pond_index);
+    }
+
+    loadInitiatives(pond) {
+        if (!pond) return;
+        if (this.dom.inputInitiative) this.dom.inputInitiative.value = pond.initiative || "";
+        if (this.dom.inputInitiative1) this.dom.inputInitiative1.value = pond.initiative1 || "";
+        if (this.dom.inputInitiative2) this.dom.inputInitiative2.value = pond.initiative2 || "";
+    }
+
+    clearForm() {
+        [this.dom.inputPmId, this.dom.inputSvId, this.dom.inputRlId, this.dom.inputPoId, this.dom.inputSupportId].forEach(el => {
+            if (el) el.value = "";
+        });
+        [this.dom.inputPmName, this.dom.inputSvName, this.dom.inputRlName, this.dom.inputPoName, this.dom.inputSupportName].forEach(el => {
+            if (el) {
+                el.value = "";
+                el.style.color = "#0f172a";
+            }
+        });
+        [this.dom.inputInitiative, this.dom.inputInitiative1, this.dom.inputInitiative2].forEach(el => {
+            if (el) el.value = "";
+        });
     }
 
     /**
@@ -178,18 +214,6 @@ export class StaffTab {
         }
     }
 
-    clearForm() {
-        [this.dom.inputPmId, this.dom.inputSvId, this.dom.inputRlId, this.dom.inputPoId, this.dom.inputSupportId].forEach(el => {
-            if (el) el.value = "";
-        });
-        [this.dom.inputPmName, this.dom.inputSvName, this.dom.inputRlName, this.dom.inputPoName, this.dom.inputSupportName].forEach(el => {
-            if (el) {
-                el.value = "";
-                el.style.color = "#0f172a";
-            }
-        });
-    }
-
     /**
      * Saves crew assignments to growout_pond_master
      */
@@ -227,6 +251,52 @@ export class StaffTab {
             if (this.dom.btnSave) {
                 this.dom.btnSave.disabled = false;
                 this.dom.btnSave.innerHTML = `<span>💾 Save Personnel Allocation</span>`;
+            }
+        }
+    }
+
+    /**
+     * Saves initiative / special trial titles to growout_pond_master
+     */
+    async handleSaveInitiatives() {
+        if (!this.currentPond || !this.currentPond.pond_index) {
+            Toast.error("Please select a pond and cycle first.");
+            return;
+        }
+
+        if (this.isSavingInitiative) return;
+        this.isSavingInitiative = true;
+
+        if (this.dom.btnSaveInitiative) {
+            this.dom.btnSaveInitiative.disabled = true;
+            this.dom.btnSaveInitiative.innerHTML = `<span>⏳ Saving...</span>`;
+        }
+
+        try {
+            const updates = {
+                initiative: this.dom.inputInitiative ? this.dom.inputInitiative.value.trim() || null : null,
+                initiative1: this.dom.inputInitiative1 ? this.dom.inputInitiative1.value.trim() || null : null,
+                initiative2: this.dom.inputInitiative2 ? this.dom.inputInitiative2.value.trim() || null : null
+            };
+
+            await PondRepository.updateCycle(this.currentPond.pond_index, updates);
+
+            // Update in-memory pond state so Master Tab hero snapshot refreshes immediately
+            Object.assign(this.currentPond, updates);
+            if (appState.currentPond && appState.currentPond.pond_index === this.currentPond.pond_index) {
+                Object.assign(appState.currentPond, updates);
+                appState.notify("pondChanged", appState.currentPond);
+            }
+
+            Toast.success(`Special trials & initiatives saved for ${this.currentPond.pond || 'Pond'}!`);
+        } catch (err) {
+            console.error("Save initiatives failed:", err);
+            Toast.error(`Failed to save initiatives: ${err.message}`);
+        } finally {
+            this.isSavingInitiative = false;
+            if (this.dom.btnSaveInitiative) {
+                this.dom.btnSaveInitiative.disabled = false;
+                this.dom.btnSaveInitiative.innerHTML = `<span>💾 Save Initiatives</span>`;
             }
         }
     }

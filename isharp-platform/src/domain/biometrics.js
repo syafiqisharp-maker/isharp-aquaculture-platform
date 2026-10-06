@@ -3,6 +3,8 @@
  * PURE DOMAIN FUNCTIONS (No DOM dependencies, No network dependencies)
  */
 
+import { isCycleClosed } from "./rollover.js";
+
 /**
  * Calculates Day of Culture (DOC) given a stocking date and reference date.
  * If pond is not yet stocked or date is invalid, returns 0.
@@ -75,13 +77,29 @@ export function calculateADG(abwInitial, abwFinal, days) {
 }
 
 /**
- * Benchmark target standard ABW growth curve for Penaeus vannamei in Setiu farm.
- * @param {number} doc 
+ * Benchmark target standard ABW growth curve for Penaeus vannamei and Penaeus monodon.
+ * @param {number} doc Days of culture
+ * @param {string} [species='VAN'] 'VAN' or 'MON'
  * @returns {number} Standard target ABW in grams
  */
-export function getStandardABW(doc) {
+export function getStandardABW(doc, species = 'VAN') {
     const d = Number(doc) || 0;
     if (d <= 0) return 0;
+    const isMonodon = String(species || 'VAN').toUpperCase().includes('MON');
+
+    if (isMonodon) {
+        // Penaeus monodon (Tiger Shrimp) trajectory:
+        // DOC 1-35: Nursery phase (~0.08 g/day -> ~2.8g at DOC 35)
+        // DOC 36-70: Juvenile growth (~0.24 g/day -> ~11.2g at DOC 70)
+        // DOC 71-105: Fast grow-out (~0.38 g/day -> ~24.5g at DOC 105)
+        // DOC 106-140+: Finishing (~0.42 g/day -> ~35-40g at DOC 130-140)
+        if (d < 35) return Math.round((d * 0.08) * 10) / 10;
+        if (d < 70) return Math.round((2.8 + (d - 35) * 0.24) * 10) / 10;
+        if (d < 105) return Math.round((11.2 + (d - 70) * 0.38) * 10) / 10;
+        return Math.round((24.5 + (d - 105) * 0.42) * 10) / 10;
+    }
+
+    // Penaeus vannamei (Whiteleg Shrimp) trajectory:
     if (d < 30) return Math.round((d * 0.12) * 10) / 10;
     if (d < 60) return Math.round((3.6 + (d - 30) * 0.22) * 10) / 10;
     if (d < 90) return Math.round((10.2 + (d - 60) * 0.28) * 10) / 10;
@@ -473,3 +491,65 @@ export function aggregate12MonthMovingHarvest(dailyHarvests = [], salesRecords =
         topBuyers
     };
 }
+
+/**
+ * Computes effective biomass gain to be used for FCR calculation.
+ * 
+ * Aquaculture Standards:
+ * 1. If pond cycle is closed or has a termination harvest, harvest is finalized:
+ *    Biomass Gain = totalWeightKg (sum of partial harvests + final clean harvest)
+ * 2. If pond is active in production and has partial harvest(s):
+ *    Biomass Gain = current biomass (from weekly sampling) + cumulative partial harvest weight
+ * 3. If pond is active in production without partial harvest:
+ *    Biomass Gain = current biomass (from weekly sampling)
+ * 
+ * @param {object} pond Pond master record
+ * @param {object|null} latestSampling Latest biometrics sampling
+ * @param {object|null} harvestSummary Harvest summary from HarvestRepository
+ * @returns {{ effectiveGainKg: number, currentBiomassKg: number, partialWeightKg: number, totalHarvestKg: number, isFinal: boolean, hasPartial: boolean }}
+ */
+export function getEffectiveBiomassGain(pond, latestSampling, harvestSummary) {
+    const isClosed = isCycleClosed(pond);
+    const currentBiomassKg = latestSampling ? parseFloat(latestSampling.smpl_bms || 0) : 0;
+
+    const hasHarvest = !!(harvestSummary && harvestSummary.hasHarvest && harvestSummary.totalWeightKg > 0);
+    const hasFinal = !!(harvestSummary && harvestSummary.hasFinalHarvest);
+    const hasPartial = !!(harvestSummary && harvestSummary.hasPartialHarvest);
+    const partialWeightKg = harvestSummary ? parseFloat(harvestSummary.partialWeightKg || 0) : 0;
+    const totalHarvestKg = harvestSummary ? parseFloat(harvestSummary.totalWeightKg || 0) : 0;
+
+    // Case 1: Closed cycle or final termination harvest logged -> Harvest is complete
+    if (hasHarvest && (isClosed || hasFinal)) {
+        return {
+            effectiveGainKg: totalHarvestKg,
+            currentBiomassKg,
+            partialWeightKg,
+            totalHarvestKg,
+            isFinal: true,
+            hasPartial
+        };
+    }
+
+    // Case 2: Active production pond with partial harvest -> Current Biomass + Partial Harvest Weight
+    if (hasPartial && !hasFinal && !isClosed) {
+        return {
+            effectiveGainKg: Math.round((currentBiomassKg + partialWeightKg) * 10) / 10,
+            currentBiomassKg,
+            partialWeightKg,
+            totalHarvestKg,
+            isFinal: false,
+            hasPartial: true
+        };
+    }
+
+    // Case 3: Active production pond without partial harvest -> Current Biomass
+    return {
+        effectiveGainKg: currentBiomassKg,
+        currentBiomassKg,
+        partialWeightKg: 0,
+        totalHarvestKg: 0,
+        isFinal: false,
+        hasPartial: false
+    };
+}
+

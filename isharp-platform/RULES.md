@@ -193,3 +193,33 @@ Every modification action must respect user roles defined in `src/config/permiss
   - On `#tab-staff`, the **Assigned Pond Personnel** card and the **Operational Logbook & Remarks** card must stack in a **single vertical column** (`flex-direction: column; width: 100%;`).
   - Do NOT wrap these two cards into a horizontal two-column split, ensuring personnel ID entry and logbook entries have maximum horizontal breathing room for readability.
 
+---
+
+## 15. Aquaculture Biometrics: Partial Harvest, FCR & Survival Rate (SR) Standard
+
+- **Partial Harvest Reality (Thinning Runs)**:
+  - During shrimp grow-out, farms often perform intermediate partial harvests (thinning) to lower pond density while culture continues.
+  - Partial harvest records in `pond_harvest_daily` have `harv_status` containing `"PARTIAL"`.
+  - **Critical Rule**: A partial harvest record must **NEVER** be treated as the total harvest of a pond! Doing so divides total cumulative feed by only the partial harvest weight, resulting in an artificially inflated, erroneous FCR (e.g. 5.69 instead of 1.48).
+
+- **True FCR Calculation Rules**:
+  1. **Active Pond with Partial Harvest**:
+     - Supervisors estimate current standing biomass weekly via biometrics sampling (`smpl_bms`).
+     - If a pond has partial harvest runs logged, the true total biomass produced to date is:
+       $$\text{Total Biomass Produced} = \text{Current Standing Biomass} + \sum \text{Partial Harvest Weight(s)}$$
+       $$\text{True FCR} = \frac{\text{Total Feed (kg)}}{\text{Current Standing Biomass (kg)} + \text{Partial Harvest Weight (kg)}}$$
+  2. **Active Pond without Partial Harvest**:
+     - If no partial harvest exists for the pond, partial harvest amount is **0 kg**.
+       $$\text{FCR} = \frac{\text{Total Feed (kg)}}{\text{Current Standing Biomass (kg)}}$$
+  3. **Closed / Terminated Pond (Finished Cycle)**:
+     - When a pond cycle is closed or has a termination harvest (`TERMINATION`, `FINAL`, `CLEAN`), the complete harvest is finalized:
+       $$\text{Final Harvest Biomass} = \sum \text{Partial Harvest(s)} + \text{Final Termination Harvest}$$
+       $$\text{Final FCR} = \frac{\text{Total Feed (kg)}}{\text{Final Harvest Biomass (kg)}}$$
+
+- **Future Survival Rate (SR) Calculation Standard**:
+  - When calculating Survival Rate (SR) for an active or partially harvested pond, **always** include partial harvest pieces:
+    $$\text{Total Shrimp Count Produced} = \text{Current Estimated Standing Count} + \sum \text{Partial Harvest Pieces}$$
+    $$\text{SR (\%)} = \left(\frac{\text{Current Count} + \text{Partial Harvest Pieces}}{\text{Initial Stocked Pieces}}\right) \times 100$$
+  - Never evaluate SR on an active pond without adding the pieces that were already harvested!
+
+

@@ -8,53 +8,104 @@ export function getMasterTabHtml() {
     <div id="tab-master" class="tab-pane active" role="tabpanel">
         
         <!-- Bento KPI Snapshots Grid (5 Cards) -->
+        <!-- Bento KPI Snapshots Grid (Row 1: 5 cards, Row 2: 3 cards) -->
         <div class="bento-kpi-grid">
-            <div class="bento-kpi-card">
-                <div class="bento-card-top">
-                    <span class="bento-card-title">Species / Line</span>
-                    <span class="bento-card-icon">🧬</span>
+            <!-- Row 1: Core Biometrics & Origin (5 Cards) -->
+            <div class="bento-row-1">
+                <!-- 1. Species / Line -->
+                <div class="bento-kpi-card">
+                    <div class="bento-card-top">
+                        <span class="bento-card-title">Species / Line</span>
+                        <span class="bento-card-icon">🧬</span>
+                    </div>
+                    <div id="snap-species-line" class="bento-card-val" style="font-size:1.15rem; color:#0f172a;">P. VANNAMEi</div>
+                    <div id="snap-species-foot" class="bento-card-foot">Standard Line</div>
                 </div>
-                <div id="badge-species" class="bento-card-val" style="font-size:1.15rem; color:#0f172a;">P. VANNAMEi</div>
-                <div id="badge-genetic" class="bento-card-foot">Standard Line</div>
+
+                <!-- 2. Hatchery / Source -->
+                <div class="bento-kpi-card">
+                    <div class="bento-card-top">
+                        <span class="bento-card-title">Hatchery / Source</span>
+                        <span class="bento-card-icon">🏢</span>
+                    </div>
+                    <div id="snap-hatchery-source" class="bento-card-val" style="font-size:1.12rem; color:#0f172a;">—</div>
+                    <div id="snap-hatchery-foot" class="bento-card-foot">PL Hatchery Source</div>
+                </div>
+
+                <!-- 3. DOC (Days of Culture) -->
+                <div class="bento-kpi-card">
+                    <div class="bento-card-top">
+                        <span class="bento-card-title">Days of Culture</span>
+                        <span class="bento-card-icon">📅</span>
+                    </div>
+                    <div id="snap-doc-val" class="bento-card-val" style="color:#0284c7;">0</div>
+                    <div id="snap-doc-foot" class="bento-card-foot">Stocked: —</div>
+                </div>
+
+                <!-- 4. ABW (Average Body Weight) -->
+                <div class="bento-kpi-card">
+                    <div class="bento-card-top">
+                        <span class="bento-card-title">Average Body Wt</span>
+                        <span class="bento-card-icon">⚖️</span>
+                    </div>
+                    <div id="snap-latest-abw" class="bento-card-val">—</div>
+                    <div id="snap-abw-foot" class="bento-card-foot">Latest biometrics</div>
+                </div>
+
+                <!-- 5. FCR (Feed Conversion Ratio) -->
+                <div class="bento-kpi-card">
+                    <div class="bento-card-top">
+                        <span class="bento-card-title">Cumulative FCR</span>
+                        <span class="bento-card-icon">🌾</span>
+                    </div>
+                    <div id="snap-fcr-val" class="bento-card-val" style="color:#059669;">—</div>
+                    <div id="snap-fcr-foot" class="bento-card-foot">Feed: 0 kg</div>
+                </div>
             </div>
 
-            <div class="bento-kpi-card">
-                <div class="bento-card-top">
-                    <span class="bento-card-title">Stocked Fry</span>
-                    <span class="bento-card-icon">🦐</span>
+            <!-- Row 2: Production, Health & Trial Intelligence (3 Cards) -->
+            <div class="bento-row-2">
+                <!-- 6. Current Biomass or Harvest Biomass -->
+                <div class="bento-kpi-card">
+                    <div class="bento-card-top">
+                        <span id="snap-biomass-harvest-title" class="bento-card-title">Current Biomass</span>
+                        <span class="bento-card-icon">🚜</span>
+                    </div>
+                    <div id="snap-biomass-harvest-val" class="bento-card-val">—</div>
+                    <div id="snap-biomass-harvest-foot" class="bento-card-foot">Status: IN CULTURE</div>
                 </div>
-                <div id="snap-stocked-pcs" class="bento-card-val">—</div>
-                <div id="snap-stocked-foot" class="bento-card-foot">Gross PL count</div>
-            </div>
 
-            <div class="bento-kpi-card">
-                <div class="bento-card-top">
-                    <span class="bento-card-title">Average Body Wt</span>
-                    <span class="bento-card-icon">⚖️</span>
+                <!-- 7. Disease Status -->
+                <div class="bento-kpi-card" style="cursor: pointer;" id="snap-disease-card" title="Click to inspect Laboratory logbook">
+                    <div class="bento-card-top">
+                        <span class="bento-card-title">Biosecurity &amp; Disease</span>
+                        <span class="bento-card-icon">🔬</span>
+                    </div>
+                    <div id="snap-disease-status-val" class="bento-card-val" style="font-size:1.1rem;">
+                        <span class="disease-pill disease-ok" style="font-size:0.85rem; padding: 2px 10px;">Pathogen Negative</span>
+                    </div>
+                    <div id="snap-disease-status-foot" class="bento-card-foot">No active laboratory flags</div>
                 </div>
-                <div id="snap-latest-abw" class="bento-card-val">—</div>
-                <div id="snap-abw-foot" class="bento-card-foot">Latest biometrics</div>
-            </div>
 
-            <div class="bento-kpi-card">
-                <div class="bento-card-top">
-                    <span class="bento-card-title">Cumulative Feed</span>
-                    <span class="bento-card-icon">🌾</span>
+                <!-- 8. Initiative / Special Trial -->
+                <div class="bento-kpi-card">
+                    <div class="bento-card-top">
+                        <span class="bento-card-title">Initiative / Special Trial</span>
+                        <span class="bento-card-icon">💡</span>
+                    </div>
+                    <div id="snap-initiative-val" class="bento-card-val" style="font-size:1.02rem; color:#475569; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Standard SOP</div>
+                    <div id="snap-initiative-foot" class="bento-card-foot">No active trials recorded</div>
                 </div>
-                <div id="snap-total-feed" class="bento-card-val">—</div>
-                <div id="snap-feed-foot" class="bento-card-foot">Cumulative feed</div>
-            </div>
-
-            <div class="bento-kpi-card">
-                <div class="bento-card-top">
-                    <span class="bento-card-title">Harvest Biomass</span>
-                    <span class="bento-card-icon">🚜</span>
-                </div>
-                <div id="snap-total-harvest" class="bento-card-val">—</div>
-                <div id="snap-harvest-foot" class="bento-card-foot">Status: IN CULTURE</div>
             </div>
         </div>
+        <!-- Hidden status badge for state tracking -->
         <span id="snap-cycle-status" style="display:none;">PRODUCTION</span>
+        <span id="snap-stocked-pcs" style="display:none;"></span>
+        <span id="snap-stocked-foot" style="display:none;"></span>
+        <span id="snap-total-feed" style="display:none;"></span>
+        <span id="snap-feed-foot" style="display:none;"></span>
+        <span id="snap-total-harvest" style="display:none;"></span>
+        <span id="snap-harvest-foot" style="display:none;"></span>
 
         <!-- Secondary Section: Preparation Dates & Paddlewheel Aeration -->
         <div class="panel-layout master-details-layout">

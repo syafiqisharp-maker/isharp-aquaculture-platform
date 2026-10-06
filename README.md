@@ -37,17 +37,21 @@ The platform provides a unified Frutiger Aero gateway connecting three distinct 
 
 ```
 .
-├── isharp-platform/              # 🚀 The 3-System Web Application (Vite + Vanilla JS)
+├── isharp-platform/              # 🚀 The 4-System Web Application (Vite + Vanilla JS)
 │   ├── src/
 │   │   ├── modules/
-│   │   │   ├── landing/          # Gateway Portal (3 3D Glass Orbs)
-│   │   │   ├── executive/        # System 1: 216-Pond Interactive Farm Map
-│   │   │   ├── dbms/             # System 2: 10 Operational DBMS Tabs
-│   │   │   └── fieldOps/         # System 3: Supervisor Map & Daily Logbook
+│   │   │   ├── landing/          # Gateway Portal (Orbital Frutiger Aero Hub)
+│   │   │   ├── executive/        # System 1: 216-Pond Interactive Farm Map & Biomass
+│   │   │   ├── fieldOps/         # System 3: Mobile Field Ops & Quick Stepper Inputs
+│   │   │   └── dbms/             # System 2: 10 Operational DBMS Tabs & Controllers
+│   │   │       └── templates/    # Modular HTML Tab Templates (Zero inline HTML bloat)
+│   │   ├── config/               # Centralized DOM Contracts & RBAC Permissions
 │   │   ├── infrastructure/       # Supabase Cloud Client & Repositories
-│   │   └── domain/               # Aeration, Biometrics & Feeding Action Models
+│   │   ├── domain/               # Aeration, Biometrics & Feeding Action Models
+│   │   └── state/                # Reactive Pub/Sub State Stores
+│   ├── tests/                    # 🧪 Node.js Native Unit Test Suite (20 domain tests)
 │   ├── public/                   # Static assets, logos & Netlify _redirects
-│   └── package.json              # isharp-aquaculture-platform
+│   └── package.json              # isharp-aquaculture-platform (npm test, build, dev)
 │
 ├── isharp-simulator/             # 🧠 Bio-Economic Digital Twin (1-12 Mo Simulation Sandbox)
 │   └── PROJECT_BLUEPRINT.md      # 4 Simulation Engines (Growth, Feeding, OPEX, Schedule)

@@ -76,6 +76,50 @@ export function getStaffTabHtml() {
                 <datalist id="staff-directory-datalist"></datalist>
             </div>
 
+            <!-- Single Column Middle: Initiative / Special Trials (Trial Tracking) -->
+            <div class="card panel-card" style="width: 100%;">
+                <div class="card-header flex-between" style="display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <h3>🧪 Initiative &amp; Special Trials (<code>GrowoutPondMaster</code>)</h3>
+                        <span class="card-sub">Record experimental trials, novel probiotics, density studies, or hardware tests for this cycle</span>
+                    </div>
+                    <button type="button" id="btn-save-initiatives" class="btn-action btn-primary" style="font-size: 0.82rem; font-weight: 700; padding: 0.45rem 1.25rem; display: flex; align-items: center; gap: 0.4rem;">
+                        <span>💾 Save Initiatives</span>
+                    </button>
+                </div>
+
+                <div class="alert-info-glass" style="font-size: 0.75rem; color: #475569; background: rgba(240, 249, 255, 0.85); border: 1px solid #bae6fd; border-radius: 8px; padding: 0.5rem 0.75rem; margin-bottom: 0.85rem; display: flex; align-items: center; gap: 0.4rem;">
+                    <span style="font-size: 1rem;">💡</span>
+                    <span>Document trial titles here (e.g., <em>"New Bio-Rem Probiotic Test"</em>, <em>"Low Density 60 PL/m²"</em>, <em>"High-Efficiency 2HP Aerator"</em>) to preserve complete experimental history for this pond.</span>
+                </div>
+
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 0.85rem;">
+                    <!-- Initiative (Primary) -->
+                    <div class="form-group">
+                        <label for="input-initiative" style="font-size: 0.76rem; font-weight: 700; color: #334155; margin-bottom: 0.35rem; display: block;">
+                            🔬 Initiative (Primary Trial)
+                        </label>
+                        <input type="text" id="input-initiative" class="form-control" placeholder="e.g. Probiotic Trial - Brand X" style="font-size: 0.82rem; padding: 0.5rem 0.75rem; border: 1px solid #cbd5e1; border-radius: 6px; width: 100%;">
+                    </div>
+
+                    <!-- Initiative 1 (Secondary) -->
+                    <div class="form-group">
+                        <label for="input-initiative1" style="font-size: 0.76rem; font-weight: 700; color: #334155; margin-bottom: 0.35rem; display: block;">
+                            ⚙️ Initiative 1 (Secondary Trial / Protocol)
+                        </label>
+                        <input type="text" id="input-initiative1" class="form-control" placeholder="e.g. Low Density Stocking (70 PL/m²)" style="font-size: 0.82rem; padding: 0.5rem 0.75rem; border: 1px solid #cbd5e1; border-radius: 6px; width: 100%;">
+                    </div>
+
+                    <!-- Initiative 2 (Tertiary) -->
+                    <div class="form-group">
+                        <label for="input-initiative2" style="font-size: 0.76rem; font-weight: 700; color: #334155; margin-bottom: 0.35rem; display: block;">
+                            🌊 Initiative 2 (Tertiary Trial / Equipment)
+                        </label>
+                        <input type="text" id="input-initiative2" class="form-control" placeholder="e.g. Custom Spiral Paddlewheel" style="font-size: 0.82rem; padding: 0.5rem 0.75rem; border: 1px solid #cbd5e1; border-radius: 6px; width: 100%;">
+                    </div>
+                </div>
+            </div>
+
             <!-- Single Column Bottom: Operational Logbook & Remarks -->
             <div class="card panel-card" style="width: 100%;">
                 <div class="card-header flex-between">

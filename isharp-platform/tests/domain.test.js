@@ -5,7 +5,8 @@ import {
     calculateDOC, 
     calculateBiomass, 
     calculateADG,
-    getStandardABW 
+    getStandardABW,
+    getEffectiveBiomassGain
 } from '../src/domain/biometrics.js';
 import { 
     calculateTotalActiveHP, 
@@ -107,3 +108,93 @@ test('Domain: rollover & pond formatting', async (t) => {
         assert.equal(parsed.cycle, 40);
     });
 });
+
+test('Domain: getStandardABW species differentiation', async (t) => {
+    await t.test('calculates standard Vannamei growth curve', () => {
+        assert.equal(getStandardABW(30, 'VAN'), 3.6);
+        assert.equal(getStandardABW(60, 'VAN'), 10.2);
+        assert.equal(getStandardABW(90, 'VAN'), 18.6);
+        assert.equal(getStandardABW(110, 'VAN'), 25.0);
+    });
+
+    await t.test('calculates standard Monodon growth curve', () => {
+        // Monodon starts slower in nursery, but accelerates to >35g in later DOC
+        assert.equal(getStandardABW(35, 'MON'), 2.8);
+        assert.equal(getStandardABW(70, 'MON'), 11.2);
+        assert.equal(getStandardABW(105, 'MON'), 24.5);
+        assert.equal(getStandardABW(130, 'MON'), 35.0);
+    });
+
+    await t.test('defaults to Vannamei when species is omitted', () => {
+        assert.equal(getStandardABW(60), 10.2);
+    });
+});
+
+test('Domain: getEffectiveBiomassGain & True FCR with partial harvest', async (t) => {
+    await t.test('active pond with partial harvest adds current biomass + partial harvest amount', () => {
+        const pond = { pond_status: 'PRODUCTION', active: 'ACTIVE' };
+        const latestSampling = { smpl_bms: 3913.1, smpl_tfed: 7809 };
+        const harvestSummary = {
+            hasHarvest: true,
+            hasPartialHarvest: true,
+            hasFinalHarvest: false,
+            partialWeightKg: 1372.12,
+            totalWeightKg: 1372.12
+        };
+
+        const result = getEffectiveBiomassGain(pond, latestSampling, harvestSummary);
+        assert.equal(result.isFinal, false);
+        assert.equal(result.hasPartial, true);
+        assert.equal(result.currentBiomassKg, 3913.1);
+        assert.equal(result.partialWeightKg, 1372.12);
+        // Effective Gain = 3913.1 + 1372.12 = 5285.2 kg
+        assert.equal(result.effectiveGainKg, 5285.2);
+
+        // True FCR = 7809 / 5285.2 = 1.48 (NOT 7809 / 1372.12 = 5.69!)
+        const fcr = calculateFCR(latestSampling.smpl_tfed, result.effectiveGainKg);
+        assert.equal(fcr, 1.48);
+    });
+
+    await t.test('active pond without harvest uses current biomass only', () => {
+        const pond = { pond_status: 'PRODUCTION', active: 'ACTIVE' };
+        const latestSampling = { smpl_bms: 2500, smpl_tfed: 3500 };
+        const harvestSummary = {
+            hasHarvest: false,
+            hasPartialHarvest: false,
+            hasFinalHarvest: false,
+            partialWeightKg: 0,
+            totalWeightKg: 0
+        };
+
+        const result = getEffectiveBiomassGain(pond, latestSampling, harvestSummary);
+        assert.equal(result.isFinal, false);
+        assert.equal(result.hasPartial, false);
+        assert.equal(result.effectiveGainKg, 2500);
+
+        const fcr = calculateFCR(latestSampling.smpl_tfed, result.effectiveGainKg);
+        assert.equal(fcr, 1.4);
+    });
+
+    await t.test('closed pond with both partial and termination harvest uses total harvested weight', () => {
+        const pond = { pond_status: 'CLOSE', active: 'INACTIVE' };
+        const latestSampling = { smpl_bms: 4251.36, smpl_tfed: 8913 };
+        const harvestSummary = {
+            hasHarvest: true,
+            hasPartialHarvest: true,
+            hasFinalHarvest: true,
+            partialWeightKg: 1502.05,
+            finalWeightKg: 3072.65,
+            totalWeightKg: 4574.7
+        };
+
+        const result = getEffectiveBiomassGain(pond, latestSampling, harvestSummary);
+        assert.equal(result.isFinal, true);
+        assert.equal(result.effectiveGainKg, 4574.7);
+
+        // FCR = 8913 / 4574.7 = 1.95
+        const fcr = calculateFCR(latestSampling.smpl_tfed, result.effectiveGainKg);
+        assert.equal(fcr, 1.95);
+    });
+});
+
+

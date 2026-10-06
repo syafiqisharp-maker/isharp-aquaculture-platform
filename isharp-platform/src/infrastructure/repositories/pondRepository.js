@@ -25,9 +25,12 @@ export class PondRepository {
         const rawActive = (filters.active || "ALL").toUpperCase().replace(/\s+/g, "");
 
         if (status !== "ALL") {
-            if (["PRODUCTION", "IDLE", "CLOSE", "MAINTENANCE", "RESERVOIR", "PREPARATION", "NOT IN USE"].includes(status)) {
+            if (["PRODUCTION", "IDLE", "MAINTENANCE", "RESERVOIR", "PREPARATION", "NOT IN USE"].includes(status)) {
                 queryParams.push(`pond_status=eq.${encodeURIComponent(status)}`);
             }
+        } else {
+            // When viewing all statuses in the operational explorer, exclude closed cycles
+            queryParams.push("pond_status=neq.CLOSE");
         }
         if (moduleVal !== "ALL") {
             queryParams.push(`modl=eq.${encodeURIComponent(moduleVal)}`);

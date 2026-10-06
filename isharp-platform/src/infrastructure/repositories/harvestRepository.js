@@ -29,25 +29,60 @@ export class HarvestRepository {
     }
 
     /**
-     * Computes cumulative harvest summary (total kg and total revenue) for a cycle.
+     * Computes cumulative harvest summary (total kg, revenue, and partial vs final harvest breakdown) for a cycle.
      * @param {string} pondIndex 
-     * @returns {Promise<{totalWeightKg: number, totalRevenue: number, hasHarvest: boolean}>}
+     * @returns {Promise<{totalWeightKg: number, totalRevenue: number, partialWeightKg: number, finalWeightKg: number, hasHarvest: boolean, hasFinalHarvest: boolean, hasPartialHarvest: boolean, records: Array<object>}>}
      */
     static async getHarvestSummary(pondIndex) {
         const records = await this.getHarvestDaily(pondIndex);
         if (!records || records.length === 0) {
-            return { totalWeightKg: 0, totalRevenue: 0, hasHarvest: false };
+            return {
+                totalWeightKg: 0,
+                totalRevenue: 0,
+                partialWeightKg: 0,
+                finalWeightKg: 0,
+                hasHarvest: false,
+                hasFinalHarvest: false,
+                hasPartialHarvest: false,
+                records: []
+            };
         }
         let totalWeightKg = 0;
         let totalRevenue = 0;
+        let partialWeightKg = 0;
+        let finalWeightKg = 0;
+        let hasFinalHarvest = false;
+        let hasPartialHarvest = false;
+
         records.forEach(r => {
-            totalWeightKg += parseFloat(r.harv_weight || 0);
-            totalRevenue += parseFloat(r.harv_revenue || 0);
+            const w = parseFloat(r.harv_weight || 0);
+            const rev = parseFloat(r.harv_revenue || 0);
+            const status = String(r.harv_status || "").toUpperCase();
+            const isPartial = status.includes("PARTIAL");
+            const isFinal = status.includes("TERMINATION") || status.includes("FINAL") || status.includes("CLEAN");
+
+            totalWeightKg += w;
+            totalRevenue += rev;
+
+            if (isPartial) {
+                hasPartialHarvest = true;
+                partialWeightKg += w;
+            }
+            if (isFinal) {
+                hasFinalHarvest = true;
+                finalWeightKg += w;
+            }
         });
+
         return {
             totalWeightKg: Math.round(totalWeightKg * 10) / 10,
             totalRevenue: Math.round(totalRevenue * 100) / 100,
-            hasHarvest: totalWeightKg > 0
+            partialWeightKg: Math.round(partialWeightKg * 10) / 10,
+            finalWeightKg: Math.round(finalWeightKg * 10) / 10,
+            hasHarvest: totalWeightKg > 0,
+            hasFinalHarvest,
+            hasPartialHarvest,
+            records
         };
     }
 
