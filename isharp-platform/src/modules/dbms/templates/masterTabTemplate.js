@@ -67,9 +67,12 @@ export function getMasterTabHtml() {
             <div class="bento-row-2">
                 <!-- 6. Current Biomass or Harvest Biomass -->
                 <div class="bento-kpi-card">
-                    <div class="bento-card-top">
+                    <div class="bento-card-top flex-between">
                         <span id="snap-biomass-harvest-title" class="bento-card-title">Current Biomass</span>
-                        <span class="bento-card-icon">🚜</span>
+                        <div class="flex-center" style="gap: 0.45rem;">
+                            <span id="snap-final-status-badge" class="status-pill" style="display: none;"></span>
+                            <span class="bento-card-icon">🚜</span>
+                        </div>
                     </div>
                     <div id="snap-biomass-harvest-val" class="bento-card-val">—</div>
                     <div id="snap-biomass-harvest-foot" class="bento-card-foot">Status: IN CULTURE</div>

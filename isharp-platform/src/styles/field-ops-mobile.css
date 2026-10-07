@@ -592,11 +592,12 @@
         display: flex !important;
         flex-direction: row !important;
         gap: 0.5rem !important;
-        background: rgba(255, 255, 255, 0.96) !important;
-        backdrop-filter: blur(14px) !important;
-        border: 1px solid #bae6fd !important;
+        background: #ffffff !important;
+        backdrop-filter: none !important;
+        -webkit-backdrop-filter: none !important;
+        border: 1px solid #cbd5e1 !important;
         border-radius: 14px !important;
-        box-shadow: 0 6px 20px rgba(2, 132, 199, 0.22) !important;
+        box-shadow: 0 4px 16px rgba(15, 23, 42, 0.12) !important;
     }
 
     .mgmt-sticky-bottom-bar button {
@@ -650,10 +651,11 @@
     .daily-modal-footer-actions {
         position: sticky !important;
         bottom: 0 !important;
-        background: rgba(255, 255, 255, 0.97) !important;
-        backdrop-filter: blur(12px) !important;
+        background: #ffffff !important;
+        backdrop-filter: none !important;
+        -webkit-backdrop-filter: none !important;
         padding: 0.65rem 0.25rem 2.85rem 0.25rem !important;
-        border-top: 1px solid #e2e8f0 !important;
+        border-top: 1px solid #cbd5e1 !important;
         z-index: 20 !important;
     }
 }
@@ -811,26 +813,28 @@ input[type="number"] {
     z-index: 1 !important;
 }
 
-/* Stationary Hardware-Composited Wallpaper Underlay (Zero scroll repaints on mobile) */
-#view-field-ops::before {
-    content: '' !important;
-    position: fixed !important;
-    top: 0 !important;
-    left: 0 !important;
-    right: 0 !important;
-    bottom: 0 !important;
-    width: 100vw !important;
-    height: 100vh !important;
-    height: 100dvh !important;
-    background-color: #0c4a6e !important;
-    background-image: url('/assets/aero_seabed_rays.jpg') !important;
-    background-position: center bottom !important;
-    background-size: cover !important;
-    background-repeat: no-repeat !important;
-    pointer-events: none !important;
-    z-index: 0 !important;
-    will-change: transform;
-    transform: translateZ(0);
+/* Stationary Hardware-Composited Wallpaper Underlay (Desktop Only: >= 769px) */
+@media (min-width: 769px) {
+    #view-field-ops::before {
+        content: '' !important;
+        position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
+        right: 0 !important;
+        bottom: 0 !important;
+        width: 100vw !important;
+        height: 100vh !important;
+        height: 100dvh !important;
+        background-color: #0c4a6e !important;
+        background-image: linear-gradient(to bottom, rgba(12, 74, 110, 0.25) 0%, rgba(12, 74, 110, 0.45) 100%), url('/assets/field_ops_seagrass_bg.jpg') !important;
+        background-position: center bottom !important;
+        background-size: cover !important;
+        background-repeat: no-repeat !important;
+        pointer-events: none !important;
+        z-index: 0 !important;
+        will-change: transform;
+        transform: translateZ(0);
+    }
 }
 
 /* Clear solid/gradient backgrounds on inner wrapper containers & position above bubble layer */
@@ -919,28 +923,29 @@ input[type="number"] {
     font-variant-numeric: tabular-nums;
 }
 
-/* Primary Translucent Aero Glass Containers */
-#view-field-ops .field-ops-header,
-#view-field-ops .wqs-nav-bar,
-#view-field-ops .mgmt-header-bar,
-#view-field-ops .mgmt-nav-bar,
-#view-field-ops .field-ops-toolbar,
-#view-field-ops .field-ops-row-section,
-#view-field-ops .glass-card,
-#view-field-ops .module-select-card,
-#view-field-ops .mgmt-card,
-#view-field-ops .daily-entry-card,
-#view-field-ops .sensor-aero-card,
-#view-field-ops .feeding-horizon-banner {
-    background: var(--aero-card-bg) !important;
-    backdrop-filter: blur(var(--glass-blur)) saturate(180%) brightness(105%) !important;
-    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(180%) brightness(105%) !important;
-    border: var(--aero-card-border) !important;
-    border-bottom: var(--aero-card-border-b) !important;
-    box-shadow: var(--aero-card-shadow) !important;
-    position: relative !important;
-    overflow: hidden !important;
-    z-index: 3 !important;
+/* Primary Translucent Aero Glass Containers (Desktop Only: >= 769px) */
+@media (min-width: 769px) {
+    #view-field-ops .field-ops-header,
+    #view-field-ops .wqs-nav-bar,
+    #view-field-ops .mgmt-header-bar,
+    #view-field-ops .mgmt-nav-bar,
+    #view-field-ops .field-ops-toolbar,
+    #view-field-ops .field-ops-row-section,
+    #view-field-ops .glass-card,
+    #view-field-ops .module-select-card,
+    #view-field-ops .mgmt-card,
+    #view-field-ops .daily-entry-card,
+    #view-field-ops .feeding-horizon-banner {
+        background: var(--aero-card-bg) !important;
+        backdrop-filter: blur(var(--glass-blur)) saturate(180%) brightness(105%) !important;
+        -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(180%) brightness(105%) !important;
+        border: var(--aero-card-border) !important;
+        border-bottom: var(--aero-card-border-b) !important;
+        box-shadow: var(--aero-card-shadow) !important;
+        position: relative !important;
+        overflow: hidden !important;
+        z-index: 3 !important;
+    }
 }
 
 /* High-Performance 24-Pond Tiles: Zero backdrop-filter overhead for instant 60fps mobile rendering */
@@ -975,34 +980,36 @@ input[type="number"] {
     border-radius: 24px 12px 24px 12px !important;
 }
 
-/* Curved Crescent Specular Highlight Sheen */
-#view-field-ops .field-ops-pond-tile::before,
-#view-field-ops .module-select-card::before,
-#view-field-ops .field-ops-header::before,
-#view-field-ops .wqs-nav-bar::before,
-#view-field-ops .glass-card::before {
-    content: '' !important;
-    position: absolute !important;
-    top: 0 !important;
-    left: 0 !important;
-    right: 0 !important;
-    height: 42% !important;
-    background: linear-gradient(180deg, rgba(255, 255, 255, 0.65) 0%, rgba(255, 255, 255, 0.08) 80%, transparent 100%) !important;
-    border-top-left-radius: inherit !important;
-    border-top-right-radius: inherit !important;
-    pointer-events: none !important;
-}
+/* Curved Crescent Specular Highlight Sheen (Desktop Only: >= 769px) */
+@media (min-width: 769px) {
+    #view-field-ops .field-ops-pond-tile::before,
+    #view-field-ops .module-select-card::before,
+    #view-field-ops .field-ops-header::before,
+    #view-field-ops .wqs-nav-bar::before,
+    #view-field-ops .glass-card::before {
+        content: '' !important;
+        position: absolute !important;
+        top: 0 !important;
+        left: 0 !important;
+        right: 0 !important;
+        height: 42% !important;
+        background: linear-gradient(180deg, rgba(255, 255, 255, 0.65) 0%, rgba(255, 255, 255, 0.08) 80%, transparent 100%) !important;
+        border-top-left-radius: inherit !important;
+        border-top-right-radius: inherit !important;
+        pointer-events: none !important;
+    }
 
-/* Subtle Aqua Hydro Glow at Bottom of Active Pond Tiles */
-#view-field-ops .field-ops-pond-tile:not(.pond-idle)::after {
-    content: '' !important;
-    position: absolute !important;
-    bottom: 0 !important;
-    left: 15% !important;
-    right: 15% !important;
-    height: 4px !important;
-    background: radial-gradient(ellipse at 50% 100%, #00c2ff 0%, transparent 80%) !important;
-    pointer-events: none !important;
+    /* Subtle Aqua Hydro Glow at Bottom of Active Pond Tiles */
+    #view-field-ops .field-ops-pond-tile:not(.pond-idle)::after {
+        content: '' !important;
+        position: absolute !important;
+        bottom: 0 !important;
+        left: 15% !important;
+        right: 15% !important;
+        height: 4px !important;
+        background: radial-gradient(ellipse at 50% 100%, #00c2ff 0%, transparent 80%) !important;
+        pointer-events: none !important;
+    }
 }
 
 /* Option A: Drained Basin Idle Pond Styles — Zero blur overhead */
@@ -1238,13 +1245,11 @@ input[type="number"] {
 }
 
 #view-field-ops .sensor-aero-card {
-    background: var(--aero-card-bg) !important;
-    backdrop-filter: blur(var(--glass-blur)) saturate(180%) !important;
-    border: var(--aero-card-border) !important;
-    border-bottom: var(--aero-card-border-b) !important;
-    border-radius: 24px 12px 24px 12px !important;
+    background: #ffffff !important;
+    border: 1px solid #cbd5e1 !important;
+    border-radius: 14px !important;
     padding: 1.1rem 1.25rem !important;
-    box-shadow: var(--aero-card-shadow) !important;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05) !important;
     display: flex !important;
     flex-direction: column !important;
     justify-content: space-between !important;
@@ -1252,28 +1257,62 @@ input[type="number"] {
     overflow: hidden !important;
 }
 
-#view-field-ops .standby-housing-box {
-    background: rgba(240, 249, 255, 0.7) !important;
-    border: 1.5px dashed rgba(2, 132, 199, 0.4) !important;
-    border-radius: 16px !important;
-    padding: 1rem !important;
-    text-align: center !important;
-    color: var(--aero-ink-subtle) !important;
+@media (min-width: 769px) {
+    #view-field-ops .sensor-aero-card {
+        background: rgba(255, 255, 255, 0.75) !important;
+        backdrop-filter: blur(8px) saturate(180%) !important;
+        -webkit-backdrop-filter: blur(8px) saturate(180%) !important;
+        border: 1.5px solid rgba(255, 255, 255, 0.85) !important;
+        box-shadow: 0 4px 12px rgba(2, 132, 199, 0.08), inset 0 1px 1px rgba(255, 255, 255, 0.9) !important;
+    }
 }
 
-/* Modal Dialog Glassmorphism (High-readability Frosted Acrylic) */
+#view-field-ops .sensor-aero-card .sensor-title-row {
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    color: #0369a1 !important;
+    font-size: 0.85rem !important;
+    font-weight: 800 !important;
+    letter-spacing: -0.01em !important;
+}
+
+#view-field-ops .sensor-aero-card .sensor-big-val {
+    font-size: 1.75rem !important;
+    font-weight: 900 !important;
+    line-height: 1.15 !important;
+    margin: 0.35rem 0 !important;
+    letter-spacing: -0.02em !important;
+}
+
+#view-field-ops .standby-housing-box {
+    background: rgba(248, 250, 252, 0.9) !important;
+    border: 1px dashed #94a3b8 !important;
+    border-radius: 12px !important;
+    padding: 0.75rem !important;
+    text-align: center !important;
+    color: #475569 !important;
+}
+
+/* Modal Dialog Glassmorphism (High-readability Frosted Acrylic on Desktop, Solid on Mobile) */
 #view-field-ops .modal-glass {
-    background: linear-gradient(
-        135deg,
-        rgba(255, 255, 255, 0.92) 0%,
-        rgba(240, 249, 255, 0.84) 50%,
-        rgba(224, 242, 254, 0.90) 100%
-    ) !important;
-    backdrop-filter: blur(20px) saturate(180%) !important;
-    -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
+    background: #ffffff !important;
     border: 1.5px solid rgba(255, 255, 255, 0.95) !important;
     border-radius: 28px 14px 28px 14px !important;
     box-shadow: 0 20px 50px rgba(7, 38, 66, 0.28) !important;
+}
+
+@media (min-width: 769px) {
+    #view-field-ops .modal-glass {
+        background: linear-gradient(
+            135deg,
+            rgba(255, 255, 255, 0.92) 0%,
+            rgba(240, 249, 255, 0.84) 50%,
+            rgba(224, 242, 254, 0.90) 100%
+        ) !important;
+        backdrop-filter: blur(20px) saturate(180%) !important;
+        -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
+    }
 }
 
 /* Inputs stay crisp white for 100% data entry legibility under bright sun (Rule 9) */
@@ -1299,15 +1338,19 @@ input[type="number"] {
     width: 100vw !important;
     height: 100vh !important;
     height: 100dvh !important;
-    background: rgba(7, 38, 66, 0.55) !important;
-    backdrop-filter: blur(10px) !important;
-    -webkit-backdrop-filter: blur(10px) !important;
+    background: rgba(7, 38, 66, 0.65) !important;
     z-index: 99999 !important;
     display: flex;
     justify-content: center !important;
     align-items: flex-end !important;
     padding: 0 !important;
     overflow: hidden !important;
+}
+@media (min-width: 769px) {
+    #view-field-ops .modal-backdrop-aero {
+        backdrop-filter: blur(10px) !important;
+        -webkit-backdrop-filter: blur(10px) !important;
+    }
 }
 @media (min-width: 640px) {
     #view-field-ops .modal-backdrop-aero {
@@ -1509,15 +1552,23 @@ input[type="number"] {
     text-align: center !important;
 }
 
-/* Modal Footer Sticky Blur Dock */
+/* Modal Footer Sticky Dock (Solid on Mobile, Frosted Acrylic on Desktop) */
 #view-field-ops .modal-sheet-footer {
-    background: linear-gradient(180deg, rgba(255, 255, 255, 0.95) 0%, rgba(224, 242, 254, 0.95) 100%) !important;
-    backdrop-filter: blur(18px) !important;
-    border-top: 1px solid rgba(2, 132, 199, 0.2) !important;
+    background: #ffffff !important;
+    border-top: 1px solid #cbd5e1 !important;
     padding: 0.9rem 1.25rem 1.35rem 1.25rem !important;
     display: flex !important;
     gap: 8px !important;
     flex-shrink: 0 !important;
+}
+
+@media (min-width: 769px) {
+    #view-field-ops .modal-sheet-footer {
+        background: linear-gradient(180deg, rgba(255, 255, 255, 0.95) 0%, rgba(224, 242, 254, 0.95) 100%) !important;
+        backdrop-filter: blur(18px) !important;
+        -webkit-backdrop-filter: blur(18px) !important;
+        border-top: 1px solid rgba(2, 132, 199, 0.2) !important;
+    }
 }
 
 
@@ -1663,5 +1714,303 @@ input[type="number"] {
     }
     .daily-load-more-container button {
         min-height: 48px !important;
+    }
+}
+
+/* ==========================================================================
+   SEMANTIC FIELD OPS ATOMS & CARD CLASSES (Zero Inline Style Overhead)
+   ========================================================================== */
+.field-ops-pond-tile.pond-active {
+    border: 2px solid var(--pond-border, #0284c7);
+    border-radius: 14px;
+    padding: 0.85rem 0.95rem;
+    cursor: pointer;
+    transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s ease;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    min-height: 176px;
+    box-shadow: 0 4px 14px var(--pond-shadow, rgba(2, 132, 199, 0.12));
+}
+
+.pond-wqs-pills {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.35rem;
+    margin: 0.35rem 0;
+}
+
+.pond-telemetry-pill {
+    background: #f8fafc;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    padding: 0.25rem 0.4rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+
+.pond-telemetry-pill.telemetry-optimal {
+    background: #f0fdf4;
+    border-color: #bbf7d0;
+}
+
+.pond-telemetry-pill.telemetry-optimal .telemetry-val {
+    color: #15803d;
+}
+
+.pond-telemetry-pill.telemetry-warning {
+    background: #fefce8;
+    border-color: #fef08a;
+}
+
+.pond-telemetry-pill.telemetry-warning .telemetry-val {
+    color: #b45309;
+}
+
+.pond-telemetry-pill.telemetry-alert {
+    background: #fef2f2;
+    border-color: #fecaca;
+}
+
+.pond-telemetry-pill.telemetry-alert .telemetry-val {
+    color: #b91c1c;
+}
+
+/* Abnormal Water Quality Parameter Warnings */
+.pond-abnormal-wq-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+    margin: 0.3rem 0;
+}
+
+.wq-abnormal-pill {
+    font-size: 0.62rem;
+    font-weight: 800;
+    padding: 0.18rem 0.45rem;
+    border-radius: 6px;
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    line-height: 1.1;
+}
+
+.wq-abnormal-pill.pill-warning {
+    background: #fffbeb;
+    color: #b45309;
+    border: 1px solid #fde68a;
+}
+
+.wq-abnormal-pill.pill-alert {
+    background: #fef2f2;
+    color: #dc2626;
+    border: 1px solid #fca5a5;
+    animation: alert-pulse 2s infinite ease-in-out;
+}
+
+@keyframes alert-pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.75; }
+}
+
+.live-pulse-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background-color: #10b981;
+    display: inline-block;
+    box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.25);
+    animation: live-dot-beat 2.5s infinite ease-in-out;
+}
+
+@keyframes live-dot-beat {
+    0%, 100% { transform: scale(1); opacity: 0.85; }
+    50% { transform: scale(1.3); opacity: 1; }
+}
+
+.pond-status-banner {
+    border-radius: 6px;
+    padding: 0.25rem 0.45rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 0.35rem;
+    font-size: 0.64rem;
+    font-weight: 800;
+}
+
+.pond-status-banner-logged {
+    background: #f0fdf4;
+    border: 1px solid #86efac;
+    color: #166534;
+}
+
+.pond-status-banner-pending {
+    background: #fffbeb;
+    border: 1px solid #fde68a;
+    color: #b45309;
+}
+
+.btn-quick-log-pond {
+    width: 100%;
+    border-radius: 8px;
+    padding: 0.35rem 0.5rem;
+    font-size: 0.74rem;
+    font-weight: 800;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.3rem;
+    min-height: 36px;
+    transition: all 0.15s ease;
+}
+
+.btn-quick-log-logged {
+    background: #f0fdf4;
+    color: #15803d;
+    border: 1px solid #86efac;
+    box-shadow: none;
+}
+
+.btn-quick-log-logged:hover {
+    background: #dcfce7;
+    border-color: #4ade80;
+}
+
+.btn-quick-log-pending {
+    background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
+    color: #ffffff;
+    border: 1px solid #0284c7;
+    box-shadow: 0 2px 6px rgba(2, 132, 199, 0.25);
+}
+
+.btn-quick-log-pending:hover {
+    background: linear-gradient(135deg, #0369a1 0%, #075985 100%);
+}
+
+.wqs-metric-card {
+    background: #ffffff;
+    border: 1px solid #cbd5e1;
+    border-radius: 12px;
+    padding: 0.8rem 0.95rem;
+    text-align: center;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05);
+}
+
+@media (min-width: 769px) {
+    .wqs-metric-card {
+        background: rgba(255, 255, 255, 0.65);
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
+        border: 1.5px solid rgba(255, 255, 255, 0.85);
+        box-shadow: 0 4px 12px rgba(2, 132, 199, 0.08), inset 0 1px 1px rgba(255, 255, 255, 0.9);
+    }
+}
+
+/* ==========================================================================
+   12. HIGH-PERFORMANCE MOBILE INFRASTRUCTURE & ZERO-BLUR SOLID ARCHITECTURE
+   Enforces silky 60fps rendering, zero compositor stalls, and high-contrast
+   sunlight readability on all budget and legacy mobile devices (<= 768px).
+   ========================================================================== */
+@media (max-width: 768px) {
+    /* 1. Hardware-friendly scrolling wallpaper on mobile (Candidate 1: Vibrant Frutiger Aero Lagoon) */
+    #view-field-ops::before {
+        display: none !important;
+    }
+    #view-field-ops {
+        background-color: #0c4a6e !important;
+        background-image: linear-gradient(to bottom, rgba(12, 74, 110, 0.40) 0%, rgba(8, 47, 73, 0.65) 100%),
+                          url('/assets/field_ops_seagrass_bg.jpg') !important;
+        background-position: center top !important;
+        background-size: cover !important;
+        background-repeat: no-repeat !important;
+        background-attachment: scroll !important;
+    }
+
+    /* 2. Zero multi-pass backdrop-filter shaders on ANY element on mobile */
+    #view-field-ops,
+    #view-field-ops *,
+    #view-field-ops *::before,
+    #view-field-ops *::after {
+        backdrop-filter: none !important;
+        -webkit-backdrop-filter: none !important;
+    }
+
+    /* 3. Strip expensive pseudo-element gloss/glow shader layers on mobile */
+    #view-field-ops .field-ops-pond-tile::before,
+    #view-field-ops .field-ops-pond-tile::after,
+    #view-field-ops .module-select-card::before,
+    #view-field-ops .field-ops-header::before,
+    #view-field-ops .wqs-nav-bar::before,
+    #view-field-ops .glass-card::before {
+        display: none !important;
+    }
+
+    /* 4. Solid, high-contrast, GPU-friendly white cards & panels */
+    #view-field-ops .field-ops-header,
+    #view-field-ops .wqs-nav-bar,
+    #view-field-ops .mgmt-header-bar,
+    #view-field-ops .mgmt-nav-bar,
+    #view-field-ops .field-ops-toolbar,
+    #view-field-ops .field-ops-row-section,
+    #view-field-ops .glass-card,
+    #view-field-ops .module-select-card,
+    #view-field-ops .mgmt-card,
+    #view-field-ops .daily-entry-card,
+    #view-field-ops .sensor-aero-card,
+    #view-field-ops .field-ops-pond-tile,
+    #view-field-ops .modal-glass {
+        background: #ffffff !important;
+        border: 1px solid #cbd5e1 !important;
+        box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06), 0 1px 2px rgba(15, 23, 42, 0.04) !important;
+    }
+
+    /* 5. Active pond cards: crisp status borders without expensive glow filters */
+    #view-field-ops .field-ops-pond-tile.pond-active {
+        box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08) !important;
+    }
+    #view-field-ops .field-ops-pond-tile.pond-idle {
+        background: #f8fafc !important;
+        border: 1.5px dashed #cbd5e1 !important;
+        box-shadow: none !important;
+    }
+
+    /* 6. High-Performance CSS Containment for 24-Pond Overview Grid */
+    #view-field-ops .field-ops-pond-tile {
+        contain: layout paint;
+        content-visibility: auto;
+        contain-intrinsic-size: 0 176px;
+    }
+    #view-field-ops .field-ops-row-section {
+        contain: layout paint;
+    }
+
+    /* 7. Mobile Telemetry Twin Pills: Crisp, zero-blur, high-contrast */
+    #view-field-ops .pond-telemetry-pill {
+        box-shadow: none !important;
+    }
+    #view-field-ops .pond-telemetry-pill.telemetry-optimal {
+        background: #f0fdf4 !important;
+        border: 1px solid #bbf7d0 !important;
+    }
+    #view-field-ops .pond-telemetry-pill.telemetry-warning {
+        background: #fefce8 !important;
+        border: 1px solid #fef08a !important;
+    }
+    #view-field-ops .pond-telemetry-pill.telemetry-alert {
+        background: #fef2f2 !important;
+        border: 1px solid #fecaca !important;
+    }
+
+    /* 8. Outdoor Sunlight Typography: Crisp dark slate without washed-out shadows */
+    #view-field-ops h1,
+    #view-field-ops h2,
+    #view-field-ops h3,
+    #view-field-ops .pond-title-text {
+        text-shadow: none !important;
+        color: #0f172a !important;
     }
 }

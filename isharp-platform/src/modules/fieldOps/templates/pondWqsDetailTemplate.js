@@ -10,6 +10,12 @@
  * Clean Coding Standard: Pure HTML template generator.
  */
 
+import {
+    WATER_QUALITY_THRESHOLDS,
+    formatParameterTarget,
+    evaluateParameterStatus
+} from "../../../domain/waterQualityLimit.js";
+
 /**
  * Generates the HTML layout for the Pond WQS Detail View.
  * @param {object} params
@@ -46,33 +52,43 @@ export function getPondWqsDetailHtml({
         ? `<span style="font-size: 0.74rem; font-weight: 700; opacity: 0.9; margin-left: 0.25rem;">(DOC ${labWq.doc})</span>`
         : "";
 
+    // Parameter evaluations from Single Source of Truth (waterQualityLimit.js)
+    const salEval = evaluateParameterStatus("salinity", hasLabWq ? labWq.salinity_ppt : null);
     const labSalinity = (hasLabWq && labWq.salinity_ppt !== null) ? labWq.salinity_ppt : "—";
+    const labSalColor = salEval.status === "alert" ? "#ef4444" : salEval.status === "warning" ? "#d97706" : "#072642";
+
+    const alkEval = evaluateParameterStatus("alkalinity", hasLabWq ? labWq.alkalinity : null);
     const labAlkalinity = (hasLabWq && labWq.alkalinity !== null) ? labWq.alkalinity : "—";
-    const labAlkColor = (hasLabWq && labWq.alkalinity !== null && labWq.alkalinity < 100) ? "#ea580c" : "#0f172a";
+    const labAlkColor = alkEval.status === "alert" ? "#ef4444" : alkEval.status === "warning" ? "#ea580c" : "#072642";
 
+    const nh3Eval = evaluateParameterStatus("ammonia", hasLabWq ? labWq.ammonia : null);
     const labAmmonia = (hasLabWq && labWq.ammonia !== null) ? labWq.ammonia : "—";
-    const labNh3Color = (hasLabWq && labWq.ammonia !== null)
-        ? (labWq.ammonia > 0.5 ? "#ef4444" : labWq.ammonia > 0.2 ? "#d97706" : "#0f172a")
-        : "#0f172a";
+    const labNh3Color = nh3Eval.status === "alert" ? "#ef4444" : nh3Eval.status === "warning" ? "#d97706" : "#072642";
 
+    const no2Eval = evaluateParameterStatus("nitrite", hasLabWq ? labWq.nitrite : null);
     const labNitrite = (hasLabWq && labWq.nitrite !== null) ? labWq.nitrite : "—";
-    const labNo2Color = (hasLabWq && labWq.nitrite !== null)
-        ? (labWq.nitrite > 1.0 ? "#ef4444" : labWq.nitrite > 0.5 ? "#d97706" : "#0f172a")
-        : "#0f172a";
+    const labNo2Color = no2Eval.status === "alert" ? "#ef4444" : no2Eval.status === "warning" ? "#d97706" : "#072642";
 
+    const caEval = evaluateParameterStatus("calcium", hasLabWq ? labWq.calcium : null);
     const labCalcium = (hasLabWq && labWq.calcium !== null) ? Math.round(labWq.calcium) : "—";
+    const labCaColor = caEval.status === "alert" ? "#ef4444" : caEval.status === "warning" ? "#d97706" : "#072642";
+
+    const mgEval = evaluateParameterStatus("magnesium", hasLabWq ? labWq.magnesium : null);
     const labMagnesium = (hasLabWq && labWq.magnesium !== null) ? Math.round(labWq.magnesium) : "—";
+    const labMgColor = mgEval.status === "alert" ? "#ef4444" : mgEval.status === "warning" ? "#d97706" : "#072642";
 
     const labRatio = (hasLabWq && labWq.calcium && labWq.magnesium && labWq.calcium > 0)
         ? `1 : ${(labWq.magnesium / labWq.calcium).toFixed(1)}`
         : "—";
 
+    const turbEval = evaluateParameterStatus("turbidity", hasLabWq ? labWq.turbidity : null);
     const labTurbidity = (hasLabWq && labWq.turbidity !== null) ? labWq.turbidity : "—";
+    const labTurbColor = turbEval.status === "alert" ? "#ef4444" : turbEval.status === "warning" ? "#d97706" : "#072642";
     return `
         <div class="pond-wqs-wrapper" style="padding: 1.25rem 2rem; max-width: 1200px; margin: 0 auto; display: flex; flex-direction: column; gap: 1.4rem;">
             
             <!-- Top Navigation & Pond Identity Bar -->
-            <div class="wqs-nav-bar flex-between" style="background: rgba(255, 255, 255, 0.9); backdrop-filter: blur(16px); border: 1px solid rgba(255, 255, 255, 1); border-radius: 16px; padding: 0.9rem 1.4rem; box-shadow: 0 4px 20px rgba(2, 132, 199, 0.08); flex-wrap: wrap; gap: 0.75rem;">
+            <div class="wqs-nav-bar flex-between" style="border-radius: 16px; padding: 0.9rem 1.4rem; flex-wrap: wrap; gap: 0.75rem;">
                 <div style="display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;">
                     <button type="button" id="btn-wqs-back" class="btn-action btn-secondary" style="font-size: 0.82rem; font-weight: 700; padding: 0.45rem 0.95rem; display: flex; align-items: center; gap: 0.4rem;">
                         <span class="btn-text-full">← Back to 24 Ponds</span>
@@ -118,7 +134,7 @@ export function getPondWqsDetailHtml({
                 </div>
 
                 <!-- Meta Info Bar: Species, Line, Stock Source, DOC -->
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 0.75rem; margin-bottom: 1.1rem; background: rgba(255, 255, 255, 0.45); backdrop-filter: blur(8px); padding: 0.85rem 1.1rem; border-radius: 12px; border: 1px solid rgba(255, 255, 255, 0.65); box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.7);">
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 0.75rem; margin-bottom: 1.1rem; padding: 0.85rem 1.1rem; border-radius: 12px; border: 1px solid #cbd5e1; background: #ffffff;">
                     <div>
                         <span style="font-size: 0.72rem; color: #0369a1; font-weight: 800; text-transform: uppercase; letter-spacing: 0.03em; display: block;">Species</span>
                         <strong style="font-size: 0.9rem; color: #072642; font-weight: 900;">${pond.stck_species || 'P. VANNAMEI'}</strong>
@@ -139,29 +155,29 @@ export function getPondWqsDetailHtml({
 
                 <!-- Recent Sampling Sub-grid -->
                 <div id="wqs-sampling-grid" class="wqs-biometrics-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 0.75rem;">
-                    <div style="background: rgba(255, 255, 255, 0.55); backdrop-filter: blur(10px); border: 1.5px solid rgba(255, 255, 255, 0.85); border-radius: 12px; padding: 0.8rem 0.95rem; text-align: center; box-shadow: 0 4px 12px rgba(2, 132, 199, 0.08), inset 0 1px 1px rgba(255, 255, 255, 0.9);">
-                        <div style="font-size: 0.74rem; font-weight: 900; color: #0369a1; text-transform: uppercase; letter-spacing: 0.04em; text-shadow: 0 1px 1px rgba(255, 255, 255, 0.8);">Sample ABW</div>
-                        <div id="wqs-val-abw" style="font-size: 1.45rem; font-weight: 900; color: #072642; margin: 0.2rem 0; font-family: var(--font-mono, monospace); text-shadow: 0 1px 2px rgba(255, 255, 255, 0.8);">—</div>
+                    <div class="wqs-metric-card">
+                        <div style="font-size: 0.74rem; font-weight: 900; color: #0369a1; text-transform: uppercase; letter-spacing: 0.04em;">Sample ABW</div>
+                        <div id="wqs-val-abw" style="font-size: 1.45rem; font-weight: 900; color: #072642; margin: 0.2rem 0; font-family: var(--font-mono, monospace);">—</div>
                         <div style="font-size: 0.7rem; color: #0f3d63; font-weight: 700;">Average Body Weight</div>
                     </div>
-                    <div style="background: rgba(255, 255, 255, 0.55); backdrop-filter: blur(10px); border: 1.5px solid rgba(255, 255, 255, 0.85); border-radius: 12px; padding: 0.8rem 0.95rem; text-align: center; box-shadow: 0 4px 12px rgba(2, 132, 199, 0.08), inset 0 1px 1px rgba(255, 255, 255, 0.9);">
-                        <div style="font-size: 0.74rem; font-weight: 900; color: #0369a1; text-transform: uppercase; letter-spacing: 0.04em; text-shadow: 0 1px 1px rgba(255, 255, 255, 0.8);">Sample AWG</div>
-                        <div id="wqs-val-awg" style="font-size: 1.45rem; font-weight: 900; color: #072642; margin: 0.2rem 0; font-family: var(--font-mono, monospace); text-shadow: 0 1px 2px rgba(255, 255, 255, 0.8);">—</div>
+                    <div class="wqs-metric-card">
+                        <div style="font-size: 0.74rem; font-weight: 900; color: #0369a1; text-transform: uppercase; letter-spacing: 0.04em;">Sample AWG</div>
+                        <div id="wqs-val-awg" style="font-size: 1.45rem; font-weight: 900; color: #072642; margin: 0.2rem 0; font-family: var(--font-mono, monospace);">—</div>
                         <div style="font-size: 0.7rem; color: #0f3d63; font-weight: 700;">Weekly Growth</div>
                     </div>
-                    <div style="background: rgba(255, 255, 255, 0.55); backdrop-filter: blur(10px); border: 1.5px solid rgba(255, 255, 255, 0.85); border-radius: 12px; padding: 0.8rem 0.95rem; text-align: center; box-shadow: 0 4px 12px rgba(2, 132, 199, 0.08), inset 0 1px 1px rgba(255, 255, 255, 0.9);">
-                        <div style="font-size: 0.74rem; font-weight: 900; color: #0369a1; text-transform: uppercase; letter-spacing: 0.04em; text-shadow: 0 1px 1px rgba(255, 255, 255, 0.8);">Survival Rate (SR)</div>
-                        <div id="wqs-val-sr" style="font-size: 1.45rem; font-weight: 900; color: #15803d; margin: 0.2rem 0; font-family: var(--font-mono, monospace); text-shadow: 0 1px 2px rgba(255, 255, 255, 0.8);">—</div>
+                    <div class="wqs-metric-card">
+                        <div style="font-size: 0.74rem; font-weight: 900; color: #0369a1; text-transform: uppercase; letter-spacing: 0.04em;">Survival Rate (SR)</div>
+                        <div id="wqs-val-sr" style="font-size: 1.45rem; font-weight: 900; color: #15803d; margin: 0.2rem 0; font-family: var(--font-mono, monospace);">—</div>
                         <div style="font-size: 0.7rem; color: #0f3d63; font-weight: 700;">Estimated %</div>
                     </div>
-                    <div style="background: rgba(255, 255, 255, 0.55); backdrop-filter: blur(10px); border: 1.5px solid rgba(255, 255, 255, 0.85); border-radius: 12px; padding: 0.8rem 0.95rem; text-align: center; box-shadow: 0 4px 12px rgba(2, 132, 199, 0.08), inset 0 1px 1px rgba(255, 255, 255, 0.9);">
-                        <div style="font-size: 0.74rem; font-weight: 900; color: #0369a1; text-transform: uppercase; letter-spacing: 0.04em; text-shadow: 0 1px 1px rgba(255, 255, 255, 0.8);">Biomass</div>
-                        <div id="wqs-val-biomass" style="font-size: 1.45rem; font-weight: 900; color: #072642; margin: 0.2rem 0; font-family: var(--font-mono, monospace); text-shadow: 0 1px 2px rgba(255, 255, 255, 0.8);">—</div>
+                    <div class="wqs-metric-card">
+                        <div style="font-size: 0.74rem; font-weight: 900; color: #0369a1; text-transform: uppercase; letter-spacing: 0.04em;">Biomass</div>
+                        <div id="wqs-val-biomass" style="font-size: 1.45rem; font-weight: 900; color: #072642; margin: 0.2rem 0; font-family: var(--font-mono, monospace);">—</div>
                         <div style="font-size: 0.7rem; color: #0f3d63; font-weight: 700;">Estimated Total kg</div>
                     </div>
-                    <div style="background: rgba(255, 255, 255, 0.55); backdrop-filter: blur(10px); border: 1.5px solid rgba(255, 255, 255, 0.85); border-radius: 12px; padding: 0.8rem 0.95rem; text-align: center; box-shadow: 0 4px 12px rgba(2, 132, 199, 0.08), inset 0 1px 1px rgba(255, 255, 255, 0.9);">
-                        <div style="font-size: 0.74rem; font-weight: 900; color: #0369a1; text-transform: uppercase; letter-spacing: 0.04em; text-shadow: 0 1px 1px rgba(255, 255, 255, 0.8);">Sample FCR</div>
-                        <div id="wqs-val-fcr" style="font-size: 1.45rem; font-weight: 900; color: #072642; margin: 0.2rem 0; font-family: var(--font-mono, monospace); text-shadow: 0 1px 2px rgba(255, 255, 255, 0.8);">—</div>
+                    <div class="wqs-metric-card">
+                        <div style="font-size: 0.74rem; font-weight: 900; color: #0369a1; text-transform: uppercase; letter-spacing: 0.04em;">Sample FCR</div>
+                        <div id="wqs-val-fcr" style="font-size: 1.45rem; font-weight: 900; color: #072642; margin: 0.2rem 0; font-family: var(--font-mono, monospace);">—</div>
                         <div style="font-size: 0.7rem; color: #0f3d63; font-weight: 700;">Feed Conversion Ratio</div>
                     </div>
                 </div>
@@ -185,68 +201,68 @@ export function getPondWqsDetailHtml({
 
                 <!-- Bento KPI Grid (8 Cards) -->
                 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 0.75rem;">
-                    <div style="background: rgba(255, 255, 255, 0.55); backdrop-filter: blur(10px); border: 1.5px solid rgba(255, 255, 255, 0.85); border-radius: 12px; padding: 0.85rem 1rem; text-align: center; box-shadow: 0 4px 12px rgba(2, 132, 199, 0.08), inset 0 1px 1px rgba(255, 255, 255, 0.9);">
-                        <div style="font-size: 0.76rem; font-weight: 900; color: #0369a1; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 0.25rem; text-shadow: 0 1px 1px rgba(255, 255, 255, 0.8);">Salinity</div>
-                        <div style="font-size: 1.45rem; font-weight: 900; color: #072642; margin: 0.2rem 0; font-family: var(--font-mono, monospace); text-shadow: 0 1px 2px rgba(255, 255, 255, 0.8);">
+                    <div class="wqs-metric-card">
+                        <div style="font-size: 0.76rem; font-weight: 900; color: #0369a1; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 0.25rem;">Salinity</div>
+                        <div style="font-size: 1.45rem; font-weight: 900; color: ${labSalColor}; margin: 0.2rem 0; font-family: var(--font-mono, monospace);">
                             ${labSalinity} <span style="font-size: 0.75rem; font-weight: 800; color: #0f3d63;">ppt</span>
                         </div>
-                        <div style="font-size: 0.7rem; color: #0f3d63; font-weight: 700;">Target: 15–30 ppt</div>
+                        <div style="font-size: 0.7rem; color: #0f3d63; font-weight: 700;">Target: ${formatParameterTarget("salinity")}</div>
                     </div>
 
-                    <div style="background: rgba(255, 255, 255, 0.55); backdrop-filter: blur(10px); border: 1.5px solid rgba(255, 255, 255, 0.85); border-radius: 12px; padding: 0.85rem 1rem; text-align: center; box-shadow: 0 4px 12px rgba(2, 132, 199, 0.08), inset 0 1px 1px rgba(255, 255, 255, 0.9);">
-                        <div style="font-size: 0.76rem; font-weight: 900; color: #0369a1; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 0.25rem; text-shadow: 0 1px 1px rgba(255, 255, 255, 0.8);">Alkalinity</div>
-                        <div style="font-size: 1.45rem; font-weight: 900; color: ${labAlkColor}; margin: 0.2rem 0; font-family: var(--font-mono, monospace); text-shadow: 0 1px 2px rgba(255, 255, 255, 0.8);">
+                    <div class="wqs-metric-card">
+                        <div style="font-size: 0.76rem; font-weight: 900; color: #0369a1; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 0.25rem;">Alkalinity</div>
+                        <div style="font-size: 1.45rem; font-weight: 900; color: ${labAlkColor}; margin: 0.2rem 0; font-family: var(--font-mono, monospace);">
                             ${labAlkalinity} <span style="font-size: 0.75rem; font-weight: 800; color: #0f3d63;">mg/L</span>
                         </div>
-                        <div style="font-size: 0.7rem; color: #0f3d63; font-weight: 700;">Target: 100–160 mg/L</div>
+                        <div style="font-size: 0.7rem; color: #0f3d63; font-weight: 700;">Target: ${formatParameterTarget("alkalinity")}</div>
                     </div>
 
-                    <div style="background: rgba(255, 255, 255, 0.55); backdrop-filter: blur(10px); border: 1.5px solid rgba(255, 255, 255, 0.85); border-radius: 12px; padding: 0.85rem 1rem; text-align: center; box-shadow: 0 4px 12px rgba(2, 132, 199, 0.08), inset 0 1px 1px rgba(255, 255, 255, 0.9);">
-                        <div style="font-size: 0.76rem; font-weight: 900; color: #0369a1; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 0.25rem; text-shadow: 0 1px 1px rgba(255, 255, 255, 0.8);">Ammonia (NH₃)</div>
-                        <div style="font-size: 1.45rem; font-weight: 900; color: ${labNh3Color}; margin: 0.2rem 0; font-family: var(--font-mono, monospace); text-shadow: 0 1px 2px rgba(255, 255, 255, 0.8);">
+                    <div class="wqs-metric-card">
+                        <div style="font-size: 0.76rem; font-weight: 900; color: #0369a1; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 0.25rem;">Ammonia (NH₃)</div>
+                        <div style="font-size: 1.45rem; font-weight: 900; color: ${labNh3Color}; margin: 0.2rem 0; font-family: var(--font-mono, monospace);">
                             ${labAmmonia} <span style="font-size: 0.75rem; font-weight: 800; color: #0f3d63;">mg/L</span>
                         </div>
-                        <div style="font-size: 0.7rem; color: #0f3d63; font-weight: 700;">Safe: &le; 0.5 mg/L</div>
+                        <div style="font-size: 0.7rem; color: #0f3d63; font-weight: 700;">Safe: ${formatParameterTarget("ammonia")}</div>
                     </div>
 
-                    <div style="background: rgba(255, 255, 255, 0.55); backdrop-filter: blur(10px); border: 1.5px solid rgba(255, 255, 255, 0.85); border-radius: 12px; padding: 0.85rem 1rem; text-align: center; box-shadow: 0 4px 12px rgba(2, 132, 199, 0.08), inset 0 1px 1px rgba(255, 255, 255, 0.9);">
-                        <div style="font-size: 0.76rem; font-weight: 900; color: #0369a1; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 0.25rem; text-shadow: 0 1px 1px rgba(255, 255, 255, 0.8);">Nitrite (NO₂⁻)</div>
-                        <div style="font-size: 1.45rem; font-weight: 900; color: ${labNo2Color}; margin: 0.2rem 0; font-family: var(--font-mono, monospace); text-shadow: 0 1px 2px rgba(255, 255, 255, 0.8);">
+                    <div class="wqs-metric-card">
+                        <div style="font-size: 0.76rem; font-weight: 900; color: #0369a1; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 0.25rem;">Nitrite (NO₂⁻)</div>
+                        <div style="font-size: 1.45rem; font-weight: 900; color: ${labNo2Color}; margin: 0.2rem 0; font-family: var(--font-mono, monospace);">
                             ${labNitrite} <span style="font-size: 0.75rem; font-weight: 800; color: #0f3d63;">mg/L</span>
                         </div>
-                        <div style="font-size: 0.7rem; color: #0f3d63; font-weight: 700;">Safe: &le; 1.0 mg/L</div>
+                        <div style="font-size: 0.7rem; color: #0f3d63; font-weight: 700;">Safe: ${formatParameterTarget("nitrite")}</div>
                     </div>
 
-                    <div style="background: rgba(255, 255, 255, 0.55); backdrop-filter: blur(10px); border: 1.5px solid rgba(255, 255, 255, 0.85); border-radius: 12px; padding: 0.85rem 1rem; text-align: center; box-shadow: 0 4px 12px rgba(2, 132, 199, 0.08), inset 0 1px 1px rgba(255, 255, 255, 0.9);">
-                        <div style="font-size: 0.76rem; font-weight: 900; color: #0369a1; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 0.25rem; text-shadow: 0 1px 1px rgba(255, 255, 255, 0.8);">Calcium (Ca)</div>
-                        <div style="font-size: 1.45rem; font-weight: 900; color: #072642; margin: 0.2rem 0; font-family: var(--font-mono, monospace); text-shadow: 0 1px 2px rgba(255, 255, 255, 0.8);">
+                    <div class="wqs-metric-card">
+                        <div style="font-size: 0.76rem; font-weight: 900; color: #0369a1; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 0.25rem;">Calcium (Ca)</div>
+                        <div style="font-size: 1.45rem; font-weight: 900; color: ${labCaColor}; margin: 0.2rem 0; font-family: var(--font-mono, monospace);">
                             ${labCalcium} <span style="font-size: 0.75rem; font-weight: 800; color: #0f3d63;">mg/L</span>
                         </div>
-                        <div style="font-size: 0.7rem; color: #0f3d63; font-weight: 700;">Target: &gt; 200 mg/L</div>
+                        <div style="font-size: 0.7rem; color: #0f3d63; font-weight: 700;">Target: ${formatParameterTarget("calcium")}</div>
                     </div>
 
-                    <div style="background: rgba(255, 255, 255, 0.55); backdrop-filter: blur(10px); border: 1.5px solid rgba(255, 255, 255, 0.85); border-radius: 12px; padding: 0.85rem 1rem; text-align: center; box-shadow: 0 4px 12px rgba(2, 132, 199, 0.08), inset 0 1px 1px rgba(255, 255, 255, 0.9);">
-                        <div style="font-size: 0.76rem; font-weight: 900; color: #0369a1; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 0.25rem; text-shadow: 0 1px 1px rgba(255, 255, 255, 0.8);">Magnesium (Mg)</div>
-                        <div style="font-size: 1.45rem; font-weight: 900; color: #072642; margin: 0.2rem 0; font-family: var(--font-mono, monospace); text-shadow: 0 1px 2px rgba(255, 255, 255, 0.8);">
+                    <div class="wqs-metric-card">
+                        <div style="font-size: 0.76rem; font-weight: 900; color: #0369a1; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 0.25rem;">Magnesium (Mg)</div>
+                        <div style="font-size: 1.45rem; font-weight: 900; color: ${labMgColor}; margin: 0.2rem 0; font-family: var(--font-mono, monospace);">
                             ${labMagnesium} <span style="font-size: 0.75rem; font-weight: 800; color: #0f3d63;">mg/L</span>
                         </div>
-                        <div style="font-size: 0.7rem; color: #0f3d63; font-weight: 700;">Target: &gt; 600 mg/L</div>
+                        <div style="font-size: 0.7rem; color: #0f3d63; font-weight: 700;">Target: ${formatParameterTarget("magnesium")}</div>
                     </div>
 
-                    <div style="background: rgba(255, 255, 255, 0.55); backdrop-filter: blur(10px); border: 1.5px solid rgba(255, 255, 255, 0.85); border-radius: 12px; padding: 0.85rem 1rem; text-align: center; box-shadow: 0 4px 12px rgba(2, 132, 199, 0.08), inset 0 1px 1px rgba(255, 255, 255, 0.9);">
-                        <div style="font-size: 0.76rem; font-weight: 900; color: #0369a1; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 0.25rem; text-shadow: 0 1px 1px rgba(255, 255, 255, 0.8);">Ca : Mg Ratio</div>
-                        <div style="font-size: 1.45rem; font-weight: 900; color: #072642; margin: 0.2rem 0; font-family: var(--font-mono, monospace); text-shadow: 0 1px 2px rgba(255, 255, 255, 0.8);">
+                    <div class="wqs-metric-card">
+                        <div style="font-size: 0.76rem; font-weight: 900; color: #0369a1; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 0.25rem;">Ca : Mg Ratio</div>
+                        <div style="font-size: 1.45rem; font-weight: 900; color: #072642; margin: 0.2rem 0; font-family: var(--font-mono, monospace);">
                             ${labRatio}
                         </div>
-                        <div style="font-size: 0.7rem; color: #0f3d63; font-weight: 700;">Target: 1 : 2.5–3.5</div>
+                        <div style="font-size: 0.7rem; color: #0f3d63; font-weight: 700;">Target: ${formatParameterTarget("camg_ratio")}</div>
                     </div>
 
-                    <div style="background: rgba(255, 255, 255, 0.55); backdrop-filter: blur(10px); border: 1.5px solid rgba(255, 255, 255, 0.85); border-radius: 12px; padding: 0.85rem 1rem; text-align: center; box-shadow: 0 4px 12px rgba(2, 132, 199, 0.08), inset 0 1px 1px rgba(255, 255, 255, 0.9);">
-                        <div style="font-size: 0.76rem; font-weight: 900; color: #0369a1; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 0.25rem; text-shadow: 0 1px 1px rgba(255, 255, 255, 0.8);">Turbidity</div>
-                        <div style="font-size: 1.45rem; font-weight: 900; color: #072642; margin: 0.2rem 0; font-family: var(--font-mono, monospace); text-shadow: 0 1px 2px rgba(255, 255, 255, 0.8);">
+                    <div class="wqs-metric-card">
+                        <div style="font-size: 0.76rem; font-weight: 900; color: #0369a1; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 0.25rem;">Turbidity</div>
+                        <div style="font-size: 1.45rem; font-weight: 900; color: ${labTurbColor}; margin: 0.2rem 0; font-family: var(--font-mono, monospace);">
                             ${labTurbidity} <span style="font-size: 0.75rem; font-weight: 800; color: #0f3d63;">NTU</span>
                         </div>
-                        <div style="font-size: 0.7rem; color: #0f3d63; font-weight: 700;">Target: &lt; 30 NTU</div>
+                        <div style="font-size: 0.7rem; color: #0f3d63; font-weight: 700;">Target: ${formatParameterTarget("turbidity")}</div>
                     </div>
                 </div>
             </section>
@@ -284,44 +300,50 @@ export function getPondWqsDetailHtml({
                 <!-- Card 1: Live Weather Station -->
                 <div class="sensor-aero-card">
                     <div class="sensor-title-row">
-                        <span>Weather Station iSHARP</span>
-                        <span style="font-size: 0.7rem; font-weight: 800; color: #0284c7;">● ONLINE (${weatherTime})</span>
+                        <span style="display: flex; align-items: center; gap: 0.35rem;">
+                            <span>☀️</span> Weather Station iSHARP
+                        </span>
+                        <span style="font-size: 0.7rem; font-weight: 800; color: #15803d; background: rgba(220, 252, 231, 0.9); padding: 0.15rem 0.5rem; border-radius: 999px; border: 1px solid rgba(187, 247, 208, 0.9);">● ONLINE (${weatherTime})</span>
                     </div>
-                    <div class="sensor-big-val" style="color: #0284c7;">${airTemp.toFixed(1)} <span style="font-size: 1rem; font-weight: 700;">°C</span></div>
-                    <div style="font-size: 0.78rem; color: var(--aero-ink-subtle); font-weight: 600;">
-                        Lux: <strong>${Math.round(luxVal).toLocaleString()}</strong> • Rain: <strong>${rainToday.toFixed(1)} mm</strong>
+                    <div class="sensor-big-val" style="color: #072642; font-family: var(--font-mono, monospace);">${airTemp.toFixed(1)} <span style="font-size: 0.9rem; font-weight: 700; color: #0f3d63;">°C</span></div>
+                    <div style="font-size: 0.78rem; color: #0f3d63; font-weight: 600;">
+                        Lux: <strong style="color: #072642;">${Math.round(luxVal).toLocaleString()}</strong> • Rain: <strong style="color: #072642;">${rainToday.toFixed(1)} mm</strong>
                     </div>
                 </div>
 
-                <!-- Card 3: Active Paddlewheels -->
+                <!-- Card 2: Active Paddlewheels -->
                 <div class="sensor-aero-card">
                     <div class="sensor-title-row">
-                        <span>Active Paddlewheels</span>
+                        <span style="display: flex; align-items: center; gap: 0.35rem;">
+                            <span>⚡</span> Active Paddlewheels
+                        </span>
                         <span class="aero-orb ${totalHP > 0 ? 'orb-emerald' : 'orb-idle'}"></span>
                     </div>
-                    <div class="sensor-big-val" style="color: #059669;">${totalHP.toFixed(1)} <span style="font-size: 1rem; font-weight: 700;">HP</span></div>
-                    <div style="font-size: 0.78rem; color: var(--aero-ink-subtle); font-weight: 600;">
-                        Density: <strong>${aerationDensity} HP/Ha</strong> (${u1}× 1HP + ${u2}× 2HP)
+                    <div class="sensor-big-val" style="color: ${totalHP > 0 ? '#15803d' : '#64748b'}; font-family: var(--font-mono, monospace);">${totalHP.toFixed(1)} <span style="font-size: 0.9rem; font-weight: 700; color: #0f3d63;">HP</span></div>
+                    <div style="font-size: 0.78rem; color: #0f3d63; font-weight: 600;">
+                        Density: <strong style="color: #072642;">${aerationDensity} HP/Ha</strong> (${u1}× 1HP + ${u2}× 2HP)
                     </div>
                 </div>
 
-                <!-- Card 4: Pond IoT Node -->
+                <!-- Card 3: Pond IoT Node -->
                 <div class="sensor-aero-card">
                     <div class="sensor-title-row">
-                        <span>Pond IoT Node</span>
+                        <span style="display: flex; align-items: center; gap: 0.35rem;">
+                            <span>📡</span> Pond IoT Node
+                        </span>
                         <span class="aero-orb ${hasWqIot ? 'orb-emerald' : 'orb-amber'}"></span>
                     </div>
                     ${hasWqIot ? `
-                        <div class="sensor-big-val" style="color: #0284c7;">${rawDo.toFixed(2)} <span style="font-size: 1rem; font-weight: 700;">ppm</span></div>
-                        <div style="font-size: 0.78rem; color: var(--aero-ink-subtle); font-weight: 600;">
-                            pH: <strong>${rawPh.toFixed(2)}</strong> • Temp: <strong>${rawTemp.toFixed(1)} °C</strong>
+                        <div class="sensor-big-val" style="color: #072642; font-family: var(--font-mono, monospace);">${rawDo.toFixed(2)} <span style="font-size: 0.9rem; font-weight: 700; color: #0f3d63;">ppm</span></div>
+                        <div style="font-size: 0.78rem; color: #0f3d63; font-weight: 600;">
+                            pH: <strong style="color: #072642;">${rawPh.toFixed(2)}</strong> • Temp: <strong style="color: #072642;">${rawTemp.toFixed(1)} °C</strong>
                         </div>
                     ` : `
                         <div class="standby-housing-box" style="margin-top: 8px;">
-                            <div class="pulse-standby-beacon" style="display: inline-flex; align-items: center; gap: 6px; font-size: 0.74rem; font-weight: 800; color: var(--aero-cerulean); margin-bottom: 4px;">
+                            <div class="pulse-standby-beacon" style="display: inline-flex; align-items: center; gap: 6px; font-size: 0.74rem; font-weight: 800; color: #0369a1; margin-bottom: 4px;">
                                 <span>📡</span> Awaiting Sensor Deployment
                             </div>
-                            <div style="font-size: 0.72rem; color: var(--aero-ink-subtle);">
+                            <div style="font-size: 0.72rem; color: #475569; font-weight: 600;">
                                 DO: <strong>--</strong> | pH: <strong>--</strong> | Temp: <strong>--</strong>
                             </div>
                         </div>
@@ -341,9 +363,9 @@ export function getPondWqsDetailHtml({
                 </div>
 
                 <div class="wqs-weather-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 0.85rem;">
-                    <div style="background: rgba(255, 255, 255, 0.55); backdrop-filter: blur(10px); border: 1.5px solid rgba(255, 255, 255, 0.85); border-radius: 12px; padding: 0.85rem 1rem; box-shadow: 0 4px 12px rgba(2, 132, 199, 0.08), inset 0 1px 1px rgba(255, 255, 255, 0.9);">
-                        <span style="font-size: 0.74rem; font-weight: 900; color: #0369a1; text-transform: uppercase; letter-spacing: 0.04em; display: block; text-shadow: 0 1px 1px rgba(255, 255, 255, 0.8);">Solar Irradiance</span>
-                        <div style="font-size: 1.35rem; font-weight: 900; color: #b45309; margin: 0.2rem 0; font-family: var(--font-mono, monospace); text-shadow: 0 1px 2px rgba(255, 255, 255, 0.8);">
+                    <div class="wqs-metric-card" style="text-align: left;">
+                        <span style="font-size: 0.74rem; font-weight: 900; color: #0369a1; text-transform: uppercase; letter-spacing: 0.04em; display: block;">Solar Irradiance</span>
+                        <div style="font-size: 1.35rem; font-weight: 900; color: #b45309; margin: 0.2rem 0; font-family: var(--font-mono, monospace);">
                             ${Math.round(luxVal).toLocaleString()} <span style="font-size: 0.75rem; font-weight: 800; color: #0f3d63;">Lux</span>
                         </div>
                         <span style="font-size: 0.7rem; color: #15803d; font-weight: 800;">
@@ -351,9 +373,9 @@ export function getPondWqsDetailHtml({
                         </span>
                     </div>
 
-                    <div style="background: rgba(255, 255, 255, 0.55); backdrop-filter: blur(10px); border: 1.5px solid rgba(255, 255, 255, 0.85); border-radius: 12px; padding: 0.85rem 1rem; box-shadow: 0 4px 12px rgba(2, 132, 199, 0.08), inset 0 1px 1px rgba(255, 255, 255, 0.9);">
-                        <span style="font-size: 0.74rem; font-weight: 900; color: #0369a1; text-transform: uppercase; letter-spacing: 0.04em; display: block; text-shadow: 0 1px 1px rgba(255, 255, 255, 0.8);">Rainfall (Today)</span>
-                        <div style="font-size: 1.35rem; font-weight: 900; color: ${rainToday >= 20 ? '#dc2626' : '#0369a1'}; margin: 0.2rem 0; font-family: var(--font-mono, monospace); text-shadow: 0 1px 2px rgba(255, 255, 255, 0.8);">
+                    <div class="wqs-metric-card" style="text-align: left;">
+                        <span style="font-size: 0.74rem; font-weight: 900; color: #0369a1; text-transform: uppercase; letter-spacing: 0.04em; display: block;">Rainfall (Today)</span>
+                        <div style="font-size: 1.35rem; font-weight: 900; color: ${rainToday >= 20 ? '#dc2626' : '#0369a1'}; margin: 0.2rem 0; font-family: var(--font-mono, monospace);">
                             ${rainToday.toFixed(1)} <span style="font-size: 0.75rem; font-weight: 800; color: #0f3d63;">mm</span>
                         </div>
                         <span style="font-size: 0.7rem; color: ${rainToday === 0 ? '#15803d' : (rainToday < 20 ? '#b45309' : '#b91c1c')}; font-weight: 800;">
@@ -361,25 +383,25 @@ export function getPondWqsDetailHtml({
                         </span>
                     </div>
 
-                    <div style="background: rgba(255, 255, 255, 0.55); backdrop-filter: blur(10px); border: 1.5px solid rgba(255, 255, 255, 0.85); border-radius: 12px; padding: 0.85rem 1rem; box-shadow: 0 4px 12px rgba(2, 132, 199, 0.08), inset 0 1px 1px rgba(255, 255, 255, 0.9);">
-                        <span style="font-size: 0.74rem; font-weight: 900; color: #0369a1; text-transform: uppercase; letter-spacing: 0.04em; display: block; text-shadow: 0 1px 1px rgba(255, 255, 255, 0.8);">Ambient Air Temp</span>
-                        <div style="font-size: 1.35rem; font-weight: 900; color: #c2410c; margin: 0.2rem 0; font-family: var(--font-mono, monospace); text-shadow: 0 1px 2px rgba(255, 255, 255, 0.8);">
+                    <div class="wqs-metric-card" style="text-align: left;">
+                        <span style="font-size: 0.74rem; font-weight: 900; color: #0369a1; text-transform: uppercase; letter-spacing: 0.04em; display: block;">Ambient Air Temp</span>
+                        <div style="font-size: 1.35rem; font-weight: 900; color: #c2410c; margin: 0.2rem 0; font-family: var(--font-mono, monospace);">
                             ${airTemp.toFixed(1)} <span style="font-size: 0.75rem; font-weight: 800; color: #0f3d63;">°C</span>
                         </div>
                         <span style="font-size: 0.7rem; color: #0f3d63; font-weight: 700;">Meteorological sensor</span>
                     </div>
 
-                    <div style="background: rgba(255, 255, 255, 0.55); backdrop-filter: blur(10px); border: 1.5px solid rgba(255, 255, 255, 0.85); border-radius: 12px; padding: 0.85rem 1rem; box-shadow: 0 4px 12px rgba(2, 132, 199, 0.08), inset 0 1px 1px rgba(255, 255, 255, 0.9);">
-                        <span style="font-size: 0.74rem; font-weight: 900; color: #0369a1; text-transform: uppercase; letter-spacing: 0.04em; display: block; text-shadow: 0 1px 1px rgba(255, 255, 255, 0.8);">Relative Humidity</span>
-                        <div style="font-size: 1.35rem; font-weight: 900; color: #0369a1; margin: 0.2rem 0; font-family: var(--font-mono, monospace); text-shadow: 0 1px 2px rgba(255, 255, 255, 0.8);">
+                    <div class="wqs-metric-card" style="text-align: left;">
+                        <span style="font-size: 0.74rem; font-weight: 900; color: #0369a1; text-transform: uppercase; letter-spacing: 0.04em; display: block;">Relative Humidity</span>
+                        <div style="font-size: 1.35rem; font-weight: 900; color: #0369a1; margin: 0.2rem 0; font-family: var(--font-mono, monospace);">
                             ${humidity.toFixed(1)} <span style="font-size: 0.75rem; font-weight: 800; color: #0f3d63;">%</span>
                         </div>
                         <span style="font-size: 0.7rem; color: #0f3d63; font-weight: 700;">Atmospheric moisture</span>
                     </div>
 
-                    <div style="background: rgba(255, 255, 255, 0.55); backdrop-filter: blur(10px); border: 1.5px solid rgba(255, 255, 255, 0.85); border-radius: 12px; padding: 0.85rem 1rem; box-shadow: 0 4px 12px rgba(2, 132, 199, 0.08), inset 0 1px 1px rgba(255, 255, 255, 0.9);">
-                        <span style="font-size: 0.74rem; font-weight: 900; color: #0369a1; text-transform: uppercase; letter-spacing: 0.04em; display: block; text-shadow: 0 1px 1px rgba(255, 255, 255, 0.8);">Barometric Pressure</span>
-                        <div style="font-size: 1.35rem; font-weight: 900; color: #072642; margin: 0.2rem 0; font-family: var(--font-mono, monospace); text-shadow: 0 1px 2px rgba(255, 255, 255, 0.8);">
+                    <div class="wqs-metric-card" style="text-align: left;">
+                        <span style="font-size: 0.74rem; font-weight: 900; color: #0369a1; text-transform: uppercase; letter-spacing: 0.04em; display: block;">Barometric Pressure</span>
+                        <div style="font-size: 1.35rem; font-weight: 900; color: #072642; margin: 0.2rem 0; font-family: var(--font-mono, monospace);">
                             ${pressure.toFixed(0)} <span style="font-size: 0.75rem; font-weight: 800; color: #0f3d63;">hPa</span>
                         </div>
                         <span style="font-size: 0.7rem; color: #0f3d63; font-weight: 700;">Sea level normalized</span>

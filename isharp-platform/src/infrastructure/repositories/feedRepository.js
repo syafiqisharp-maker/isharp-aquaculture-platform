@@ -30,4 +30,16 @@ export class FeedRepository {
             body: JSON.stringify(records)
         });
     }
+
+    /**
+     * Fetches official SAP feed usage records for a pond cycle from growout_pond_feed_sap.
+     * Sorted chronologically (sap_post_date ASC, order_no ASC) to compute accurate cumulative feed.
+     * @param {string} pondIndex 
+     * @returns {Promise<Array<object>>}
+     */
+    static async getSapFeedRecords(pondIndex) {
+        if (!pondIndex) return [];
+        const endpoint = `growout_pond_feed_sap?pond_index=eq.${encodeURIComponent(pondIndex)}&order=sap_post_date.asc,order_no.asc`;
+        return await supabase.request(endpoint);
+    }
 }

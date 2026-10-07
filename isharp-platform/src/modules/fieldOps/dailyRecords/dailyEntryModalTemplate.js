@@ -70,12 +70,11 @@ export function renderDailyEntryModalMarkup(pond, activePondsList = [], isModalO
                                     ◀ Prev
                                 </button>
                                 <div style="text-align: center; flex: 1; min-width: 0; padding: 0 0.35rem;">
-                                    <div style="font-family: 'Space Grotesk', monospace; font-size: 0.92rem; font-weight: 900; color: #0284c7; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                    <div id="modal-switcher-pond-title" style="font-family: 'Space Grotesk', monospace; font-size: 0.92rem; font-weight: 900; color: #0284c7; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                                         Pond ${pondLabel} · DOC ${doc || '—'}
                                     </div>
-                                    <div style="font-size: 0.7rem; font-weight: 700; color: #475569; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-                                        Active Pond ${displayIdx} of ${activePondsList.length}
-                                        ${isModalOnlyMode ? ` · <button type="button" id="btn-modal-open-full-book" style="background: none; border: none; color: #0284c7; font-weight: 800; font-size: 0.7rem; text-decoration: underline; cursor: pointer; padding: 0;">📖 Full Book</button>` : ''}
+                                    <div id="modal-switcher-pond-subtitle" style="font-size: 0.7rem; font-weight: 700; color: #475569; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                        Active Pond ${displayIdx} of ${activePondsList.length}${isModalOnlyMode ? ` · <button type="button" id="btn-modal-open-full-book" style="background: none; border: none; color: #0284c7; font-weight: 800; font-size: 0.7rem; text-decoration: underline; cursor: pointer; padding: 0;">📖 Full Book</button>` : ''}
                                     </div>
                                 </div>
                                 <button type="button" id="btn-modal-next-pond" class="btn-modal-pond-nav aero-btn aero-btn-secondary" style="padding: 0.35rem 0.65rem; font-size: 0.76rem; min-height: 32px;">

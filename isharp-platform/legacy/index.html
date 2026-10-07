@@ -556,8 +556,7 @@
                 <div class="card panel-card">
                     <div class="card-header flex-between">
                         <div>
-                            <h3>Weekly Biometric Sampling & Telemetry Convergence</h3>
-                            <span class="card-sub">Cast net growth measurements converged with 7-day WQS sensor readings</span>
+                            <h3>Weekly Sampling</h3>
                         </div>
                         <div class="btn-group">
                             <button class="btn-action btn-secondary" onclick="app.openExcelModal('sampling')">
@@ -576,13 +575,10 @@
                                     <th>Survival %</th>
                                     <th>Biomass (kg)</th>
                                     <th>Feed Total (kg)</th>
-                                    <th>Avg DO (WQS)</th>
-                                    <th>Avg pH (WQS)</th>
-                                    <th>Avg Temp (WQS)</th>
                                 </tr>
                             </thead>
                             <tbody id="tbody-sampling">
-                                <tr><td colspan="10" class="text-center text-muted">Loading weekly sampling records...</td></tr>
+                                <tr><td colspan="7" class="text-center text-muted">Loading weekly sampling records...</td></tr>
                             </tbody>
                         </table>
                     </div>
@@ -614,7 +610,6 @@
                         <div class="card panel-card">
                             <div class="card-header">
                                 <h3>Efficiency KPIs</h3>
-                                <span class="card-sub">Derived production metrics</span>
                             </div>
                             <div class="kpi-stack">
                                 <div class="kpi-card">
@@ -648,8 +643,7 @@
                 <div class="card panel-card mb-4">
                     <div class="card-header flex-between">
                         <div>
-                            <h3>Harvest Runs & Commercial Buyer Grading</h3>
-                            <span class="card-sub">Partial and final harvest events with packout grade pricing</span>
+                            <h3>Harvest Records</h3>
                         </div>
                         <button class="btn-action btn-secondary" onclick="app.openExcelModal('harvest')">
                             + Add Harvest Event
@@ -675,7 +669,7 @@
                     <div class="divider mt-4"></div>
                     <div class="card-header flex-between mt-3">
                         <div>
-                            <h4>Commercial Buyer Grading & Sales Packout (`GrowoutPondHarvestSales`)</h4>
+                            <h4>Commercial Buyer Grading & Sales (`GrowoutPondHarvestSales`)</h4>
                             <span class="card-sub">Buyer sales weight breakdown, grade specifications, and pricing</span>
                         </div>
                     </div>

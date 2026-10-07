@@ -7,6 +7,17 @@ import { supabase } from "../supabase.js";
 
 export class HarvestRepository {
     /**
+     * Fetches harvest plan records for a pond cycle from pond_harvest_plan.
+     * @param {string} pondIndex 
+     * @returns {Promise<Array<object>>}
+     */
+    static async getHarvestPlan(pondIndex) {
+        if (!pondIndex) return [];
+        const endpoint = `pond_harvest_plan?select=id,pond_index,plan_harv_date,plan_harv_status,plan_harv_abw,plan_harv_weight,time_harvest,time_delivery,team,index_no&pond_index=eq.${encodeURIComponent(pondIndex)}&order=plan_harv_date.asc,index_no.asc`;
+        return (await supabase.request(endpoint)) || [];
+    }
+
+    /**
      * Fetches daily harvest records for a pond cycle.
      * @param {string} pondIndex 
      * @returns {Promise<Array<object>>}

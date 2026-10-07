@@ -77,6 +77,7 @@ export const DOM_IDS = Object.freeze({
         SNAP_BIOMASS_HARVEST: "snap-biomass-harvest-val",
         SNAP_BIOMASS_HARVEST_TITLE: "snap-biomass-harvest-title",
         SNAP_BIOMASS_HARVEST_FOOT: "snap-biomass-harvest-foot",
+        SNAP_FINAL_STATUS_BADGE: "snap-final-status-badge",
         SNAP_DISEASE_STATUS: "snap-disease-status-val",
         SNAP_DISEASE_STATUS_FOOT: "snap-disease-status-foot",
         SNAP_INITIATIVE: "snap-initiative-val",
@@ -128,7 +129,11 @@ export const DOM_IDS = Object.freeze({
     FEEDING: {
         TAB_PANE: "tab-feeding",
         TBODY_FEED: "tbody-feed",
-        SNAP_TOTAL_FEED: "snap-total-feed"
+        TABLE_FEED: "table-feed",
+        TBODY_SAP_FEED: "tbody-sap-feed",
+        TABLE_SAP_FEED: "table-sap-feed",
+        SNAP_TOTAL_FEED: "snap-total-feed",
+        SNAP_SAP_TOTAL_FEED: "snap-sap-total-feed"
     },
 
     // Tab 5: Sampling
@@ -156,6 +161,8 @@ export const DOM_IDS = Object.freeze({
     // Tab 7: Harvest
     HARVEST: {
         TAB_PANE: "tab-harvest",
+        TABLE_PLAN: "table-harvest-plan",
+        TBODY_PLAN: "tbody-harvest-plan",
         TBODY_HARVEST: "tbody-harvest",
         TBODY_SALES: "tbody-harvest-sales",
         TOTAL_WEIGHT: "stat-harvest-weight",
@@ -253,6 +260,23 @@ export const DOM_IDS = Object.freeze({
         BTN_COMMIT: "btn-commit-excel",
         BTN_CLOSE: "btn-close-excel-modal",
         BTN_CLOSE_ICON: "btn-modal-close-icon"
+    },
+
+    // Field Operations & Quick Log Modal
+    FIELD_OPS: {
+        VIEW_CONTAINER: "view-field-ops",
+        DAILY_MODAL: "modal-daily-entry",
+        FORM_DAILY_RECORD: "form-daily-record",
+        MODAL_TITLE: "modal-entry-title",
+        MODAL_SUBTITLE: "modal-entry-subtitle",
+        SWITCHER_TITLE: "modal-switcher-pond-title",
+        SWITCHER_SUBTITLE: "modal-switcher-pond-subtitle",
+        BTN_PREV_POND: "btn-modal-prev-pond",
+        BTN_NEXT_POND: "btn-modal-next-pond",
+        BTN_SAVE_AND_NEXT: "btn-modal-save-next",
+        INPUT_WATER_COLOUR: "input-water-colour",
+        WATER_COLOUR_LABEL: "selected-water-colour-label",
+        BTN_CLOSE_MODAL: "btn-close-entry-modal"
     }
 });
 

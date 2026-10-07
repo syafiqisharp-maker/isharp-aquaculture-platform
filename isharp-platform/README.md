@@ -43,7 +43,8 @@ src/
 │   ├── biometrics.js            # DOC, ABW, ADG, biomass gain calculations
 │   ├── feeding.js               # Cumulative FCR & feed conversion math
 │   ├── feedingAction.js         # Tray remnant rules & feeding adjustment logic
-│   └── rollover.js              # Cycle parsing, label sanitization, close states
+│   ├── rollover.js              # Cycle parsing, label sanitization, close states
+│   └── waterQualityLimit.js     # Single Source of Truth for farm water quality limits
 │
 ├── infrastructure/              # 🌐 Database & Cloud Communication
 │   ├── supabase.js              # Authenticated Supabase PostgreSQL client
@@ -85,10 +86,10 @@ src/
 │       ├── masterTab.js         # Tab 1: Master Cycle & Prep Milestones
 │       ├── laboratoryTab.js     # Tab 2: Biosecurity & Disease Pathology
 │       ├── stockingTab.js       # Tab 3: PL Hatchery & Multi-batch Stocking
-│       ├── feedingTab.js        # Tab 4: Daily Feeding Journal & Trays
+│       ├── feedingTab.js        # Tab 4: Dual Tables (Supervisor Field Journal & Official SAP Ledger)
 │       ├── samplingTab.js       # Tab 5: Weekly Biometrics & Sensors
 │       ├── performanceTab.js    # Tab 6: Growth Curves & Efficiency KPIs
-│       ├── harvestTab.js        # Tab 7: Commercial Buyer Sales & Packout
+│       ├── harvestTab.js        # Tab 7: Harvest Plan Targets, Harvest Events & Buyer Sales
 │       ├── lifecycleTab.js      # Tab 8: Cycle Termination, Rollover & Revive
 │       ├── staffTab.js          # Tab 9: Staff Crew Allocation & Notes
 │       ├── utilitiesTab.js      # Tab 10: CSV Exporter & System Diagnostics

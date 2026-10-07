@@ -47,7 +47,7 @@ export function getManagementEntryHtml({
         <div class="management-page-wrapper mgmt-entry-wrapper" style="padding: 1.25rem 2rem; max-width: 1080px; margin: 0 auto; display: flex; flex-direction: column; gap: 1.25rem;">
             
             <!-- Breadcrumbs & Navigation Bar -->
-            <div class="mgmt-nav-bar flex-between" style="background: rgba(255, 255, 255, 0.9); backdrop-filter: blur(16px); border: 1px solid rgba(255, 255, 255, 1); border-radius: 16px; padding: 0.85rem 1.4rem; box-shadow: 0 4px 20px rgba(2, 132, 199, 0.08); flex-wrap: wrap; gap: 0.75rem;">
+            <div class="mgmt-nav-bar flex-between" style="border-radius: 16px; padding: 0.85rem 1.4rem; flex-wrap: wrap; gap: 0.75rem;">
                 <div class="mgmt-nav-actions" style="display: flex; align-items: center; gap: 0.75rem;">
                     <button type="button" id="btn-mgmt-back-pond" class="btn-action btn-secondary" style="font-size: 0.8rem; font-weight: 700; padding: 0.4rem 0.85rem;">
                         <span class="btn-text-full">← Back to Pond View</span>

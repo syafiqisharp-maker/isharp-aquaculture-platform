@@ -6,7 +6,8 @@ import {
     calculateBiomass, 
     calculateADG,
     getStandardABW,
-    getEffectiveBiomassGain
+    getEffectiveBiomassGain,
+    getLatestSurvivalRate
 } from '../src/domain/biometrics.js';
 import { 
     calculateTotalActiveHP, 
@@ -18,7 +19,9 @@ import {
 import { 
     formatPondLabel, 
     isCycleClosed, 
-    parsePondIndex 
+    parsePondIndex,
+    formatFinalStatus,
+    evaluateBiosecurityStatus
 } from '../src/domain/rollover.js';
 
 test('Domain: calculateDOC', async (t) => {
@@ -194,6 +197,93 @@ test('Domain: getEffectiveBiomassGain & True FCR with partial harvest', async (t
         // FCR = 8913 / 4574.7 = 1.95
         const fcr = calculateFCR(latestSampling.smpl_tfed, result.effectiveGainKg);
         assert.equal(fcr, 1.95);
+    });
+});
+
+test('Domain: getLatestSurvivalRate SSOT', async (t) => {
+    await t.test('extracts smpl_surv correctly as float', () => {
+        assert.equal(getLatestSurvivalRate({ smpl_surv: 82.5 }), 82.5);
+        assert.equal(getLatestSurvivalRate({ smpl_surv: '78.4' }), 78.4);
+    });
+
+    await t.test('extracts smpl_srv fallback correctly', () => {
+        assert.equal(getLatestSurvivalRate({ smpl_srv: 91.2 }), 91.2);
+    });
+
+    await t.test('returns null for missing, null, or invalid records', () => {
+        assert.equal(getLatestSurvivalRate(null), null);
+        assert.equal(getLatestSurvivalRate({}), null);
+        assert.equal(getLatestSurvivalRate({ smpl_surv: null }), null);
+        assert.equal(getLatestSurvivalRate({ smpl_surv: 'invalid' }), null);
+    });
+});
+
+test('Domain: formatFinalStatus', async (t) => {
+    await t.test('formats NORMAL HARVEST with success badge', () => {
+        const res = formatFinalStatus('NORMAL HARVEST');
+        assert.equal(res.label, 'Normal Harvest');
+        assert.equal(res.className, 'status-pill status-production');
+    });
+
+    await t.test('formats default empty or null as Normal Harvest', () => {
+        const res = formatFinalStatus(null);
+        assert.equal(res.label, 'Normal Harvest');
+        assert.equal(res.className, 'status-pill status-production');
+    });
+
+    await t.test('formats CULLED POND / action with danger badge', () => {
+        const res = formatFinalStatus('CULLED POND');
+        assert.equal(res.label, 'Culled Pond');
+        assert.equal(res.className, 'status-pill status-danger');
+    });
+
+    await t.test('formats FORCED HARVEST with warning badge', () => {
+        const res = formatFinalStatus('FORCED HARVEST');
+        assert.equal(res.label, 'Forced Harvest');
+        assert.equal(res.className, 'status-pill status-warning');
+    });
+
+    await t.test('formats NO PRODUCTION with close neutral badge', () => {
+        const res = formatFinalStatus('NO PRODUCTION');
+        assert.equal(res.label, 'No Production');
+        assert.equal(res.className, 'status-pill status-close');
+    });
+});
+
+test('Domain: evaluateBiosecurityStatus', async (t) => {
+    await t.test('evaluates clean pond without issues as Pathogen Negative', () => {
+        const pond = { disease_status: 'NO ISSUES' };
+        const res = evaluateBiosecurityStatus(pond, []);
+        assert.equal(res.label, 'Pathogen Negative');
+        assert.equal(res.className, 'disease-pill disease-ok');
+    });
+
+    await t.test('prioritizes critical laboratory alert over master clean record', () => {
+        const pond = { disease_status: 'NO ISSUES' };
+        const issues = [
+            { issue_flag: 'RED', issue_test: 'PCR', issue_status: 'WSSV', issue_grade: 'G3', issue_date: '2026-09-10' }
+        ];
+        const res = evaluateBiosecurityStatus(pond, issues);
+        assert.match(res.label, /WSSV Alert/);
+        assert.equal(res.className, 'disease-pill disease-danger');
+        assert.equal(res.isAlert, true);
+    });
+
+    await t.test('reflects master register disease_status when laboratory has no records', () => {
+        const pond = { disease_status: 'EHP', date_disease: '2026-09-08' };
+        const res = evaluateBiosecurityStatus(pond, []);
+        assert.equal(res.label, '⚠️ EHP Alert');
+        assert.equal(res.className, 'disease-pill disease-danger');
+        assert.match(res.footText, /2026-09-08/);
+        assert.equal(res.isAlert, true);
+    });
+
+    await t.test('reflects master register mortality or non-critical issue properly', () => {
+        const pond = { disease_status: 'SLOW GROWTH', date_disease: '2026-08-20' };
+        const res = evaluateBiosecurityStatus(pond, []);
+        assert.equal(res.label, '🟡 SLOW GROWTH');
+        assert.equal(res.className, 'disease-pill disease-warning');
+        assert.equal(res.isAlert, false);
     });
 });
 

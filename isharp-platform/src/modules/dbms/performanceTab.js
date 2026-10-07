@@ -6,7 +6,7 @@
 
 import { appState } from "../../state/appState.js";
 import { SamplingRepository } from "../../infrastructure/repositories/samplingRepository.js";
-import { calculateADG, calculateBiomass, getStandardABW } from "../../domain/biometrics.js";
+import { calculateADG, calculateBiomass, getStandardABW, getLatestSurvivalRate } from "../../domain/biometrics.js";
 import { calculateFCR } from "../../domain/feeding.js";
 import { DOM_IDS, validateContract } from "../../config/domContracts.js";
 
@@ -129,18 +129,17 @@ export class PerformanceTab {
         }
 
         // 3. Estimated Current Biomass
+        const srVal = getLatestSurvivalRate(latest);
         let bmsKg = totalBiomass;
         if (!bmsKg && pond && pond.stck_pcs && latest.smpl_abw) {
-            bmsKg = calculateBiomass(pond.stck_pcs, latest.smpl_surv || 80, latest.smpl_abw);
+            bmsKg = calculateBiomass(pond.stck_pcs, srVal || 80, latest.smpl_abw);
         }
 
         if (this.dom.kpiBiomass) {
             this.dom.kpiBiomass.textContent = bmsKg > 0 ? `${Math.round(bmsKg).toLocaleString()} kg` : "—";
         }
         if (this.dom.kpiBiomassSub) {
-            const areaHa = parseFloat(pond?.area) || 0.5;
-            const density = bmsKg > 0 ? (bmsKg / (areaHa * 10000)).toFixed(2) : "—";
-            this.dom.kpiBiomassSub.textContent = `Area: ${areaHa.toFixed(2)} Ha • Density: ${density} kg/m²`;
+            this.dom.kpiBiomassSub.textContent = srVal !== null ? `SR: ${srVal.toFixed(1)}%` : "SR: —";
         }
 
         // 4. Projected Harvest DOC

@@ -4,34 +4,44 @@
  * Evaluates real-time water quality and weather metrics to dictate feeding directives.
  */
 
+import {
+    WATER_QUALITY_THRESHOLDS,
+    evaluateAbnormalWqParameters as evaluateAbnormalWqParamsSSOT,
+    evaluateParameterStatus
+} from "./waterQualityLimit.js";
+
+// Re-export for backwards compatibility across existing callers
+export { WATER_QUALITY_THRESHOLDS };
+export const evaluateAbnormalWqParameters = evaluateAbnormalWqParamsSSOT;
+
 export const FEEDING_THRESHOLDS = Object.freeze({
     DO: {
-        CRITICAL_LOW: 3.0,
-        CAUTION_LOW: 4.0,
-        OPTIMAL_MIN: 5.0,
-        WEEKLY_DROP_ALERT: -0.40
+        CRITICAL_LOW: WATER_QUALITY_THRESHOLDS.DO.CRITICAL_LOW,   // 3.0 ppm (Danger)
+        CAUTION_LOW: WATER_QUALITY_THRESHOLDS.DO.OPTIMAL_MIN,     // 4.0 ppm (Warning <= 4.0)
+        OPTIMAL_MIN: WATER_QUALITY_THRESHOLDS.DO.OPTIMAL_MIN,     // > 4.0 ppm is Optimal
+        WEEKLY_DROP_ALERT: WATER_QUALITY_THRESHOLDS.DO.WEEKLY_DROP_ALERT
     },
     PH: {
-        MAX_SAFE_SWING: 0.5,
-        SEVERE_SWING: 1.0,
-        WEEKLY_BLOOM_RISE: 0.30,
-        WEEKLY_CRASH_DROP: -0.30
+        MAX_SAFE_SWING: WATER_QUALITY_THRESHOLDS.PH_SWING.MAX_SAFE_SWING, // 1.0 Δ pH/day
+        SEVERE_SWING: WATER_QUALITY_THRESHOLDS.PH_SWING.SEVERE_SWING,     // 1.5 Δ pH/day
+        WEEKLY_BLOOM_RISE: WATER_QUALITY_THRESHOLDS.PH_SWING.WEEKLY_BLOOM_RISE,
+        WEEKLY_CRASH_DROP: WATER_QUALITY_THRESHOLDS.PH_SWING.WEEKLY_CRASH_DROP
     },
     WATER_TEMP: {
-        STRESS_HIGH: 33.0,
-        STRESS_LOW: 27.0,
-        MAX_SAFE_SWING: 3.0,
-        WEEKLY_COOLING: -1.2,
-        WEEKLY_WARMING: 1.2
+        STRESS_HIGH: WATER_QUALITY_THRESHOLDS.WATER_TEMP.CRITICAL_HIGH,   // 33.0 °C
+        STRESS_LOW: WATER_QUALITY_THRESHOLDS.WATER_TEMP.CRITICAL_LOW,     // 26.0 °C
+        MAX_SAFE_SWING: WATER_QUALITY_THRESHOLDS.WATER_TEMP.MAX_SAFE_SWING,
+        WEEKLY_COOLING: WATER_QUALITY_THRESHOLDS.WATER_TEMP.WEEKLY_COOLING,
+        WEEKLY_WARMING: WATER_QUALITY_THRESHOLDS.WATER_TEMP.WEEKLY_WARMING
     },
     LUX: {
-        OVERCAST: 20000
+        OVERCAST: WATER_QUALITY_THRESHOLDS.LUX.OVERCAST
     },
     RAINFALL: {
-        CRITICAL_DAILY: 40.0,
-        CAUTION_DAILY: 20.0,
-        CRITICAL_7DAY: 120.0,
-        CAUTION_7DAY: 100.0
+        CRITICAL_DAILY: WATER_QUALITY_THRESHOLDS.RAINFALL.CRITICAL_DAILY,
+        CAUTION_DAILY: WATER_QUALITY_THRESHOLDS.RAINFALL.CAUTION_DAILY,
+        CRITICAL_7DAY: WATER_QUALITY_THRESHOLDS.RAINFALL.CRITICAL_7DAY,
+        CAUTION_7DAY: WATER_QUALITY_THRESHOLDS.RAINFALL.CAUTION_7DAY
     }
 });
 
@@ -101,12 +111,12 @@ export function evaluateFeedingAction(params = {}) {
         });
     }
 
-    // C. Severe pH Swing (Delta > 1.0)
-    if (phDelta > FEEDING_THRESHOLDS.PH.SEVERE_SWING) {
+    // C. Severe pH Swing (Delta >= 1.5)
+    if (phDelta >= FEEDING_THRESHOLDS.PH.SEVERE_SWING) {
         criticalReasons.push({
             icon: "🧪",
-            headline: `Severe pH Swing (Daily Δ ${phDelta.toFixed(2)} > 1.0)`,
-            desc: "Extreme daily pH swing induces shock and suppresses feeding response.",
+            headline: `Severe pH Swing (Daily Δ ${phDelta.toFixed(2)} ≥ ${FEEDING_THRESHOLDS.PH.SEVERE_SWING})`,
+            desc: "Extreme daily pH swing induces physiological shock and suppresses feeding response.",
             tag: "Critical Trigger"
         });
     }
@@ -123,11 +133,11 @@ export function evaluateFeedingAction(params = {}) {
 
     // --- 2. CAUTIONARY TRIGGERS (CAREFUL FEEDING) ---
     // A. Borderline DO Dip (3.0 - 4.0 ppm)
-    if (doMin >= FEEDING_THRESHOLDS.DO.CRITICAL_LOW && doMin < FEEDING_THRESHOLDS.DO.CAUTION_LOW) {
+    if (doMin >= FEEDING_THRESHOLDS.DO.CRITICAL_LOW && doMin <= FEEDING_THRESHOLDS.DO.CAUTION_LOW) {
         cautionReasons.push({
             icon: "💧",
-            headline: `Borderline Morning DO (${doMin.toFixed(2)} ppm)`,
-            desc: "Dissolved oxygen dropped below safe 4.0 ppm baseline during early morning hours.",
+            headline: `Borderline Morning DO (${doMin.toFixed(2)} ppm ≤ 4.0 ppm)`,
+            desc: "Dissolved oxygen dropped into 3.0–4.0 ppm warning band during early morning hours.",
             tag: "Caution Dip"
         });
     }
@@ -142,12 +152,12 @@ export function evaluateFeedingAction(params = {}) {
         });
     }
 
-    // C. Moderate Daily pH Swing (0.5 < Delta <= 1.0)
-    if (phDelta > FEEDING_THRESHOLDS.PH.MAX_SAFE_SWING && phDelta <= FEEDING_THRESHOLDS.PH.SEVERE_SWING) {
+    // C. Elevated Daily pH Swing (1.0 < Delta < 1.5)
+    if (phDelta > FEEDING_THRESHOLDS.PH.MAX_SAFE_SWING && phDelta < FEEDING_THRESHOLDS.PH.SEVERE_SWING) {
         cautionReasons.push({
             icon: "🧪",
-            headline: `Moderate pH Swing (Daily Δ ${phDelta.toFixed(2)})`,
-            desc: "Daily pH fluctuation exceeds safe 0.5 buffer limit, indicating active algal photosynthesis swing.",
+            headline: `High pH Swing (Daily Δ ${phDelta.toFixed(2)} > ${FEEDING_THRESHOLDS.PH.MAX_SAFE_SWING})`,
+            desc: "Daily pH fluctuation exceeds safe 1.0 buffer limit, indicating active algal bloom photosynthesis swing.",
             tag: "Daily Fluctuation"
         });
     }
@@ -205,3 +215,4 @@ export function evaluateFeedingAction(params = {}) {
         };
     }
 }
+

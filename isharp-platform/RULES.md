@@ -222,4 +222,32 @@ Every modification action must respect user roles defined in `src/config/permiss
     $$\text{SR (\%)} = \left(\frac{\text{Current Count} + \text{Partial Harvest Pieces}}{\text{Initial Stocked Pieces}}\right) \times 100$$
   - Never evaluate SR on an active pond without adding the pieces that were already harvested!
 
+---
+
+## 16. Single Source of Truth (SSOT) for Water Quality Parameters (`waterQualityLimit.js`)
+
+- **Centralized Parameter Limits**:
+  - All water quality evaluations, alert pill triggers, feeding action thresholds, and modal target strings MUST import from `src/domain/waterQualityLimit.js`. Never write ad-hoc inline comparison thresholds in UI views.
+- **Farm Threshold Reference**:
+  - **Dissolved Oxygen (DO)**: Optimal `> 4.0 ppm` (green); Caution `3.0 – 4.0 ppm` (amber); Danger `< 3.0 ppm` (red hypoxia alert, triggers 50% feed cut).
+  - **pH Diurnal Swing**: Safe `≤ 1.0 Δ/day`; Warning `> 1.0 Δ/day`; Severe `≥ 1.5 Δ/day` (triggers critical feed cut).
+  - **Salinity**: Optimal `15.0 – 35.0 ppt`; Warning `10.0 – 14.9 ppt` and `35.1 – 37.9 ppt`; Danger `< 10.0 ppt` and `≥ 38.0 ppt`.
+  - **Ammonia ($NH_3$)**: Optimal `< 1.0 mg/L` (normal, hidden from card); Warning `1.0 – 1.99 mg/L` (amber badge); Danger `≥ 2.0 mg/L` (red alert badge).
+  - **Nitrite ($NO_2^-$)**: Optimal `≤ 0.50 mg/L`; Warning `0.51 – 1.00 mg/L`; Danger `> 1.00 mg/L`.
+  - **Alkalinity**: Optimal `100 – 160 mg/L`; Warning `80–99` and `161–180 mg/L`; Danger `< 80` or `> 180 mg/L`.
+- **Card Pill Visibility Rule**:
+  - On the 24-Pond Overview Map, water quality parameters within optimal limits must remain hidden to reduce visual noise. Only parameters that are outside optimal limits appear as high-contrast warning/alert pills.
+
+---
+
+## 17. Quick Log Form & REST Wildcard URL Encoding
+
+- **URL Percent Encoding in PostgREST Queries**:
+  - When passing `%` wildcards in REST query parameters (e.g. `like.209%`), ALWAYS encode `%` as `%25` (`like.209%25`). Raw `%` in URL query parameters causes malformed escape sequences and HTTP 500 errors.
+- **Sequential Pond Switcher Bar Synchronization**:
+  - The Quick Log modal must keep its sequential switcher bar title (`#modal-switcher-pond-title`) and subtitle (`#modal-switcher-pond-subtitle`) strictly synchronized with `currentPond` and `activePondsList` on every navigation event (**Next ▶**, **◀ Prev**, or **⚡ Save & Next ➔**).
+- **Water Colour Tone Selection**:
+  - The 8 water colour swatches (`.water-swatch-card`) bind directly to `#input-water-colour` and `#selected-water-colour-label`. When saving, `water_colour` must be read from `#input-water-colour` to guarantee persistence to `public.daily_pond_records`.
+
+
 

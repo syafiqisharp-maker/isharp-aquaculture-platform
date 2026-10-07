@@ -5,7 +5,7 @@
 
 import { appState } from "../state/appState.js";
 import { calculateDOC } from "../domain/biometrics.js";
-import { formatPondLabel } from "../domain/rollover.js";
+import { formatPondLabel, evaluateBiosecurityStatus } from "../domain/rollover.js";
 import { PondRepository } from "../infrastructure/repositories/pondRepository.js";
 import { LabRepository } from "../infrastructure/repositories/labRepository.js";
 import { DOM_IDS } from "../config/domContracts.js";
@@ -126,16 +126,19 @@ export class MasterBanner {
             this.dom.badgeArea.textContent = !isNaN(areaVal) ? `${areaVal.toFixed(2)}` : "—";
         }
 
-        // Disease Status (Synced with Laboratory reports)
-        this.updateDiseaseBadge(pond.pond_index);
+        // Disease Status (Synced with Laboratory reports & Master record)
+        this.updateDiseaseBadge(pond);
     }
 
     /**
-     * Dynamically synchronizes the Pathology & Biosecurity badge with lab reports for this pond cycle.
-     * @param {string} pondIndex 
+     * Dynamically synchronizes the Pathology & Biosecurity badge with lab reports and master record.
+     * @param {object|string} pondOrIndex 
      */
-    async updateDiseaseBadge(pondIndex) {
+    async updateDiseaseBadge(pondOrIndex) {
         if (!this.dom.badgeDiseaseStatus) return;
+
+        const pond = typeof pondOrIndex === "object" ? pondOrIndex : null;
+        const pondIndex = pond ? pond.pond_index : pondOrIndex;
 
         if (!pondIndex) {
             this.dom.badgeDiseaseStatus.textContent = "Pathogen Negative (Normal)";
@@ -146,63 +149,17 @@ export class MasterBanner {
 
         try {
             const issues = await LabRepository.getIssuesByPond(pondIndex);
-            if (!issues || issues.length === 0) {
-                this.dom.badgeDiseaseStatus.textContent = "Pathogen Negative (Normal)";
-                this.dom.badgeDiseaseStatus.className = "disease-pill disease-ok";
-                this.dom.badgeDiseaseStatus.title = "No laboratory issues recorded for this cycle (Clean / Negative).";
-                return;
-            }
+            const status = evaluateBiosecurityStatus(pond, issues);
 
-            // 1. Check for RED / CRITICAL alerts or POSITIVE pathogen test results
-            const redIssues = issues.filter(r => {
-                const flag = (r.issue_flag || "").toUpperCase();
-                const note = (r.issue_note || "").toUpperCase();
-                return flag === "RED" || flag === "CRITICAL" || note.includes("POSIT");
-            });
-
-            if (redIssues.length > 0) {
-                const primary = redIssues[0];
-                let pathogen = primary.issue_status || primary.issue_test || primary.issue_category || "Pathogen";
-                if (["ACTIVE", "CRITICAL", "POSITIVE", "DISEASE", "PATHOLOGY"].includes(pathogen.toUpperCase())) {
-                    pathogen = primary.issue_test || primary.issue_category || "Pathogen";
-                }
-                const grade = primary.issue_grade && primary.issue_grade.toUpperCase() !== "G0" 
-                    ? ` (${primary.issue_grade})` 
-                    : "";
-
-                this.dom.badgeDiseaseStatus.textContent = `⚠️ ${pathogen} Alert${grade}`;
-                this.dom.badgeDiseaseStatus.className = "disease-pill disease-danger";
-                this.dom.badgeDiseaseStatus.title = `${pathogen}: ${primary.issue_note || 'Positive'} (${primary.issue_date || 'Date N/A'})\n${redIssues.length} active alert(s). Click to open Laboratory tab.`;
-                return;
-            }
-
-            // 2. Check for YELLOW / Warning flags
-            const yellowIssues = issues.filter(r => {
-                const flag = (r.issue_flag || "").toUpperCase();
-                return flag === "YELLOW" || flag === "WARNING";
-            });
-
-            if (yellowIssues.length > 0) {
-                const primary = yellowIssues[0];
-                const pathogen = primary.issue_status || primary.issue_test || "Condition";
-                const grade = primary.issue_grade && primary.issue_grade.toUpperCase() !== "G0" 
-                    ? ` (${primary.issue_grade})` 
-                    : "";
-
-                this.dom.badgeDiseaseStatus.textContent = `⚠️ Monitored: ${pathogen}${grade}`;
-                this.dom.badgeDiseaseStatus.className = "disease-pill disease-warning";
-                this.dom.badgeDiseaseStatus.title = `Monitored: ${pathogen} (${primary.issue_date || 'Date N/A'}). Click to open Laboratory tab.`;
-                return;
-            }
-
-            // 3. All logged tests are GREEN / Negative
-            this.dom.badgeDiseaseStatus.textContent = "Pathogen Negative (Normal)";
-            this.dom.badgeDiseaseStatus.className = "disease-pill disease-ok";
-            this.dom.badgeDiseaseStatus.title = `All ${issues.length} lab records negative / normal.`;
+            this.dom.badgeDiseaseStatus.textContent = status.label;
+            this.dom.badgeDiseaseStatus.className = status.className;
+            this.dom.badgeDiseaseStatus.title = `${status.label} — ${status.footText}. Click to open Laboratory tab.`;
         } catch (err) {
             console.warn("Could not sync pathology badge with laboratory:", err);
-            this.dom.badgeDiseaseStatus.textContent = "Pathogen Negative (Normal)";
-            this.dom.badgeDiseaseStatus.className = "disease-pill disease-ok";
+            const fallback = evaluateBiosecurityStatus(pond, []);
+            this.dom.badgeDiseaseStatus.textContent = fallback.label;
+            this.dom.badgeDiseaseStatus.className = fallback.className;
+            this.dom.badgeDiseaseStatus.title = `${fallback.label} — ${fallback.footText}`;
         }
     }
 

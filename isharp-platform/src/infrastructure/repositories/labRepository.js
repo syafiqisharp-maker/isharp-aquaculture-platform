@@ -70,6 +70,31 @@ export class LabRepository {
     static _latestWqCache = new Map();
 
     /**
+     * Fetches the latest water chemistry sample for all ponds in a module in a single query.
+     * @param {string} modStr Module string like '01', '02', etc.
+     * @returns {Promise<Map<string, object>>}
+     */
+    static async getLatestWaterQualityForModule(modStr) {
+        const resultMap = new Map();
+        if (!modStr) return resultMap;
+        const endpoint = `lab_water_quality?pond_index=like.2${modStr}%25&order=log_date.desc&limit=200`;
+        try {
+            const records = await supabase.request(endpoint);
+            if (Array.isArray(records)) {
+                records.forEach(r => {
+                    if (r && r.pond_index && !resultMap.has(r.pond_index)) {
+                        resultMap.set(r.pond_index, r);
+                        this._latestWqCache.set(r.pond_index, r);
+                    }
+                });
+            }
+        } catch (err) {
+            console.warn("Could not fetch module lab water quality:", err);
+        }
+        return resultMap;
+    }
+
+    /**
      * Fetches the latest water chemistry sample for a specific pond cycle (ultra-fast, limit=1).
      * Uses in-memory cache to guarantee zero-latency re-renders in Field Ops.
      * @param {string} pondIndex 

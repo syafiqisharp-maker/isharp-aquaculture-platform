@@ -72,6 +72,8 @@ The farm operates ~200 ponds, with approximately 120–135 ponds culturing shrim
 | **`pond_aerator_inventory`** | Fact/Dim (Multi-Model Aerator) | **0** (Deployed) | Portal 1 Field Inventory Form / PWA Master |
 | **`pond_inventories`** | Dim (Assets & Trays) | **0** (Deployed) | Portal 1 Field Inventory Form |
 | **`daily_pond_records`** | Fact (Daily Field Logbook) | **0** (Deployed) | Portal 1 Daily Pond Record Journal |
+| **`growout_pond_feed_sap`** | Fact (Authoritative SAP Feed Ledger) | **89,244** (Live) | [GrowoutPondFeedSAP] / `migrate_growout_pond_feed_sap.ps1` |
+| **`pond_harvest_plan`** | Dim/Fact (Harvest Planning Targets) | **9,313** (Live) | [GrowoutPondHarvestPlan] / `migrate_growout_pond_harvest_plan.ps1` |
 | **`view_pond_aeration_summary`** | Computed View (Total HP) | **Live** | Automated aggregated HP view |
 
 ---
@@ -213,13 +215,44 @@ CREATE TABLE IF NOT EXISTS weather_logs (
 );
 CREATE INDEX IF NOT EXISTS idx_weather_time ON weather_logs(recorded_at DESC);
 
--- 7. ROW LEVEL SECURITY (RLS) POLICIES
+-- 7. FACT: GROWOUT POND FEED SAP (ERP LEDGER)
+CREATE TABLE IF NOT EXISTS growout_pond_feed_sap (
+    sync_key VARCHAR(100) PRIMARY KEY,
+    order_no VARCHAR(50),
+    sap_post_date DATE,
+    sap_pond_idx VARCHAR(50) NOT NULL,
+    sap_feed_idx VARCHAR(50),
+    sap_feed_name VARCHAR(100),
+    sap_movement VARCHAR(10),
+    sap_feed_kgs NUMERIC(12, 2),
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_feed_sap_pond_date ON growout_pond_feed_sap(sap_pond_idx, sap_post_date ASC);
+
+-- 8. FACT/DIM: POND HARVEST PLAN (PLANNING TARGETS)
+CREATE TABLE IF NOT EXISTS pond_harvest_plan (
+    sync_key VARCHAR(100) PRIMARY KEY,
+    pond_index VARCHAR(50) NOT NULL,
+    harv_plan_date DATE,
+    harv_plan_stts VARCHAR(50),
+    harv_plan_wgt NUMERIC(12, 2),
+    harv_plan_abw NUMERIC(8, 2),
+    harv_plan_time TIME,
+    harv_plan_delv_time TIME,
+    harv_plan_team VARCHAR(50),
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_harvest_plan_pond_date ON pond_harvest_plan(pond_index, harv_plan_date DESC);
+
+-- 9. ROW LEVEL SECURITY (RLS) POLICIES
 ALTER TABLE stocking_records ENABLE ROW LEVEL SECURITY;
 ALTER TABLE active_operational_ponds ENABLE ROW LEVEL SECURITY;
 ALTER TABLE biometrics_sampling ENABLE ROW LEVEL SECURITY;
 ALTER TABLE water_quality_logs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE feed_barrel_logs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE weather_logs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE growout_pond_feed_sap ENABLE ROW LEVEL SECURITY;
+ALTER TABLE pond_harvest_plan ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "Allow read all" ON stocking_records FOR SELECT USING (true);
 CREATE POLICY "Allow read active gate" ON active_operational_ponds FOR SELECT USING (true);
@@ -227,6 +260,8 @@ CREATE POLICY "Allow read sampling" ON biometrics_sampling FOR SELECT USING (tru
 CREATE POLICY "Allow read wqs" ON water_quality_logs FOR SELECT USING (true);
 CREATE POLICY "Allow read feed" ON feed_barrel_logs FOR SELECT USING (true);
 CREATE POLICY "Allow read weather" ON weather_logs FOR SELECT USING (true);
+CREATE POLICY "Allow read feed sap" ON growout_pond_feed_sap FOR SELECT USING (true);
+CREATE POLICY "Allow read harvest plan" ON pond_harvest_plan FOR SELECT USING (true);
 
 CREATE POLICY "Allow modify stocking" ON stocking_records FOR ALL USING (true);
 CREATE POLICY "Allow modify gate" ON active_operational_ponds FOR ALL USING (true);
@@ -234,6 +269,8 @@ CREATE POLICY "Allow modify sampling" ON biometrics_sampling FOR ALL USING (true
 CREATE POLICY "Allow modify wqs" ON water_quality_logs FOR ALL USING (true);
 CREATE POLICY "Allow modify feed" ON feed_barrel_logs FOR ALL USING (true);
 CREATE POLICY "Allow modify weather" ON weather_logs FOR ALL USING (true);
+CREATE POLICY "Allow modify feed sap" ON growout_pond_feed_sap FOR ALL USING (true);
+CREATE POLICY "Allow modify harvest plan" ON pond_harvest_plan FOR ALL USING (true);
 
 -- 8. WQS GATEKEEPER INGESTION FUNCTION (RPC)
 CREATE OR REPLACE FUNCTION log_water_quality(
@@ -382,8 +419,10 @@ During the transitional phase while iSHARP DBMS 2.0 is being completed, the farm
           │    - pond_harvest_daily & sales (WHERE indexNo > max_harvest)
           │    - pond_stocking_batches (WHERE indexNo > max_stocking)
           │    - pond_issues & pond_notes (WHERE indexNo > max_issues/notes)
+          │    - growout_pond_feed_sap (Stage 11: 180-day delta window, deterministic sync_key)
+          │    - pond_harvest_plan (Stage 12: 180-day delta window, deterministic sync_key)
           ▼
-   Supabase Cloud (Sync completed in ~15-25 seconds)
+   Supabase Cloud (Sync completed in ~35-45 seconds)
 ```
 
 ### Standard Friday Routine:

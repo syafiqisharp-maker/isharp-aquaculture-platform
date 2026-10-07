@@ -217,7 +217,7 @@ export class FieldOpsView {
             <div class="field-ops-workspace" style="min-height: 100vh; padding: 1.25rem 2rem; background: transparent;">
                 
                 <!-- Main Header Bar -->
-                <header class="field-ops-header flex-between" style="background: rgba(255, 255, 255, 0.9); backdrop-filter: blur(16px); border: 1px solid rgba(255, 255, 255, 1); border-radius: 18px; padding: 0.85rem 1.5rem; margin-bottom: 1.25rem; box-shadow: 0 4px 20px rgba(2, 132, 199, 0.08); flex-wrap: nowrap; gap: 0.5rem;">
+                <header class="field-ops-header flex-between" style="border-radius: 18px; padding: 0.85rem 1.5rem; margin-bottom: 1.25rem; flex-wrap: nowrap; gap: 0.5rem;">
                     
                     <!-- Left: Navigation & Branding -->
                     <div class="field-ops-header-top" style="display: flex; align-items: center; gap: 0.85rem;">

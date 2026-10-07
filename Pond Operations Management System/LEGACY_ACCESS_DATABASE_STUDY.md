@@ -86,7 +86,8 @@ graph TD
     subgraph D5["5. Harvest & Commercial Sales"]
         H1["GrowoutPondHarvestDaily<br/>(9,555 harvest events)"]
         H2["GrowoutPondHarvestSales<br/>(33,383 grading lines)"]
-        H3["UtilSalesBuyer<br/>(34 seafood buyers)"]
+        H3["GrowoutPondHarvestPlan<br/>(9,313 harvest targets)"]
+        H4["UtilSalesBuyer<br/>(34 seafood buyers)"]
     end
 
     subgraph D6["6. Financial Accounting & P&L"]
@@ -136,6 +137,7 @@ graph TD
 | Table Name | Row Count | Primary Key / Index | Description & Key Fields |
 | :--- | :--- | :--- | :--- |
 | **`GrowoutPondHarvestDaily`**| 9,555 | `PondIndex` + `harvdate`| Daily pond harvest runs: `harvstts` (PARTIAL vs TERMINATION), `harvwgt` (harvested kg), `harvabw` (harvest ABW), `harvRev` (gross RM revenue), `harvmtd` (Manual net / machine). |
+| **`GrowoutPondHarvestPlan`** | 9,313 | `PondIndex` + `HarvPlanDate` | Pre-harvest targets: `HarvPlanDate`, `HarvPlanStts`, `HarvPlanWgt` (expected biomass), `HarvPlanABW` (target ABW), `HarvPlanTime`, `HarvPlanDelvTime`, `HarvPlanTeam`. |
 | **`GrowoutPondHarvestSales`**| 33,383 | `HvtPondIndx` + `HvtDate`| Commercial sales & packout grading breakdown by buyer (e.g., SBH Marine Industries): weights and prices for Good Grades (1–4), 2nd Grade, Small sizes (1–4), Below size, Rubbish deductions, Raw weight vs Net commercial weight, Gross Sales (`HvtSLS`). |
 
 ### Domain 6: Cycle Closure & Financial P&L

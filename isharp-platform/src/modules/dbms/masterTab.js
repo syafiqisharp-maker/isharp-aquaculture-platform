@@ -5,8 +5,9 @@
 
 import { appState } from "../../state/appState.js";
 import { calculateTotalActiveHP, calculateAerationDensity } from "../../domain/aeration.js";
-import { calculateDOC, getEffectiveBiomassGain } from "../../domain/biometrics.js";
+import { calculateDOC, getEffectiveBiomassGain, getLatestSurvivalRate } from "../../domain/biometrics.js";
 import { calculateFCR } from "../../domain/feeding.js";
+import { isCycleClosed, formatFinalStatus, evaluateBiosecurityStatus } from "../../domain/rollover.js";
 import { InventoryRepository } from "../../infrastructure/repositories/inventoryRepository.js";
 import { PondRepository } from "../../infrastructure/repositories/pondRepository.js";
 import { SamplingRepository } from "../../infrastructure/repositories/samplingRepository.js";
@@ -54,6 +55,7 @@ export class MasterTab {
             snapBiomassHarvestVal: document.getElementById(DOM_IDS.MASTER.SNAP_BIOMASS_HARVEST),
             snapBiomassHarvestTitle: document.getElementById(DOM_IDS.MASTER.SNAP_BIOMASS_HARVEST_TITLE),
             snapBiomassHarvestFoot: document.getElementById(DOM_IDS.MASTER.SNAP_BIOMASS_HARVEST_FOOT),
+            snapFinalStatusBadge: document.getElementById(DOM_IDS.MASTER.SNAP_FINAL_STATUS_BADGE),
             snapDiseaseStatusVal: document.getElementById(DOM_IDS.MASTER.SNAP_DISEASE_STATUS),
             snapDiseaseStatusFoot: document.getElementById(DOM_IDS.MASTER.SNAP_DISEASE_STATUS_FOOT),
             snapInitiativeVal: document.getElementById(DOM_IDS.MASTER.SNAP_INITIATIVE),
@@ -259,7 +261,7 @@ export class MasterTab {
         // ==========================================
         // ROW 2: CARD 6 — Current Biomass or Harvest Biomass
         // ==========================================
-        if (effectiveBiomass.isFinal) {
+        if (effectiveBiomass.isFinal || isClosed) {
             if (this.dom.snapBiomassHarvestTitle) {
                 this.dom.snapBiomassHarvestTitle.textContent = isClosed ? "Final Harvest Biomass" : "Harvested Biomass";
             }
@@ -271,6 +273,12 @@ export class MasterTab {
                     ? `Gross Revenue: RM ${harvestSummary.totalRevenue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
                     : (isClosed ? "Status: CYCLE CLOSED" : "Termination Harvest logged");
             }
+            if (this.dom.snapFinalStatusBadge) {
+                const finalStatusInfo = formatFinalStatus(pond.final_status);
+                this.dom.snapFinalStatusBadge.textContent = finalStatusInfo.label;
+                this.dom.snapFinalStatusBadge.className = finalStatusInfo.className;
+                this.dom.snapFinalStatusBadge.style.display = "inline-flex";
+            }
         } else {
             if (this.dom.snapBiomassHarvestTitle) {
                 this.dom.snapBiomassHarvestTitle.textContent = "Current Biomass";
@@ -281,21 +289,25 @@ export class MasterTab {
                     : (isProd ? "—" : "0.0 kg");
             }
             if (this.dom.snapBiomassHarvestFoot) {
+                const latestSr = getLatestSurvivalRate(latestSampling);
                 if (effectiveBiomass.hasPartial) {
-                    const survStr = latestSampling && latestSampling.smpl_surv ? ` | Est. Surv: ${parseFloat(latestSampling.smpl_surv).toFixed(1)}%` : "";
+                    const survStr = latestSr !== null ? ` | Est. Surv: ${latestSr.toFixed(1)}%` : "";
                     this.dom.snapBiomassHarvestFoot.textContent = `Partial Harvest: ${Math.round(effectiveBiomass.partialWeightKg).toLocaleString()} kg${survStr}`;
-                } else if (effectiveBiomass.currentBiomassKg > 0 && latestSampling && latestSampling.smpl_surv) {
-                    this.dom.snapBiomassHarvestFoot.textContent = `Est. Survival: ${parseFloat(latestSampling.smpl_surv).toFixed(1)}% (DOC ${samplingDoc})`;
+                } else if (effectiveBiomass.currentBiomassKg > 0 && latestSr !== null) {
+                    this.dom.snapBiomassHarvestFoot.textContent = `Est. Survival: ${latestSr.toFixed(1)}% (DOC ${samplingDoc})`;
                 } else {
                     this.dom.snapBiomassHarvestFoot.textContent = isClosed ? "Status: CYCLE CLOSED" : (isProd ? "Status: IN CULTURE" : "Status: IDLE / PREPARATION");
                 }
+            }
+            if (this.dom.snapFinalStatusBadge) {
+                this.dom.snapFinalStatusBadge.style.display = "none";
             }
         }
 
         // ==========================================
         // ROW 2: CARD 7 — Disease Status
         // ==========================================
-        await this.loadDiseaseCard(pond.pond_index);
+        await this.loadDiseaseCard(pond);
 
         // ==========================================
         // ROW 2: CARD 8 — Initiative / Special Trial
@@ -328,10 +340,14 @@ export class MasterTab {
 
     /**
      * Loads Biosecurity Pathology records from LabRepository for Hero Card 7
-     * @param {string} pondIndex 
+     * Synchronizes growout_pond_master.disease_status with laboratory records
+     * @param {object|string} pondOrIndex 
      */
-    async loadDiseaseCard(pondIndex) {
+    async loadDiseaseCard(pondOrIndex) {
         if (!this.dom.snapDiseaseStatusVal) return;
+
+        const pond = typeof pondOrIndex === "object" ? pondOrIndex : null;
+        const pondIndex = pond ? pond.pond_index : pondOrIndex;
 
         if (!pondIndex) {
             this.dom.snapDiseaseStatusVal.innerHTML = `<span class="disease-pill disease-ok" style="font-size:0.85rem; padding: 2px 10px;">Pathogen Negative</span>`;
@@ -341,54 +357,17 @@ export class MasterTab {
 
         try {
             const issues = await LabRepository.getIssuesByPond(pondIndex);
-            if (!issues || issues.length === 0) {
-                this.dom.snapDiseaseStatusVal.innerHTML = `<span class="disease-pill disease-ok" style="font-size:0.85rem; padding: 2px 10px;">Pathogen Negative</span>`;
-                if (this.dom.snapDiseaseStatusFoot) this.dom.snapDiseaseStatusFoot.textContent = "Clean biosecurity · 0 active pathogen alerts";
-                return;
+            const status = evaluateBiosecurityStatus(pond, issues);
+
+            this.dom.snapDiseaseStatusVal.innerHTML = `<span class="${status.className}" style="font-size:0.85rem; padding: 2px 10px;">${status.label}</span>`;
+            if (this.dom.snapDiseaseStatusFoot) {
+                this.dom.snapDiseaseStatusFoot.textContent = status.footText;
             }
-
-            // Check for red/critical/positive pathogen issues
-            const redIssues = issues.filter(r => {
-                const flag = (r.issue_flag || "").toUpperCase();
-                const note = (r.issue_note || "").toUpperCase();
-                return flag === "RED" || flag === "CRITICAL" || note.includes("POSIT");
-            });
-
-            if (redIssues.length > 0) {
-                const primary = redIssues[0];
-                let pathogen = primary.issue_status || primary.issue_test || primary.issue_category || "Pathogen";
-                if (["ACTIVE", "CRITICAL", "POSITIVE", "DISEASE", "PATHOLOGY"].includes(pathogen.toUpperCase())) {
-                    pathogen = primary.issue_test || primary.issue_category || "Pathogen";
-                }
-                const grade = primary.issue_grade && primary.issue_grade.toUpperCase() !== "G0" ? ` (${primary.issue_grade})` : "";
-
-                this.dom.snapDiseaseStatusVal.innerHTML = `<span class="disease-pill disease-danger" style="font-size:0.85rem; padding: 2px 10px;">⚠️ ${pathogen} Alert${grade}</span>`;
-                if (this.dom.snapDiseaseStatusFoot) {
-                    this.dom.snapDiseaseStatusFoot.textContent = `${redIssues.length} active alert(s) · ${primary.issue_date || 'Recent'}`;
-                }
-                return;
-            }
-
-            // Check for warning/yellow issues
-            const yellowIssues = issues.filter(r => (r.issue_flag || "").toUpperCase() === "YELLOW");
-            if (yellowIssues.length > 0) {
-                const primary = yellowIssues[0];
-                const label = primary.issue_status || primary.issue_test || "Caution Flag";
-                this.dom.snapDiseaseStatusVal.innerHTML = `<span class="disease-pill disease-warning" style="font-size:0.85rem; padding: 2px 10px;">🟡 ${label} (Watch)</span>`;
-                if (this.dom.snapDiseaseStatusFoot) {
-                    this.dom.snapDiseaseStatusFoot.textContent = `${yellowIssues.length} cautionary log(s) · Monitor closely`;
-                }
-                return;
-            }
-
-            // Otherwise clean
-            this.dom.snapDiseaseStatusVal.innerHTML = `<span class="disease-pill disease-ok" style="font-size:0.85rem; padding: 2px 10px;">Pathogen Negative</span>`;
-            if (this.dom.snapDiseaseStatusFoot) this.dom.snapDiseaseStatusFoot.textContent = "Tested · Negative laboratory records";
-
         } catch (err) {
             console.warn("Could not load disease card status:", err);
-            this.dom.snapDiseaseStatusVal.innerHTML = `<span class="disease-pill disease-ok" style="font-size:0.85rem; padding: 2px 10px;">Pathogen Negative</span>`;
-            if (this.dom.snapDiseaseStatusFoot) this.dom.snapDiseaseStatusFoot.textContent = "Laboratory logbook synced";
+            const fallback = evaluateBiosecurityStatus(pond, []);
+            this.dom.snapDiseaseStatusVal.innerHTML = `<span class="${fallback.className}" style="font-size:0.85rem; padding: 2px 10px;">${fallback.label}</span>`;
+            if (this.dom.snapDiseaseStatusFoot) this.dom.snapDiseaseStatusFoot.textContent = fallback.footText;
         }
     }
 

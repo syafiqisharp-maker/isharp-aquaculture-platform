@@ -774,6 +774,20 @@
     border: 1px solid #22d3ee;
 }
 
+.status-danger {
+    background: linear-gradient(180deg, #fee2e2 0%, #fecaca 100%);
+    color: #991b1b;
+    border: 1px solid #f87171;
+    box-shadow: 0 2px 6px rgba(239, 68, 68, 0.25), var(--gloss-top);
+}
+
+.status-warning {
+    background: linear-gradient(180deg, #fef3c7 0%, #fde68a 100%);
+    color: #92400e;
+    border: 1px solid #f59e0b;
+    box-shadow: 0 2px 6px rgba(245, 158, 11, 0.2), var(--gloss-top);
+}
+
 .active-pill {
     font-size: 0.68rem;
     font-weight: 800;

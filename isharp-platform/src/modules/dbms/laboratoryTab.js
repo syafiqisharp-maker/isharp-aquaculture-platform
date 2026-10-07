@@ -7,6 +7,7 @@ import { appState } from "../../state/appState.js";
 import { LabRepository } from "../../infrastructure/repositories/labRepository.js";
 import { hasPermission, PERMISSIONS } from "../../config/permissions.js";
 import { DOM_IDS, validateContract } from "../../config/domContracts.js";
+import { evaluateParameterStatus } from "../../domain/waterQualityLimit.js";
 
 export class LaboratoryTab {
     constructor(onOpenExcel) {
@@ -74,18 +75,32 @@ export class LaboratoryTab {
             if (this.dom.badgeWqCount) this.dom.badgeWqCount.textContent = `${data.length} Records`;
             if (this.dom.badgeLatestDate) this.dom.badgeLatestDate.textContent = `Last Sample: ${data[0].log_date || '—'}`;
 
-            // Update KPI Cards from latest sample (data[0])
+            // Update KPI Cards from latest sample (data[0]) via Single Source of Truth
             const latest = data[0];
-            if (this.dom.kpiSalinity) this.dom.kpiSalinity.textContent = latest.salinity_ppt !== null ? `${latest.salinity_ppt} ppt` : '—';
-            if (this.dom.kpiAlkalinity) this.dom.kpiAlkalinity.textContent = latest.alkalinity !== null ? `${latest.alkalinity} mg/L` : '—';
+            const salEval = evaluateParameterStatus("salinity", latest.salinity_ppt);
+            if (this.dom.kpiSalinity) {
+                this.dom.kpiSalinity.textContent = latest.salinity_ppt !== null ? `${latest.salinity_ppt} ppt` : '—';
+                this.dom.kpiSalinity.className = `kpi-val ${salEval.status === 'alert' ? 'text-danger font-bold' : salEval.status === 'warning' ? 'text-warning font-bold' : ''}`;
+            }
+
+            const alkEval = evaluateParameterStatus("alkalinity", latest.alkalinity);
+            if (this.dom.kpiAlkalinity) {
+                this.dom.kpiAlkalinity.textContent = latest.alkalinity !== null ? `${latest.alkalinity} mg/L` : '—';
+                this.dom.kpiAlkalinity.className = `kpi-val ${alkEval.status === 'alert' ? 'text-danger font-bold' : alkEval.status === 'warning' ? 'text-warning font-bold' : ''}`;
+            }
+
+            const nh3Eval = evaluateParameterStatus("ammonia", latest.ammonia);
             if (this.dom.kpiAmmonia) {
                 this.dom.kpiAmmonia.textContent = latest.ammonia !== null ? `${latest.ammonia} mg/L` : '—';
-                this.dom.kpiAmmonia.className = `kpi-val ${latest.ammonia > 0.5 ? 'text-danger' : latest.ammonia > 0.2 ? 'text-warning' : ''}`;
+                this.dom.kpiAmmonia.className = `kpi-val ${nh3Eval.status === 'alert' ? 'text-danger font-bold' : nh3Eval.status === 'warning' ? 'text-warning font-bold' : ''}`;
             }
+
+            const no2Eval = evaluateParameterStatus("nitrite", latest.nitrite);
             if (this.dom.kpiNitrite) {
                 this.dom.kpiNitrite.textContent = latest.nitrite !== null ? `${latest.nitrite} mg/L` : '—';
-                this.dom.kpiNitrite.className = `kpi-val ${latest.nitrite > 1.0 ? 'text-danger' : latest.nitrite > 0.5 ? 'text-warning' : ''}`;
+                this.dom.kpiNitrite.className = `kpi-val ${no2Eval.status === 'alert' ? 'text-danger font-bold' : no2Eval.status === 'warning' ? 'text-warning font-bold' : ''}`;
             }
+
             if (this.dom.kpiCalcium) this.dom.kpiCalcium.textContent = latest.calcium !== null ? `${Math.round(latest.calcium)} mg/L` : '—';
             if (this.dom.kpiMagnesium) this.dom.kpiMagnesium.textContent = latest.magnesium !== null ? `${Math.round(latest.magnesium)} mg/L` : '—';
             if (this.dom.kpiCaMgRatio) {
@@ -98,9 +113,16 @@ export class LaboratoryTab {
 
             // Render Historical Logbook Rows
             this.dom.tbodyWq.innerHTML = data.map(r => {
-                const nh3Class = r.ammonia > 0.5 ? 'text-danger font-bold' : r.ammonia > 0.2 ? 'text-warning font-bold' : '';
-                const no2Class = r.nitrite > 1.0 ? 'text-danger font-bold' : r.nitrite > 0.5 ? 'text-warning font-bold' : '';
-                const alkClass = (r.alkalinity !== null && r.alkalinity < 100) ? 'text-warning font-bold' : '';
+                const rSal = evaluateParameterStatus("salinity", r.salinity_ppt);
+                const rAlk = evaluateParameterStatus("alkalinity", r.alkalinity);
+                const rNh3 = evaluateParameterStatus("ammonia", r.ammonia);
+                const rNo2 = evaluateParameterStatus("nitrite", r.nitrite);
+
+                const salClass = rSal.status === 'alert' ? 'text-danger font-bold' : rSal.status === 'warning' ? 'text-warning font-bold' : '';
+                const alkClass = rAlk.status === 'alert' ? 'text-danger font-bold' : rAlk.status === 'warning' ? 'text-warning font-bold' : '';
+                const nh3Class = rNh3.status === 'alert' ? 'text-danger font-bold' : rNh3.status === 'warning' ? 'text-warning font-bold' : '';
+                const no2Class = rNo2.status === 'alert' ? 'text-danger font-bold' : rNo2.status === 'warning' ? 'text-warning font-bold' : '';
+
                 const ratio = (r.calcium && r.magnesium && r.calcium > 0)
                     ? `1 : ${(r.magnesium / r.calcium).toFixed(1)}`
                     : '—';
@@ -109,7 +131,7 @@ export class LaboratoryTab {
                     <tr>
                         <td class="font-mono">${r.log_date || '—'}</td>
                         <td><strong>${r.doc !== null && r.doc !== undefined ? r.doc : '—'}</strong></td>
-                        <td>${r.salinity_ppt !== null ? r.salinity_ppt : '—'}</td>
+                        <td class="${salClass}">${r.salinity_ppt !== null ? r.salinity_ppt : '—'}</td>
                         <td class="${alkClass}">${r.alkalinity !== null ? r.alkalinity : '—'}</td>
                         <td class="${nh3Class}">${r.ammonia !== null ? r.ammonia : '—'}</td>
                         <td class="${no2Class}">${r.nitrite !== null ? r.nitrite : '—'}</td>

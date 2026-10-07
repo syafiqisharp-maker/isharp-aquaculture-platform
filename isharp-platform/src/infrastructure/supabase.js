@@ -40,12 +40,13 @@ class SupabaseClient {
             clearTimeout(timeoutId);
 
             if (!response.ok) {
-                let errorDetails = "";
+                const errText = await response.text();
+                let errorDetails = errText;
                 try {
-                    const errJson = await response.json();
-                    errorDetails = errJson.message || errJson.hint || JSON.stringify(errJson);
+                    const errJson = JSON.parse(errText);
+                    errorDetails = errJson.message || errJson.hint || errText;
                 } catch {
-                    errorDetails = await response.text();
+                    // Retain raw error text
                 }
                 throw new Error(`Supabase Error (${response.status} ${response.statusText}): ${errorDetails}`);
             }

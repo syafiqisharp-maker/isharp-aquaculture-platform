@@ -9,8 +9,7 @@ export function getSamplingTabHtml() {
         <div class="card panel-card">
             <div class="card-header flex-between">
                 <div>
-                    <h3>Weekly Biometric Sampling & Telemetry Convergence</h3>
-                    <span class="card-sub">Cast net growth measurements converged with 7-day WQS sensor readings</span>
+                    <h3>Weekly Sampling</h3>
                 </div>
                 <div class="btn-group">
                     <button class="btn-action btn-secondary" onclick="app.openExcelModal('sampling')">
@@ -33,13 +32,10 @@ export function getSamplingTabHtml() {
                             <th>Survival %</th>
                             <th>Biomass (kg)</th>
                             <th>Feed Total (kg)</th>
-                            <th>Avg DO (WQS)</th>
-                            <th>Avg pH (WQS)</th>
-                            <th>Avg Temp (WQS)</th>
                         </tr>
                     </thead>
                     <tbody id="tbody-sampling">
-                        <tr><td colspan="10" class="text-center text-muted">Loading weekly sampling records...</td></tr>
+                        <tr><td colspan="7" class="text-center text-muted">Loading weekly sampling records...</td></tr>
                     </tbody>
                 </table>
             </div>

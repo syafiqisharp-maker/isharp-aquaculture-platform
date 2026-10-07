@@ -1,6 +1,6 @@
 /**
  * iSHARP DBMS 2.0 — Harvest & Sales Tab Module (Tab 7)
- * Focuses purely on harvest events, catch biometrics, commercial buyer grading packout, and revenue.
+ * Focuses on harvest plan targets, harvest events, catch biometrics, commercial buyer grading packout, and revenue.
  */
 
 import { appState } from "../../state/appState.js";
@@ -14,6 +14,7 @@ export class HarvestTab {
         validateContract("HarvestTab", DOM_IDS.HARVEST);
 
         this.dom = {
+            tbodyPlan: document.getElementById(DOM_IDS.HARVEST.TBODY_PLAN),
             tbodyHarvest: document.getElementById(DOM_IDS.HARVEST.TBODY_HARVEST),
             tbodySales: document.getElementById(DOM_IDS.HARVEST.TBODY_SALES),
             totalWeight: document.getElementById(DOM_IDS.HARVEST.TOTAL_WEIGHT),
@@ -35,7 +36,18 @@ export class HarvestTab {
     }
 
     async render(pond) {
+        // Refresh DOM elements in case tab re-rendered
+        this.dom.tbodyPlan = document.getElementById(DOM_IDS.HARVEST.TBODY_PLAN);
+        this.dom.tbodyHarvest = document.getElementById(DOM_IDS.HARVEST.TBODY_HARVEST);
+        this.dom.tbodySales = document.getElementById(DOM_IDS.HARVEST.TBODY_SALES);
+        this.dom.totalWeight = document.getElementById(DOM_IDS.HARVEST.TOTAL_WEIGHT);
+        this.dom.totalRevenue = document.getElementById(DOM_IDS.HARVEST.TOTAL_REVENUE);
+        this.dom.meanAbw = document.getElementById(DOM_IDS.HARVEST.MEAN_ABW);
+
         if (!pond) {
+            if (this.dom.tbodyPlan) {
+                this.dom.tbodyPlan.innerHTML = `<tr><td colspan="7" class="text-center text-muted" style="padding: 1.5rem;">Select a pond cycle to view harvest plan.</td></tr>`;
+            }
             if (this.dom.tbodyHarvest) {
                 this.dom.tbodyHarvest.innerHTML = `<tr><td colspan="7" class="text-center text-muted" style="padding: 1.5rem;">Select a pond cycle to view harvest records.</td></tr>`;
             }
@@ -46,16 +58,58 @@ export class HarvestTab {
         }
 
         try {
-            const [dailyRecords, salesRecords] = await Promise.all([
-                HarvestRepository.getHarvestDaily(pond.pond_index),
-                HarvestRepository.getHarvestSales(pond.pond_index)
+            const [planRecords, dailyRecords, salesRecords] = await Promise.all([
+                HarvestRepository.getHarvestPlan(pond.pond_index).catch(err => {
+                    console.warn("Could not load harvest plan:", err);
+                    return [];
+                }),
+                HarvestRepository.getHarvestDaily(pond.pond_index).catch(err => {
+                    console.warn("Could not load daily harvest records:", err);
+                    return [];
+                }),
+                HarvestRepository.getHarvestSales(pond.pond_index).catch(err => {
+                    console.warn("Could not load sales records:", err);
+                    return [];
+                })
             ]);
 
             let sumWeight = 0;
             let sumRevenue = 0;
             let weightedAbwSum = 0;
 
-            // 1. Render Daily Harvest
+            // 1. Render Harvest Plan (First Table in Harvest Records card)
+            if (this.dom.tbodyPlan) {
+                if (planRecords && planRecords.length > 0) {
+                    this.dom.tbodyPlan.innerHTML = planRecords.map(p => {
+                        const wgt = parseFloat(p.plan_harv_weight || 0);
+                        const abw = parseFloat(p.plan_harv_abw || 0);
+                        const isFinal = (p.plan_harv_status || "").toUpperCase().includes("TERMINATION") || (p.plan_harv_status || "").toUpperCase().includes("FINAL");
+                        const statusClass = isFinal ? "status-production" : "status-idle";
+
+                        return `
+                            <tr>
+                                <td class="font-mono">${p.plan_harv_date || '—'}</td>
+                                <td><span class="status-badge ${statusClass}">${p.plan_harv_status || 'PLAN'}</span></td>
+                                <td class="font-mono font-bold text-success">${wgt > 0 ? wgt.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + ' kg' : '—'}</td>
+                                <td class="font-mono font-bold">${abw > 0 ? abw.toFixed(2) + ' g' : '—'}</td>
+                                <td class="font-mono">${p.time_harvest || '—'}</td>
+                                <td class="font-mono">${p.time_delivery || '—'}</td>
+                                <td><span class="badge-brand font-bold" style="background: rgba(2, 132, 199, 0.08); color: #0284c7; padding: 2px 8px; border-radius: 4px; border: 1px solid rgba(2, 132, 199, 0.2);">${p.team || '—'}</span></td>
+                            </tr>
+                        `;
+                    }).join("");
+                } else {
+                    this.dom.tbodyPlan.innerHTML = `
+                        <tr>
+                            <td colspan="7" class="text-center text-muted" style="padding: 2.2rem 1rem;">
+                                📋 No harvest plan scheduled yet for cycle <strong>[${pond.pond_index}]</strong>.
+                            </td>
+                        </tr>
+                    `;
+                }
+            }
+
+            // 2. Render Daily Harvest Events (Actual)
             if (this.dom.tbodyHarvest) {
                 if (dailyRecords && dailyRecords.length > 0) {
                     this.dom.tbodyHarvest.innerHTML = dailyRecords.map(r => {
@@ -95,7 +149,7 @@ export class HarvestTab {
                 }
             }
 
-            // 2. Render Commercial Buyer Sales Packout
+            // 3. Render Commercial Buyer Sales Packout
             if (this.dom.tbodySales) {
                 if (salesRecords && salesRecords.length > 0) {
                     this.dom.tbodySales.innerHTML = salesRecords.map(s => {
@@ -134,7 +188,7 @@ export class HarvestTab {
                 }
             }
 
-            // 3. Update Stat Badges (if present in DOM)
+            // 4. Update Stat Badges (if present in DOM)
             if (this.dom.totalWeight) {
                 this.dom.totalWeight.textContent = sumWeight > 0 ? `${sumWeight.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })} kg` : '—';
             }

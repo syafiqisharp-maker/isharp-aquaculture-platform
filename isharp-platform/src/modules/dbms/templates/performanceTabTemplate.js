@@ -29,7 +29,6 @@ export function getPerformanceTabHtml() {
                 <div class="card panel-card">
                     <div class="card-header">
                         <h3>Efficiency KPIs</h3>
-                        <span class="card-sub">Derived production metrics</span>
                     </div>
                     <div class="kpi-stack">
                         <div class="kpi-card">

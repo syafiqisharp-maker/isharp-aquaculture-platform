@@ -167,22 +167,22 @@ Designed to satisfy both **Field Workers** (who need to log 12–24 ponds in und
 | **2026-10-06 15:10** | UI/UX & Outdoor Contrast | High-Contrast Typography & Anti-Washout Sheen Containment | Enhanced outdoor legibility against photographic wallpapers. Upgraded headings to deep navy (`#072642`, weight 900) with specular halo text-shadows, set labels to bold cerulean (`#0369a1`), lifted card content above the `::before` specular gradient sheen layer (`z-index: 2`), and preserved translucent Frutiger Aero glass surfaces. |
 | **2026-10-06 15:25** | Layout Streamlining | Streamline Headers & Remove Redundant Biometrics Card | Shortened Section 1 title to **"Pond Details"** (removed redundant pond number badge) and Section 2 to **"Laboratory Results"** (removed "Lab Tested" badge). Removed the redundant "Biometrics Status" sensor card from the Telemetry Matrix in favor of dedicated hardware stations (Weather, Aerators, IoT nodes). |
 | **2026-10-06 15:42** | Automation & Office Server | Automated 9:00 AM Daily Lab Sync Pipeline | Deployed non-blocking daily sync script (`sync_daily_lab_water_quality.py`) reading directly from the office server (`Y:\9. Database\DATABASE COMBINE MONITORING 2024 - 2026 new.xlsx`). Registered Windows Task Scheduler task (`iSHARP_Daily_Lab_Sync`) to execute automatically every morning at 9:00 AM with 100% cycle start date resolution. |
+| **2026-10-07 11:30** | Domain & SSOT Architecture | Water Quality Optimum Parameters SSOT (`waterQualityLimit.js`) | Centralized all farm water quality thresholds into `src/domain/waterQualityLimit.js`. Defined DO optimal (>4.0 ppm), pH diurnal swing (caution >1.0 Δ/day, critical ≥1.5 Δ/day), salinity (15–35 ppt), ammonia (<1.0 mg/L optimal, ≥2.0 mg/L alert). Simplified 24-pond card by removing operator names, adding DO/pH twin pills, and displaying only abnormal parameter warning badges. |
+| **2026-10-07 12:20** | Data Access & REST Bugfix | Fix URL Percent Wildcard Encoding in PostgREST Queries | Fixed unencoded `%` in `labRepository.js` and `FieldOpsMap.js` (`like.209%` $\rightarrow$ `like.209%25`) which previously triggered HTTP 500 malformed escape errors. Resolved body consumption in `supabase.js`. Verified pond `2091701.41` displays `⚠️ NH₃ 2.00` alert and `⚠️ Turb 30.9` warning pills with crimson orb. |
+| **2026-10-07 14:15** | Quick Log Form & Ergonomics | Clean Character Encoding, Pond Switcher Sync & 3D Water Colour Swatches | Fixed double-encoded UTF-8 strings (`â€"`, `Â·`, `ðŸ—‘ï¸ `). Added semantic IDs to modal switcher bar and wired dynamic title/subtitle updates (`Active Pond X of Y`) on Next/Prev navigation. Fixed element selector mismatch for water colour (`#input-water-colour`, `.water-swatch-card`) so all 8 tones are clickable with visual feedback. Verified live upsert to `public.daily_pond_records`. |
+| **2026-10-07 15:30** | Pond Page UI Consistency | Standardize Telemetry Sensor Cards to Match Pond Page Bento Metrics | Replaced low-contrast cyan aero gradient on `.sensor-aero-card` with crisp, high-contrast card styling matching `.wqs-metric-card` (solid white on mobile, 75% frosted white with 1.5px subtle border & inset highlight on desktop, 14px border radius). Standardized typography with deep navy `#072642` values, `#0369a1` bold headers, and high-contrast dark secondary labels. |
 
 ---
 
 ## 6. Verification & Build Status
 
-- **Vite Production Bundler:**
+- **Automated Test Suite:**
   ```bash
-  cmd.exe /c "npm run build"
-  # Output: 54 modules transformed cleanly (dist/index.html 89.75 kB, CSS 99.02 kB, JS 334.54 kB, 0 errors)
+  cmd.exe /c "npm test"
+  # Output: 67 passing tests, 0 failures across 3 test suites (~475ms)
   ```
-- **Concurrency & Stress Suite:**
-  ```bash
-  cmd.exe /c "npm run test"
-  # Output: 15 simultaneous virtual field users, 275 operations, 0 errors, 137.2 RPS, p95 < 85ms
-  ```
-- **Database Schema Integrity:** Verified via Supabase `information_schema.columns` and round-trip queries on `public.daily_pond_records`, `public.pond_inventories`, and `public.mineral_probiotic_used`.
+- **Database Schema Integrity:** Verified via Supabase `information_schema.columns` and round-trip queries on `public.daily_pond_records`, `public.pond_inventories`, and `public.lab_water_quality`.
 - **Git Branch:** `feature/field-ops-frutiger-aero` (isolated feature branch, undergoing 7-day field soak testing before merging to `main`).
+
 
 

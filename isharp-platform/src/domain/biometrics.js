@@ -59,6 +59,20 @@ export function calculateBiomass(stockedPcs, survivalPct, abwGrams) {
 }
 
 /**
+ * Single source of truth helper to extract Survival Rate (%) from a sampling record.
+ * @param {Object} samplingRecord 
+ * @returns {number|null} Survival percentage (e.g. 82.5) or null if unavailable
+ */
+export function getLatestSurvivalRate(samplingRecord) {
+    if (!samplingRecord) return null;
+    const raw = samplingRecord.smpl_surv ?? samplingRecord.smpl_srv;
+    if (raw === null || raw === undefined || raw === "" || isNaN(Number(raw))) {
+        return null;
+    }
+    return parseFloat(raw);
+}
+
+/**
  * Calculates Average Daily Gain (ADG) in grams per day between two samplings.
  * Formula: (ABW2 - ABW1) / Days Between
  * @param {number} abwInitial (grams)

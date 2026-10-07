@@ -8,8 +8,13 @@
 import { calculateDOC } from "../../domain/biometrics.js";
 import { calculateTotalActiveHP } from "../../domain/aeration.js";
 import { evaluateFeedingAction } from "../../domain/feedingAction.js";
+import {
+    getTelemetryHealthState,
+    evaluateAbnormalWqParameters
+} from "../../domain/waterQualityLimit.js";
 import { supabase } from "../../infrastructure/supabase.js";
 import { StaffRepository } from "../../infrastructure/repositories/staffRepository.js";
+import { LabRepository } from "../../infrastructure/repositories/labRepository.js";
 
 import { getLocalDateStr } from "../../utils/formatters.js";
 
@@ -29,12 +34,69 @@ export class FieldOpsMap {
         this.filter = "ALL"; // ALL, PRODUCTION, IDLE, UNLOGGED
         this.searchTerm = "";
 
-        this.pondsData = new Map(); // pondLabel -> { pond, cycleRecord, isIdle, operatorName, totalHP, todayRecord }
+        this.pondsData = new Map(); // pondLabel -> pond card data
         this.lastLoadedModule = null;
         this.isLoading = false;
+        this.telemetryPollTimer = null;
 
         this.initStructure();
         this.loadModulePonds();
+        this.startTelemetryPolling();
+    }
+
+    /**
+     * Starts background live polling for edge IoT water quality telemetry every 15 seconds.
+     */
+    startTelemetryPolling() {
+        this.stopTelemetryPolling();
+        this.telemetryPollTimer = setInterval(() => {
+            // Only poll if currently attached and visible
+            if (this.container && this.container.offsetParent !== null && !this.isLoading) {
+                this.pollLiveTelemetry();
+            }
+        }, 15000);
+    }
+
+    stopTelemetryPolling() {
+        if (this.telemetryPollTimer) {
+            clearInterval(this.telemetryPollTimer);
+            this.telemetryPollTimer = null;
+        }
+    }
+
+    async pollLiveTelemetry() {
+        if (this.pondsData.size === 0) return;
+        try {
+            const wqRes = await supabase.request(`water_quality_logs?order=recorded_at.desc&limit=100`);
+            if (Array.isArray(wqRes)) {
+                let hasChanges = false;
+                wqRes.forEach(row => {
+                    if (row && row.pond_index) {
+                        for (const [label, pData] of this.pondsData.entries()) {
+                            if (pData.cycleRecord && pData.cycleRecord.pond_index === row.pond_index) {
+                                const newDo = row.do_ppm !== null && row.do_ppm !== undefined ? parseFloat(row.do_ppm) : null;
+                                const newPh = row.ph !== null && row.ph !== undefined ? parseFloat(row.ph) : null;
+                                const prevDo = pData.telemetry?.do_ppm ?? null;
+                                const prevPh = pData.telemetry?.ph ?? null;
+                                if (newDo !== prevDo || newPh !== prevPh) {
+                                    pData.telemetry = {
+                                        do_ppm: newDo,
+                                        ph: newPh,
+                                        water_temp_c: row.water_temp_c !== null ? parseFloat(row.water_temp_c) : null
+                                    };
+                                    hasChanges = true;
+                                }
+                            }
+                        }
+                    }
+                });
+                if (hasChanges) {
+                    this.renderGrid();
+                }
+            }
+        } catch (err) {
+            console.debug("Silent telemetry poll error:", err);
+        }
     }
 
     setModule(modNo) {
@@ -63,7 +125,7 @@ export class FieldOpsMap {
             <div class="field-ops-map-wrapper" style="display: flex; flex-direction: column; gap: 1rem;">
                 
                 <!-- Toolbar: Filter Pills, Daily Progress, Rapid Log, Search, and Refresh -->
-                <div class="field-ops-toolbar flex-between" style="background: rgba(255, 255, 255, 0.9); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.95); border-radius: 16px; padding: 0.75rem 1.25rem; box-shadow: 0 4px 16px rgba(2, 132, 199, 0.05); flex-wrap: wrap; gap: 0.75rem;">
+                <div class="field-ops-toolbar flex-between" style="border-radius: 16px; padding: 0.75rem 1.25rem; flex-wrap: wrap; gap: 0.75rem;">
                     
                     <!-- Left: Operational Status Filter Buttons -->
                     <div class="feeding-filter-group field-ops-filter-scroll" style="display: flex; align-items: center; gap: 0.45rem; flex-wrap: wrap;">
@@ -113,6 +175,34 @@ export class FieldOpsMap {
         `;
 
         this.bindToolbarEvents();
+        this.bindGridDelegation();
+    }
+
+    bindGridDelegation() {
+        const gridMount = this.container.querySelector("#field-ops-grid-mount");
+        if (!gridMount) return;
+
+        gridMount.addEventListener("click", (e) => {
+            const quickLogBtn = e.target.closest(".btn-quick-log-pond");
+            if (quickLogBtn) {
+                e.stopPropagation();
+                const label = quickLogBtn.getAttribute("data-pond-label");
+                const data = this.pondsData.get(label);
+                if (data && typeof this.onQuickLogPond === "function") {
+                    this.onQuickLogPond(data.cycleRecord, this.getActivePondsList());
+                }
+                return;
+            }
+
+            const card = e.target.closest(".field-ops-pond-tile");
+            if (card) {
+                const label = card.getAttribute("data-pond-label");
+                const data = this.pondsData.get(label);
+                if (data && typeof this.onSelectPond === "function") {
+                    this.onSelectPond(data.cycleRecord);
+                }
+            }
+        });
     }
 
     bindToolbarEvents() {
@@ -169,24 +259,25 @@ export class FieldOpsMap {
         try {
             const todayStr = getLocalDateStr();
 
-            // Fetch cycles, staff directory, today's records, weather, and water quality telemetry concurrently
-            const [cyclesRes, staffRes, todayRowsRes, weatherRes, wqRes] = await Promise.allSettled([
-                supabase.request(`view_growout_pond_cycles?modl=eq.${modStr}&pond_status=neq.CLOSE&order=pond_index.desc&select=pond_index,pond,modl,row_no,cycle_no,crop_no,pond_status,stck_date,date_close,area,aerator_1hp,aerator_2hp,stck_species,bs_line,pm_staff_no,sv_staff_no,rl_staff_no,po_staff_no,support_staff_no`),
-                StaffRepository.getStaffDirectory(),
-                supabase.request(`daily_pond_records?log_date=eq.${todayStr}&pond=like.${modStr}.%&select=id,pond_index,pond,log_date,feed_kg,feed_tray_remnant_pct,water_level_cm,water_colour,mortality_kg`),
-                supabase.request(`weather_logs?order=recorded_at.desc&limit=1`),
-                supabase.request(`water_quality_logs?order=recorded_at.desc&limit=100`)
+            // Fetch cycles, staff directory, today's records, weather, IoT telemetry, and lab water quality concurrently
+            const [cyclesRes, staffRes, todayRowsRes, weatherRes, wqRes, labMap] = await Promise.all([
+                supabase.request(`view_growout_pond_cycles?modl=eq.${modStr}&pond_status=neq.CLOSE&order=pond_index.desc&select=pond_index,pond,modl,row_no,cycle_no,crop_no,pond_status,stck_date,date_close,area,aerator_1hp,aerator_2hp,stck_species,bs_line,pm_staff_no,sv_staff_no,rl_staff_no,po_staff_no,support_staff_no`).catch(() => []),
+                StaffRepository.getStaffDirectory().catch(() => []),
+                supabase.request(`daily_pond_records?log_date=eq.${todayStr}&pond=like.${modStr}.%25&select=id,pond_index,pond,log_date,feed_kg,feed_tray_remnant_pct,water_level_cm,water_colour,mortality_kg`).catch(() => []),
+                supabase.request(`weather_logs?order=recorded_at.desc&limit=1`).catch(() => []),
+                supabase.request(`water_quality_logs?order=recorded_at.desc&limit=100`).catch(() => []),
+                LabRepository.getLatestWaterQualityForModule(modStr).catch(() => new Map())
             ]);
 
-            const cycles = cyclesRes.status === "fulfilled" && Array.isArray(cyclesRes.value) ? cyclesRes.value : [];
+            const cycles = Array.isArray(cyclesRes) ? cyclesRes : [];
             if (cycles.length > 0) {
                 cycles.sort((a, b) => String(b.pond_index || "").localeCompare(String(a.pond_index || "")));
             }
 
             // Map today's daily_pond_records for active ponds in this module
             const todayRecordsMap = new Map();
-            if (todayRowsRes.status === "fulfilled" && Array.isArray(todayRowsRes.value)) {
-                todayRowsRes.value.forEach(r => {
+            if (Array.isArray(todayRowsRes)) {
+                todayRowsRes.forEach(r => {
                     if (r.pond_index) todayRecordsMap.set(r.pond_index, r);
                     if (r.pond) todayRecordsMap.set(r.pond, r);
                 });
@@ -194,14 +285,14 @@ export class FieldOpsMap {
 
             // Resolve latest weather telemetry
             let latestWeather = null;
-            if (weatherRes.status === "fulfilled" && Array.isArray(weatherRes.value) && weatherRes.value.length > 0) {
-                latestWeather = weatherRes.value[0];
+            if (Array.isArray(weatherRes) && weatherRes.length > 0) {
+                latestWeather = weatherRes[0];
             }
 
             // Map latest water quality logs per pond
             const telemetryMap = new Map();
-            if (wqRes.status === "fulfilled" && Array.isArray(wqRes.value)) {
-                wqRes.value.forEach(row => {
+            if (Array.isArray(wqRes)) {
+                wqRes.forEach(row => {
                     if (row && row.pond_index && !telemetryMap.has(row.pond_index)) {
                         telemetryMap.set(row.pond_index, {
                             do_ppm: row.do_ppm !== null && row.do_ppm !== undefined ? parseFloat(row.do_ppm) : null,
@@ -228,13 +319,6 @@ export class FieldOpsMap {
 
                     const isIdle = !cycleRecord || (cycleRecord.pond_status || "").toUpperCase() === "IDLE" || !cycleRecord.stck_date;
 
-                    // Resolve Primary Operator from Single Source of Truth (pond_staff)
-                    let operatorName = "Unassigned";
-                    if (cycleRecord && cycleRecord.po_staff_no) {
-                        const s = StaffRepository.findStaffByNo(cycleRecord.po_staff_no);
-                        operatorName = s ? `${s.staff_name} [${cycleRecord.po_staff_no}]` : `ID #${cycleRecord.po_staff_no}`;
-                    }
-
                     // Calculate active aeration HP (1.0 HP & 2.0 HP only)
                     const u1 = parseInt(cycleRecord?.aerator_1hp || 0, 10);
                     const u2 = parseInt(cycleRecord?.aerator_2hp || 0, 10);
@@ -245,6 +329,10 @@ export class FieldOpsMap {
                         : null;
 
                     const pondTelemetry = cycleRecord?.pond_index ? (telemetryMap.get(cycleRecord.pond_index) || null) : null;
+
+                    // Latest lab water quality & abnormal parameter evaluation
+                    const labRecord = cycleRecord?.pond_index && labMap instanceof Map ? (labMap.get(cycleRecord.pond_index) || null) : null;
+                    const abnormalParams = !isIdle && labRecord ? evaluateAbnormalWqParameters(labRecord) : [];
 
                     // Evaluate Feeding Action Plan based on water quality parameters & weather
                     let evalResult;
@@ -273,8 +361,8 @@ export class FieldOpsMap {
 
                     let orbClass = "orb-idle";
                     if (!isIdle) {
-                        if (evalResult.level === "critical") orbClass = "orb-crimson";
-                        else if (evalResult.level === "caution") orbClass = "orb-amber";
+                        if (evalResult.level === "critical" || abnormalParams.some(a => a.severity === "alert")) orbClass = "orb-crimson";
+                        else if (evalResult.level === "caution" || abnormalParams.length > 0) orbClass = "orb-amber";
                         else orbClass = "orb-emerald";
                     }
 
@@ -291,12 +379,13 @@ export class FieldOpsMap {
                             aerator_2hp: 0
                         },
                         isIdle,
-                        operatorName,
                         totalHP,
                         u1,
                         u2,
                         todayRecord,
                         telemetry: pondTelemetry,
+                        labRecord,
+                        abnormalParams,
                         feedingAction: evalResult,
                         orbClass
                     });
@@ -381,7 +470,7 @@ export class FieldOpsMap {
             <div style="display: flex; flex-direction: column; gap: 1.5rem;">
                 
                 <!-- ROW 1 (Line 1) -->
-                <div class="field-ops-row-section" style="background: rgba(255, 255, 255, 0.7); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.9); border-radius: 16px; padding: 1.1rem 1.25rem;">
+                <div class="field-ops-row-section" style="border-radius: 16px; padding: 1.1rem 1.25rem;">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.85rem;">
                         <div style="display: flex; align-items: center; gap: 0.5rem;">
                             <span style="font-size: 1.1rem;">🌊</span>
@@ -398,7 +487,7 @@ export class FieldOpsMap {
                 </div>
 
                 <!-- ROW 2 (Line 2) -->
-                <div class="field-ops-row-section" style="background: rgba(255, 255, 255, 0.7); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.9); border-radius: 16px; padding: 1.1rem 1.25rem;">
+                <div class="field-ops-row-section" style="border-radius: 16px; padding: 1.1rem 1.25rem;">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.85rem;">
                         <div style="display: flex; align-items: center; gap: 0.5rem;">
                             <span style="font-size: 1.1rem;">🌊</span>
@@ -416,33 +505,10 @@ export class FieldOpsMap {
 
             </div>
         `;
-
-        // Bind 1-Tap Quick Log button on active pond cards (stops propagation so card click stays Supervisor View)
-        gridMount.querySelectorAll(".btn-quick-log-pond").forEach(btn => {
-            btn.addEventListener("click", (e) => {
-                e.stopPropagation();
-                const label = btn.getAttribute("data-pond-label");
-                const data = this.pondsData.get(label);
-                if (data && typeof this.onQuickLogPond === "function") {
-                    this.onQuickLogPond(data.cycleRecord, this.getActivePondsList());
-                }
-            });
-        });
-
-        // Bind click events on pond cards (opens Supervisor Pond WQS Detail View)
-        gridMount.querySelectorAll(".field-ops-pond-tile").forEach(card => {
-            card.addEventListener("click", () => {
-                const label = card.getAttribute("data-pond-label");
-                const data = this.pondsData.get(label);
-                if (data && typeof this.onSelectPond === "function") {
-                    this.onSelectPond(data.cycleRecord);
-                }
-            });
-        });
     }
 
     renderPondCard(data) {
-        const { pondLabel, cycleRecord, isIdle, operatorName, totalHP, todayRecord } = data;
+        const { pondLabel, cycleRecord, isIdle, totalHP, todayRecord, abnormalParams = [] } = data;
         const doc = calculateDOC(cycleRecord.stck_date, cycleRecord.date_close);
         const area = parseFloat(cycleRecord.area) || 0.50;
 
@@ -452,13 +518,22 @@ export class FieldOpsMap {
             : (cycleRecord.cycle_no !== undefined && cycleRecord.cycle_no !== null ? String(cycleRecord.cycle_no).padStart(2, "0") : "—");
 
         // Resolve DO & pH Telemetry (Real IoT value or standby placeholder per Rule 7)
-        const doValue = data.telemetry?.do_ppm !== undefined && data.telemetry?.do_ppm !== null
-            ? parseFloat(data.telemetry.do_ppm).toFixed(1)
-            : (cycleRecord.latest_do !== undefined && cycleRecord.latest_do !== null ? parseFloat(cycleRecord.latest_do).toFixed(1) : "--");
+        const rawDoNum = data.telemetry?.do_ppm !== undefined && data.telemetry?.do_ppm !== null
+            ? parseFloat(data.telemetry.do_ppm)
+            : (cycleRecord.latest_do !== undefined && cycleRecord.latest_do !== null ? parseFloat(cycleRecord.latest_do) : null);
 
-        const phValue = data.telemetry?.ph !== undefined && data.telemetry?.ph !== null
-            ? parseFloat(data.telemetry.ph).toFixed(2)
-            : (cycleRecord.latest_ph !== undefined && cycleRecord.latest_ph !== null ? parseFloat(cycleRecord.latest_ph).toFixed(2) : "--");
+        const rawPhNum = data.telemetry?.ph !== undefined && data.telemetry?.ph !== null
+            ? parseFloat(data.telemetry.ph)
+            : (cycleRecord.latest_ph !== undefined && cycleRecord.latest_ph !== null ? parseFloat(cycleRecord.latest_ph) : null);
+
+        const doValue = rawDoNum !== null && !isNaN(rawDoNum) ? rawDoNum.toFixed(1) : "--";
+        const phValue = rawPhNum !== null && !isNaN(rawPhNum) ? rawPhNum.toFixed(2) : "--";
+
+        // Determine DO and pH Telemetry health states via Single Source of Truth (waterQualityLimit.js)
+        const doStateClass = getTelemetryHealthState("do", rawDoNum);
+        const phStateClass = getTelemetryHealthState("ph", rawPhNum);
+
+        const isLiveTelemetry = Boolean(data.telemetry && (data.telemetry.do_ppm !== null || data.telemetry.ph !== null));
 
         // Active production styling
         let borderColor = todayRecord ? "#16a34a" : "#0284c7";
@@ -470,7 +545,7 @@ export class FieldOpsMap {
 
         if (isIdle) {
             return `
-                <div class="field-ops-pond-tile pond-idle" data-pond-label="${pondLabel}">
+                <div class="field-ops-pond-tile pond-idle" data-pond-label="${pondLabel}" title="Click to view pond details">
                     
                     <!-- Tile Header: Muted Gray Pond Code & Ghost Badge -->
                     <div>
@@ -493,53 +568,36 @@ export class FieldOpsMap {
                         <div style="padding: 0.5rem 0; text-align: center; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;">
                             <span style="font-size: 1.1rem; opacity: 0.7;">⚙️</span>
                             <span style="color: #64748b; font-size: 0.74rem; font-weight: 700;">Pond In Preparation</span>
-                            <span style="font-size: 0.66rem; color: #94a3b8;">Area: ${area} Ha · Dry</span>
-                            <div style="display: flex; gap: 0.45rem; font-size: 0.62rem; color: #94a3b8; font-weight: 600; margin-top: 2px;">
-                                <span>DO: --</span>
-                                <span>·</span>
-                                <span>pH: --</span>
-                            </div>
+                            <span style="font-size: 0.66rem; color: #94a3b8;">Area: ${area} Ha · Drained</span>
                         </div>
                     </div>
 
                     <!-- Tile Footer: Subtle Setup Link -->
                     <div style="border-top: 1px dashed rgba(148, 163, 184, 0.35); padding-top: 0.45rem; display: flex; justify-content: space-between; align-items: center; gap: 0.4rem; font-size: 0.68rem;">
-                        <span style="color: #94a3b8; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-                            ⚪ Idle Pond
-                        </span>
-                        <span style="color: #0284c7; font-weight: 700; white-space: nowrap;">Setup ➔</span>
+                        <span style="color: #94a3b8; font-weight: 600;">⚪ Idle</span>
+                        <span style="color: #0284c7; font-weight: 700;">Setup ➔</span>
                     </div>
 
                 </div>
             `;
         }
 
-        // Active Culture Pond (Solid Aero High-Gloss Pedestal)
+        // Active Culture Pond
         return `
-            <div class="field-ops-pond-tile pond-active" data-pond-label="${pondLabel}" style="
-                background: rgba(255, 255, 255, 0.95); 
-                border: 2px solid ${borderColor}; 
-                border-radius: 14px; 
-                padding: 0.85rem 0.95rem; 
-                cursor: pointer; 
-                transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s ease;
-                box-shadow: 0 4px 14px ${shadowGlow};
-                display: flex;
-                flex-direction: column;
-                justify-content: space-between;
-                min-height: 176px;
-            ">
+            <div class="field-ops-pond-tile pond-active ${todayRecord ? 'status-logged' : 'status-pending'}" data-pond-label="${pondLabel}" style="--pond-border: ${borderColor}; --pond-shadow: ${shadowGlow};" title="Click card to open Pond Details">
                 
                 <!-- Tile Header: High-Contrast Pond Code & DOC Badge -->
                 <div>
-                    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.4rem;">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.35rem;">
                         <div>
-                            <div class="pond-no-box" style="font-size: 1.1rem; font-weight: 900; line-height: 1.1; display: flex; align-items: center; gap: 6px;">
+                            <div class="pond-no-box" style="font-size: 1.15rem; font-weight: 900; line-height: 1.1; display: flex; align-items: center; gap: 6px;">
                                 <span class="aero-orb ${data.orbClass || 'orb-emerald'}" title="Feeding Action: ${data.feedingAction?.badgeText || 'Normal Feed'}"></span>
-                                <span>${pondLabel}</span>
+                                <span class="pond-title-text">${pondLabel}</span>
                             </div>
-                            <div style="font-size: 0.68rem; font-weight: 700; color: #64748b; margin-top: 0.15rem;">
-                                Cycle ${cycleNumber}
+                            <div style="font-size: 0.72rem; font-weight: 800; color: #0284c7; margin-top: 0.15rem; display: flex; align-items: center; gap: 6px;">
+                                <span>Cycle ${cycleNumber}</span>
+                                <span style="color: #64748b; font-weight: 700;">•</span>
+                                <span style="color: #0369a1; font-weight: 800;">⚡ ${totalHP} HP</span>
                             </div>
                         </div>
                         <span class="pond-doc-badge-neutral">
@@ -547,71 +605,54 @@ export class FieldOpsMap {
                         </span>
                     </div>
 
-                    <!-- Middle Content: Real Operational Details & Today's Log Status -->
-                    <div style="margin: 0.3rem 0;">
-                        <div style="font-size: 0.72rem; color: #1e293b; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-                            ${cycleRecord.stck_species || 'P. VANNAMEI'} · <span style="color: #0284c7;">⚡ ${totalHP} HP</span>
-                        </div>
-                        <div style="font-size: 0.65rem; color: #64748b; margin-top: 0.1rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="Operator: ${operatorName}">
-                            🦐 ${operatorName}
-                        </div>
+                    <!-- Middle Content: Live Telemetry & Alerts -->
+                    <div style="margin: 0.25rem 0;">
 
-                        <!-- Live WQS Telemetry Twin Pill (DO & pH) -->
-                        <div class="pond-wqs-pills" style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.35rem; margin: 0.35rem 0;">
-                            <div style="background: rgba(240, 249, 255, 0.95); border: 1px solid #bae6fd; border-radius: 8px; padding: 0.22rem 0.4rem; display: flex; align-items: center; justify-content: space-between; box-shadow: inset 0 1px 1px #fff;" title="Dissolved Oxygen">
+                        <!-- Live WQS Telemetry Twin Pill (DO & pH) with live indicator -->
+                        <div class="pond-wqs-pills">
+                            <div class="pond-telemetry-pill ${doStateClass}" title="Dissolved Oxygen (Optimal: ≥ 5.0 mg/L)">
                                 <span style="font-size: 0.64rem; font-weight: 800; color: #0369a1; display: inline-flex; align-items: center; gap: 3px;">
-                                    <span style="font-size: 0.72rem;">🫧</span> DO
+                                    ${isLiveTelemetry ? '<span class="live-pulse-dot"></span>' : '<span style="font-size: 0.68rem;">🫧</span>'} DO
                                 </span>
-                                <span style="font-family: 'Space Grotesk', monospace, sans-serif; font-size: 0.78rem; font-weight: 800; color: #0284c7;">
+                                <span class="telemetry-val" style="font-family: 'Space Grotesk', monospace, sans-serif; font-size: 0.8rem; font-weight: 800; color: #0284c7;">
                                     ${doValue} <span style="font-size: 0.58rem; font-weight: 600; color: #64748b;">mg/L</span>
                                 </span>
                             </div>
-                            <div style="background: rgba(240, 249, 255, 0.95); border: 1px solid #bae6fd; border-radius: 8px; padding: 0.22rem 0.4rem; display: flex; align-items: center; justify-content: space-between; box-shadow: inset 0 1px 1px #fff;" title="Water pH Level">
+                            <div class="pond-telemetry-pill ${phStateClass}" title="Water pH Level (Optimal: 7.5 - 8.3)">
                                 <span style="font-size: 0.64rem; font-weight: 800; color: #0369a1; display: inline-flex; align-items: center; gap: 3px;">
-                                    <span style="font-size: 0.72rem;">🧪</span> pH
+                                    ${isLiveTelemetry ? '<span class="live-pulse-dot"></span>' : '<span style="font-size: 0.68rem;">🧪</span>'} pH
                                 </span>
-                                <span style="font-family: 'Space Grotesk', monospace, sans-serif; font-size: 0.78rem; font-weight: 800; color: #0284c7;">
-                                    ${phValue} <span style="font-size: 0.58rem; font-weight: 600; color: #64748b;">pH</span>
+                                <span class="telemetry-val" style="font-family: 'Space Grotesk', monospace, sans-serif; font-size: 0.8rem; font-weight: 800; color: #0284c7;">
+                                    ${phValue}
                                 </span>
                             </div>
                         </div>
 
-                        ${todayRecord ? `
-                            <div style="background: #f0fdf4; border: 1px solid #86efac; border-radius: 6px; padding: 0.25rem 0.45rem; display: flex; align-items: center; justify-content: space-between; margin-top: 0.35rem; font-size: 0.64rem; font-weight: 800; color: #166534;">
-                                <span>✅ Logged Today</span>
-                                <span>${todayFeedKg} kg</span>
+                        <!-- Conditional Non-Optimal Water Quality Anomaly Badges (Only shown when not optimum) -->
+                        ${abnormalParams.length > 0 ? `
+                            <div class="pond-abnormal-wq-row" title="Parameters requiring attention">
+                                ${abnormalParams.slice(0, 3).map(a => `
+                                    <span class="wq-abnormal-pill ${a.severity === 'alert' ? 'pill-alert' : 'pill-warning'}" title="${a.message}">
+                                        <span>⚠️</span> ${a.parameter} ${a.value}
+                                    </span>
+                                `).join("")}
+                                ${abnormalParams.length > 3 ? `<span class="wq-abnormal-pill pill-warning">+${abnormalParams.length - 3}</span>` : ''}
                             </div>
-                        ` : `
-                            <div style="background: #fffbeb; border: 1px solid #fde68a; border-radius: 6px; padding: 0.25rem 0.45rem; display: flex; align-items: center; justify-content: space-between; margin-top: 0.35rem; font-size: 0.64rem; font-weight: 800; color: #b45309;">
-                                <span>⏳ Pending Today</span>
-                                <span>— kg</span>
-                            </div>
-                        `}
+                        ` : ''}
+
+                        <!-- Daily Log Status Banner -->
+                        <div class="pond-status-banner ${todayRecord ? 'pond-status-banner-logged' : 'pond-status-banner-pending'}">
+                            <span>${todayRecord ? '✅ Logged Today' : '⏳ Pending Today'}</span>
+                            <span>${todayRecord ? `${todayFeedKg} kg` : '— kg'}</span>
+                        </div>
                     </div>
                 </div>
 
-                <!-- Tile Footer: 1-Tap Quick Log CTA (for Active Ponds) & Supervisor Detail Link -->
-                <div style="border-top: 1px solid rgba(0, 0, 0, 0.06); padding-top: 0.45rem; display: flex; justify-content: space-between; align-items: center; gap: 0.4rem; font-size: 0.68rem;">
-                    <button type="button" class="btn-quick-log-pond" data-pond-label="${pondLabel}" style="
-                        flex: 1;
-                        background: ${todayRecord ? '#f0fdf4' : 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)'};
-                        color: ${todayRecord ? '#15803d' : '#ffffff'};
-                        border: 1px solid ${todayRecord ? '#86efac' : '#0284c7'};
-                        border-radius: 8px;
-                        padding: 0.32rem 0.5rem;
-                        font-size: 0.72rem;
-                        font-weight: 800;
-                        cursor: pointer;
-                        display: inline-flex;
-                        align-items: center;
-                        justify-content: center;
-                        gap: 0.25rem;
-                        min-height: 32px;
-                        box-shadow: ${todayRecord ? 'none' : '0 2px 6px rgba(2, 132, 199, 0.25)'};
-                    ">
-                        <span>${todayRecord ? '✏️ Edit Log' : '⚡ + Log'}</span>
+                <!-- Tile Footer: 1-Tap Quick Action (Entire card navigates to Details, button logs) -->
+                <div style="border-top: 1px solid rgba(0, 0, 0, 0.06); padding-top: 0.45rem; margin-top: 0.2rem;">
+                    <button type="button" class="btn-quick-log-pond ${todayRecord ? 'btn-quick-log-logged' : 'btn-quick-log-pending'}" data-pond-label="${pondLabel}">
+                        <span>${todayRecord ? '✏️ Edit Today\'s Log' : '⚡ + Log Today'}</span>
                     </button>
-                    <span style="color: #64748b; font-weight: 700; font-size: 0.66rem; padding: 0 0.2rem; white-space: nowrap;" title="Open Pond WQS Detail">Details ➔</span>
                 </div>
 
             </div>

@@ -47,7 +47,7 @@ export class SamplingTab {
     async loadData(pondIndex) {
         if (!this.dom.tbody) return;
         if (!pondIndex) {
-            this.dom.tbody.innerHTML = `<tr><td colspan="10" class="text-center text-muted" style="padding: 1.5rem;">Select a pond to view biometrics sampling.</td></tr>`;
+            this.dom.tbody.innerHTML = `<tr><td colspan="7" class="text-center text-muted" style="padding: 1.5rem;">Select a pond to view biometrics sampling.</td></tr>`;
             return;
         }
 
@@ -58,7 +58,7 @@ export class SamplingTab {
             if (!data || data.length === 0) {
                 this.dom.tbody.innerHTML = `
                     <tr>
-                        <td colspan="10" class="text-center" style="padding: 2.5rem 1rem;">
+                        <td colspan="7" class="text-center" style="padding: 2.5rem 1rem;">
                             <div class="empty-state-box">
                                 <div class="empty-icon-wrap">
                                     <svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--aero-sky-600);">
@@ -114,9 +114,6 @@ export class SamplingTab {
                         <td class="font-mono">${r.smpl_surv ? parseFloat(r.smpl_surv).toFixed(1) + '%' : '—'}</td>
                         <td class="font-mono font-bold">${r.smpl_bms ? Math.round(r.smpl_bms).toLocaleString() + ' kg' : '—'}</td>
                         <td class="font-mono">${r.smpl_tfed ? Math.round(r.smpl_tfed).toLocaleString() + ' kg' : '—'}</td>
-                        <td class="font-mono text-muted">—</td>
-                        <td class="font-mono text-muted">—</td>
-                        <td class="font-mono text-muted">—</td>
                     </tr>
                 `;
             }).join("");

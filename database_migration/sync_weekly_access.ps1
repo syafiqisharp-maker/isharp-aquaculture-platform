@@ -60,6 +60,16 @@ function SafeDate($val) {
     }
 }
 
+function SafeTime($val) {
+    if ($val -eq $null -or $val -eq [DBNull]::Value) { return $null }
+    try {
+        $dt = [datetime]$val
+        return $dt.ToString("HH:mm")
+    } catch {
+        return $null
+    }
+}
+
 function SafeDecimal($val) {
     if ($val -eq $null -or $val -eq [DBNull]::Value) { return $null }
     try {
@@ -837,23 +847,155 @@ $reader.Close()
 if ($batch.Count -gt 0) {
     Post-BatchToSupabase "growout_pond_final_legacy" $batch "index_no"
 }
-Write-Output "  [OK] Preserved $newFinalCount finalized cycle audits in growout_pond_final_legacy (Max ID was $maxFinal)."
+    Write-Output "  [OK] Preserved $newFinalCount finalized cycle audits in growout_pond_final_legacy (Max ID was $maxFinal)."
 
-$conn.Close()
+    # -------------------------------------------------------------
+    # STAGE 11: Incremental Sync: GrowoutPondFeedSAP -> growout_pond_feed_sap
+    # Authoritative SAP Feed Ledger by SAPFeedName, SapPostDate & amount
+    # -------------------------------------------------------------
+    Write-Output ""
+    Write-Output "[11/11] Incremental Sync: GrowoutPondFeedSAP -> growout_pond_feed_sap..."
+    $cmd.CommandText = "SELECT Orderno, SapPondidx, SapPostDate, SapFeedidx, SapFeedName, SapFeedKgs, SapMovement FROM [GrowoutPondFeedSAP] WHERE SapPostDate >= DateAdd('d', -180, Date()) ORDER BY Orderno ASC, SapPostDate ASC, SapPondidx ASC, SapFeedidx ASC, SapMovement ASC, SapFeedKgs ASC"
+    $reader = $cmd.ExecuteReader()
+    $batch = @()
+    $newSapFeedCount = 0
+    $prevTuple = ""
+    $occurrence = 1
 
-Write-Output ""
-Write-Output "=========================================================="
-Write-Output "  WEEKLY SYNC COMPLETED SUCCESSFULLY!"
-Write-Output "  Master Cycles Upserted:       $masterCount"
-Write-Output "  Active Operational Ponds:     $($accessActiveDict.Count)"
-Write-Output "  New Stocking Batches:         $newStockingCount"
-Write-Output "  New Daily Harvest Runs:       $newHarvestDailyCount"
-Write-Output "  New Harvest Sales Records:    $newHarvestSalesCount"
-Write-Output "  New Pathology Issues:         $newIssuesCount"
-Write-Output "  New Pond Notes:               $newNotesCount"
-Write-Output "  New Biometrics Samplings:     $newSamplingCount"
-Write-Output "  Aerator Cycles Synced:        $aeratorCount"
-Write-Output "  Daily Feed Records Synced:    $newFeedCount"
-Write-Output "  Final Cycle Audits Synced:    $newFinalCount"
-Write-Output "  Finish Time: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')"
-Write-Output "=========================================================="
+    while ($reader.Read()) {
+        $orderno = SafeString $reader["Orderno"]
+        $pIdx = SafeString $reader["SapPondidx"]
+        $postDate = SafeDate $reader["SapPostDate"]
+        $feedIdx = SafeString $reader["SapFeedidx"]
+        $feedName = SafeString $reader["SapFeedName"]
+        $feedKgs = SafeDecimal $reader["SapFeedKgs"]
+        $movement = SafeDecimal $reader["SapMovement"]
+
+        if (-not $pIdx -or -not $postDate -or -not $feedName) {
+            continue
+        }
+
+        $pLabel = if ($pIdx.Length -ge 7) {
+            "$($pIdx.Substring(1,2)).$($pIdx.Substring(3,2)).$($pIdx.Substring(5,2))"
+        } else {
+            $pIdx
+        }
+
+        $curTuple = "${orderno}_${pIdx}_${postDate}_${feedIdx}_${movement}_${feedKgs}"
+        if ($curTuple -eq $prevTuple) {
+            $occurrence++
+        } else {
+            $occurrence = 1
+            $prevTuple = $curTuple
+        }
+
+        $syncKey = "${curTuple}_${occurrence}"
+
+        $batch += [ordered]@{
+            sync_key = $syncKey
+            order_no = $orderno
+            pond_index = $pIdx
+            pond = $pLabel
+            sap_post_date = $postDate
+            sap_feed_index = $feedIdx
+            sap_feed_name = $feedName
+            amount_kg = $(if ($feedKgs -ne $null) { $feedKgs } else { 0.0 })
+            sap_movement = $movement
+        }
+
+        $newSapFeedCount++
+
+        if ($batch.Count -ge 500) {
+            Post-BatchToSupabase "growout_pond_feed_sap" $batch "sync_key"
+            $batch = @()
+        }
+    }
+    $reader.Close()
+
+    if ($batch.Count -gt 0) {
+        Post-BatchToSupabase "growout_pond_feed_sap" $batch "sync_key"
+    }
+    Write-Output "  [OK] Synchronized $newSapFeedCount SAP feed records in growout_pond_feed_sap."
+
+    # -------------------------------------------------------------
+    # STAGE 12: Incremental Sync: GrowoutPondHarvestPlan -> pond_harvest_plan
+    # Harvest planning targets, expected biomass, and planned ABW
+    # -------------------------------------------------------------
+    Write-Output ""
+    Write-Output "[12/12] Incremental Sync: GrowoutPondHarvestPlan -> pond_harvest_plan..."
+    $cmd.CommandText = "SELECT PondIndex, planharvstts, planharvdate, planharvabw, planharvwgt, timeHvt, timeDlv, Team, indexNo FROM [GrowoutPondHarvestPlan] WHERE planharvdate >= DateAdd('d', -180, Date()) ORDER BY indexNo ASC"
+    $reader = $cmd.ExecuteReader()
+    $batch = @()
+    $newHarvestPlanCount = 0
+
+    while ($reader.Read()) {
+        $pIdx = SafeString $reader["PondIndex"]
+        $planDate = SafeDate $reader["planharvdate"]
+        $planStts = SafeString $reader["planharvstts"]
+        $planAbw = SafeDecimal $reader["planharvabw"]
+        $planWgt = SafeDecimal $reader["planharvwgt"]
+        $timeHvt = SafeTime $reader["timeHvt"]
+        $timeDlv = SafeTime $reader["timeDlv"]
+        $team = SafeString $reader["Team"]
+        $indexNo = SafeInt $reader["indexNo"]
+
+        if (-not $pIdx -or -not $planDate) {
+            continue
+        }
+
+        $pLabel = if ($pIdx.Length -ge 7) {
+            "$($pIdx.Substring(1,2)).$($pIdx.Substring(3,2)).$($pIdx.Substring(5,2))"
+        } else {
+            $pIdx
+        }
+
+        $syncKey = "${pIdx}_${planDate}_${planStts}_${indexNo}"
+
+        $batch += [ordered]@{
+            index_no = $indexNo
+            sync_key = $syncKey
+            pond_index = $pIdx
+            pond = $pLabel
+            plan_harv_date = $planDate
+            plan_harv_status = $(if ($planStts) { $planStts } else { "TERMINATION" })
+            plan_harv_abw = $planAbw
+            plan_harv_weight = $planWgt
+            time_harvest = $timeHvt
+            time_delivery = $timeDlv
+            team = $team
+        }
+
+        $newHarvestPlanCount++
+
+        if ($batch.Count -ge 500) {
+            Post-BatchToSupabase "pond_harvest_plan" $batch "sync_key"
+            $batch = @()
+        }
+    }
+    $reader.Close()
+
+    if ($batch.Count -gt 0) {
+        Post-BatchToSupabase "pond_harvest_plan" $batch "sync_key"
+    }
+    Write-Output "  [OK] Synchronized $newHarvestPlanCount harvest planning targets in pond_harvest_plan."
+
+    $conn.Close()
+
+    Write-Output ""
+    Write-Output "=========================================================="
+    Write-Output "  WEEKLY SYNC COMPLETED SUCCESSFULLY!"
+    Write-Output "  Master Cycles Upserted:       $masterCount"
+    Write-Output "  Active Operational Ponds:     $($accessActiveDict.Count)"
+    Write-Output "  New Stocking Batches:         $newStockingCount"
+    Write-Output "  New Daily Harvest Runs:       $newHarvestDailyCount"
+    Write-Output "  New Harvest Sales Records:    $newHarvestSalesCount"
+    Write-Output "  New Pathology Issues:         $newIssuesCount"
+    Write-Output "  New Pond Notes:               $newNotesCount"
+    Write-Output "  New Biometrics Samplings:     $newSamplingCount"
+    Write-Output "  Aerator Cycles Synced:        $aeratorCount"
+    Write-Output "  Daily Feed Records Synced:    $newFeedCount"
+    Write-Output "  Final Cycle Audits Synced:    $newFinalCount"
+    Write-Output "  SAP Feed Records Synced:      $newSapFeedCount"
+    Write-Output "  Harvest Plans Synced:         $newHarvestPlanCount"
+    Write-Output "  Finish Time: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')"
+    Write-Output "=========================================================="

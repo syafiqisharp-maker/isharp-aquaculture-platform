@@ -1,5 +1,5 @@
 /**
- * iSHARP DBMS 2.0 â€” Field Operations: Daily Entry Sheet Modal Component
+ * iSHARP DBMS 2.0 — Field Operations: Daily Entry Sheet Modal Component
  * Orchestrates:
  * - 1-Tap Feed Steppers (-5, -1, +1, +5)
  * - 1-Tap Tray Remnant Chips (0%, 5%, 10%, 15%, 25%)
@@ -163,16 +163,23 @@ export class DailyEntryModal {
             });
         });
 
-        // 1-Tap Water Colour Swatch Chips
-        const selectColour = this.container.querySelector("#select-water-colour");
-        this.container.querySelectorAll(".btn-colour-chip").forEach(chip => {
-            chip.addEventListener("click", () => {
-                if (!selectColour) return;
-                selectColour.value = chip.getAttribute("data-colour") || "";
-                this.syncPresetHighlights();
+        // 1-Tap Water Colour 3D Spherical Swatches
+        const inputWaterColour = this.container.querySelector("#input-water-colour");
+        const colourLabel = this.container.querySelector("#selected-water-colour-label");
+        this.container.querySelectorAll(".water-swatch-card").forEach(card => {
+            card.addEventListener("click", () => {
+                const val = card.getAttribute("data-val") || "";
+                if (inputWaterColour) inputWaterColour.value = val;
+                const meta = getWaterColourMeta(val);
+                if (colourLabel) {
+                    colourLabel.textContent = meta ? meta.fullLabel : (val || "— Select Colour —");
+                }
+                this.container.querySelectorAll(".water-swatch-card").forEach(c => {
+                    c.classList.toggle("active", c.getAttribute("data-val") === val);
+                    c.classList.toggle("selected", c.getAttribute("data-val") === val);
+                });
             });
         });
-        if (selectColour) selectColour.addEventListener("change", () => this.syncPresetHighlights());
 
         // Progressive Disclosure Toggles for Optional Treatments
         const minCard = this.container.querySelector("#section-minerals-card");
@@ -214,7 +221,7 @@ export class DailyEntryModal {
                     const d = calculateDOC(this.currentPond.stck_date, newDate);
                     calcDocEl.textContent = `DOC ${d}`;
                 } else {
-                    calcDocEl.textContent = `DOC â€”`;
+                    calcDocEl.textContent = `DOC —`;
                 }
             });
         }
@@ -287,7 +294,7 @@ export class DailyEntryModal {
                 <option value="g" ${(item.unit || '').toLowerCase() === 'g' ? 'selected' : ''}>g</option>
             </select>
             <button type="button" class="btn-remove-row" style="background: #fee2e2; border: 1px solid #fecaca; color: #ef4444; border-radius: 6px; height: 34px; cursor: pointer; display: flex; align-items: center; justify-content: center;">
-                ðŸ—‘ï¸
+                🗑️
             </button>
         `;
 
@@ -312,7 +319,7 @@ export class DailyEntryModal {
                 <option value="g" ${(item.unit || '').toLowerCase() === 'g' ? 'selected' : ''}>g</option>
             </select>
             <button type="button" class="btn-remove-row" style="background: #fee2e2; border: 1px solid #fecaca; color: #ef4444; border-radius: 6px; height: 34px; cursor: pointer; display: flex; align-items: center; justify-content: center;">
-                ðŸ—‘ï¸
+                🗑️
             </button>
         `;
 
@@ -322,24 +329,26 @@ export class DailyEntryModal {
 
     syncPresetHighlights() {
         const inputTray = this.container.querySelector("#input-tray-pct");
-        const selectColour = this.container.querySelector("#select-water-colour");
-        const selectedLabel = this.container.querySelector("#selected-colour-label");
+        const inputColour = this.container.querySelector("#input-water-colour");
+        const selectedLabel = this.container.querySelector("#selected-water-colour-label");
 
         const trayVal = inputTray ? String(inputTray.value).trim() : "";
         this.container.querySelectorAll(".btn-tray-chip").forEach(chip => {
             chip.classList.toggle("active", chip.getAttribute("data-pct") === trayVal);
         });
 
-        const colVal = selectColour ? selectColour.value : "";
+        const colVal = inputColour ? inputColour.value : "";
         const meta = getWaterColourMeta(colVal);
         const activeValue = meta ? meta.value : colVal;
 
         if (selectedLabel) {
-            selectedLabel.textContent = meta ? meta.fullLabel : (colVal || "â€” Select Colour â€”");
+            selectedLabel.textContent = meta ? meta.fullLabel : (colVal || "— Select Colour —");
         }
 
-        this.container.querySelectorAll(".btn-colour-chip").forEach(chip => {
-            chip.classList.toggle("active", chip.getAttribute("data-colour") === activeValue);
+        this.container.querySelectorAll(".water-swatch-card").forEach(card => {
+            const isMatch = card.getAttribute("data-val") === activeValue;
+            card.classList.toggle("active", isMatch);
+            card.classList.toggle("selected", isMatch);
         });
     }
 
@@ -352,12 +361,12 @@ export class DailyEntryModal {
         if (btnMin && minCard) {
             const open = minCard.style.display !== "none";
             btnMin.classList.toggle("active", open);
-            btnMin.innerHTML = open ? "ðŸ§ª Minerals â–²" : "ðŸ§ª + Minerals";
+            btnMin.innerHTML = open ? "🧪 Minerals ▲" : "🧪 + Minerals";
         }
         if (btnPro && proCard) {
             const open = proCard.style.display !== "none";
             btnPro.classList.toggle("active", open);
-            btnPro.innerHTML = open ? "ðŸ¦  Probiotics â–²" : "ðŸ¦  + Probiotics";
+            btnPro.innerHTML = open ? "🦠 Probiotics ▲" : "🦠 + Probiotics";
         }
     }
 
@@ -393,7 +402,7 @@ export class DailyEntryModal {
         const inputFeed = this.container.querySelector("#input-feed-kg");
         const inputTray = this.container.querySelector("#input-tray-pct");
         const inputWaterLevel = this.container.querySelector("#input-water-level");
-        const selectColour = this.container.querySelector("#select-water-colour");
+        const inputColour = this.container.querySelector("#input-water-colour");
         const inputMortality = this.container.querySelector("#input-mortality");
         const inputRemarks = this.container.querySelector("#input-remarks");
         const mineralContainer = this.container.querySelector("#mineral-rows-container");
@@ -404,12 +413,47 @@ export class DailyEntryModal {
         const minCard = this.container.querySelector("#section-minerals-card");
         const proCard = this.container.querySelector("#section-probiotics-card");
 
+        // Dynamic Switcher Bar Elements
+        const switcherTitleEl = this.container.querySelector("#modal-switcher-pond-title");
+        const switcherSubTitleEl = this.container.querySelector("#modal-switcher-pond-subtitle");
+
         const pondLabel = this.currentPond ? (this.currentPond.pond || this.currentPond.pond_index || "Pond") : "Pond";
         const dateVal = targetDate || getLocalDateStr();
         if (inputDate) inputDate.value = dateVal;
 
         const doc = (this.currentPond && this.currentPond.stck_date) ? calculateDOC(this.currentPond.stck_date, dateVal) : 0;
         if (calcDocEl) calcDocEl.textContent = `DOC ${doc}`;
+
+        // Update Sequential Pond Switcher Bar Title & Subtitle if present
+        if (this.activePondsList && this.activePondsList.length > 0) {
+            const currIdx = this.activePondsList.findIndex(p =>
+                (p.pond_index && p.pond_index === this.currentPond?.pond_index) ||
+                (p.pond && p.pond === this.currentPond?.pond)
+            );
+            const displayIdx = currIdx >= 0 ? currIdx + 1 : 1;
+            const totalActive = this.activePondsList.length;
+
+            if (switcherTitleEl) {
+                switcherTitleEl.textContent = `Pond ${pondLabel} · DOC ${doc || '—'}`;
+            }
+            if (switcherSubTitleEl) {
+                const fullBookBtn = this.isModalOnlyMode ? ` · <button type="button" id="btn-modal-open-full-book" style="background: none; border: none; color: #0284c7; font-weight: 800; font-size: 0.7rem; text-decoration: underline; cursor: pointer; padding: 0;">📖 Full Book</button>` : '';
+                switcherSubTitleEl.innerHTML = `Active Pond ${displayIdx} of ${totalActive}${fullBookBtn}`;
+
+                // Re-bind Full Book button if rendered
+                const btnFull = switcherSubTitleEl.querySelector("#btn-modal-open-full-book");
+                if (btnFull) {
+                    btnFull.addEventListener("click", () => {
+                        this.isModalOnlyMode = false;
+                        this.container.classList.remove("daily-mount-modal-only");
+                        const mapMount = document.getElementById("field-ops-map-mount");
+                        if (mapMount) mapMount.style.display = "none";
+                        this.closeModal();
+                        if (this.callbacks.onOpenFullBook) this.callbacks.onOpenFullBook();
+                    });
+                }
+            }
+        }
 
         if (mineralContainer) mineralContainer.innerHTML = "";
         if (probioticContainer) probioticContainer.innerHTML = "";
@@ -419,12 +463,12 @@ export class DailyEntryModal {
         const existingProbiotics = dayTreatments.filter(t => t.category === 'PROBIOTIC');
 
         if (existingRecord) {
-            if (titleEl) titleEl.textContent = `Edit Record â€” Pond ${pondLabel}`;
-            if (subTitleEl) subTitleEl.textContent = `DOC ${doc} Â· ${formatLocalDateDisplay(dateVal)} (Existing Log)`;
+            if (titleEl) titleEl.textContent = `Edit Record — Pond ${pondLabel}`;
+            if (subTitleEl) subTitleEl.textContent = `DOC ${doc} · ${formatLocalDateDisplay(dateVal)} (Existing Log)`;
             if (inputFeed) inputFeed.value = existingRecord.feed_kg !== null && existingRecord.feed_kg !== undefined ? existingRecord.feed_kg : "";
             if (inputTray) inputTray.value = existingRecord.feed_tray_remnant_pct !== null && existingRecord.feed_tray_remnant_pct !== undefined ? existingRecord.feed_tray_remnant_pct : "0";
             if (inputWaterLevel) inputWaterLevel.value = existingRecord.water_level_cm !== null && existingRecord.water_level_cm !== undefined ? existingRecord.water_level_cm : "110";
-            if (selectColour) selectColour.value = getWaterColourMeta(existingRecord.water_colour)?.value || "Brownish Green";
+            if (inputColour) inputColour.value = getWaterColourMeta(existingRecord.water_colour)?.value || "Light Green";
             if (inputMortality) {
                 inputMortality.value = (existingRecord.mortality_kg !== null && existingRecord.mortality_kg !== undefined)
                     ? existingRecord.mortality_kg
@@ -434,8 +478,8 @@ export class DailyEntryModal {
             if (btnDelete) btnDelete.style.display = "block";
             if (carryBadge) carryBadge.style.display = "none";
         } else {
-            if (titleEl) titleEl.textContent = `Quick Log â€” Pond ${pondLabel}`;
-            if (subTitleEl) subTitleEl.textContent = `DOC ${doc} Â· ${formatLocalDateDisplay(dateVal)}`;
+            if (titleEl) titleEl.textContent = `Quick Log — Pond ${pondLabel}`;
+            if (subTitleEl) subTitleEl.textContent = `DOC ${doc} · ${formatLocalDateDisplay(dateVal)}`;
 
             // Smart Yesterday Carry-Forward
             const sortedPrev = [...this.records]
@@ -447,17 +491,17 @@ export class DailyEntryModal {
                 if (inputFeed) inputFeed.value = (prevRecord.feed_kg && parseFloat(prevRecord.feed_kg) > 0) ? prevRecord.feed_kg : "";
                 if (inputTray) inputTray.value = "0";
                 if (inputWaterLevel) inputWaterLevel.value = prevRecord.water_level_cm || "110";
-                if (selectColour) selectColour.value = getWaterColourMeta(prevRecord.water_colour)?.value || "Brownish Green";
+                if (inputColour) inputColour.value = getWaterColourMeta(prevRecord.water_colour)?.value || "Light Green";
                 if (carryBadge && carryText) {
-                    const prevFeedStr = prevRecord.feed_kg ? `${parseFloat(prevRecord.feed_kg).toFixed(1)} kg` : "â€”";
-                    carryText.textContent = `â†º Pre-filled from ${formatLocalDateDisplay(prevRecord.log_date)} (${prevFeedStr}, ${prevRecord.water_level_cm || 110} cm)`;
+                    const prevFeedStr = prevRecord.feed_kg ? `${parseFloat(prevRecord.feed_kg).toFixed(1)} kg` : "—";
+                    carryText.textContent = `↺ Pre-filled from ${formatLocalDateDisplay(prevRecord.log_date)} (${prevFeedStr}, ${prevRecord.water_level_cm || 110} cm)`;
                     carryBadge.style.display = "flex";
                 }
             } else {
                 if (inputFeed) inputFeed.value = "";
                 if (inputTray) inputTray.value = "0";
                 if (inputWaterLevel) inputWaterLevel.value = "110";
-                if (selectColour) selectColour.value = "Brownish Green";
+                if (inputColour) inputColour.value = "Light Green";
                 if (carryBadge) carryBadge.style.display = "none";
             }
 
@@ -507,7 +551,7 @@ export class DailyEntryModal {
         const inputFeed = this.container.querySelector("#input-feed-kg");
         const inputTray = this.container.querySelector("#input-tray-pct");
         const inputWaterLevel = this.container.querySelector("#input-water-level");
-        const selectColour = this.container.querySelector("#select-water-colour");
+        const inputColour = this.container.querySelector("#input-water-colour");
         const inputMortality = this.container.querySelector("#input-mortality");
         const inputRemarks = this.container.querySelector("#input-remarks");
         const btnSave = this.container.querySelector("#btn-save-record");
@@ -545,7 +589,7 @@ export class DailyEntryModal {
             feed_kg: (inputFeed && inputFeed.value !== "") ? parseFloat(inputFeed.value) : 0,
             feed_tray_remnant_pct: (inputTray && inputTray.value !== "") ? parseInt(inputTray.value, 10) : 0,
             water_level_cm: (inputWaterLevel && inputWaterLevel.value !== "") ? parseFloat(inputWaterLevel.value) : null,
-            water_colour: selectColour ? selectColour.value || null : null,
+            water_colour: inputColour ? (inputColour.value ? inputColour.value.trim() : null) : null,
             mortality_kg: isNaN(mortVal) ? 0.0 : mortVal,
             mortality_count: isNaN(mortVal) ? 0 : Math.round(mortVal),
             remarks: (inputRemarks && inputRemarks.value) ? inputRemarks.value.trim() || null : null
@@ -581,9 +625,9 @@ export class DailyEntryModal {
             if (advanceToNextPond && this.activePondsList && this.activePondsList.length > 1) {
                 const nextPond = await this.switchPondInModal(1);
                 const nextName = nextPond ? (nextPond.pond || nextPond.pond_index) : "Next Pond";
-                Toast.success(`âœ… Saved Pond ${pondName} â€” Ready for Pond ${nextName}!`);
+                Toast.success(`✅ Saved Pond ${pondName} — Ready for Pond ${nextName}!`);
             } else if (this.isModalOnlyMode) {
-                Toast.success(`âœ… Saved Pond ${pondName} (${dailyPayload.feed_kg} kg)!`);
+                Toast.success(`✅ Saved Pond ${pondName} (${dailyPayload.feed_kg} kg)!`);
                 this.closeModal();
             } else {
                 Toast.success(`Daily record & treatments for ${logDate} saved!`);
@@ -619,7 +663,7 @@ export class DailyEntryModal {
                     }, { type: "treatments", pondIndex, logDate });
                 }
 
-                Toast.info(`ðŸ“¡ Saved locally (Offline). Will sync when connection is restored!`);
+                Toast.info(`📡 Saved locally (Offline). Will sync when connection is restored!`);
                 if (this.callbacks.onRecordSaved) this.callbacks.onRecordSaved();
                 this.closeModal();
             } else {
@@ -628,11 +672,11 @@ export class DailyEntryModal {
         } finally {
             if (btnSave) {
                 btnSave.disabled = false;
-                btnSave.textContent = "ðŸ’¾ Save";
+                btnSave.textContent = "💾 Save";
             }
             if (btnSaveNext) {
                 btnSaveNext.disabled = false;
-                btnSaveNext.textContent = "âš¡ Save & Next âž”";
+                btnSaveNext.textContent = "⚡ Save & Next ➔";
             }
         }
     }

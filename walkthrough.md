@@ -174,6 +174,47 @@ This file serves as a persistent record of key milestones, architecture decision
     * `src/modules/fieldOps/` $\rightarrow$ System 3: Field Operations (Supervisor & Operators)
 * **Production Build Verified:** Vite production build executed cleanly in 1.38s with 0 errors.
 
+---
+
+## 2026-10-06 to 2026-10-07: Field Operations UX Overhaul & Access SAP Feed / Harvest Plan Integration
+* **Field Operations Mobile Polish & Frutiger Aero Contrast:**
+  * Implemented high-contrast typography and anti-washout sheen containment across mobile views.
+  * Added dynamic ocean seabed / seagrass backdrop wallpaper (`field_ops_seagrass_bg.jpg`) with translucent glassmorphic surfaces (`rgba(255, 255, 255, 0.75)` on desktop, solid white on mobile for maximum sunlight visibility).
+  * Replaced low-contrast cyan aero telemetry cards with standardized `.wqs-metric-card` bento styling (deep navy `#072642` values, cerulean `#0369a1` bold headers).
+* **Single Source of Truth (SSOT) for Water Quality Parameters (`waterQualityLimit.js`):**
+  * Centralized farm thresholds into `src/domain/waterQualityLimit.js`:
+    * Dissolved Oxygen (DO): Optimal > 4.0 ppm, Caution 3.0–4.0 ppm, Danger < 3.0 ppm (hypoxia feed cut).
+    * pH Diurnal Swing: Safe ≤ 1.0 Δ/day, Caution > 1.0 Δ/day, Critical ≥ 1.5 Δ/day.
+    * Salinity: Optimal 15–35 ppt, Danger < 10 or ≥ 38 ppt.
+    * Ammonia ($NH_3$): Optimal < 1.0 mg/L (hidden), Warning 1.0–1.99 mg/L, Danger ≥ 2.0 mg/L (red alert badge).
+    * Nitrite ($NO_2^-$) & Alkalinity bounds.
+  * Filtered 24-pond card noise: normal parameters remain hidden, while abnormal readings trigger high-contrast warning badges.
+* **Quick Log Form & REST Wildcard URL Encoding Bugfix:**
+  * Fixed unencoded `%` in PostgREST queries (`like.209%25` instead of `like.209%`) that caused HTTP 500 errors in `labRepository.js` and `FieldOpsMap.js`.
+  * Cleaned UTF-8 character encoding issues (`â€"`, `Â·`, etc.).
+  * Synchronized the modal switcher bar (`#modal-switcher-pond-title`, `#modal-switcher-pond-subtitle`) dynamically on Next/Prev navigation.
+  * Added 3D tactile water colour swatches (`.water-swatch-card`) with active selection binding to `#input-water-colour` and saving to `public.daily_pond_records`.
+* **Legacy Access Migrations (`GrowoutPondFeedSAP` & `GrowoutPondHarvestPlan`):**
+  * Migrated 89,244 records of `GrowoutPondFeedSAP` into Supabase `public.growout_pond_feed_sap` using `database_migration/migrate_growout_pond_feed_sap.ps1` in 6m 32s.
+  * Migrated 9,313 records of `GrowoutPondHarvestPlan` into Supabase `public.pond_harvest_plan` using `database_migration/migrate_growout_pond_harvest_plan.ps1` in 43s.
+  * Solved duplicate rows in Access by deterministic streaming with row-occurrence counters to create reliable unique `sync_key` identifiers.
+* **Weekly Smart Delta Sync Engine Upgrade (Stages 11 & 12):**
+  * Updated `database_migration/sync_weekly_access.ps1` with Stage 11 (`GrowoutPondFeedSAP`) and Stage 12 (`GrowoutPondHarvestPlan`), using a 180-day delta window.
+  * Added `SafeTime` parser for Access date/time fields.
+  * Successfully verified full pipeline via `Run_Friday_Sync.bat` (46-second idempotent sync run, 0 duplicates).
+* **DBMS Visualisations (Feeding Tab & Harvest Tab):**
+  * **Feeding Tab (Tab 4):** Dual tables:
+    * Table 1: Field Supervisor Daily Logbook (`daily_pond_records`) with date, DOC, feed, tray % remnants, depth, water colour swatch, and remarks.
+    * Table 2: Authoritative SAP ERP Feed Ledger (`growout_pond_feed_sap`) labeled by `SAPFeedName`, posting date, movement (261 issue / 262 reversal with negative subtraction styling), and running cumulative feed kg.
+  * **Harvest Tab (Tab 7):** Integrated pre-harvest targets:
+    * Table 1: Harvest Plan (`pond_harvest_plan`) placed as the first table in the Harvest Records card (Planned Date, Status, Expected Biomass, Expected ABW, Harvest/Delivery Times, Team).
+    * Retained subsequent tables for actual Harvest Events and Commercial Buyer Sales.
+* **Test Suite & Quality Assurance:**
+  * Added `tests/feedingTabContracts.test.js`, `tests/harvestContracts.test.js`, `tests/fieldOpsMobileContracts.test.js`, and `tests/waterQualityContracts.test.js`.
+  * Verified all 89 unit and contract tests pass (`npm test`).
+  * Verified Vite production build generates cleanly with 0 errors (`npm run build`).
+
+
 
 
 

@@ -16,7 +16,7 @@ export class PondRepository {
      */
     static async getCycles(filters = {}) {
         let queryParams = [
-            "select=pond_index,pond,modl,row_no,cycle_no,crop_no,pond_status,pond_active,stck_date,date_close,aerator_1hp,aerator_2hp,area,stck_species,bs_line,stck_source,stck_size,stck_tank,stck_pcs,stck_allow,stck_total,batch_count",
+            "select=pond_index,pond,modl,row_no,cycle_no,crop_no,pond_status,pond_active,stck_date,date_close,aerator_1hp,aerator_2hp,area,stck_species,bs_line,stck_source,stck_size,stck_tank,stck_pcs,stck_allow,stck_total,batch_count,final_status,disease_status,date_disease",
             "order=pond_index.asc"
         ];
 

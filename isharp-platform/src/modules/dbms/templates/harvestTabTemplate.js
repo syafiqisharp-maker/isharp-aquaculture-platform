@@ -1,6 +1,6 @@
 /**
  * iSHARP DBMS 2.0 — Harvest Tab HTML Template (Tab 7)
- * Harvest Events, Catch Biometrics, and Commercial Buyer Grading Packout.
+ * Harvest Plan, Harvest Events, Catch Biometrics, and Commercial Buyer Grading Packout.
  */
 
 export function getHarvestTabHtml() {
@@ -26,10 +26,38 @@ export function getHarvestTabHtml() {
         </div>
 
         <div class="card panel-card mb-4">
+            <!-- 1. Harvest Plan (First Table in Harvest Records card) -->
             <div class="card-header flex-between">
                 <div>
-                    <h3>Harvest Runs & Catch Biometrics</h3>
-                    <span class="card-sub">Daily netting events, harvest type, and gross weight</span>
+                    <h3>Harvest Plan</h3>
+                    <span class="card-sub">Harvest planning targets, expected biomass, and planned ABW (GrowoutPondHarvestPlan)</span>
+                </div>
+            </div>
+            <div class="table-responsive">
+                <table class="data-table" id="table-harvest-plan">
+                    <thead>
+                        <tr>
+                            <th>Planned Date</th>
+                            <th>Plan Status</th>
+                            <th>Expected Biomass (kg)</th>
+                            <th>Expected ABW (g)</th>
+                            <th>Harvest Time</th>
+                            <th>Delivery Time</th>
+                            <th>Team</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tbody-harvest-plan">
+                        <tr><td colspan="7" class="text-center text-muted">No harvest plan scheduled yet for this cycle.</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- 2. Actual Harvest Events -->
+            <div class="divider mt-4"></div>
+            <div class="card-header flex-between mt-3">
+                <div>
+                    <h4>Harvest Events (Actual)</h4>
+                    <span class="card-sub">Field harvest run logs and catch biometrics (GrowoutPondHarvestDaily)</span>
                 </div>
                 <button class="btn-action btn-secondary" onclick="app.openExcelModal('harvest')" id="btn-add-harvest-event">
                     📋 + Add / Paste Harvest Events
@@ -53,10 +81,12 @@ export function getHarvestTabHtml() {
                     </tbody>
                 </table>
             </div>
+
+            <!-- 3. Commercial Buyer Grading & Sales -->
             <div class="divider mt-4"></div>
             <div class="card-header flex-between mt-3">
                 <div>
-                    <h4>Commercial Buyer Grading & Sales Packout (<code>GrowoutPondHarvestSales</code>)</h4>
+                    <h4>Commercial Buyer Grading & Sales (<code>GrowoutPondHarvestSales</code>)</h4>
                     <span class="card-sub">Buyer sales weight breakdown, grade specifications, and pricing</span>
                 </div>
             </div>
