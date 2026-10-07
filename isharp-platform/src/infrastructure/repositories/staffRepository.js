@@ -79,4 +79,35 @@ export class StaffRepository {
             body: JSON.stringify(payload)
         });
     }
+
+    /**
+     * Fetches personnel assignments from the most recent prior cycle of the same pond.
+     * Looks for prior cycles where at least one staff member was assigned.
+     * @param {string} pondLabel e.g. "01.01.01"
+     * @param {string} [excludePondIndex] Current cycle pond_index to exclude
+     * @returns {Promise<object|null>}
+     */
+    static async getLastCycleStaff(pondLabel, excludePondIndex = null) {
+        if (!pondLabel) return null;
+        try {
+            let filter = `pond=eq.${encodeURIComponent(pondLabel)}`;
+            if (excludePondIndex) {
+                filter += `&pond_index=neq.${encodeURIComponent(excludePondIndex)}`;
+            }
+            filter += `&order=date_cycle.desc.nullslast,cycle_no.desc.nullslast&limit=5`;
+            filter += `&select=pond_index,pond,cycle_no,crop_no,date_cycle,pm_staff_no,sv_staff_no,rl_staff_no,po_staff_no,support_staff_no`;
+
+            const rows = await supabase.request(`growout_pond_master?${filter}`);
+            if (Array.isArray(rows) && rows.length > 0) {
+                const found = rows.find(r =>
+                    Boolean(r.pm_staff_no || r.sv_staff_no || r.rl_staff_no || r.po_staff_no || r.support_staff_no)
+                );
+                return found || null;
+            }
+            return null;
+        } catch (err) {
+            console.warn("Could not fetch last cycle staff from growout_pond_master:", err);
+            return null;
+        }
+    }
 }

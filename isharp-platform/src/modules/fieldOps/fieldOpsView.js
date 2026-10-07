@@ -355,7 +355,8 @@ export class FieldOpsView {
             onOpenManagement: (targetPond) => {
                 this.activePond = targetPond;
                 showView("mgmt", { isBack: false });
-                this.managementPage.render(targetPond);
+                const modulePonds = this.mapComponent ? this.mapComponent.getAllModulePondsList() : [];
+                this.managementPage.render(targetPond, modulePonds);
             }
         });
 

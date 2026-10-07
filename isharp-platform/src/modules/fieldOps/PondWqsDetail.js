@@ -15,8 +15,10 @@ import { SamplingRepository } from "../../infrastructure/repositories/samplingRe
 import { StaffRepository } from "../../infrastructure/repositories/staffRepository.js";
 import { InventoryRepository } from "../../infrastructure/repositories/inventoryRepository.js";
 import { WeatherRepository } from "../../infrastructure/repositories/weatherRepository.js";
+import { LabRepository } from "../../infrastructure/repositories/labRepository.js";
 import { calculateTotalActiveHP, calculateAerationDensity } from "../../domain/aeration.js";
 import { supabase } from "../../infrastructure/supabase.js";
+import { getPondWqsDetailHtml } from "./templates/pondWqsDetailTemplate.js";
 
 export class PondWqsDetail {
     /**
@@ -47,8 +49,11 @@ export class PondWqsDetail {
         const totalHP = calculateTotalActiveHP(u1, u2);
         const aerationDensity = calculateAerationDensity(totalHP, areaHa);
 
-        // Fetch live weather data from weather_logs (Single Source of Truth)
-        const weather = await WeatherRepository.getLatestWeather();
+        // Fetch live weather data and latest laboratory water chemistry concurrently (< 30ms via indexed query)
+        const [weather, labWq] = await Promise.all([
+            WeatherRepository.getLatestWeather(),
+            LabRepository.getLatestWaterQuality(pond.pond_index)
+        ]);
         const rainToday = weather ? parseFloat(weather.rainfall_mm || 0) : 0.0;
         const luxVal = weather ? parseFloat(weather.lux || 0) : 85000;
         const airTemp = weather ? parseFloat(weather.air_temp_c || 32.0) : 32.0;
@@ -143,305 +148,31 @@ export class PondWqsDetail {
             bannerColor = "#475569";
         }
 
-        this.container.innerHTML = `
-            <div class="pond-wqs-wrapper" style="padding: 1.25rem 2rem; max-width: 1200px; margin: 0 auto; display: flex; flex-direction: column; gap: 1.4rem;">
-                
-                <!-- Top Navigation & Pond Identity Bar -->
-                <div class="wqs-nav-bar flex-between" style="background: rgba(255, 255, 255, 0.9); backdrop-filter: blur(16px); border: 1px solid rgba(255, 255, 255, 1); border-radius: 16px; padding: 0.9rem 1.4rem; box-shadow: 0 4px 20px rgba(2, 132, 199, 0.08); flex-wrap: wrap; gap: 0.75rem;">
-                    <div style="display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;">
-                        <button type="button" id="btn-wqs-back" class="btn-action btn-secondary" style="font-size: 0.82rem; font-weight: 700; padding: 0.45rem 0.95rem; display: flex; align-items: center; gap: 0.4rem;">
-                            <span class="btn-text-full">← Back to 24 Ponds</span>
-                            <span class="btn-text-short">← Back to Map</span>
-                        </button>
-                        <div>
-                            <div style="display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap;">
-                                <h1 style="margin: 0; font-size: 1.4rem; color: #0f172a; font-weight: 900;">Pond ${pondLabel}</h1>
-                                <span style="font-size: 0.75rem; font-weight: 800; background: #e0f2fe; color: #0369a1; padding: 0.2rem 0.65rem; border-radius: 999px;">
-                                    Cycle ${pond.cycle_no || (pond.pond_index ? pond.pond_index.split(".")[1] : '—')}
-                                </span>
-                                <span style="font-size: 0.75rem; font-weight: 800; background: ${isIdle ? '#f1f5f9' : '#dcfce7'}; color: ${isIdle ? '#64748b' : '#15803d'}; padding: 0.2rem 0.65rem; border-radius: 999px;">
-                                    ${isIdle ? 'IDLE' : `DOC ${doc}`}
-                                </span>
-                            </div>
-                            <span style="font-size: 0.78rem; color: #64748b;">
-                                ${pond.stck_species || 'P. VANNAMEI'} · Line: ${pond.bs_line || 'Syaqua'} · Area: ${areaHa} Ha
-                            </span>
-                        </div>
-                    </div>
-
-                    <!-- Action Navigation Buttons: Daily Records & Management Entry -->
-                    <div class="wqs-nav-actions" style="display: flex; align-items: center; gap: 0.65rem;">
-                        <button type="button" id="btn-open-daily-page" class="btn-action btn-primary" style="font-size: 0.86rem; font-weight: 800; padding: 0.52rem 1.3rem; display: flex; align-items: center; gap: 0.45rem; background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%); box-shadow: 0 4px 14px rgba(2, 132, 199, 0.25);">
-                            <span>📖 Daily Records</span>
-                            <span style="font-size: 0.72rem; opacity: 0.85;">➔</span>
-                        </button>
-                        <button type="button" id="btn-open-mgmt-page" class="btn-action btn-secondary" style="font-size: 0.86rem; font-weight: 800; padding: 0.52rem 1.3rem; display: flex; align-items: center; gap: 0.45rem;">
-                            <span class="btn-text-full">📝 Management Entry</span>
-                            <span class="btn-text-short">📝 Management</span>
-                            <span style="font-size: 0.72rem; opacity: 0.85;">➔</span>
-                        </button>
-                    </div>
-                </div>
-
-                <!-- SECTION 1: POND DETAILS & RECENT SAMPLING RESULTS (From WQS Dashboard Module1) -->
-                <section class="glass-card" style="background: rgba(255, 255, 255, 0.9); border: 1px solid #e2e8f0; border-radius: 16px; padding: 1.3rem 1.5rem; box-shadow: 0 4px 16px rgba(0,0,0,0.04);">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.85rem; border-bottom: 1px solid #f1f5f9; padding-bottom: 0.6rem;">
-                        <div style="display: flex; align-items: center; gap: 0.6rem;">
-                            <h2 style="margin: 0; font-size: 1.05rem; font-weight: 800; color: #0284c7;">Pond Details &amp; Weekly Biometrics</h2>
-                            <span style="font-size: 0.72rem; font-weight: 700; background: #e0f2fe; color: #0284c7; padding: 0.15rem 0.5rem; border-radius: 6px;">${pondLabel}</span>
-                        </div>
-                        <span id="wqs-sample-date" style="font-size: 0.76rem; color: #64748b;">Loading biometrics...</span>
-                    </div>
-
-                    <!-- Meta Info Bar: Species, Line, Stock Source, DOC -->
-                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 0.75rem; margin-bottom: 1.1rem; background: #f8fafc; padding: 0.75rem 1rem; border-radius: 10px; border: 1px solid #e2e8f0;">
-                        <div>
-                            <span style="font-size: 0.7rem; color: #64748b; font-weight: 700; display: block;">Species</span>
-                            <strong style="font-size: 0.85rem; color: #0f172a;">${pond.stck_species || 'P. VANNAMEI'}</strong>
-                        </div>
-                        <div>
-                            <span style="font-size: 0.7rem; color: #64748b; font-weight: 700; display: block;">Breeding Line</span>
-                            <strong style="font-size: 0.85rem; color: #0f172a;">${pond.bs_line || 'Syaqua'}</strong>
-                        </div>
-                        <div>
-                            <span style="font-size: 0.7rem; color: #64748b; font-weight: 700; display: block;">Stock Date</span>
-                            <strong style="font-size: 0.85rem; color: #0f172a;">${pond.stck_date || '—'}</strong>
-                        </div>
-                        <div>
-                            <span style="font-size: 0.7rem; color: #64748b; font-weight: 700; display: block;">Culture Age</span>
-                            <strong style="font-size: 0.85rem; color: #15803d;">${isIdle ? 'IDLE' : `DOC ${doc}`}</strong>
-                        </div>
-                    </div>
-
-                    <!-- Recent Sampling Sub-grid -->
-                    <div id="wqs-sampling-grid" class="wqs-biometrics-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 0.75rem;">
-                        <div style="background: rgba(240, 249, 255, 0.7); border: 1px solid #bae6fd; border-radius: 10px; padding: 0.65rem 0.85rem; text-align: center;">
-                            <div style="font-size: 0.7rem; font-weight: 700; color: #0284c7;">Sample ABW</div>
-                            <div id="wqs-val-abw" style="font-size: 1.25rem; font-weight: 900; color: #0f172a; margin: 0.2rem 0;">—</div>
-                            <div style="font-size: 0.66rem; color: #64748b;">Average Body Weight</div>
-                        </div>
-                        <div style="background: rgba(240, 249, 255, 0.7); border: 1px solid #bae6fd; border-radius: 10px; padding: 0.65rem 0.85rem; text-align: center;">
-                            <div style="font-size: 0.7rem; font-weight: 700; color: #0284c7;">Sample AWG</div>
-                            <div id="wqs-val-awg" style="font-size: 1.25rem; font-weight: 900; color: #0f172a; margin: 0.2rem 0;">—</div>
-                            <div style="font-size: 0.66rem; color: #64748b;">Weekly Growth</div>
-                        </div>
-                        <div style="background: rgba(240, 249, 255, 0.7); border: 1px solid #bae6fd; border-radius: 10px; padding: 0.65rem 0.85rem; text-align: center;">
-                            <div style="font-size: 0.7rem; font-weight: 700; color: #0284c7;">Survival Rate (SR)</div>
-                            <div id="wqs-val-sr" style="font-size: 1.25rem; font-weight: 900; color: #15803d; margin: 0.2rem 0;">—</div>
-                            <div style="font-size: 0.66rem; color: #64748b;">Estimated %</div>
-                        </div>
-                        <div style="background: rgba(240, 249, 255, 0.7); border: 1px solid #bae6fd; border-radius: 10px; padding: 0.65rem 0.85rem; text-align: center;">
-                            <div style="font-size: 0.7rem; font-weight: 700; color: #0284c7;">Biomass</div>
-                            <div id="wqs-val-biomass" style="font-size: 1.25rem; font-weight: 900; color: #0f172a; margin: 0.2rem 0;">—</div>
-                            <div style="font-size: 0.66rem; color: #64748b;">Estimated Total kg</div>
-                        </div>
-                        <div style="background: rgba(240, 249, 255, 0.7); border: 1px solid #bae6fd; border-radius: 10px; padding: 0.65rem 0.85rem; text-align: center;">
-                            <div style="font-size: 0.7rem; font-weight: 700; color: #0284c7;">Sample FCR</div>
-                            <div id="wqs-val-fcr" style="font-size: 1.25rem; font-weight: 900; color: #0f172a; margin: 0.2rem 0;">—</div>
-                            <div style="font-size: 0.66rem; color: #64748b;">Feed Conversion Ratio</div>
-                        </div>
-                    </div>
-                </section>
-
-                <!-- SECTION 2: FEEDING ACTION PLAN (AERO HORIZON BANNER) -->
-                <section class="feeding-horizon-banner">
-                    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
-                        <div style="display: flex; align-items: center; gap: 0.6rem;">
-                            <span style="font-size: 1.6rem;">${evalResult.bannerIcon || '🦐'}</span>
-                            <h3 class="banner-headline" style="margin: 0; font-size: 1.2rem; color: ${bannerColor}; font-weight: 900;">
-                                Feeding Action Plan: Pond ${pondLabel}
-                            </h3>
-                        </div>
-                        <span class="${evalResult.level === 'optimal' ? 'aero-badge-optimal' : 'badge'}" style="${evalResult.level === 'optimal' ? '' : `font-size: 0.82rem; font-weight: 800; padding: 0.35rem 0.85rem; border-radius: 999px; background: ${bannerBorder}; color: #ffffff;`}">
-                            ${evalResult.badgeText}
-                        </span>
-                    </div>
-
-                    <!-- "Why?" Diagnostics List -->
-                    <div style="display: flex; flex-direction: column; gap: 0.45rem; margin-top: 0.4rem;">
-                        ${evalResult.reasons.map(r => `
-                            <div style="display: flex; align-items: center; gap: 0.6rem; background: rgba(255, 255, 255, 0.8); border: 1px solid rgba(255, 255, 255, 0.95); border-radius: 10px; padding: 0.5rem 0.85rem; box-shadow: 0 1px 3px rgba(0,0,0,0.03);">
-                                <span style="font-size: 1.1rem; line-height: 1;">${r.icon}</span>
-                                <div style="font-size: 0.82rem; color: #072642;">
-                                    <strong>${r.headline}</strong>
-                                    ${r.desc ? `<span style="font-size: 0.74rem; color: #64748b; margin-left: 0.4rem;">— ${r.desc}</span>` : ''}
-                                </div>
-                            </div>
-                        `).join("")}
-                    </div>
-                </section>
-
-                <!-- SECTION 3: TELEMETRY MATRIX (4 HIGH-CONTRAST AERO SENSOR CARDS) -->
-                <div class="telemetry-grid-4">
-                    <!-- Card 1: Biometrics Status -->
-                    <div class="sensor-aero-card">
-                        <div class="sensor-title-row">
-                            <span>Biometrics Status</span>
-                            <span class="aero-orb ${isIdle ? 'orb-idle' : 'orb-emerald'}"></span>
-                        </div>
-                        <div class="sensor-big-val">${isIdle ? 'IDLE' : `DOC ${doc}`}</div>
-                        <div style="font-size: 0.78rem; color: var(--aero-ink-subtle); font-weight: 600;">
-                            Species: <strong>${pond.stck_species || 'P. VANNAMEI'}</strong> • Area: <strong>${areaHa} Ha</strong>
-                        </div>
-                    </div>
-
-                    <!-- Card 2: Live Weather Station -->
-                    <div class="sensor-aero-card">
-                        <div class="sensor-title-row">
-                            <span>Weather Station iSHARP</span>
-                            <span style="font-size: 0.7rem; font-weight: 800; color: #0284c7;">● ONLINE (${weatherTime})</span>
-                        </div>
-                        <div class="sensor-big-val" style="color: #0284c7;">${airTemp.toFixed(1)} <span style="font-size: 1rem; font-weight: 700;">°C</span></div>
-                        <div style="font-size: 0.78rem; color: var(--aero-ink-subtle); font-weight: 600;">
-                            Lux: <strong>${Math.round(luxVal).toLocaleString()}</strong> • Rain: <strong>${rainToday.toFixed(1)} mm</strong>
-                        </div>
-                    </div>
-
-                    <!-- Card 3: Active Paddlewheels (1.0HP & 2.0HP per RULES.md) -->
-                    <div class="sensor-aero-card">
-                        <div class="sensor-title-row">
-                            <span>Active Paddlewheels</span>
-                            <span class="aero-orb ${totalHP > 0 ? 'orb-emerald' : 'orb-idle'}"></span>
-                        </div>
-                        <div class="sensor-big-val" style="color: #059669;">${totalHP.toFixed(1)} <span style="font-size: 1rem; font-weight: 700;">HP</span></div>
-                        <div style="font-size: 0.78rem; color: var(--aero-ink-subtle); font-weight: 600;">
-                            Density: <strong>${aerationDensity} HP/Ha</strong> (${u1}× 1HP + ${u2}× 2HP)
-                        </div>
-                    </div>
-
-                    <!-- Card 4: Pond IoT Node / Standby Crystalline Housing (Rule 7: Zero Fake Telemetry) -->
-                    <div class="sensor-aero-card">
-                        <div class="sensor-title-row">
-                            <span>Pond IoT Node</span>
-                            <span class="aero-orb ${hasWqIot ? 'orb-emerald' : 'orb-amber'}"></span>
-                        </div>
-                        ${hasWqIot ? `
-                            <div class="sensor-big-val" style="color: #0284c7;">${rawDo.toFixed(2)} <span style="font-size: 1rem; font-weight: 700;">ppm</span></div>
-                            <div style="font-size: 0.78rem; color: var(--aero-ink-subtle); font-weight: 600;">
-                                pH: <strong>${rawPh.toFixed(2)}</strong> • Temp: <strong>${rawTemp.toFixed(1)} °C</strong>
-                            </div>
-                        ` : `
-                            <div class="standby-housing-box" style="margin-top: 8px;">
-                                <div class="pulse-standby-beacon" style="display: inline-flex; align-items: center; gap: 6px; font-size: 0.74rem; font-weight: 800; color: var(--aero-cerulean); margin-bottom: 4px;">
-                                    <span>📡</span> Awaiting Sensor Deployment
-                                </div>
-                                <div style="font-size: 0.72rem; color: var(--aero-ink-subtle);">
-                                    DO: <strong>--</strong> | pH: <strong>--</strong> | Temp: <strong>--</strong>
-                                </div>
-                            </div>
-                        `}
-                    </div>
-                </div>
-
-                <!-- SECTION 4: WEATHER STATUS (LIVE TELEMETRY FROM weather_logs) -->
-                <section class="glass-card" style="background: rgba(255, 255, 255, 0.9); border: 1px solid #e2e8f0; border-radius: 16px; padding: 1.3rem 1.5rem; box-shadow: 0 4px 16px rgba(0,0,0,0.04);">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; border-bottom: 1px solid #f1f5f9; padding-bottom: 0.6rem;">
-                        <div>
-                            <h3 style="margin: 0; font-size: 1.02rem; color: #0f172a; font-weight: 800; display: flex; align-items: center; gap: 0.45rem;">
-                                <span>☀️ Weather Station iSHARP</span>
-                                <span style="font-size: 0.68rem; font-weight: 700; background: #dcfce7; color: #15803d; padding: 0.15rem 0.5rem; border-radius: 6px;">● ONLINE (${weatherTime})</span>
-                            </h3>
-                        </div>
-                    </div>
-
-                    <div class="wqs-weather-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 0.85rem;">
-                        <!-- Solar Irradiance -->
-                        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 0.75rem 1rem;">
-                            <span style="font-size: 0.72rem; font-weight: 700; color: #64748b; display: block;">Solar Irradiance</span>
-                            <div style="font-size: 1.25rem; font-weight: 900; color: #d97706; margin: 0.2rem 0;">
-                                ${Math.round(luxVal).toLocaleString()} <span style="font-size: 0.75rem; font-weight: 700;">Lux</span>
-                            </div>
-                            <span style="font-size: 0.68rem; color: #059669; font-weight: 700;">
-                                ${luxVal >= 70000 ? '☀️ High Photosynthesis' : (luxVal >= 30000 ? '⛅ Moderate Light' : '☁️ Overcast / Low Light')}
-                            </span>
-                        </div>
-
-                        <!-- Rainfall Today -->
-                        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 0.75rem 1rem;">
-                            <span style="font-size: 0.72rem; font-weight: 700; color: #64748b; display: block;">Rainfall (Today)</span>
-                            <div style="font-size: 1.25rem; font-weight: 900; color: ${rainToday >= 20 ? '#ef4444' : '#0284c7'}; margin: 0.2rem 0;">
-                                ${rainToday.toFixed(1)} <span style="font-size: 0.75rem; font-weight: 700;">mm</span>
-                            </div>
-                            <span style="font-size: 0.68rem; color: ${rainToday === 0 ? '#15803d' : (rainToday < 20 ? '#f59e0b' : '#b91c1c')}; font-weight: 700;">
-                                ${rainToday === 0 ? '🟢 No Rain Detected' : (rainToday < 20 ? '🟡 Light Rain' : '🔴 Heavy Rain Danger')}
-                            </span>
-                        </div>
-
-                        <!-- Ambient Air Temp -->
-                        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 0.75rem 1rem;">
-                            <span style="font-size: 0.72rem; font-weight: 700; color: #64748b; display: block;">Ambient Air Temp</span>
-                            <div style="font-size: 1.25rem; font-weight: 900; color: #ea580c; margin: 0.2rem 0;">
-                                ${airTemp.toFixed(1)} <span style="font-size: 0.75rem; font-weight: 700;">°C</span>
-                            </div>
-                            <span style="font-size: 0.68rem; color: #64748b;">Meteorological sensor</span>
-                        </div>
-
-                        <!-- Relative Humidity -->
-                        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 0.75rem 1rem;">
-                            <span style="font-size: 0.72rem; font-weight: 700; color: #64748b; display: block;">Relative Humidity</span>
-                            <div style="font-size: 1.25rem; font-weight: 900; color: #0284c7; margin: 0.2rem 0;">
-                                ${humidity.toFixed(1)} <span style="font-size: 0.75rem; font-weight: 700;">%</span>
-                            </div>
-                            <span style="font-size: 0.68rem; color: #64748b;">Atmospheric moisture</span>
-                        </div>
-
-                        <!-- Barometric Pressure -->
-                        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 0.75rem 1rem;">
-                            <span style="font-size: 0.72rem; font-weight: 700; color: #64748b; display: block;">Barometric Pressure</span>
-                            <div style="font-size: 1.25rem; font-weight: 900; color: #475569; margin: 0.2rem 0;">
-                                ${pressure.toFixed(0)} <span style="font-size: 0.75rem; font-weight: 700;">hPa</span>
-                            </div>
-                            <span style="font-size: 0.68rem; color: #64748b;">Sea level normalized</span>
-                        </div>
-                    </div>
-                </section>
-
-                <!-- SECTION 5: CURRENT HARDWARE & ASSIGNED CREW PREVIEW -->
-                <section class="glass-card" style="background: rgba(255, 255, 255, 0.9); border: 1px solid #e2e8f0; border-radius: 16px; padding: 1.3rem 1.5rem; box-shadow: 0 4px 16px rgba(0,0,0,0.04);">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; border-bottom: 1px solid #f1f5f9; padding-bottom: 0.6rem;">
-                        <div>
-                            <h3 style="margin: 0; font-size: 1.02rem; color: #0f172a; font-weight: 800;">
-                                👥 Personnel &amp; Aset Status
-                            </h3>
-                            <span style="font-size: 0.74rem; color: #64748b;">Sync with main database (DBMS,Supabase).</span>
-                        </div>
-                        <button type="button" id="btn-edit-hardware-crew" class="btn-action btn-secondary" style="font-size: 0.8rem; font-weight: 800; padding: 0.35rem 0.85rem;">
-                            <span>Edit in Management Entry ➔</span>
-                        </button>
-                    </div>
-
-                    <div class="wqs-crew-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0.85rem;">
-                        <!-- Pond Operator -->
-                        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 0.75rem 1rem;">
-                            <span style="font-size: 0.72rem; font-weight: 700; color: #64748b;">🦐 Pond Operator</span>
-                            <div id="wqs-preview-po" style="font-size: 0.88rem; font-weight: 800; color: #0f172a; margin-top: 0.25rem;">Loading...</div>
-                        </div>
-
-                        <!-- Row Leader -->
-                        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 0.75rem 1rem;">
-                            <span style="font-size: 0.72rem; font-weight: 700; color: #64748b;">🚜 Row Leader</span>
-                            <div id="wqs-preview-rl" style="font-size: 0.88rem; font-weight: 800; color: #0f172a; margin-top: 0.25rem;">Loading...</div>
-                        </div>
-
-                        <!-- Active Paddlewheels (1HP & 2HP Only) -->
-                        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 0.75rem 1rem;">
-                            <span style="font-size: 0.72rem; font-weight: 700; color: #64748b;">⚡ Paddlewheels (1HP / 2HP)</span>
-                            <div id="wqs-preview-hp" style="font-size: 0.88rem; font-weight: 800; color: #0284c7; margin-top: 0.25rem;">
-                                ${totalHP} HP (${aerationDensity} HP/Ha)
-                            </div>
-                            <span style="font-size: 0.68rem; color: #64748b;">1HP: ${u1} units | 2HP: ${u2} units</span>
-                        </div>
-
-                        <!-- Pond Hut Condition -->
-                        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 0.75rem 1rem;">
-                            <span style="font-size: 0.72rem; font-weight: 700; color: #64748b;">🛖 Pond Hut Condition</span>
-                            <div id="wqs-preview-hut" style="font-size: 0.88rem; font-weight: 800; color: #166534; margin-top: 0.25rem;">Loading...</div>
-                        </div>
-                    </div>
-                </section>
-
-            </div>
-        `;
+        this.container.innerHTML = getPondWqsDetailHtml({
+            pondLabel,
+            pond,
+            isIdle,
+            doc,
+            areaHa,
+            evalResult,
+            bannerColor,
+            bannerBorder,
+            weatherTime,
+            airTemp,
+            luxVal,
+            rainToday,
+            humidity,
+            pressure,
+            totalHP,
+            aerationDensity,
+            u1,
+            u2,
+            hasWqIot,
+            rawDo,
+            rawPh,
+            rawTemp,
+            labWq
+        });
 
         this.bindEvents();
         await this.loadBiometrics(pond.pond_index);

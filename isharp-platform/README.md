@@ -51,7 +51,7 @@ src/
 │       ├── dailyRecordRepository.js
 │       ├── feedRepository.js
 │       ├── harvestRepository.js
-│       ├── labRepository.js
+│       ├── labRepository.js             # Lab Water Quality & Mineral Balance (public.lab_water_quality)
 │       ├── pondRepository.js
 │       ├── samplingRepository.js
 │       ├── staffRepository.js

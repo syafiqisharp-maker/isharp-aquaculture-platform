@@ -1607,7 +1607,38 @@ input[type="number"] {
     touch-action: manipulation !important;
     -webkit-tap-highlight-color: transparent !important;
     user-select: none !important;
-    -webkit-user-select: none !important;
+}
+
+/* ==========================================================================
+   POND WQS DETAIL VIEW: HIGH-CONTRAST READABILITY FOR TITLES & HEADINGS
+   Keeps transparent aero glassmorphism active while ensuring title typography
+   is deep, bold, and readable against the wallpaper.
+   ROOT CAUSE FIX: the ::before specular sheen (white gradient) is absolutely
+   positioned and was painting ON TOP of the card content, washing titles to
+   grey. Lift all card content above the sheen so text stays fully dark.
+   ========================================================================== */
+#view-field-ops .glass-card > *,
+#view-field-ops .wqs-nav-bar > *,
+#view-field-ops .field-ops-header > *,
+#view-field-ops .field-ops-toolbar > *,
+#view-field-ops .field-ops-row-section > *,
+#view-field-ops .sensor-aero-card > * {
+    position: relative;
+    z-index: 2;
+}
+
+#view-field-ops .pond-wqs-wrapper h1,
+#view-field-ops .pond-wqs-wrapper h2,
+#view-field-ops .pond-wqs-wrapper h3 {
+    color: #072642 !important;
+    font-weight: 900 !important;
+    text-shadow: 0 1px 2px rgba(255, 255, 255, 0.9), 0 0 12px rgba(255, 255, 255, 0.8) !important;
+}
+
+#view-field-ops .pond-wqs-wrapper .sensor-title-row {
+    color: #0369a1 !important;
+    font-weight: 800 !important;
+    text-shadow: 0 1px 2px rgba(255, 255, 255, 0.8) !important;
 }
 
 /* Safe Area Insets for Modern Mobile Notches & Gesture Home Bars (iOS & Android) */

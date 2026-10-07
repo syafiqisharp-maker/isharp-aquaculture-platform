@@ -13,6 +13,7 @@ dist/
 .DS_Store
 Thumbs.db
 *.tmp
+*.log
 
 # Agent teamwork metadata
 .agents/

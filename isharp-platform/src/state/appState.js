@@ -8,7 +8,7 @@ import { ROLES } from "../config/permissions.js";
 class AppState {
     constructor() {
         this._state = {
-            currentView: "portal", // "portal" | "executive" | "dbms"
+            currentView: "portal", // "portal" | "executive" | "dbms" | "field-ops"
             currentPondIndex: null,
             currentPond: null,
             allCycles: [],
@@ -71,7 +71,7 @@ class AppState {
 
     // Setters / Actions
     setView(viewName) {
-        if (!["portal", "executive", "dbms"].includes(viewName)) {
+        if (!["portal", "executive", "dbms", "field-ops"].includes(viewName)) {
             viewName = "portal";
         }
         if (this._state.currentView === viewName) return;

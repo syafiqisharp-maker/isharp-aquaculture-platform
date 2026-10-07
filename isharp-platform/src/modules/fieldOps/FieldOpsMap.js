@@ -11,14 +11,7 @@ import { evaluateFeedingAction } from "../../domain/feedingAction.js";
 import { supabase } from "../../infrastructure/supabase.js";
 import { StaffRepository } from "../../infrastructure/repositories/staffRepository.js";
 
-function getLocalDateStr(d = new Date()) {
-    const dt = (d instanceof Date) ? d : new Date(d);
-    if (isNaN(dt.getTime())) return "";
-    const y = dt.getFullYear();
-    const m = String(dt.getMonth() + 1).padStart(2, "0");
-    const day = String(dt.getDate()).padStart(2, "0");
-    return `${y}-${m}-${day}`;
-}
+import { getLocalDateStr } from "../../utils/formatters.js";
 
 export class FieldOpsMap {
     /**
@@ -55,6 +48,11 @@ export class FieldOpsMap {
         return Array.from(this.pondsData.values())
             .filter(p => !p.isIdle && p.cycleRecord)
             .map(p => p.cycleRecord);
+    }
+
+    getAllModulePondsList() {
+        return Array.from(this.pondsData.values())
+            .map(p => p.cycleRecord || { pond: p.pondLabel, pond_index: p.pondLabel });
     }
 
     initStructure() {

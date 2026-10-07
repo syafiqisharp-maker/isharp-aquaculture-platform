@@ -4,45 +4,11 @@
  * realistic water color spectra, and local timezone-safe date handlers.
  */
 
-/**
- * Returns YYYY-MM-DD in local time without UTC offset skew
- * @param {Date|string} d
- * @returns {string}
- */
-export function getLocalDateStr(d = new Date()) {
-    const dt = (d instanceof Date) ? d : new Date(d);
-    if (isNaN(dt.getTime())) return "";
-    const y = dt.getFullYear();
-    const m = String(dt.getMonth() + 1).padStart(2, "0");
-    const day = String(dt.getDate()).padStart(2, "0");
-    return `${y}-${m}-${day}`;
-}
-
-/**
- * Parses YYYY-MM-DD safely into a local Date object without timezone shift
- * @param {string|Date} str
- * @returns {Date}
- */
-export function parseLocalDate(str) {
-    if (!str) return new Date();
-    if (str instanceof Date) return new Date(str.getFullYear(), str.getMonth(), str.getDate());
-    const parts = String(str).split("T")[0].split("-").map(Number);
-    if (parts.length === 3 && !isNaN(parts[0]) && !isNaN(parts[1]) && !isNaN(parts[2])) {
-        return new Date(parts[0], parts[1] - 1, parts[2]);
-    }
-    return new Date(str);
-}
-
-/**
- * Formats YYYY-MM-DD to "DD Mon" safely without timezone shifts
- * @param {string} dateStr
- * @returns {string}
- */
-export function formatLocalDateDisplay(dateStr) {
-    if (!dateStr) return "—";
-    const d = parseLocalDate(dateStr);
-    return isNaN(d.getTime()) ? dateStr : d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
-}
+export {
+    getLocalDateStr,
+    parseLocalDate,
+    formatLocalDateDisplay
+} from "../../../utils/formatters.js";
 
 // Standard farm chemicals & minerals autocomplete list (from iSHARP Farm Inventory)
 export const STANDARD_MINERALS = [

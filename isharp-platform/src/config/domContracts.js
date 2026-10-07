@@ -94,7 +94,18 @@ export const DOM_IDS = Object.freeze({
     LABORATORY: {
         TAB_PANE: "tab-laboratory",
         TBODY_ISSUES: "tbody-issues",
-        BTN_ADD_LAB: "btn-add-lab-record"
+        BTN_ADD_LAB: "btn-add-lab-record",
+        TBODY_WQ: "tbody-lab-wq",
+        KPI_SALINITY: "kpi-lab-salinity",
+        KPI_ALKALINITY: "kpi-lab-alkalinity",
+        KPI_AMMONIA: "kpi-lab-ammonia",
+        KPI_NITRITE: "kpi-lab-nitrite",
+        KPI_CALCIUM: "kpi-lab-calcium",
+        KPI_MAGNESIUM: "kpi-lab-magnesium",
+        KPI_CAMG_RATIO: "kpi-lab-camg-ratio",
+        KPI_TURBIDITY: "kpi-lab-turbidity",
+        BADGE_WQ_COUNT: "badge-lab-wq-count",
+        BADGE_LATEST_DATE: "badge-lab-latest-date"
     },
 
     // Tab 3: Stocking

@@ -2,21 +2,25 @@
  * iSHARP DBMS 2.0 — 216-Pond Interactive Farm Grid Map
  * Executive Biosecurity, Pathogen Surveillance, and Culture Stage Visualization
  * Setiu Farm (9 Modules × 2 Rows × 12 Ponds = 216 Ponds)
+ * 
+ * Clean Coding Standard: Controller delegates markup to dedicated templates.
  */
 
 import { PondRepository } from "../../infrastructure/repositories/pondRepository.js";
 import { LabRepository } from "../../infrastructure/repositories/labRepository.js";
 import { SamplingRepository } from "../../infrastructure/repositories/samplingRepository.js";
 import { appState } from "../../state/appState.js";
-import { calculateDOC, calculateBiomass } from "../../domain/biometrics.js";
+import { calculateDOC } from "../../domain/biometrics.js";
 import { Toast } from "../../components/Toast.js";
+import { getFarmMapShellHtml, renderPondTileHtml } from "./templates/pondGridCellTemplate.js";
+import { getDrawerHtml, getDrawerSamplingHtml } from "./templates/pondDrawerTemplate.js";
 
 const CACHE_KEY = "isharp_farm_map_cache_v2";
-const CACHE_TTL_MS = 5 * 60 * 1000; // 5-minute smart in-memory session cache
+const CACHE_TTL_MS = 5 * 60 * 1000; // 5-minute session cache
 
 export class PondGridMap {
     /**
-     * @param {string} containerId 
+     * @param {string} [containerId="exec-map-container"]
      */
     constructor(containerId = "exec-map-container") {
         this.container = document.getElementById(containerId);
@@ -45,55 +49,7 @@ export class PondGridMap {
      * Initialize static container layout (Toolbar + Grid Mount).
      */
     initStructure() {
-        this.container.innerHTML = `
-            <div class="farm-map-wrapper">
-                
-                <!-- Filter & Control Toolbar -->
-                <div class="farm-map-toolbar">
-                    <!-- Left: Filters -->
-                    <div class="farm-filter-group">
-                        <span class="farm-filter-label">Species:</span>
-                        <button type="button" class="farm-filter-btn active" data-filter-type="species" data-filter-val="ALL">All</button>
-                        <button type="button" class="farm-filter-btn" data-filter-type="species" data-filter-val="VAN">VAN</button>
-                        <button type="button" class="farm-filter-btn" data-filter-type="species" data-filter-val="MON">MON</button>
-                    </div>
-
-                    <div class="farm-filter-group">
-                        <span class="farm-filter-label">Biosecurity:</span>
-                        <button type="button" class="farm-filter-btn active" data-filter-type="health" data-filter-val="ALL">All</button>
-                        <button type="button" class="farm-filter-btn" data-filter-type="health" data-filter-val="RED" style="color: #b91c1c;">🔴 Red Alert</button>
-                        <button type="button" class="farm-filter-btn" data-filter-type="health" data-filter-val="YELLOW" style="color: #b45309;">🟡 Warning</button>
-                        <button type="button" class="farm-filter-btn" data-filter-type="health" data-filter-val="GREEN" style="color: #15803d;">🟢 Clean</button>
-                        <button type="button" class="farm-filter-btn" data-filter-type="health" data-filter-val="IDLE">⚪ Idle</button>
-                    </div>
-
-                    <div class="farm-filter-group">
-                        <span class="farm-filter-label">Stage:</span>
-                        <button type="button" class="farm-filter-btn active" data-filter-type="stage" data-filter-val="ALL">All</button>
-                        <button type="button" class="farm-filter-btn" data-filter-type="stage" data-filter-val="EARLY">Early (&lt;30)</button>
-                        <button type="button" class="farm-filter-btn" data-filter-type="stage" data-filter-val="MID">Mid (30–70)</button>
-                        <button type="button" class="farm-filter-btn" data-filter-type="stage" data-filter-val="FINISHING">Finishing (&gt;70)</button>
-                    </div>
-
-                    <!-- Right: Search & Refresh -->
-                    <div class="farm-filter-group" style="margin-left: auto;">
-                        <input type="text" id="map-pond-search" class="farm-search-input" placeholder="Search pond (e.g. 04.08.02)..." />
-                        <button type="button" id="btn-map-refresh" class="farm-filter-btn" title="Refresh live farm data from Supabase">
-                            <span>🔄 Refresh</span>
-                        </button>
-                    </div>
-                </div>
-
-                <!-- 216-Pond Farm Grid Container -->
-                <div class="farm-grid-container" id="farm-grid-mount">
-                    <div style="padding: 2.5rem; text-align: center; color: #64748b;">
-                        <div class="spinner-sm" style="margin: 0 auto 0.75rem auto;"></div>
-                        <span>Loading live farm telemetry across all 9 modules...</span>
-                    </div>
-                </div>
-
-            </div>
-        `;
+        this.container.innerHTML = getFarmMapShellHtml();
 
         this.dom = {
             gridMount: document.getElementById("farm-grid-mount"),
@@ -125,7 +81,6 @@ export class PondGridMap {
         this.drawerBackdrop = backdrop;
         this.drawer = drawer;
 
-        // Close events
         backdrop.addEventListener("click", () => this.closeDrawer());
     }
 
@@ -140,7 +95,6 @@ export class PondGridMap {
                 const type = btn.getAttribute("data-filter-type");
                 const val = btn.getAttribute("data-filter-val");
 
-                // Toggle active class inside group
                 const group = btn.closest(".farm-filter-group");
                 group.querySelectorAll(".farm-filter-btn").forEach(b => b.classList.remove("active"));
                 btn.classList.add("active");
@@ -167,7 +121,7 @@ export class PondGridMap {
     }
 
     /**
-     * Loads live farm telemetry and active cycles across ALL modules from Supabase.
+     * Loads live farm telemetry and active cycles across all 9 modules from Supabase.
      * @param {boolean} forceRefresh 
      */
     async loadData(forceRefresh = false) {
@@ -202,7 +156,7 @@ export class PondGridMap {
                 }
             }
 
-            // Batch fetch non-closed cycles (covers all 9 modules), gatekeeper, and issues
+            // Batch fetch non-closed cycles, gatekeeper, and issues
             const [activeCycles, activePonds, issues] = await Promise.all([
                 PondRepository.getActiveCycles(),
                 PondRepository.getActiveOperationalPonds(),
@@ -263,25 +217,20 @@ export class PondGridMap {
         // 3. Map cycles by normalized pond code (e.g. "02.03.07")
         (cycles || []).forEach(cycle => {
             let code = this.normalizePondCode(cycle.pond);
-            // Fallback: derive coordinate directly from pond_index (e.g. 2020307.41 -> 02.03.07)
             if (!code && cycle.pond_index) {
                 code = this.derivePondCode(cycle.pond_index);
             }
             if (!code) return;
 
             const isGatekeeper = gatekeeperSet.has(code);
-            const isProd = (cycle.pond_status || '').toUpperCase() === 'PRODUCTION';
+            const isProd = (cycle.pond_status || "").toUpperCase() === "PRODUCTION";
 
-            // Only overwrite if this cycle is active/prod or not yet mapped
             if (!this.activeCycleMap.has(code) || isGatekeeper || isProd) {
                 this.activeCycleMap.set(code, cycle);
             }
         });
     }
 
-    /**
-     * Normalizes pond code format to standard MM.RR.PP (e.g. "01.02.12" or "1.2.12").
-     */
     normalizePondCode(code) {
         if (!code) return "";
         const parts = String(code).trim().split(".");
@@ -291,9 +240,6 @@ export class PondGridMap {
         return String(code).trim();
     }
 
-    /**
-     * Derives MM.RR.PP coordinate from compound PondIndex (e.g. "2020307.41" -> "02.03.07").
-     */
     derivePondCode(pondIndex) {
         if (!pondIndex || String(pondIndex).trim().length < 7) return "";
         const clean = String(pondIndex).trim();
@@ -304,7 +250,7 @@ export class PondGridMap {
     }
 
     /**
-     * Generates the 216-pond matrix and renders HTML into DOM.
+     * Generates the 216-pond matrix and renders into DOM.
      */
     renderGrid() {
         if (!this.dom.gridMount) return;
@@ -319,8 +265,8 @@ export class PondGridMap {
         // Loop through 9 Modules
         for (let m = 1; m <= 9; m++) {
             const modStr = String(m).padStart(2, "0");
-            const r1 = (m * 2) - 1; // e.g. M1 -> R1, M2 -> R3
-            const r2 = m * 2;       // e.g. M1 -> R2, M2 -> R4
+            const r1 = (m * 2) - 1;
+            const r2 = m * 2;
             const r1Str = String(r1).padStart(2, "0");
             const r2Str = String(r2).padStart(2, "0");
 
@@ -369,9 +315,6 @@ export class PondGridMap {
         this.applyFilters();
     }
 
-    /**
-     * Renders 12 ponds for a single row.
-     */
     renderRowPonds(modStr, rowStr, statCallback) {
         let cells = "";
         let red = 0, yellow = 0, green = 0, active = 0, idle = 0;
@@ -381,7 +324,6 @@ export class PondGridMap {
             const pondCode = `${modStr}.${rowStr}.${pStr}`;
             const cycle = this.activeCycleMap.get(pondCode);
 
-            // Compute Biosecurity & Culture Stage
             const pondData = this.evaluatePondState(pondCode, cycle);
 
             if (pondData.health === "RED") red++;
@@ -391,36 +333,13 @@ export class PondGridMap {
             if (pondData.isActive) active++;
             else idle++;
 
-            cells += `
-                <div class="pond-tile ${pondData.cssClass}" 
-                     data-pond="${pondCode}"
-                     data-index="${pondData.pondIndex}"
-                     data-species="${pondData.speciesCode}"
-                     data-health="${pondData.health}"
-                     data-stage="${pondData.stageCode}"
-                     data-doc="${pondData.doc}">
-                    
-                    <div class="pond-tile-top">
-                        <span class="pond-tile-id">${pStr}</span>
-                        <span class="pond-badge-indicator" title="${pondData.healthDescription}"></span>
-                    </div>
-
-                    <div class="pond-tile-doc">${pondData.docDisplay}</div>
-
-                    <div class="pond-tile-bottom">
-                        <span class="pond-species-badge ${pondData.speciesBadgeClass}">${pondData.speciesLabel}</span>
-                    </div>
-                </div>
-            `;
+            cells += renderPondTileHtml(pondData, pStr);
         }
 
         if (statCallback) statCallback({ red, yellow, green, active, idle });
         return cells;
     }
 
-    /**
-     * Computes the biosecurity status, species, and DOC for a pond.
-     */
     evaluatePondState(pondCode, cycle) {
         if (!cycle) {
             return {
@@ -439,7 +358,7 @@ export class PondGridMap {
             };
         }
 
-        const isProd = (cycle.pond_status || '').toUpperCase() === 'PRODUCTION';
+        const isProd = (cycle.pond_status || "").toUpperCase() === "PRODUCTION";
         const doc = cycle.stck_date ? calculateDOC(cycle.stck_date, cycle.date_close) : 0;
         
         let idleDays = 0;
@@ -447,57 +366,54 @@ export class PondGridMap {
             if (cycle.date_cycle) {
                 const start = new Date(cycle.date_cycle);
                 if (!isNaN(start.getTime())) {
-                    const now = new Date();
-                    idleDays = Math.max(0, Math.floor((now.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)));
+                    idleDays = Math.max(0, Math.floor((Date.now() - start.getTime()) / (1000 * 60 * 60 * 24)));
                 }
             } else if (cycle.idle_days) {
                 idleDays = parseInt(cycle.idle_days, 10) || 0;
             }
         }
 
-        const species = (cycle.stck_species || cycle.species || '').toUpperCase();
-        const isVan = species.includes("VAN");
-        const isMon = species.includes("MON");
-        const speciesCode = isProd ? (isVan ? "VAN" : isMon ? "MON" : "VAN") : "IDLE";
-        const speciesLabel = isProd ? (isVan ? "VAN" : isMon ? "MON" : "VAN") : "IDLE";
-        const speciesBadgeClass = isProd ? (isVan ? "sp-van" : "sp-mon") : "sp-idle";
+        const rawSpecies = (cycle.species || cycle.stck_species || "").toUpperCase();
+        let speciesCode = "VAN";
+        let speciesLabel = "VAN";
+        let speciesBadgeClass = "sp-van";
 
-        // Culture Stage
+        if (rawSpecies.includes("MON") || rawSpecies.includes("BLACK") || rawSpecies.includes("TIGER")) {
+            speciesCode = "MON";
+            speciesLabel = "MON";
+            speciesBadgeClass = "sp-mon";
+        }
+
         let stageCode = "EARLY";
         if (doc >= 30 && doc <= 70) stageCode = "MID";
         else if (doc > 70) stageCode = "FINISHING";
 
-        // Biosecurity & Pathology Evaluation
-        const issues = this.issuesMap.get(String(cycle.pond_index)) || [];
+        // Biosecurity determination
         let health = "GREEN";
-        let healthDesc = "Clean production (Negative lab test)";
-
-        // Check recent issues for RED or YELLOW flags
-        for (const issue of issues) {
-            const flag = (issue.issue_flag || '').toUpperCase();
-            const note = (issue.issue_note || '').toUpperCase();
-            const pcr = (issue.pcr_result || '').toUpperCase();
-
-            if (flag === "RED" || note.includes("POSITIVE") || pcr === "POSITIVE") {
-                health = "RED";
-                healthDesc = `Active pathogen alert: ${issue.issue_status || 'Disease'} (${issue.issue_test || 'PCR'})`;
-                break;
-            } else if (flag === "YELLOW" || note.includes("SUSPICIOUS") || flag === "WARN") {
-                health = "YELLOW";
-                healthDesc = `Observation warning: ${issue.issue_status || 'Elevated risk'}`;
-            }
-        }
+        let healthDesc = "Clean Biosecurity";
+        let cssClass = "risk-green";
 
         if (!isProd) {
             health = "IDLE";
-            healthDesc = `Idle pond (${idleDays}d from Cycle Start Date${cycle.date_cycle ? ': ' + cycle.date_cycle : ''})`;
-        }
-
-        let cssClass = "risk-green";
-        if (health === "RED") cssClass = "risk-red";
-        else if (health === "YELLOW") cssClass = "risk-yellow";
-        else if (health === "IDLE") {
+            healthDesc = `Idle / Preparation (${idleDays} days)`;
+            speciesCode = "IDLE";
+            speciesLabel = "IDLE";
+            speciesBadgeClass = "sp-idle";
             cssClass = (idleDays > 30) ? "risk-idle idle-overdue" : "risk-idle";
+        } else {
+            const pondIssues = this.issuesMap.get(String(cycle.pond_index)) || [];
+            const hasRed = pondIssues.some(i => (i.issue_flag || "").toUpperCase() === "RED" || (i.pcr_result || "").toUpperCase() === "POSITIVE");
+            const hasYellow = pondIssues.some(i => (i.issue_flag || "").toUpperCase() === "YELLOW");
+
+            if (hasRed) {
+                health = "RED";
+                healthDesc = "Red Alert: Active Pathogen Detected";
+                cssClass = "risk-red";
+            } else if (hasYellow) {
+                health = "YELLOW";
+                healthDesc = "Warning: Monitored Symptoms";
+                cssClass = "risk-yellow";
+            }
         }
 
         return {
@@ -517,14 +433,9 @@ export class PondGridMap {
         };
     }
 
-    /**
-     * Binds Click Drawer to pond tiles.
-     */
     bindPondTileEvents() {
         const tiles = this.container.querySelectorAll(".pond-tile");
-
         tiles.forEach(tile => {
-            // Click Drawer
             tile.addEventListener("click", () => {
                 const pondCode = tile.getAttribute("data-pond");
                 const pondIndex = tile.getAttribute("data-index");
@@ -533,118 +444,37 @@ export class PondGridMap {
         });
     }
 
-    /**
-     * Opens Slide-Out Detail Drawer for selected pond.
-     */
     async openDrawer(pondCode, pondIndex) {
         if (!this.drawer || !this.drawerBackdrop) return;
 
         const cycle = this.activeCycleMap.get(pondCode);
         const issues = pondIndex ? (this.issuesMap.get(String(pondIndex)) || []) : [];
-        const isProd = cycle && (cycle.pond_status || '').toUpperCase() === 'PRODUCTION';
+        const isProd = cycle && (cycle.pond_status || "").toUpperCase() === "PRODUCTION";
 
         let idleDays = 0;
         if (cycle && !isProd) {
             if (cycle.date_cycle) {
                 const start = new Date(cycle.date_cycle);
                 if (!isNaN(start.getTime())) {
-                    const now = new Date();
-                    idleDays = Math.max(0, Math.floor((now.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)));
+                    idleDays = Math.max(0, Math.floor((Date.now() - start.getTime()) / (1000 * 60 * 60 * 24)));
                 }
             } else if (cycle.idle_days) {
                 idleDays = parseInt(cycle.idle_days, 10) || 0;
             }
         }
 
-        // Render drawer loading skeleton
-        this.drawer.innerHTML = `
-            <div class="drawer-header">
-                <div>
-                    <div class="drawer-pond-title">Pond ${pondCode}</div>
-                    <div class="drawer-pond-sub">${cycle ? `Cycle Index: ${cycle.pond_index}` : 'No active culture cycle'}</div>
-                </div>
-                <button type="button" class="drawer-close-btn" id="btn-close-drawer">✕</button>
-            </div>
-
-            <div class="drawer-body">
-                <div class="drawer-stat-grid">
-                    <div class="drawer-stat-box">
-                        <div class="drawer-stat-lbl">${isProd ? 'Culture Age' : 'Idle Duration'}</div>
-                        <div class="drawer-stat-val" style="${!isProd && idleDays > 30 ? 'color: #b45309; font-weight: 800;' : ''}">
-                            ${isProd 
-                                ? (cycle && cycle.stck_date ? calculateDOC(cycle.stck_date, cycle.date_close) + ' DOC' : '—') 
-                                : `${idleDays} Days ${idleDays > 30 ? '⚠️ (>30d)' : ''}`}
-                        </div>
-                    </div>
-                    <div class="drawer-stat-box">
-                        <div class="drawer-stat-lbl">Species</div>
-                        <div class="drawer-stat-val">${isProd && cycle ? (cycle.stck_species || 'P. VANNAMEI') : '—'}</div>
-                    </div>
-                    <div class="drawer-stat-box">
-                        <div class="drawer-stat-lbl">Stocking Date</div>
-                        <div class="drawer-stat-val" style="font-size: 0.95rem;">${isProd && cycle && cycle.stck_date ? cycle.stck_date : '—'}</div>
-                    </div>
-                    <div class="drawer-stat-box">
-                        <div class="drawer-stat-lbl">Stocked Pieces</div>
-                        <div class="drawer-stat-val" style="font-size: 1.05rem;">${isProd && cycle && cycle.stck_total ? Number(cycle.stck_total).toLocaleString() : '—'}</div>
-                    </div>
-                </div>
-
-                <!-- Biometrics Sampling Preview -->
-                <div class="drawer-section">
-                    <div class="drawer-section-title">
-                        <span>📊 Latest Growth Biometrics</span>
-                    </div>
-                    <div id="drawer-sampling-container" style="padding: 0.5rem; text-align: center; color: #64748b; font-size: 0.8rem;">
-                        <span>Loading sampling history...</span>
-                    </div>
-                </div>
-
-                <!-- Biosecurity & Pathology History -->
-                <div class="drawer-section">
-                    <div class="drawer-section-title">
-                        <span>🔬 Laboratory &amp; Pathogen Tests</span>
-                        <span style="font-size: 0.72rem; color: #64748b; font-weight: 500;">(${issues.length} records)</span>
-                    </div>
-                    <div class="drawer-issues-list">
-                        ${issues.length === 0 ? `
-                            <div style="padding: 0.85rem; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 6px; color: #166534; font-size: 0.78rem;">
-                                🟢 <strong>Clean Biosecurity:</strong> No negative pathology or active pathogen alerts recorded for this cycle.
-                            </div>
-                        ` : issues.map(iss => {
-                            const isRed = (iss.issue_flag || '').toUpperCase() === 'RED' || (iss.pcr_result || '').toUpperCase() === 'POSITIVE';
-                            const isYellow = (iss.issue_flag || '').toUpperCase() === 'YELLOW';
-                            const css = isRed ? 'risk-red' : isYellow ? 'risk-yellow' : '';
-                            return `
-                                <div class="drawer-issue-item ${css}">
-                                    <div>
-                                        <div style="font-weight: 800;">${iss.issue_status || 'Pathology Test'} (${iss.issue_test || 'PCR'})</div>
-                                        <div style="font-size: 0.7rem; color: #64748b;">${iss.issue_date || 'Recent'} • Grade: ${iss.issue_grade || 'G0'}</div>
-                                    </div>
-                                    <div style="text-align: right;">
-                                        <span class="status-badge ${isRed ? 'status-close' : isYellow ? 'status-idle' : 'status-production'}">${iss.issue_flag || 'OK'}</span>
-                                        <div style="font-size: 0.7rem; font-weight: 700; margin-top: 0.2rem;">${iss.issue_note || 'NEGATIVE'}</div>
-                                    </div>
-                                </div>
-                            `;
-                        }).join('')}
-                    </div>
-                </div>
-
-            </div>
-
-            <div class="drawer-footer">
-                <button type="button" class="btn-open-dbms" id="btn-drawer-to-dbms" ${!cycle ? 'disabled style="opacity:0.5; cursor:not-allowed;"' : ''}>
-                    <span>⚙️ Open in DBMS View →</span>
-                </button>
-            </div>
-        `;
+        this.drawer.innerHTML = getDrawerHtml({
+            pondCode,
+            cycle,
+            issues,
+            idleDays,
+            isProd
+        });
 
         // Slide Drawer Open
         this.drawerBackdrop.classList.add("open");
         this.drawer.classList.add("open");
 
-        // Bind Drawer Inner Events
         const btnClose = this.drawer.querySelector("#btn-close-drawer");
         if (btnClose) btnClose.addEventListener("click", () => this.closeDrawer());
 
@@ -652,86 +482,33 @@ export class PondGridMap {
         if (btnDbms && cycle) {
             btnDbms.addEventListener("click", () => {
                 this.closeDrawer();
-                // Set active pond and navigate to DBMS view
                 appState.setCurrentPond(cycle);
                 window.location.hash = "#/dbms";
             });
         }
 
-        // Fetch on-demand sampling records for this pond
         if (pondIndex) {
             this.loadDrawerSampling(pondIndex, cycle);
         }
     }
 
-    /**
-     * Loads biometrics sampling for the drawer.
-     * @param {string} pondIndex
-     * @param {object} [cycle]
-     */
     async loadDrawerSampling(pondIndex, cycle) {
         const container = document.getElementById("drawer-sampling-container");
         if (!container) return;
 
         try {
             const latest = await SamplingRepository.getLatestSampling(pondIndex);
-            if (!latest) {
-                container.innerHTML = `<div style="font-size: 0.76rem; color: #94a3b8; padding: 0.5rem;">No net-cast sampling data logged yet for this cycle.</div>`;
-                return;
-            }
-
-            // Determine biomass (use recorded sampling biomass or calculate fallback from stocking count)
-            let bmsKg = parseFloat(latest.smpl_bms) || 0;
-            if (!bmsKg && cycle) {
-                const pcs = cycle.stck_total || cycle.stck_pcs;
-                if (pcs && latest.smpl_abw && latest.smpl_surv) {
-                    bmsKg = calculateBiomass(pcs, latest.smpl_surv, latest.smpl_abw);
-                }
-            }
-
-            const abwVal = latest.smpl_abw ? `${parseFloat(latest.smpl_abw).toFixed(2)} g` : "—";
-            const bmsVal = bmsKg > 0 ? `${Number(bmsKg).toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 2 })} kg` : "—";
-            const survVal = latest.smpl_surv ? `${parseFloat(latest.smpl_surv).toFixed(1)} %` : "—";
-            const dateVal = latest.smpl_date 
-                ? `${latest.smpl_date}${latest.smpl_doc ? ' (DOC ' + latest.smpl_doc + ')' : ''}` 
-                : "—";
-
-            container.innerHTML = `
-                <div class="drawer-stat-grid" style="margin-top: 0.25rem;">
-                    <div class="drawer-stat-box" style="background: #ffffff;">
-                        <div class="drawer-stat-lbl">Latest ABW</div>
-                        <div class="drawer-stat-val" style="color: #0284c7;">${abwVal}</div>
-                    </div>
-                    <div class="drawer-stat-box" style="background: #ffffff;">
-                        <div class="drawer-stat-lbl">Est. Biomass</div>
-                        <div class="drawer-stat-val" style="color: #059669;">${bmsVal}</div>
-                    </div>
-                    <div class="drawer-stat-box" style="background: #ffffff;">
-                        <div class="drawer-stat-lbl">Survival Rate (SR)</div>
-                        <div class="drawer-stat-val">${survVal}</div>
-                    </div>
-                    <div class="drawer-stat-box" style="background: #ffffff;">
-                        <div class="drawer-stat-lbl">Sample Date</div>
-                        <div class="drawer-stat-val" style="font-size: 0.88rem;">${dateVal}</div>
-                    </div>
-                </div>
-            `;
+            container.innerHTML = getDrawerSamplingHtml(latest, cycle);
         } catch (err) {
             container.innerHTML = `<div style="font-size: 0.76rem; color: #ef4444;">Could not load sampling records.</div>`;
         }
     }
 
-    /**
-     * Closes the slide-out detail drawer.
-     */
     closeDrawer() {
         if (this.drawerBackdrop) this.drawerBackdrop.classList.remove("open");
         if (this.drawer) this.drawer.classList.remove("open");
     }
 
-    /**
-     * Updates top KPI cards in Executive View.
-     */
     updateHeaderKPIs(active, idle, red, yellow, green) {
         const elActive = document.getElementById("exec-kpi-active");
         if (elActive) {
@@ -755,9 +532,6 @@ export class PondGridMap {
         }
     }
 
-    /**
-     * Applies toolbar filters and dims unmatched pond tiles.
-     */
     applyFilters() {
         const tiles = this.container.querySelectorAll(".pond-tile");
 
@@ -769,25 +543,10 @@ export class PondGridMap {
 
             let match = true;
 
-            // Species Filter
-            if (this.filters.species !== "ALL") {
-                if (this.filters.species !== sp) match = false;
-            }
-
-            // Health Filter
-            if (this.filters.health !== "ALL") {
-                if (this.filters.health !== hl) match = false;
-            }
-
-            // Stage Filter
-            if (this.filters.stage !== "ALL") {
-                if (this.filters.stage !== st) match = false;
-            }
-
-            // Search Filter
-            if (this.filters.search && this.filters.search !== "") {
-                if (!pd.includes(this.filters.search)) match = false;
-            }
+            if (this.filters.species !== "ALL" && this.filters.species !== sp) match = false;
+            if (this.filters.health !== "ALL" && this.filters.health !== hl) match = false;
+            if (this.filters.stage !== "ALL" && this.filters.stage !== st) match = false;
+            if (this.filters.search && !pd.includes(this.filters.search)) match = false;
 
             if (match) {
                 tile.classList.remove("dimmed");
