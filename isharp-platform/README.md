@@ -43,11 +43,13 @@ src/
 │   ├── biometrics.js            # DOC, ABW, ADG, biomass gain calculations
 │   ├── feeding.js               # Cumulative FCR & feed conversion math
 │   ├── feedingAction.js         # Tray remnant rules & feeding adjustment logic
+│   ├── offlineQueue.js          # Pure offline queue state machine (idempotent mutations)
 │   ├── rollover.js              # Cycle parsing, label sanitization, close states
 │   └── waterQualityLimit.js     # Single Source of Truth for farm water quality limits
 │
 ├── infrastructure/              # 🌐 Database & Cloud Communication
 │   ├── supabase.js              # Authenticated Supabase PostgreSQL client
+│   ├── offlineQueueStore.js     # IndexedDB persistence for offline mutations
 │   └── repositories/            # Data-access repositories (zero raw SQL in UI)
 │       ├── dailyRecordRepository.js
 │       ├── feedRepository.js
@@ -65,6 +67,7 @@ src/
 ├── config/                      # 🛡️ Contracts & Configurations
 │   ├── domContracts.js          # Centralized DOM element ID contracts & validators
 │   ├── permissions.js           # Role-Based Access Control (RBAC) definitions
+│   ├── security.js              # Password authentication & Supabase credential cache
 │   └── env.js                   # Supabase environment variables & credentials
 │
 ├── components/                  # 🧩 Reusable UI Components

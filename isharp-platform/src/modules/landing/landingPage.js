@@ -83,6 +83,7 @@ export class LandingPage {
                         <div class="orb-content">
                             <h2 class="orb-title">Field Operations</h2>
                             <span class="orb-badge-active show-mobile">PRIMARY FIELD APP</span>
+                            <span class="orb-pwa-subtag">📲 Offline PWA Available</span>
                         </div>
                     </div>
 

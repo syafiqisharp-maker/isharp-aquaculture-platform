@@ -77,6 +77,7 @@ export class LifecycleTab {
 
         this.bindEvents();
         appState.subscribe("pondChanged", (pond) => this.render(pond));
+        appState.subscribe("roleChanged", () => this.render(appState.currentPond));
         this.initPondDropdown();
     }
 
@@ -228,10 +229,28 @@ export class LifecycleTab {
         }
 
         // Toggle Actions Display
-        if (isClosed) {
+        const canEdit = appState.userRole !== "VIEWER";
+
+        if (!canEdit) {
+            // Strict read-only viewer mode: hide all mutation controls
+            if (this.dom.btnTerminateRollover) this.dom.btnTerminateRollover.style.display = "none";
+            if (this.dom.btnTerminateOnly) this.dom.btnTerminateOnly.style.display = "none";
+            if (this.dom.btnReviveAction) this.dom.btnReviveAction.style.display = "none";
+
+            const cardManual = document.getElementById("card-manual-cycle-registration");
+            if (cardManual) cardManual.style.display = "none";
+
+            if (this.dom.calloutStatusTitle) this.dom.calloutStatusTitle.textContent = "Lifecycle Operational Status (Read Only)";
+            if (this.dom.calloutStatusDesc) {
+                this.dom.calloutStatusDesc.innerHTML = `Viewing cycle <strong>${pond.pond_index}</strong>. Modifications and termination are locked for Viewer access.`;
+            }
+        } else if (isClosed) {
             if (this.dom.btnTerminateRollover) this.dom.btnTerminateRollover.style.display = "none";
             if (this.dom.btnTerminateOnly) this.dom.btnTerminateOnly.style.display = "none";
             if (this.dom.btnReviveAction) this.dom.btnReviveAction.style.display = "inline-flex";
+
+            const cardManual = document.getElementById("card-manual-cycle-registration");
+            if (cardManual) cardManual.style.display = "block";
 
             if (this.dom.calloutStatusTitle) this.dom.calloutStatusTitle.textContent = "Pond Cycle Closed & Harvested";
             if (this.dom.calloutStatusDesc) {
@@ -241,6 +260,9 @@ export class LifecycleTab {
             if (this.dom.btnTerminateRollover) this.dom.btnTerminateRollover.style.display = "inline-flex";
             if (this.dom.btnTerminateOnly) this.dom.btnTerminateOnly.style.display = "inline-flex";
             if (this.dom.btnReviveAction) this.dom.btnReviveAction.style.display = "none";
+
+            const cardManual = document.getElementById("card-manual-cycle-registration");
+            if (cardManual) cardManual.style.display = "block";
 
             if (this.dom.calloutStatusTitle) this.dom.calloutStatusTitle.textContent = "Cycle Termination & Harvesting Control";
             if (this.dom.calloutStatusDesc) {
@@ -326,6 +348,11 @@ export class LifecycleTab {
     }
 
     openTerminateModal(defaultCreateNext = true) {
+        if (appState.userRole === "VIEWER") {
+            Toast.error("Read-Only Viewer cannot terminate or modify pond cycles.");
+            return;
+        }
+
         const pond = appState.currentPond;
         if (!pond) {
             Toast.error("No active pond selected.");
@@ -410,6 +437,11 @@ export class LifecycleTab {
     }
 
     openReviveModal() {
+        if (appState.userRole === "VIEWER") {
+            Toast.error("Read-Only Viewer cannot revive or modify pond cycles.");
+            return;
+        }
+
         const pond = appState.currentPond;
         if (!pond) return;
 
@@ -467,6 +499,11 @@ export class LifecycleTab {
     }
 
     async executeCreateCustomCycle() {
+        if (appState.userRole === "VIEWER") {
+            Toast.error("Read-Only Viewer cannot create or modify pond cycles.");
+            return;
+        }
+
         const pondSelect = this.dom.selectCreatePond?.value;
         const customPondInput = this.dom.inputCustomPond?.value?.trim();
         const cycleNo = parseInt(this.dom.inputCycleNo?.value, 10);

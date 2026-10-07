@@ -12,6 +12,11 @@ import { supabase } from "../../infrastructure/supabase.js";
 import { Toast } from "../../components/Toast.js";
 import { appState } from "../../state/appState.js";
 
+import { DOM_IDS } from "../../config/domContracts.js";
+import { OfflineSync } from "./offlineSync.js";
+import { pwaInstallManager } from "./pwaInstallManager.js";
+import { security } from "../../config/security.js";
+
 const SESSION_KEY = "isharp_field_ops_module";
 
 export class FieldOpsView {
@@ -168,14 +173,11 @@ export class FieldOpsView {
             btnVerify.textContent = "Verifying...";
 
             try {
-                // Check password in Supabase module_passwords
-                const res = await supabase.request(`module_passwords?module_no=eq.${selectedMod}`);
-                const expected = (res && res.length > 0) ? res[0].access_password : `m${String(selectedMod).padStart(2, "0")}pass`;
+                const isValid = await security.verifyFieldOpsPassword(selectedMod, entered);
 
-                if (entered === expected || entered === `m${String(selectedMod).padStart(2, "0")}pass` || entered === "admin") {
+                if (isValid) {
                     this.currentModule = selectedMod;
-                    sessionStorage.setItem(SESSION_KEY, String(selectedMod));
-                    Toast.success(`Welcome to Module ${String(selectedMod).padStart(2, "0")} Supervisor Station!`);
+                    Toast.success(`Welcome to Module ${String(selectedMod).padStart(2, "0")}!`);
                     modal.style.display = "none";
                     this.renderSupervisorWorkspace();
                 } else {
@@ -184,17 +186,7 @@ export class FieldOpsView {
                     passInput.focus();
                 }
             } catch (err) {
-                // Offline fallback
-                const fallback = `m${String(selectedMod).padStart(2, "0")}pass`;
-                if (entered === fallback || entered === "admin") {
-                    this.currentModule = selectedMod;
-                    sessionStorage.setItem(SESSION_KEY, String(selectedMod));
-                    Toast.success(`Authenticated for Module ${String(selectedMod).padStart(2, "0")}!`);
-                    modal.style.display = "none";
-                    this.renderSupervisorWorkspace();
-                } else {
-                    Toast.error("Verification failed: " + err.message);
-                }
+                Toast.error("Verification failed: " + err.message);
             } finally {
                 btnVerify.disabled = false;
                 btnVerify.textContent = "Unlock Module";
@@ -229,14 +221,40 @@ export class FieldOpsView {
                         </h1>
                     </div>
 
-                    <!-- Right: Module Switch -->
+                    <!-- Right: Sync Status, Install App & Module Switch -->
                     <div class="field-ops-header-controls" style="display: flex; align-items: center; gap: 0.65rem;">
-                        <button type="button" id="btn-switch-module" class="btn-action btn-secondary" style="font-size: 0.76rem; font-weight: 700; padding: 0.45rem 0.8rem; border-radius: 8px;">
+                        <!-- Sync Status Badge -->
+                        <div id="${DOM_IDS.FIELD_OPS.BADGE_SYNC_STATUS}" class="sync-status-indicator sync-connected" title="Offline Sync Status">
+                            <span class="sync-dot"></span>
+                            <span class="sync-label">Synced</span>
+                        </div>
+
+                        <!-- Install App Action Button -->
+                        <button type="button" id="${DOM_IDS.FIELD_OPS.BTN_INSTALL_PWA}" class="btn-action btn-pwa-install" style="font-size: 0.76rem; font-weight: 700; padding: 0.45rem 0.85rem; border-radius: 999px;">
+                            <span>📲 <span class="btn-text-full">Install App</span><span class="btn-text-short">Install</span></span>
+                        </button>
+
+                        <button type="button" id="${DOM_IDS.FIELD_OPS.BTN_SWITCH_MODULE}" class="btn-action btn-secondary" style="font-size: 0.76rem; font-weight: 700; padding: 0.45rem 0.8rem; border-radius: 8px;">
                             <span>🔓 Switch</span>
                         </button>
                     </div>
 
                 </header>
+
+                <!-- Smart First-Visit Install Bottom Banner -->
+                <div id="${DOM_IDS.FIELD_OPS.BANNER_INSTALL_PWA}" class="pwa-install-banner" style="display: none;">
+                    <div class="pwa-banner-content">
+                        <div class="pwa-banner-icon">🦐</div>
+                        <div class="pwa-banner-text">
+                            <strong>Install iSHARP Field Ops</strong>
+                            <p>Fast offline pond data logging right from your home screen.</p>
+                        </div>
+                    </div>
+                    <div class="pwa-banner-actions">
+                        <button type="button" id="${DOM_IDS.FIELD_OPS.BTN_DISMISS_INSTALL}" class="btn-banner-dismiss">Later</button>
+                        <button type="button" id="btn-banner-install-action" class="btn-banner-confirm">Install</button>
+                    </div>
+                </div>
 
                 <!-- Four Distinct Full-Screen Views -->
                 <div id="field-ops-map-mount"></div>
@@ -260,6 +278,86 @@ export class FieldOpsView {
                 this.render();
             });
         }
+
+        // 1. PWA Install Button & Banner Binding
+        const btnInstall = this.container.querySelector(`#${DOM_IDS.FIELD_OPS.BTN_INSTALL_PWA}`);
+        const bannerInstall = this.container.querySelector(`#${DOM_IDS.FIELD_OPS.BANNER_INSTALL_PWA}`);
+        const btnDismiss = this.container.querySelector(`#${DOM_IDS.FIELD_OPS.BTN_DISMISS_INSTALL}`);
+        const btnBannerAction = this.container.querySelector("#btn-banner-install-action");
+
+        const updateInstallVisibility = () => {
+            const canInstall = pwaInstallManager.canInstall();
+            const isIos = pwaInstallManager.isIos();
+
+            if (btnInstall) {
+                if (canInstall || isIos) {
+                    btnInstall.style.display = "inline-flex";
+                } else {
+                    btnInstall.style.display = "none";
+                }
+            }
+
+            if (bannerInstall) {
+                if (pwaInstallManager.shouldShowBanner() && window.innerWidth <= 768) {
+                    bannerInstall.style.display = "flex";
+                } else {
+                    bannerInstall.style.display = "none";
+                }
+            }
+        };
+
+        if (btnInstall) {
+            btnInstall.addEventListener("click", () => {
+                pwaInstallManager.promptInstall();
+            });
+        }
+
+        if (btnBannerAction) {
+            btnBannerAction.addEventListener("click", () => {
+                pwaInstallManager.promptInstall();
+                if (bannerInstall) bannerInstall.style.display = "none";
+            });
+        }
+
+        if (btnDismiss) {
+            btnDismiss.addEventListener("click", () => {
+                pwaInstallManager.dismissBanner();
+                if (bannerInstall) bannerInstall.style.display = "none";
+            });
+        }
+
+        // Subscribe to PWA install availability
+        pwaInstallManager.subscribe(updateInstallVisibility);
+        updateInstallVisibility();
+
+        // 2. Reactive Sync Badge Updates
+        const syncBadge = this.container.querySelector(`#${DOM_IDS.FIELD_OPS.BADGE_SYNC_STATUS}`);
+        const updateSyncBadge = (status) => {
+            if (!syncBadge) return;
+            const dot = syncBadge.querySelector(".sync-dot");
+            const label = syncBadge.querySelector(".sync-label");
+            const pendingCount = OfflineSync.getPendingCount();
+
+            syncBadge.className = "sync-status-indicator";
+
+            if (status === "syncing") {
+                syncBadge.classList.add("sync-syncing");
+                if (label) label.textContent = "Syncing...";
+            } else if (status === "offline" || !OfflineSync.isOnline()) {
+                syncBadge.classList.add("sync-offline");
+                if (label) label.textContent = pendingCount > 0 ? `Offline (${pendingCount})` : "Offline";
+            } else if (pendingCount > 0) {
+                syncBadge.classList.add("sync-pending");
+                if (label) label.textContent = `${pendingCount} Queued`;
+            } else {
+                syncBadge.classList.add("sync-connected");
+                if (label) label.textContent = "Synced";
+            }
+        };
+
+        appState.subscribe("syncStatusChanged", (status) => updateSyncBadge(status));
+        appState.subscribe("queueCountChanged", () => updateSyncBadge(appState._state?.syncStatus));
+        updateSyncBadge(appState._state?.syncStatus || "connected");
     }
 
     initComponents() {

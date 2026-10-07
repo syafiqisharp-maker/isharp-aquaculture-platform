@@ -59,6 +59,13 @@ class AppState {
         }
     }
 
+    /**
+     * Alias for emit(event, data)
+     */
+    notify(event, data) {
+        this.emit(event, data);
+    }
+
     // Getters
     get currentPond() { return this._state.currentPond; }
     get currentPondIndex() { return this._state.currentPondIndex; }

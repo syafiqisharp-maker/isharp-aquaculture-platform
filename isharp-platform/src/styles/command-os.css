@@ -884,3 +884,47 @@
     color: #64748b;
     font-weight: 500;
 }
+
+/* --------------------------------------------------------------------------
+   6. SECURITY & VIEWER MODE RESTRICTIONS
+   -------------------------------------------------------------------------- */
+.role-pill-frame.role-locked-viewer {
+    background: #f1f5f9;
+    border-color: #cbd5e1;
+    opacity: 0.9;
+}
+
+.role-pill-frame.role-locked-viewer select {
+    color: #64748b;
+    cursor: not-allowed;
+}
+
+/* When in strict Read-Only Viewer Mode */
+body.isharp-viewer-mode .btn-save,
+body.isharp-viewer-mode .btn-danger,
+body.isharp-viewer-mode .btn-excel,
+body.isharp-viewer-mode #btn-open-excel-modal,
+body.isharp-viewer-mode #btn-terminate-cycle,
+body.isharp-viewer-mode #btn-revive-cycle,
+body.isharp-viewer-mode #btn-lifecycle-terminate-rollover,
+body.isharp-viewer-mode #btn-lifecycle-terminate-only,
+body.isharp-viewer-mode #btn-lifecycle-revive-action,
+body.isharp-viewer-mode #btn-submit-create-cycle,
+body.isharp-viewer-mode #card-manual-cycle-registration,
+body.isharp-viewer-mode [data-delete-index],
+body.isharp-viewer-mode .btn-save-master,
+body.isharp-viewer-mode .btn-add-row,
+body.isharp-viewer-mode .btn-stepper,
+body.isharp-viewer-mode button[type="submit"] {
+    display: none !important;
+}
+
+body.isharp-viewer-mode input:not([type="search"]):not(#sidebar-pond-search):not(#input-pond-search),
+body.isharp-viewer-mode textarea {
+    pointer-events: none !important;
+    background: #f8fafc !important;
+    color: #475569 !important;
+    border-color: #e2e8f0 !important;
+    cursor: not-allowed !important;
+}
+

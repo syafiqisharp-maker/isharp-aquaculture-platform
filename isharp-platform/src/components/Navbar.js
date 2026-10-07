@@ -33,35 +33,52 @@ export class Navbar {
     }
 
     initRoleSelector() {
-        // If role selector doesn't exist in header, inject it seamlessly
-        let roleContainer = document.querySelector(".role-badge-container");
-        if (!roleContainer) {
-            const headerActions = document.querySelector(".header-actions");
-            if (headerActions) {
-                roleContainer = document.createElement("div");
-                roleContainer.className = "role-badge-container";
-                roleContainer.innerHTML = `
-                    <span class="role-badge-label">Role:</span>
-                    <select id="select-user-role" class="role-select" aria-label="Select User Role">
-                        <option value="${ROLES.PLANNER}">👑 Planner (100% Edit)</option>
-                        <option value="${ROLES.SUPERVISOR}">📋 Supervisor (Inventory)</option>
-                        <option value="${ROLES.LAB_TECH}">🔬 Lab Tech (Lab Only)</option>
-                        <option value="${ROLES.VIEWER}">👁️ Viewer (Read Only)</option>
-                    </select>
-                `;
-                headerActions.prepend(roleContainer);
-                this.dom.selectRole = document.getElementById("select-user-role");
-            }
-        }
+        const selectRole = document.getElementById("select-user-role");
+        const roleContainer = document.querySelector(".role-pill-frame");
 
-        if (this.dom.selectRole) {
-            this.dom.selectRole.value = appState.userRole;
-            this.dom.selectRole.addEventListener("change", (e) => {
+        if (selectRole) {
+            this.dom.selectRole = selectRole;
+            selectRole.value = appState.userRole;
+            selectRole.addEventListener("change", (e) => {
                 const newRole = e.target.value;
                 appState.setUserRole(newRole);
                 const meta = getRoleMeta(newRole);
                 Toast.info(`Switched role to: ${meta.label}`);
             });
+        }
+
+        // React to role updates (e.g. when unlocked via Editor vs Viewer)
+        appState.subscribe("roleChanged", (role) => {
+            this.applyRoleRestrictions(role);
+        });
+
+        // Apply immediately
+        this.applyRoleRestrictions(appState.userRole);
+    }
+
+    applyRoleRestrictions(role) {
+        const selectRole = document.getElementById("select-user-role");
+        const roleContainer = document.querySelector(".role-pill-frame");
+
+        if (role === ROLES.VIEWER) {
+            if (selectRole) {
+                selectRole.value = ROLES.VIEWER;
+                selectRole.disabled = true;
+                selectRole.title = "Role is locked to Read-Only Viewer by security policy";
+            }
+            if (roleContainer) {
+                roleContainer.classList.add("role-locked-viewer");
+            }
+            document.body.classList.add("isharp-viewer-mode");
+        } else {
+            if (selectRole) {
+                selectRole.disabled = false;
+                selectRole.title = "Select user role";
+            }
+            if (roleContainer) {
+                roleContainer.classList.remove("role-locked-viewer");
+            }
+            document.body.classList.remove("isharp-viewer-mode");
         }
     }
 
@@ -97,6 +114,16 @@ export class Navbar {
         // Header Action buttons
         if (this.dom.btnExcel && this.onOpenExcel) {
             this.dom.btnExcel.addEventListener("click", () => this.onOpenExcel());
+        }
+
+        // Lock Session button
+        const btnLock = document.getElementById("btn-lock-dbms");
+        if (btnLock) {
+            btnLock.addEventListener("click", () => {
+                sessionStorage.removeItem("isharp_dbms_session");
+                Toast.info("DBMS session locked.");
+                window.location.hash = "#/portal";
+            });
         }
     }
 

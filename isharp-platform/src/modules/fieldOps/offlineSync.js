@@ -1,15 +1,23 @@
 /**
  * iSHARP DBMS 2.0 — Field Operations Offline Synchronization Engine
- * Local persistence and background queue engine for field data entries
- * when connectivity drops at remote pond locations.
+ * Bridges domain queue logic, persistent IndexedDB store, and Supabase client.
+ * Provides transparent offline fallback and reactive sync state dispatching.
  */
 
 import { supabase } from "../../infrastructure/supabase.js";
 import { appState } from "../../state/appState.js";
 import { Toast } from "../../components/Toast.js";
+import { OfflineQueueStore } from "../../infrastructure/offlineQueueStore.js";
+import {
+    QUEUE_STATUS,
+    createQueueItem,
+    transitionItemStatus,
+    deduplicateQueue,
+    isRetryableNetworkError
+} from "../../domain/offlineQueue.js";
 
-const QUEUE_STORAGE_KEY = "isharp_fieldops_offline_queue";
 let isSyncing = false;
+let pendingCount = 0;
 
 export class OfflineSync {
     /**
@@ -24,153 +32,153 @@ export class OfflineSync {
 
     /**
      * Reads all pending queue items from persistent storage.
-     * @returns {Array<object>}
+     * @returns {Promise<Array<object>>}
      */
-    static getQueue() {
-        try {
-            const raw = localStorage.getItem(QUEUE_STORAGE_KEY);
-            return raw ? JSON.parse(raw) : [];
-        } catch (err) {
-            console.warn("Could not read offline queue from localStorage:", err);
-            return [];
-        }
+    static async getQueue() {
+        return await OfflineQueueStore.getAll();
     }
 
     /**
-     * Saves queue items to persistent storage.
-     * @param {Array<object>} queue 
-     */
-    static saveQueue(queue) {
-        try {
-            localStorage.setItem(QUEUE_STORAGE_KEY, JSON.stringify(queue));
-            const count = queue.length;
-            if (count > 0 && !this.isOnline()) {
-                appState.setSyncStatus("offline");
-            } else if (count === 0 && this.isOnline()) {
-                appState.setSyncStatus("connected");
-            }
-        } catch (err) {
-            console.error("Could not write offline queue to localStorage:", err);
-        }
-    }
-
-    /**
-     * Returns total pending queue count.
+     * Returns total pending queue count (synchronous cache or fresh query).
      * @returns {number}
      */
     static getPendingCount() {
-        return this.getQueue().length;
+        return pendingCount;
     }
 
     /**
-     * Queues an HTTP REST request for deferred synchronization.
-     * @param {string} endpoint e.g. "daily_pond_records?on_conflict=pond_index,log_date"
-     * @param {object} options fetch options ({ method, headers, body })
-     * @param {object} [metadata] description, pondIndex, label, etc.
-     * @returns {object} The queued item
+     * Updates and broadcasts pending queue count to appState.
+     * @param {number} count 
      */
-    static queueRequest(endpoint, options = {}, metadata = {}) {
-        const queue = this.getQueue();
-        const item = {
-            id: `sync_${Date.now()}_${Math.random().toString(36).substr(2, 7)}`,
-            endpoint,
-            method: options.method || "POST",
-            headers: options.headers || {},
-            body: typeof options.body === "string" ? options.body : JSON.stringify(options.body || {}),
-            metadata: {
-                timestamp: new Date().toISOString(),
-                ...metadata
-            },
-            status: "pending",
-            retryCount: 0
-        };
+    static updateStateCount(count) {
+        pendingCount = count;
+        if (!this.isOnline()) {
+            appState.setSyncStatus("offline");
+        } else if (count > 0) {
+            appState.setSyncStatus("pending");
+        } else {
+            appState.setSyncStatus("connected");
+        }
 
-        queue.push(item);
-        this.saveQueue(queue);
-
-        console.info(`[OfflineSync] Queued request ${item.id} for endpoint: ${endpoint}`);
-        return item;
+        // Notify subscribers of pending count update
+        appState.notify("queueCountChanged", count);
     }
 
     /**
-     * Synchronizes all pending requests sequentially against Supabase.
+     * Enqueues a write request into the persistent offline outbox.
+     * @param {string} endpoint 
+     * @param {object} [options={}] 
+     * @param {object} [metadata={}] 
+     * @returns {Promise<object>} Enqueued item
+     */
+    static async queueRequest(endpoint, options = {}, metadata = {}) {
+        const method = options.method || "POST";
+        let payload = {};
+        try {
+            payload = options.body ? JSON.parse(options.body) : {};
+        } catch {
+            payload = options.body || {};
+        }
+
+        const newItem = createQueueItem(endpoint, method, payload, metadata);
+
+        // Fetch existing queue, append and deduplicate
+        const currentQueue = await OfflineQueueStore.getAll();
+        currentQueue.push(newItem);
+        const deduplicated = deduplicateQueue(currentQueue);
+
+        // Save back into IndexedDB
+        await OfflineQueueStore.clear();
+        for (const item of deduplicated) {
+            await OfflineQueueStore.put(item);
+        }
+
+        this.updateStateCount(deduplicated.length);
+        console.log(`[OfflineSync] Enqueued offline item ${newItem.id}. Total queue: ${deduplicated.length}`);
+        return newItem;
+    }
+
+    /**
+     * Synchronizes all pending queue records with Supabase Cloud.
      * @returns {Promise<{ synced: number, failed: number, remaining: number }>}
      */
     static async syncQueue() {
         if (isSyncing) {
             console.log("[OfflineSync] Sync already in progress, skipping duplicate call.");
-            return { synced: 0, failed: 0, remaining: this.getPendingCount() };
+            return { synced: 0, failed: 0, remaining: pendingCount };
         }
 
         if (!this.isOnline()) {
             console.log("[OfflineSync] Network offline; deferring sync.");
-            appState.setSyncStatus("offline");
-            return { synced: 0, failed: 0, remaining: this.getPendingCount() };
+            return { synced: 0, failed: 0, remaining: pendingCount };
         }
 
-        const queue = this.getQueue();
+        const queue = await OfflineQueueStore.getAll();
         if (queue.length === 0) {
-            appState.setSyncStatus("connected");
+            this.updateStateCount(0);
             return { synced: 0, failed: 0, remaining: 0 };
         }
 
         isSyncing = true;
         appState.setSyncStatus("syncing");
+        console.log(`[OfflineSync] Starting sync flush of ${queue.length} pending records...`);
 
         let syncedCount = 0;
         let failedCount = 0;
-        const remainingQueue = [];
 
-        console.info(`[OfflineSync] Beginning sync for ${queue.length} pending operations...`);
+        for (const rawItem of queue) {
+            const item = transitionItemStatus(rawItem, QUEUE_STATUS.IN_FLIGHT);
+            await OfflineQueueStore.put(item);
 
-        for (const item of queue) {
             try {
-                const options = {
+                const requestOptions = {
                     method: item.method,
-                    headers: item.headers || {},
-                    body: item.body
+                    headers: {
+                        "Content-Type": "application/json",
+                        "Prefer": "return=representation"
+                    }
                 };
 
-                await supabase.request(item.endpoint, options);
+                if (item.method !== "GET" && item.method !== "HEAD" && item.payload) {
+                    requestOptions.body = JSON.stringify(item.payload);
+                }
+
+                await supabase.request(item.endpoint, requestOptions);
+
+                // Success! Remove from outbox
+                await OfflineQueueStore.remove(item.id);
                 syncedCount++;
-                console.info(`[OfflineSync] Successfully synced ${item.id} (${item.endpoint})`);
+                console.log(`[OfflineSync] Successfully synced record: ${item.id} (${item.metadata.description})`);
             } catch (err) {
-                console.error(`[OfflineSync] Failed to sync ${item.id}:`, err);
-                item.retryCount = (item.retryCount || 0) + 1;
-                item.lastError = err.message || String(err);
+                console.error(`[OfflineSync] Sync attempt failed for ${item.id}:`, err);
 
-                // Check if error is network related vs permanent schema failure
-                const isNetworkErr = err.name === "AbortError" || 
-                                     /failed to fetch|network|timeout/i.test(err.message || "");
-
-                if (isNetworkErr || item.retryCount < 5) {
-                    remainingQueue.push(item);
+                if (isRetryableNetworkError(err)) {
+                    // Keep in queue for next reconnection
+                    const pendingItem = transitionItemStatus(item, QUEUE_STATUS.PENDING, err.message);
+                    await OfflineQueueStore.put(pendingItem);
+                    failedCount++;
                 } else {
-                    console.error(`[OfflineSync] Dropping permanently failing item ${item.id} after 5 retries`);
+                    // Fatal schema / validation error: mark failed so it doesn't block outbox indefinitely
+                    const failedItem = transitionItemStatus(item, QUEUE_STATUS.FAILED, err.message);
+                    await OfflineQueueStore.put(failedItem);
                     failedCount++;
                 }
             }
         }
 
-        this.saveQueue(remainingQueue);
         isSyncing = false;
+        const remaining = await OfflineQueueStore.getAll();
+        const pendingRemaining = remaining.filter(i => i.status === QUEUE_STATUS.PENDING).length;
+        this.updateStateCount(pendingRemaining);
 
-        if (remainingQueue.length === 0) {
-            appState.setSyncStatus("connected");
-            if (syncedCount > 0) {
-                Toast.success(`✅ Synced ${syncedCount} offline record(s) to database!`);
-            }
-        } else {
-            appState.setSyncStatus("offline");
-            if (syncedCount > 0) {
-                Toast.info(`Synced ${syncedCount} record(s); ${remainingQueue.length} pending connection.`);
-            }
+        if (syncedCount > 0) {
+            Toast.success(`🔄 Synced ${syncedCount} offline record${syncedCount > 1 ? "s" : ""} to Cloud!`);
         }
 
         return {
             synced: syncedCount,
             failed: failedCount,
-            remaining: remainingQueue.length
+            remaining: pendingRemaining
         };
     }
 
@@ -183,7 +191,7 @@ export class OfflineSync {
      */
     static async withOfflineFallback(apiCallFn, queueParams) {
         if (!this.isOnline()) {
-            this.queueRequest(queueParams.endpoint, queueParams.options, queueParams.metadata);
+            await this.queueRequest(queueParams.endpoint, queueParams.options, queueParams.metadata);
             Toast.info("📡 Offline: Entry saved locally. Will sync automatically when connected.");
             return { isOffline: true, result: null };
         }
@@ -192,11 +200,9 @@ export class OfflineSync {
             const result = await apiCallFn();
             return { isOffline: false, result };
         } catch (err) {
-            const isNetworkErr = err.name === "AbortError" || 
-                                 /failed to fetch|network|timeout|connection/i.test(err.message || "");
-            if (isNetworkErr) {
+            if (isRetryableNetworkError(err)) {
                 console.warn("[OfflineSync] Network error during write, falling back to local queue:", err);
-                this.queueRequest(queueParams.endpoint, queueParams.options, queueParams.metadata);
+                await this.queueRequest(queueParams.endpoint, queueParams.options, queueParams.metadata);
                 Toast.info("📡 Connection lost: Entry saved locally. Will sync automatically once online.");
                 return { isOffline: true, result: null };
             }
@@ -212,24 +218,25 @@ export class OfflineSync {
 
         window.addEventListener("online", () => {
             console.log("[OfflineSync] Connection restored (online).");
-            appState.setSyncStatus("syncing");
+            OfflineSync.updateStateCount(pendingCount);
             Toast.info("🌐 Network restored. Syncing offline records...");
             OfflineSync.syncQueue();
         });
 
         window.addEventListener("offline", () => {
             console.log("[OfflineSync] Connection lost (offline).");
-            appState.setSyncStatus("offline");
+            OfflineSync.updateStateCount(pendingCount);
             Toast.warning("📡 Offline mode active. Entries will be saved locally.");
         });
 
-        // Initial check on load
-        if (!this.isOnline()) {
-            appState.setSyncStatus("offline");
-        } else if (this.getPendingCount() > 0) {
-            // Auto sync on load if queue has pending items
-            setTimeout(() => OfflineSync.syncQueue(), 2000);
-        }
+        // Initialize queue count on startup
+        OfflineQueueStore.getAll().then((items) => {
+            const pending = items.filter(i => i.status === QUEUE_STATUS.PENDING).length;
+            OfflineSync.updateStateCount(pending);
+            if (OfflineSync.isOnline() && pending > 0) {
+                setTimeout(() => OfflineSync.syncQueue(), 1500);
+            }
+        });
     }
 }
 

@@ -236,13 +236,17 @@ export function getDbmsShellHtml() {
                 </div>
 
                 <!-- Right: Quick Telemetry Chips & Actions -->
-                <div class="command-bar-right">
+                <div class="command-bar-right" style="display:flex; align-items:center; gap:0.5rem;">
                     <button id="btn-open-excel-modal" class="btn-action btn-excel" style="padding:0.3rem 0.75rem; font-size:0.75rem;" title="Paste Excel Data">
                         <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2">
                             <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
                             <polyline points="14 2 14 8 20 8"></polyline>
                         </svg>
                         <span>Paste Excel</span>
+                    </button>
+                    <button id="btn-lock-dbms" class="btn-action btn-secondary" style="padding:0.3rem 0.65rem; font-size:0.75rem; font-weight:700; border-radius:6px; display:inline-flex; align-items:center; gap:0.3rem;" title="Lock DBMS Session & Sign Out">
+                        <span>🔒</span>
+                        <span>Lock</span>
                     </button>
                 </div>
             </header>

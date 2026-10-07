@@ -4,6 +4,9 @@
  */
 
 import { appState } from "../state/appState.js";
+import { security } from "../config/security.js";
+import { ROLES } from "../config/permissions.js";
+import { Toast } from "../components/Toast.js";
 
 export class ViewRouter {
     constructor() {
@@ -23,8 +26,10 @@ export class ViewRouter {
         };
         this.isNavigatingBack = false;
         this.viewHistory = [];
+        this.isPromptingDbmsAuth = false;
 
         this.init();
+        this.initDbmsAuthModal();
     }
 
     init() {
@@ -69,6 +74,107 @@ export class ViewRouter {
         this.handleHashChange();
     }
 
+    initDbmsAuthModal() {
+        const modal = document.getElementById("modal-dbms-passcode");
+        if (!modal) return;
+
+        const input = document.getElementById("input-dbms-passcode");
+        const btnCancel = document.getElementById("btn-cancel-dbms-passcode");
+        const btnVerify = document.getElementById("btn-verify-dbms-passcode");
+
+        const cancelAuth = () => {
+            this.isPromptingDbmsAuth = false;
+            modal.classList.add("hidden");
+            if (input) input.value = "";
+            // Revert back to previous view or portal
+            const fallback = this.currentView && this.currentView !== "dbms" ? this.currentView : "portal";
+            window.location.hash = `#/${fallback}`;
+        };
+
+        if (btnCancel) {
+            btnCancel.addEventListener("click", cancelAuth);
+        }
+
+        modal.addEventListener("click", (e) => {
+            if (e.target === modal) cancelAuth();
+        });
+
+        const submitPasscode = async () => {
+            const entered = (input ? input.value : "").trim();
+            if (!entered) {
+                Toast.error("Please enter the DBMS access password.");
+                return;
+            }
+
+            if (btnVerify) {
+                btnVerify.disabled = true;
+                btnVerify.textContent = "Verifying...";
+            }
+
+            try {
+                const roleType = await security.verifyDbmsPassword(entered);
+                if (roleType === "EDITOR") {
+                    appState.setUserRole(ROLES.PLANNER);
+                    Toast.success("Welcome, DBMS Editor! Full edit mode unlocked.");
+                    this.isPromptingDbmsAuth = false;
+                    modal.classList.add("hidden");
+                    if (input) input.value = "";
+                    window.location.hash = "#/dbms";
+                    this.completeNavigation("dbms");
+                } else if (roleType === "VIEWER") {
+                    appState.setUserRole(ROLES.VIEWER);
+                    Toast.info("Authenticated as Viewer (Read-Only Mode).");
+                    this.isPromptingDbmsAuth = false;
+                    modal.classList.add("hidden");
+                    if (input) input.value = "";
+                    window.location.hash = "#/dbms";
+                    this.completeNavigation("dbms");
+                } else {
+                    Toast.error("Incorrect password. Please try again.");
+                    if (input) {
+                        input.value = "";
+                        input.focus();
+                    }
+                }
+            } catch (err) {
+                Toast.error("Authentication error: " + err.message);
+            } finally {
+                if (btnVerify) {
+                    btnVerify.disabled = false;
+                    btnVerify.textContent = "Unlock DBMS";
+                }
+            }
+        };
+
+        if (btnVerify) {
+            btnVerify.addEventListener("click", submitPasscode);
+        }
+
+        if (input) {
+            input.addEventListener("keydown", (e) => {
+                if (e.key === "Enter") submitPasscode();
+                if (e.key === "Escape") cancelAuth();
+            });
+        }
+    }
+
+    promptDbmsPasscode() {
+        const modal = document.getElementById("modal-dbms-passcode");
+        const input = document.getElementById("input-dbms-passcode");
+        if (!modal) {
+            // Fallback if modal DOM not loaded yet
+            this.navigate("portal");
+            return;
+        }
+
+        this.isPromptingDbmsAuth = true;
+        modal.classList.remove("hidden");
+        if (input) {
+            input.value = "";
+            setTimeout(() => input.focus(), 50);
+        }
+    }
+
     handleHashChange() {
         const hash = window.location.hash.toLowerCase();
         let targetView = "portal";
@@ -83,6 +189,26 @@ export class ViewRouter {
             targetView = "portal";
         }
 
+        // GUARD: Check DBMS Authentication before allowing navigation
+        if (targetView === "dbms") {
+            const session = security.getDbmsSession();
+            if (!session) {
+                this.promptDbmsPasscode();
+                return;
+            } else {
+                // Ensure role aligns with session
+                if (session === "VIEWER") {
+                    appState.setUserRole(ROLES.VIEWER);
+                } else if (session === "EDITOR") {
+                    appState.setUserRole(ROLES.PLANNER);
+                }
+            }
+        }
+
+        this.completeNavigation(targetView);
+    }
+
+    completeNavigation(targetView) {
         // Track history to detect browser back button navigation
         if (this.viewHistory.length > 1 && this.viewHistory[this.viewHistory.length - 2] === targetView) {
             this.isNavigatingBack = true;

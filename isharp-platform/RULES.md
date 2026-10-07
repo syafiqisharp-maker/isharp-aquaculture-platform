@@ -249,5 +249,31 @@ Every modification action must respect user roles defined in `src/config/permiss
 - **Water Colour Tone Selection**:
   - The 8 water colour swatches (`.water-swatch-card`) bind directly to `#input-water-colour` and `#selected-water-colour-label`. When saving, `water_colour` must be read from `#input-water-colour` to guarantee persistence to `public.daily_pond_records`.
 
+---
+
+## 18. Password Security & Strict Read-Only Viewer Architecture
+
+- **Zero-Backdoor Navigation Guard**:
+  - Direct URL hash changes (`#/dbms`) or buttons from other views (e.g. Executive Map drawer "Open Full Cycle DBMS") must NEVER bypass authentication.
+  - `ViewRouter.js` intercepts all navigation attempts to `#view-dbms`. If an active session token does not exist in `security.getDbmsSession()`, the router immediately halts navigation and displays the glassmorphism authentication modal.
+- **Top-Level Modal DOM Placement Rule**:
+  - Authentication modals (such as `#modal-dbms-passcode`) must be declared directly at the root `<body>` level in `index.html`, NEVER nested inside view containers like `#view-dbms`. If placed inside `#view-dbms`, the modal inherits `display: none` when the view is inactive, rendering it completely invisible to users.
+- **Role Enforcement & Separation of Duties**:
+  - **Editor Mode (`mantaray`)**: Grants full edit, cycle creation, and rollover permissions (`PLANNER` role).
+  - **Viewer Mode (`monodon`)**: Strictly read-only (`VIEWER` role).
+    - Hides all `.btn-save`, `.btn-danger`, `.btn-excel`, delete buttons (`[data-delete-index]`), and steppers across all 10 tabs via `body.isharp-viewer-mode`.
+    - Disables all form inputs with `pointer-events: none !important`.
+    - In Tab 8 (Lifecycle), hides "🏁 Terminate & Rollover", "🛑 Terminate Only", "🔄 Revive Back Cycle", and the "Manual Cycle Registration" card.
+    - Runtime action guards intercept any direct programmatic calls to terminate or modify cycles and display an access denied toast.
+    - Locks the Role Selector in the command navbar (`disabled = true`, `.role-locked-viewer`) to prevent client-side role elevation.
+- **Field Operations Fish-Name Passwords & Manager Master Key**:
+  - Modules 01–09 use local Malay fish passwords (`siakap`, `kerapu`, `jenahak`, `haruan`, `bawal`, `patin`, `keli`, `tilapia`, `tongsan`).
+  - Manager Master Key (`todak`) provides a universal bypass unlocking any module 01–09 for supervisors and managers.
+- **Zero-Code Credential Management in Supabase Table Editor**:
+  - Passwords are dynamically loaded from `public.app_passwords` and `public.module_passwords`.
+  - Supervisors can update passwords at any time in the Supabase Table Editor without writing code or redeploying the app.
+  - Offline fallback caching in `security.js` ensures that field operations remain functional during temporary connectivity loss at the farm.
+
+
 
 

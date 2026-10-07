@@ -171,6 +171,9 @@ Designed to satisfy both **Field Workers** (who need to log 12–24 ponds in und
 | **2026-10-07 12:20** | Data Access & REST Bugfix | Fix URL Percent Wildcard Encoding in PostgREST Queries | Fixed unencoded `%` in `labRepository.js` and `FieldOpsMap.js` (`like.209%` $\rightarrow$ `like.209%25`) which previously triggered HTTP 500 malformed escape errors. Resolved body consumption in `supabase.js`. Verified pond `2091701.41` displays `⚠️ NH₃ 2.00` alert and `⚠️ Turb 30.9` warning pills with crimson orb. |
 | **2026-10-07 14:15** | Quick Log Form & Ergonomics | Clean Character Encoding, Pond Switcher Sync & 3D Water Colour Swatches | Fixed double-encoded UTF-8 strings (`â€"`, `Â·`, `ðŸ—‘ï¸ `). Added semantic IDs to modal switcher bar and wired dynamic title/subtitle updates (`Active Pond X of Y`) on Next/Prev navigation. Fixed element selector mismatch for water colour (`#input-water-colour`, `.water-swatch-card`) so all 8 tones are clickable with visual feedback. Verified live upsert to `public.daily_pond_records`. |
 | **2026-10-07 15:30** | Pond Page UI Consistency | Standardize Telemetry Sensor Cards to Match Pond Page Bento Metrics | Replaced low-contrast cyan aero gradient on `.sensor-aero-card` with crisp, high-contrast card styling matching `.wqs-metric-card` (solid white on mobile, 75% frosted white with 1.5px subtle border & inset highlight on desktop, 14px border radius). Standardized typography with deep navy `#072642` values, `#0369a1` bold headers, and high-contrast dark secondary labels. |
+| **2026-10-07 19:15** | PWA & Offline Resilience | Service Worker, App Manifest & Offline Queue Engine | Added full PWA capabilities (`manifest.json`, `sw.js`, PWA installation banner). Created pure domain `offlineQueue.js` and IndexedDB storage `offlineQueueStore.js` with exponential backoff and automatic retry on reconnection. |
+| **2026-10-07 20:30** | Security & Access Control | Fish-Themed Passwords, Manager Master Key & Zero-Backdoor Router Guard | Implemented password authentication: Field Ops Modules 01–09 use Malay fish names (`siakap`, `kerapu`, `jenahak`, `haruan`, `bawal`, `patin`, `keli`, `tilapia`, `tongsan`) with Manager Master bypass (`todak`). Central DBMS protected with Editor (`mantaray`) and Viewer (`monodon`). Dynamic configuration stored in `public.app_passwords` and `public.module_passwords` with offline fallback caching in `security.js`. Rooted auth modal in `index.html` to eliminate invisible modal bugs. |
+| **2026-10-07 21:35** | RBAC & Security Lockdown | Strict Read-Only Viewer Lockdown in Central DBMS | Closed lifecycle termination loophole: gated `lifecycleTab.js` to hide termination and rollover buttons when `appState.userRole === "VIEWER"`. Added runtime action guards and global CSS shield (`body.isharp-viewer-mode`) hiding all mutation buttons (`.btn-save`, `.btn-danger`, `.btn-excel`, steppers) and locking the role selector dropdown. |
 
 ---
 
@@ -179,10 +182,11 @@ Designed to satisfy both **Field Workers** (who need to log 12–24 ponds in und
 - **Automated Test Suite:**
   ```bash
   cmd.exe /c "npm test"
-  # Output: 67 passing tests, 0 failures across 3 test suites (~475ms)
+  # Output: 96 passing tests, 0 failures across 3 test suites (~497ms)
   ```
-- **Database Schema Integrity:** Verified via Supabase `information_schema.columns` and round-trip queries on `public.daily_pond_records`, `public.pond_inventories`, and `public.lab_water_quality`.
-- **Git Branch:** `feature/field-ops-frutiger-aero` (isolated feature branch, undergoing 7-day field soak testing before merging to `main`).
+- **Database Schema Integrity:** Verified via Supabase `information_schema.columns` and round-trip queries on `public.daily_pond_records`, `public.pond_inventories`, `public.lab_water_quality`, `public.app_passwords`, and `public.module_passwords`.
+- **Git Branch:** `main` (active production repository).
+
 
 
 

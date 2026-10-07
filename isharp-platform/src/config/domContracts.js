@@ -276,7 +276,12 @@ export const DOM_IDS = Object.freeze({
         BTN_SAVE_AND_NEXT: "btn-modal-save-next",
         INPUT_WATER_COLOUR: "input-water-colour",
         WATER_COLOUR_LABEL: "selected-water-colour-label",
-        BTN_CLOSE_MODAL: "btn-close-entry-modal"
+        BTN_CLOSE_MODAL: "btn-close-entry-modal",
+        BTN_SWITCH_MODULE: "btn-switch-module",
+        BTN_INSTALL_PWA: "btn-field-ops-install-pwa",
+        BANNER_INSTALL_PWA: "field-ops-install-banner",
+        BTN_DISMISS_INSTALL: "btn-dismiss-install-banner",
+        BADGE_SYNC_STATUS: "badge-field-ops-sync-status"
     }
 });
 
