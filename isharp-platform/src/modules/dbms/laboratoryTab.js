@@ -7,7 +7,7 @@ import { appState } from "../../state/appState.js";
 import { LabRepository } from "../../infrastructure/repositories/labRepository.js";
 import { hasPermission, PERMISSIONS } from "../../config/permissions.js";
 import { DOM_IDS, validateContract } from "../../config/domContracts.js";
-import { evaluateParameterStatus } from "../../domain/waterQualityLimit.js";
+import { evaluateParameterStatus, getWaterQualityColorClass } from "../../domain/waterQualityLimit.js";
 
 export class LaboratoryTab {
     constructor(onOpenExcel) {
@@ -77,55 +77,72 @@ export class LaboratoryTab {
 
             // Update KPI Cards from latest sample (data[0]) via Single Source of Truth
             const latest = data[0];
-            const salEval = evaluateParameterStatus("salinity", latest.salinity_ppt);
+            const latestRatioMultiplier = (latest.calcium && latest.magnesium && latest.calcium > 0)
+                ? (latest.magnesium / latest.calcium)
+                : null;
+            const latestRatioText = latestRatioMultiplier !== null
+                ? `1 : ${latestRatioMultiplier.toFixed(1)}`
+                : '—';
+
             if (this.dom.kpiSalinity) {
                 this.dom.kpiSalinity.textContent = latest.salinity_ppt !== null ? `${latest.salinity_ppt} ppt` : '—';
-                this.dom.kpiSalinity.className = `kpi-val ${salEval.status === 'alert' ? 'text-danger font-bold' : salEval.status === 'warning' ? 'text-warning font-bold' : ''}`;
+                this.dom.kpiSalinity.className = `kpi-val ${getWaterQualityColorClass("salinity", latest.salinity_ppt)}`.trim();
             }
 
             const alkEval = evaluateParameterStatus("alkalinity", latest.alkalinity);
             if (this.dom.kpiAlkalinity) {
                 this.dom.kpiAlkalinity.textContent = latest.alkalinity !== null ? `${latest.alkalinity} mg/L` : '—';
-                this.dom.kpiAlkalinity.className = `kpi-val ${alkEval.status === 'alert' ? 'text-danger font-bold' : alkEval.status === 'warning' ? 'text-warning font-bold' : ''}`;
+                this.dom.kpiAlkalinity.className = `kpi-val ${getWaterQualityColorClass("alkalinity", latest.alkalinity)}`.trim();
             }
 
-            const nh3Eval = evaluateParameterStatus("ammonia", latest.ammonia);
             if (this.dom.kpiAmmonia) {
                 this.dom.kpiAmmonia.textContent = latest.ammonia !== null ? `${latest.ammonia} mg/L` : '—';
-                this.dom.kpiAmmonia.className = `kpi-val ${nh3Eval.status === 'alert' ? 'text-danger font-bold' : nh3Eval.status === 'warning' ? 'text-warning font-bold' : ''}`;
+                this.dom.kpiAmmonia.className = `kpi-val ${getWaterQualityColorClass("ammonia", latest.ammonia)}`.trim();
             }
 
-            const no2Eval = evaluateParameterStatus("nitrite", latest.nitrite);
             if (this.dom.kpiNitrite) {
                 this.dom.kpiNitrite.textContent = latest.nitrite !== null ? `${latest.nitrite} mg/L` : '—';
-                this.dom.kpiNitrite.className = `kpi-val ${no2Eval.status === 'alert' ? 'text-danger font-bold' : no2Eval.status === 'warning' ? 'text-warning font-bold' : ''}`;
+                this.dom.kpiNitrite.className = `kpi-val ${getWaterQualityColorClass("nitrite", latest.nitrite)}`.trim();
             }
 
-            if (this.dom.kpiCalcium) this.dom.kpiCalcium.textContent = latest.calcium !== null ? `${Math.round(latest.calcium)} mg/L` : '—';
-            if (this.dom.kpiMagnesium) this.dom.kpiMagnesium.textContent = latest.magnesium !== null ? `${Math.round(latest.magnesium)} mg/L` : '—';
+            if (this.dom.kpiCalcium) {
+                this.dom.kpiCalcium.textContent = latest.calcium !== null ? `${Math.round(latest.calcium)} mg/L` : '—';
+                this.dom.kpiCalcium.className = `kpi-val ${getWaterQualityColorClass("calcium", latest.calcium)}`.trim();
+            }
+
+            if (this.dom.kpiMagnesium) {
+                this.dom.kpiMagnesium.textContent = latest.magnesium !== null ? `${Math.round(latest.magnesium)} mg/L` : '—';
+                this.dom.kpiMagnesium.className = `kpi-val ${getWaterQualityColorClass("magnesium", latest.magnesium)}`.trim();
+            }
+
             if (this.dom.kpiCaMgRatio) {
-                const ratio = (latest.calcium && latest.magnesium && latest.calcium > 0)
-                    ? `1 : ${(latest.magnesium / latest.calcium).toFixed(1)}`
-                    : '—';
-                this.dom.kpiCaMgRatio.textContent = ratio;
+                this.dom.kpiCaMgRatio.textContent = latestRatioText;
+                this.dom.kpiCaMgRatio.className = `kpi-val ${getWaterQualityColorClass("camg_ratio", latestRatioMultiplier)}`.trim();
             }
-            if (this.dom.kpiTurbidity) this.dom.kpiTurbidity.textContent = latest.turbidity !== null ? `${latest.turbidity} NTU` : '—';
 
-            // Render Historical Logbook Rows
+            if (this.dom.kpiTurbidity) {
+                this.dom.kpiTurbidity.textContent = latest.turbidity !== null ? `${latest.turbidity} NTU` : '—';
+                this.dom.kpiTurbidity.className = `kpi-val ${getWaterQualityColorClass("turbidity", latest.turbidity)}`.trim();
+            }
+
+            // Render Historical Logbook Rows with dynamic SSOT font colors across all water quality parameters
             this.dom.tbodyWq.innerHTML = data.map(r => {
-                const rSal = evaluateParameterStatus("salinity", r.salinity_ppt);
-                const rAlk = evaluateParameterStatus("alkalinity", r.alkalinity);
-                const rNh3 = evaluateParameterStatus("ammonia", r.ammonia);
-                const rNo2 = evaluateParameterStatus("nitrite", r.nitrite);
+                const salClass = getWaterQualityColorClass("salinity", r.salinity_ppt);
+                const alkClass = getWaterQualityColorClass("alkalinity", r.alkalinity);
+                const nh3Class = getWaterQualityColorClass("ammonia", r.ammonia);
+                const no2Class = getWaterQualityColorClass("nitrite", r.nitrite);
+                const caClass = getWaterQualityColorClass("calcium", r.calcium);
+                const mgClass = getWaterQualityColorClass("magnesium", r.magnesium);
 
-                const salClass = rSal.status === 'alert' ? 'text-danger font-bold' : rSal.status === 'warning' ? 'text-warning font-bold' : '';
-                const alkClass = rAlk.status === 'alert' ? 'text-danger font-bold' : rAlk.status === 'warning' ? 'text-warning font-bold' : '';
-                const nh3Class = rNh3.status === 'alert' ? 'text-danger font-bold' : rNh3.status === 'warning' ? 'text-warning font-bold' : '';
-                const no2Class = rNo2.status === 'alert' ? 'text-danger font-bold' : rNo2.status === 'warning' ? 'text-warning font-bold' : '';
-
-                const ratio = (r.calcium && r.magnesium && r.calcium > 0)
-                    ? `1 : ${(r.magnesium / r.calcium).toFixed(1)}`
+                const rowRatioMultiplier = (r.calcium && r.magnesium && r.calcium > 0)
+                    ? (r.magnesium / r.calcium)
+                    : null;
+                const ratioText = rowRatioMultiplier !== null
+                    ? `1 : ${rowRatioMultiplier.toFixed(1)}`
                     : '—';
+                const ratioClass = getWaterQualityColorClass("camg_ratio", rowRatioMultiplier);
+
+                const turbClass = getWaterQualityColorClass("turbidity", r.turbidity);
 
                 return `
                     <tr>
@@ -135,10 +152,10 @@ export class LaboratoryTab {
                         <td class="${alkClass}">${r.alkalinity !== null ? r.alkalinity : '—'}</td>
                         <td class="${nh3Class}">${r.ammonia !== null ? r.ammonia : '—'}</td>
                         <td class="${no2Class}">${r.nitrite !== null ? r.nitrite : '—'}</td>
-                        <td>${r.calcium !== null ? Math.round(r.calcium) : '—'}</td>
-                        <td>${r.magnesium !== null ? Math.round(r.magnesium) : '—'}</td>
-                        <td><span class="font-mono">${ratio}</span></td>
-                        <td>${r.turbidity !== null ? r.turbidity : '—'}</td>
+                        <td class="${caClass}">${r.calcium !== null ? Math.round(r.calcium) : '—'}</td>
+                        <td class="${mgClass}">${r.magnesium !== null ? Math.round(r.magnesium) : '—'}</td>
+                        <td class="${ratioClass}"><span class="font-mono">${ratioText}</span></td>
+                        <td class="${turbClass}">${r.turbidity !== null ? r.turbidity : '—'}</td>
                     </tr>
                 `;
             }).join("");
@@ -151,8 +168,14 @@ export class LaboratoryTab {
     resetWqKpis() {
         if (this.dom.badgeWqCount) this.dom.badgeWqCount.textContent = "0 Records";
         if (this.dom.badgeLatestDate) this.dom.badgeLatestDate.textContent = "Last Sample: —";
-        if (this.dom.kpiSalinity) this.dom.kpiSalinity.textContent = "—";
-        if (this.dom.kpiAlkalinity) this.dom.kpiAlkalinity.textContent = "—";
+        if (this.dom.kpiSalinity) {
+            this.dom.kpiSalinity.textContent = "—";
+            this.dom.kpiSalinity.className = "kpi-val";
+        }
+        if (this.dom.kpiAlkalinity) {
+            this.dom.kpiAlkalinity.textContent = "—";
+            this.dom.kpiAlkalinity.className = "kpi-val";
+        }
         if (this.dom.kpiAmmonia) {
             this.dom.kpiAmmonia.textContent = "—";
             this.dom.kpiAmmonia.className = "kpi-val";
@@ -161,10 +184,22 @@ export class LaboratoryTab {
             this.dom.kpiNitrite.textContent = "—";
             this.dom.kpiNitrite.className = "kpi-val";
         }
-        if (this.dom.kpiCalcium) this.dom.kpiCalcium.textContent = "—";
-        if (this.dom.kpiMagnesium) this.dom.kpiMagnesium.textContent = "—";
-        if (this.dom.kpiCaMgRatio) this.dom.kpiCaMgRatio.textContent = "—";
-        if (this.dom.kpiTurbidity) this.dom.kpiTurbidity.textContent = "—";
+        if (this.dom.kpiCalcium) {
+            this.dom.kpiCalcium.textContent = "—";
+            this.dom.kpiCalcium.className = "kpi-val";
+        }
+        if (this.dom.kpiMagnesium) {
+            this.dom.kpiMagnesium.textContent = "—";
+            this.dom.kpiMagnesium.className = "kpi-val";
+        }
+        if (this.dom.kpiCaMgRatio) {
+            this.dom.kpiCaMgRatio.textContent = "—";
+            this.dom.kpiCaMgRatio.className = "kpi-val";
+        }
+        if (this.dom.kpiTurbidity) {
+            this.dom.kpiTurbidity.textContent = "—";
+            this.dom.kpiTurbidity.className = "kpi-val";
+        }
     }
 
     async loadIssues(pondIndex) {

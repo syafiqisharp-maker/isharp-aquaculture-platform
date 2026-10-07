@@ -4,6 +4,7 @@ import {
     WATER_QUALITY_THRESHOLDS,
     evaluateParameterStatus,
     getTelemetryHealthState,
+    getWaterQualityColorClass,
     evaluateAbnormalWqParameters,
     formatParameterTarget
 } from "../src/domain/waterQualityLimit.js";
@@ -184,4 +185,71 @@ test("Water Quality SSOT Regression: pond 2091701.41 triggers Ammonia alert and 
     assert.equal(turb.severity, "warning", "Turbidity 30.9 must be flagged as warning");
     assert.equal(turb.value, "30.9");
 });
+
+test("Water Quality SSOT: evaluateParameterStatus evaluates Ca:Mg Ratio correctly", () => {
+    // Optimal: 1 : 2.5 - 3.5
+    assert.equal(evaluateParameterStatus("camg_ratio", 2.5).status, "optimal");
+    assert.equal(evaluateParameterStatus("camg_ratio", 3.0).status, "optimal");
+    assert.equal(evaluateParameterStatus("camg_ratio", 3.5).status, "optimal");
+
+    // Warning: 2.0 - 2.49 and 3.51 - 4.0
+    assert.equal(evaluateParameterStatus("camg_ratio", 2.2).status, "warning");
+    assert.equal(evaluateParameterStatus("camg_ratio", 3.8).status, "warning");
+
+    // Danger / Alert: < 2.0 or > 4.0
+    assert.equal(evaluateParameterStatus("camg_ratio", 1.8).status, "alert");
+    assert.equal(evaluateParameterStatus("camg_ratio", 4.2).status, "alert");
+
+    // Invalid / missing
+    assert.equal(evaluateParameterStatus("camg_ratio", null).status, "unknown");
+});
+
+test("Water Quality SSOT: getWaterQualityColorClass returns correct font classes across all laboratory parameters", () => {
+    // Salinity
+    assert.equal(getWaterQualityColorClass("salinity", 23.0), "text-optimal font-bold");
+    assert.equal(getWaterQualityColorClass("salinity", 12.0), "text-warning font-bold");
+    assert.equal(getWaterQualityColorClass("salinity", 8.0), "text-danger font-bold");
+
+    // Alkalinity
+    assert.equal(getWaterQualityColorClass("alkalinity", 120), "text-optimal font-bold");
+    assert.equal(getWaterQualityColorClass("alkalinity", 90), "text-warning font-bold");
+    assert.equal(getWaterQualityColorClass("alkalinity", 70), "text-danger font-bold");
+
+    // Ammonia
+    assert.equal(getWaterQualityColorClass("ammonia", 0.4), "text-optimal font-bold");
+    assert.equal(getWaterQualityColorClass("ammonia", 1.0), "text-warning font-bold");
+    assert.equal(getWaterQualityColorClass("ammonia", 2.5), "text-danger font-bold");
+
+    // Nitrite
+    assert.equal(getWaterQualityColorClass("nitrite", 0.3), "text-optimal font-bold");
+    assert.equal(getWaterQualityColorClass("nitrite", 0.8), "text-warning font-bold");
+    assert.equal(getWaterQualityColorClass("nitrite", 1.2), "text-danger font-bold");
+
+    // Calcium
+    assert.equal(getWaterQualityColorClass("calcium", 320), "text-optimal font-bold");
+    assert.equal(getWaterQualityColorClass("calcium", 180), "text-warning font-bold");
+    assert.equal(getWaterQualityColorClass("calcium", 140), "text-danger font-bold");
+
+    // Magnesium
+    assert.equal(getWaterQualityColorClass("magnesium", 1069), "text-optimal font-bold");
+    assert.equal(getWaterQualityColorClass("magnesium", 500), "text-warning font-bold");
+    assert.equal(getWaterQualityColorClass("magnesium", 400), "text-danger font-bold");
+
+    // Ca:Mg Ratio
+    assert.equal(getWaterQualityColorClass("camg_ratio", 3.3), "text-optimal font-bold");
+    assert.equal(getWaterQualityColorClass("camg_ratio", 2.2), "text-warning font-bold");
+    assert.equal(getWaterQualityColorClass("camg_ratio", 1.5), "text-danger font-bold");
+
+    // Turbidity
+    assert.equal(getWaterQualityColorClass("turbidity", 6.85), "text-optimal font-bold");
+    assert.equal(getWaterQualityColorClass("turbidity", 35.0), "text-warning font-bold");
+    assert.equal(getWaterQualityColorClass("turbidity", 50.0), "text-danger font-bold");
+
+    // Missing / Empty values
+    assert.equal(getWaterQualityColorClass("salinity", null), "");
+    assert.equal(getWaterQualityColorClass("salinity", undefined), "");
+    assert.equal(getWaterQualityColorClass("salinity", "—"), "");
+    assert.equal(getWaterQualityColorClass("salinity", "--"), "");
+});
+
 

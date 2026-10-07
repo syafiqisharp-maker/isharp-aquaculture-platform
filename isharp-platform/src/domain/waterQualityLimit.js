@@ -296,7 +296,19 @@ export function evaluateParameterStatus(paramKey, rawValue) {
         return { status: "optimal", message: `Optimal Turbidity (${val.toFixed(1)} ${cfg.unit})`, label: cfg.label, unit: cfg.unit, targetText: cfg.targetText };
     }
 
-    // 11. Water Temperature
+    // 11. Calcium to Magnesium Ratio (Ca:Mg)
+    if (key === "camg_ratio" || key === "ca_mg_ratio" || key === "camg") {
+        const cfg = WATER_QUALITY_THRESHOLDS.CAMG_RATIO;
+        if (val < cfg.CRITICAL_LOW || val > cfg.CRITICAL_HIGH) {
+            return { status: "alert", message: `Severe Ca:Mg imbalance (1 : ${val.toFixed(1)})`, label: cfg.label, unit: cfg.unit, targetText: cfg.targetText };
+        }
+        if (val < cfg.OPTIMAL_MIN || val > cfg.OPTIMAL_MAX) {
+            return { status: "warning", message: `Sub-optimal Ca:Mg ratio (1 : ${val.toFixed(1)})`, label: cfg.label, unit: cfg.unit, targetText: cfg.targetText };
+        }
+        return { status: "optimal", message: `Optimal Ca:Mg ratio (1 : ${val.toFixed(1)})`, label: cfg.label, unit: cfg.unit, targetText: cfg.targetText };
+    }
+
+    // 12. Water Temperature
     if (key === "water_temp" || key === "temp" || key === "water_temp_c") {
         const cfg = WATER_QUALITY_THRESHOLDS.WATER_TEMP;
         if (val >= cfg.CRITICAL_HIGH) {
@@ -312,6 +324,22 @@ export function evaluateParameterStatus(paramKey, rawValue) {
     }
 
     return { status: "unknown", message: "Unrecognized parameter", label: paramKey, unit: "", targetText: "" };
+}
+
+/**
+ * Returns font color utility class according to evaluation status.
+ * Used across DBMS and Field Ops to highlight parameter values without badges.
+ * @param {string} paramKey
+ * @param {number|string|null} value
+ * @returns {string} 'text-optimal font-bold' | 'text-warning font-bold' | 'text-danger font-bold' | ''
+ */
+export function getWaterQualityColorClass(paramKey, value) {
+    if (value === null || value === undefined || value === "" || value === "--" || value === "—") return "";
+    const evaluation = evaluateParameterStatus(paramKey, value);
+    if (evaluation.status === "optimal") return "text-optimal font-bold";
+    if (evaluation.status === "warning") return "text-warning font-bold";
+    if (evaluation.status === "alert") return "text-danger font-bold";
+    return "";
 }
 
 /**

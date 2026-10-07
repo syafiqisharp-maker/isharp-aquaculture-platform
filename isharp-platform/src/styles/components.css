@@ -1463,6 +1463,38 @@ input[type="date"]::-webkit-calendar-picker-indicator:hover {
     font-weight: 500;
 }
 
+.data-table td.text-optimal,
+.data-table td.text-success,
+.aero-table td.text-optimal,
+.aero-table td.text-success {
+    color: var(--status-production) !important;
+}
+
+.data-table td.text-warning,
+.aero-table td.text-warning {
+    color: var(--status-maintenance) !important;
+}
+
+.data-table td.text-danger,
+.data-table td.text-alert,
+.aero-table td.text-danger,
+.aero-table td.text-alert {
+    color: var(--status-alert) !important;
+}
+
+.data-table td.text-optimal *,
+.data-table td.text-success *,
+.data-table td.text-warning *,
+.data-table td.text-danger *,
+.data-table td.text-alert *,
+.aero-table td.text-optimal *,
+.aero-table td.text-success *,
+.aero-table td.text-warning *,
+.aero-table td.text-danger *,
+.aero-table td.text-alert * {
+    color: inherit !important;
+}
+
 .data-table tr:nth-child(even),
 .aero-table tr:nth-child(even) {
     background: rgba(240, 249, 255, 0.4);
@@ -1504,6 +1536,20 @@ input[type="date"]::-webkit-calendar-picker-indicator:hover {
     display: block;
     margin: 0.25rem 0;
     font-family: var(--font-mono);
+}
+
+.kpi-val.text-optimal,
+.kpi-val.text-success {
+    color: var(--status-production) !important;
+}
+
+.kpi-val.text-warning {
+    color: var(--status-maintenance) !important;
+}
+
+.kpi-val.text-danger,
+.kpi-val.text-alert {
+    color: var(--status-alert) !important;
 }
 
 .kpi-sub {

@@ -59,3 +59,25 @@
     border: 1px solid rgba(186, 230, 253, 0.6);
     box-shadow: inset 0 1px 3px rgba(0, 30, 60, 0.04);
 }
+
+/* Water Quality Parameter Status Text Colors (SSOT) */
+.text-success,
+.text-optimal,
+.kpi-val.text-optimal,
+.data-table td.text-optimal {
+    color: var(--status-production, #059669) !important;
+}
+
+.text-warning,
+.kpi-val.text-warning,
+.data-table td.text-warning {
+    color: var(--status-maintenance, #d97706) !important;
+}
+
+.text-danger,
+.text-alert,
+.kpi-val.text-danger,
+.data-table td.text-danger {
+    color: var(--status-alert, #dc2626) !important;
+}
+

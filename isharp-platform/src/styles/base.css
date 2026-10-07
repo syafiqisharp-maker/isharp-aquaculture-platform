@@ -79,10 +79,13 @@ body::after {
 .text-center { text-align: center; }
 .text-right { text-align: right; }
 
-.text-success { color: var(--status-production); }
-.text-primary { color: var(--aero-sky-600); }
-.text-muted { color: var(--text-muted); }
-.text-danger { color: var(--status-alert); }
+.text-success,
+.text-optimal { color: var(--status-production) !important; }
+.text-warning { color: var(--status-maintenance) !important; }
+.text-primary { color: var(--aero-sky-600) !important; }
+.text-muted { color: var(--text-muted) !important; }
+.text-danger,
+.text-alert { color: var(--status-alert) !important; }
 
 /* Universal Accessibility Focus Ring (ui-ux-pro-max standard) */
 :focus-visible {
