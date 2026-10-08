@@ -17,3 +17,14 @@ Thumbs.db
 
 # Agent teamwork metadata
 .agents/
+
+# Standalone Hardware & Firmware Repositories (moved to iSHARP-Water-Quality-Station)
+Integrated WQS Code/
+LoRa/
+LoRa Receiver for WQS module1/
+Oxygen Sensor/
+pH meter/
+turbidity meter/
+ESP32_Water_Color_Sensor/
+Feed Barrel Sensor/
+water colour example/
