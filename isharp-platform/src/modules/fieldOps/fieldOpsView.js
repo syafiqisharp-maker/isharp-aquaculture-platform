@@ -117,7 +117,7 @@ export class FieldOpsView {
                         <h3 id="modal-target-module-title" style="margin: 0 0 0.35rem 0; font-size: 1.25rem; font-weight: 900; color: #0f172a;">Module Authentication</h3>
                         <p style="font-size: 0.78rem; color: #475569; margin-bottom: 1.25rem;">Enter the supervisor access password for this module</p>
                         
-                        <input type="password" id="input-module-passcode" class="form-control" placeholder="Password (e.g. m01pass)" style="font-size: 0.92rem; text-align: center; font-weight: 700; padding: 0.65rem 0.8rem; margin-bottom: 1.2rem; min-height: 44px;" />
+                        <input type="password" id="input-module-passcode" class="form-control" placeholder="Enter password" style="font-size: 0.92rem; text-align: center; font-weight: 700; padding: 0.65rem 0.8rem; margin-bottom: 1.2rem; min-height: 44px;" />
                         
                         <div style="display: flex; gap: 0.6rem; justify-content: center;">
                             <button type="button" id="btn-cancel-passcode" class="btn-action btn-secondary" style="font-size: 0.84rem; padding: 0.5rem 1.1rem; min-height: 44px;">Cancel</button>
