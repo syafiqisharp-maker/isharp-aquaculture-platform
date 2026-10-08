@@ -214,6 +214,93 @@ This file serves as a persistent record of key milestones, architecture decision
   * Verified all 89 unit and contract tests pass (`npm test`).
   * Verified Vite production build generates cleanly with 0 errors (`npm run build`).
 
+---
+
+## 2026-10-07: Supabase Database Audit & Phase 1 Security Hotfixes Executed
+* **Database Architecture & Security Audit:**
+  * Ran full Supabase security and performance advisors across all 23 base tables and 5 views.
+  * Discovered unauthenticated write vulnerabilities, disabled RLS on `app_passwords`, security definer view leakages, and 105 redundant permissive RLS policies.
+* **Phase 1 Security Hotfixes Executed & Verified:**
+  * **RLS Enabled on `app_passwords`:** Locked down `public.app_passwords` with a controlled `SELECT` policy (`Allow read app_passwords`) preventing unauthenticated table manipulation.
+  * **Protected `module_passwords`:** Altered dangerous `Allow update module_passwords` policy from `{public}` `ALL` to `authenticated` with `qual: false`, cutting off public internet write/delete access while preserving seamless frontend login reads.
+  * **Views Hardened with `security_invoker = true`:** Enforced user-level permissions on 5 views (`daily_growout_records`, `pond_cycles`, `weather_hourly_summary`, `view_pond_aeration_summary`, and `view_growout_pond_cycles`), completely resolving `0010_security_definer_view`.
+  * **Functions Search Path Locked:** Hardened 8 database functions (`log_water_quality`, `log_weather_telemetry`, `fn_terminate_cycle`, `fn_revive_cycle`, `fn_trig_batch_stocking_to_production`, `fn_delete_idle_cycle`, `fn_close_and_create_next_cycle`, `fn_create_custom_cycle`) by pinning `SET search_path = public, pg_temp`, completely resolving `0011_function_search_path_mutable`.
+  * **Migration Codified:** Saved idempotent migration to [01_phase1_security_hotfixes.sql](file:///c:/Users/syafiq/My%20Drive/Syafiq%20Water%20Quality%20Station%20Project/database_migration/01_phase1_security_hotfixes.sql).
+  * **Zero Downtime Verified:** Verified `isharp-platform` credential sync queries continue to function smoothly.
+
+---
+
+## 2026-10-07: Phase 2 Performance & Indexing Optimization Executed
+* **Foreign Key Indexing:**
+  * Created `idx_active_operational_ponds_pond_index` on `public.active_operational_ponds (pond_index)`. Completely resolved `0001_unindexed_foreign_keys` (0 findings).
+* **Duplicate Index Cleanup:**
+  * Dropped redundant duplicate indexes `idx_sampling_index_no` (on 52k-row `biometrics_sampling`), `idx_harvest_index_no` (on `pond_harvest_daily`), and `idx_issues_index_no` (on `pond_issues`), cutting unnecessary write I/O while preserving primary unique constraints (`uq_*`).
+* **RLS Multiple Permissive Policy Consolidation:**
+  * Removed redundant `SELECT` policies across 19 public tables that were causing double-evaluation on every read query.
+  * Completely eliminated `0006_multiple_permissive_policies` warnings (dropped from **105 findings down to 0**).
+* **Migration Codified:**
+  * Saved migration script to [02_phase2_performance_tuning.sql](file:///c:/Users/syafiq/My%20Drive/Syafiq%20Water%20Quality%20Station%20Project/database_migration/02_phase2_performance_tuning.sql).
+
+---
+
+## 2026-10-08: Phase 3 Schema & Architecture Hardening Executed
+* **Data Normalization (23,384 SAP Feed Records Reconnected):**
+  * Discovered single-digit cycles (.1 through .9) in `growout_pond_feed_sap` had dropped leading zeros from legacy Access exports (`2010101.3` instead of `2010101.03`), causing 23,384 feed rows to fail joins against `growout_pond_master`.
+  * Executed regex normalization across all 89,244 rows, achieving 100% match (0 orphaned rows remaining).
+* **Foreign Key Referential Integrity Enforced:**
+  * Added `fk_growout_pond_feed_sap_pond_index` on `public.growout_pond_feed_sap(pond_index) REFERENCES public.growout_pond_master(pond_index) ON DELETE CASCADE`.
+  * Added `fk_pond_harvest_plan_pond_index` on `public.pond_harvest_plan(pond_index) REFERENCES public.growout_pond_master(pond_index) ON DELETE CASCADE`.
+* **Domain Guardrails & Default Cleaning:**
+  * Cleaned uppercase defaults on `growout_pond_master` for `pond_active` (`ACTIVE`), `farm` (`SETIU`), and `pond_type` (`FULL LINING`).
+  * Confirmed and verified database-level `CHECK` constraints `chk_pond_active` and `chk_pond_status`.
+* **Sync Pipeline Hardened:**
+  * Updated Stage 11 in [sync_weekly_access.ps1](file:///c:/Users/syafiq/My%20Drive/Syafiq%20Water%20Quality%20Station%20Project/database_migration/sync_weekly_access.ps1#L867) and [migrate_growout_pond_feed_sap.ps1](file:///c:/Users/syafiq/My%20Drive/Syafiq%20Water%20Quality%20Station%20Project/database_migration/migrate_growout_pond_feed_sap.ps1#L134) to automatically apply zero-padding on all future imports.
+* **Migration Codified:**
+  * Saved migration script to [03_phase3_schema_hardening.sql](file:///c:/Users/syafiq/My%20Drive/Syafiq%20Water%20Quality%20Station%20Project/database_migration/03_phase3_schema_hardening.sql).
+
+---
+
+## 2026-10-08: DBMS Platform End-to-End Live Storage Verification
+* **Synthetic Live REST Probe (`verify_dbms_e2e_write.mjs`):**
+  * Created permanent regression testing probe in `isharp-platform/scripts/verify_dbms_e2e_write.mjs` and wired to `npm run test:e2e`.
+  * Ran probe against production Supabase cluster (`keappoukeagyzpoxkrru.supabase.co`) with 100% pass rate (14/14 tests passed).
+* **Validated Live Storage Operations:**
+  * **Daily Field Records & Treatments:** Verified live `POST`, `PATCH`, and joined relational read queries on `daily_pond_records` and `mineral_probiotic_used`.
+  * **Biometrics Sampling:** Verified live insert and retrieval on `biometrics_sampling`.
+  * **Harvest & Sales:** Verified live insertion of partial harvest events and commercial sales grading logs.
+  * **Automated Teardown:** Guaranteed zero leftover test data via `finally` cleanup handlers.
+* **Integrity Guardrails Confirmed Active:**
+  * Confirmed PostgreSQL `CHECK` constraint actively rejects invalid/typo status entries.
+  * Confirmed PostgreSQL `FOREIGN KEY` constraint actively blocks orphaned feeding records.
+* **Build Integrity:** Verified full Vite production build passes cleanly (`dist/` generated with 0 errors).
+
+---
+
+## 2026-10-08: Phase 4 Spreadsheet De-Normalization & Architectural Refactoring
+* **Schema Decoupling Executed:**
+  * Created `public.pond_event_date` (event log pattern) and safely migrated all 34,250 historical date entries.
+  * Created `public.pond_initiatives` (one-to-many list) and migrated all 1,038 experimental farm trials.
+  * Established `pond_aerator_inventory` as the single source of truth for paddlewheels.
+  * Cleaned 16 spreadsheet-like columns out of `public.growout_pond_master`.
+* **Database Views Backward Compatibility (The Smart Fix):**
+  * Updated `view_growout_pond_cycles` and `pond_cycles` to virtually reconstruct all 11 dates, paddlewheel units, and trial names through left joins.
+  * Preserved 100% frontend read compatibility across existing dashboards and analytics modules.
+* **Security & Performance Optimization:**
+  * Added covering indexes `idx_pond_event_date_pond_index` and `idx_pond_initiatives_pond_index` (clearing all unindexed foreign key warnings).
+  * Added unique constraints `uq_pond_event_date_pond_event` and `uq_pond_initiatives_pond_name` enabling idempotent upsert capabilities.
+  * Configured RLS write access for operational clients on newly created tables.
+* **Application Updates:**
+  * Refactored Staff Tab (`staffTabTemplate.js` and `staffTab.js`) to provide an interactive, dynamic list for farm trials with live Add/Remove buttons.
+  * Updated Field Ops `ManagementEntryPage.js` to route aerator updates to `pond_aerator_inventory`.
+  * Updated Stage 1 of `sync_weekly_access.ps1` to route weekly Access imports to `pond_event_date` and `pond_initiatives`.
+* **Automated E2E Verification:**
+  * Extended `verify_dbms_e2e_write.mjs` to include Step 5 probing Phase 4 structures.
+  * Probe verified 100% operational (19/19 tests passed with immediate synthetic data teardown).
+
+
+
+
+
 
 
 

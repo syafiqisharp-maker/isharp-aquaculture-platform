@@ -9,6 +9,7 @@ import { InventoryRepository } from "../../infrastructure/repositories/inventory
 import { StaffRepository } from "../../infrastructure/repositories/staffRepository.js";
 import { Toast } from "../../components/Toast.js";
 import { DOM_IDS } from "../../config/domContracts.js";
+import { supabase } from "../../infrastructure/supabase.js";
 
 export class StaffTab {
     constructor() {
@@ -36,9 +37,8 @@ export class StaffTab {
             btnReset: document.getElementById(DOM_IDS.STAFF.BTN_RESET),
 
             // Initiatives & Special Trials
-            inputInitiative: document.getElementById(DOM_IDS.STAFF.INPUT_INITIATIVE),
-            inputInitiative1: document.getElementById(DOM_IDS.STAFF.INPUT_INITIATIVE1),
-            inputInitiative2: document.getElementById(DOM_IDS.STAFF.INPUT_INITIATIVE2),
+            initiativeListContainer: document.getElementById("initiative-list-container"),
+            btnAddInitiative: document.getElementById("btn-add-initiative"),
             btnSaveInitiative: document.getElementById(DOM_IDS.STAFF.BTN_SAVE_INITIATIVE),
 
             // Operational Notes
@@ -68,6 +68,10 @@ export class StaffTab {
 
         if (this.dom.btnSaveInitiative) {
             this.dom.btnSaveInitiative.addEventListener("click", () => this.handleSaveInitiatives());
+        }
+
+        if (this.dom.btnAddInitiative) {
+            this.dom.btnAddInitiative.addEventListener("click", () => this.addInitiativeRow());
         }
 
         if (this.dom.btnReset) {
@@ -150,11 +154,50 @@ export class StaffTab {
         await this.loadNotes(pond.pond_index);
     }
 
-    loadInitiatives(pond) {
-        if (!pond) return;
-        if (this.dom.inputInitiative) this.dom.inputInitiative.value = pond.initiative || "";
-        if (this.dom.inputInitiative1) this.dom.inputInitiative1.value = pond.initiative1 || "";
-        if (this.dom.inputInitiative2) this.dom.inputInitiative2.value = pond.initiative2 || "";
+    async loadInitiatives(pond) {
+        if (!this.dom.initiativeListContainer) return;
+        this.dom.initiativeListContainer.innerHTML = '<span style="font-size:0.8rem; color:#64748b;">Loading initiatives...</span>';
+        
+        if (!pond || !pond.pond_index) {
+            this.dom.initiativeListContainer.innerHTML = '';
+            return;
+        }
+
+        try {
+            const data = await supabase.request(`pond_initiatives?pond_index=eq.${pond.pond_index}&select=initiative_name`);
+            this.dom.initiativeListContainer.innerHTML = '';
+            
+            if (!data || data.length === 0) {
+                // Add one empty row by default
+                this.addInitiativeRow("");
+            } else {
+                data.forEach(item => this.addInitiativeRow(item.initiative_name));
+            }
+        } catch (err) {
+            console.error("Failed to load initiatives:", err);
+            this.dom.initiativeListContainer.innerHTML = '<span style="font-size:0.8rem; color:#ef4444;">Failed to load initiatives.</span>';
+        }
+    }
+
+    addInitiativeRow(val = "") {
+        if (!this.dom.initiativeListContainer) return;
+        // Remove "Loading..." text if present
+        if (this.dom.initiativeListContainer.querySelector("span")) {
+            this.dom.initiativeListContainer.innerHTML = '';
+        }
+
+        const div = document.createElement("div");
+        div.style.display = "flex";
+        div.style.gap = "0.5rem";
+        div.style.alignItems = "center";
+        
+        div.innerHTML = `
+            <input type="text" class="form-control initiative-input" placeholder="e.g. Probiotic Trial" value="${val}" style="font-size: 0.82rem; padding: 0.5rem 0.75rem; border: 1px solid #cbd5e1; border-radius: 6px; flex: 1;">
+            <button type="button" class="btn-action btn-danger remove-initiative-btn" style="padding: 0.4rem 0.6rem; border-radius: 4px; font-size: 0.75rem;">🗑️</button>
+        `;
+
+        div.querySelector(".remove-initiative-btn").addEventListener("click", () => div.remove());
+        this.dom.initiativeListContainer.appendChild(div);
     }
 
     clearForm() {
@@ -167,9 +210,11 @@ export class StaffTab {
                 el.style.color = "#0f172a";
             }
         });
-        [this.dom.inputInitiative, this.dom.inputInitiative1, this.dom.inputInitiative2].forEach(el => {
-            if (el) el.value = "";
-        });
+        
+        if (this.dom.initiativeListContainer) {
+            this.dom.initiativeListContainer.innerHTML = '';
+            this.addInitiativeRow("");
+        }
     }
 
     /**
@@ -256,7 +301,7 @@ export class StaffTab {
     }
 
     /**
-     * Saves initiative / special trial titles to growout_pond_master
+     * Saves initiative / special trial titles to pond_initiatives
      */
     async handleSaveInitiatives() {
         if (!this.currentPond || !this.currentPond.pond_index) {
@@ -273,21 +318,27 @@ export class StaffTab {
         }
 
         try {
-            const updates = {
-                initiative: this.dom.inputInitiative ? this.dom.inputInitiative.value.trim() || null : null,
-                initiative1: this.dom.inputInitiative1 ? this.dom.inputInitiative1.value.trim() || null : null,
-                initiative2: this.dom.inputInitiative2 ? this.dom.inputInitiative2.value.trim() || null : null
-            };
+            // Gather all inputs
+            const inputs = Array.from(this.dom.initiativeListContainer.querySelectorAll(".initiative-input"));
+            const values = inputs.map(input => input.value.trim()).filter(v => v.length > 0);
 
-            await PondRepository.updateCycle(this.currentPond.pond_index, updates);
+            // Step 1: Delete existing initiatives for this pond
+            await supabase.request(`pond_initiatives?pond_index=eq.${this.currentPond.pond_index}`, { method: 'DELETE' });
 
-            // Update in-memory pond state so Master Tab hero snapshot refreshes immediately
-            Object.assign(this.currentPond, updates);
-            if (appState.currentPond && appState.currentPond.pond_index === this.currentPond.pond_index) {
-                Object.assign(appState.currentPond, updates);
-                appState.notify("pondChanged", appState.currentPond);
+            // Step 2: Insert new initiatives if any
+            if (values.length > 0) {
+                const payload = values.map(v => ({
+                    pond_index: this.currentPond.pond_index,
+                    initiative_name: v
+                }));
+                await supabase.request(`pond_initiatives`, {
+                    method: 'POST',
+                    body: JSON.stringify(payload)
+                });
             }
 
+            // Update local state so UI doesn't look broken (although MasterTab doesn't fetch initiatives directly yet)
+            // We just notify success.
             Toast.success(`Special trials & initiatives saved for ${this.currentPond.pond || 'Pond'}!`);
         } catch (err) {
             console.error("Save initiatives failed:", err);

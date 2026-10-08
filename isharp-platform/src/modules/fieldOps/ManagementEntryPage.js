@@ -418,11 +418,26 @@ export class ManagementEntryPage {
             console.error("Management Entry Save Error:", err);
             const isNetworkErr = !OfflineSync.isOnline() || err.name === "AbortError" || /failed to fetch|network|timeout|connection/i.test(err.message || "");
             if (isNetworkErr) {
-                // Queue staff & aerators to growout_pond_master
+                // Queue staff to growout_pond_master
                 OfflineSync.queueRequest(`growout_pond_master?pond_index=eq.${encodeURIComponent(pondIndex)}`, {
                     method: "PATCH",
-                    body: { ...staffAssignments, aerator_1hp: u1, aerator_2hp: u2 }
+                    body: { ...staffAssignments }
                 }, { type: "management_master", pondIndex });
+                
+                // Queue aerators to pond_aerator_inventory
+                OfflineSync.queueRequest("pond_aerator_inventory?on_conflict=pond_index,hp", {
+                    method: "POST",
+                    headers: { "Prefer": "resolution=merge-duplicates" },
+                    body: aeratorList.map(a => ({
+                        pond_index: pondIndex,
+                        pond: pondLabel,
+                        aerator_model: `${a.hp} HP Paddlewheel`,
+                        hp: a.hp,
+                        total_units: a.total_units,
+                        active_units: a.total_units,
+                        updated_at: new Date().toISOString()
+                    }))
+                }, { type: "management_aerator", pondIndex });
 
                 // Queue equipment & notes to pond_inventories
                 OfflineSync.queueRequest("pond_inventories?on_conflict=pond_index", {

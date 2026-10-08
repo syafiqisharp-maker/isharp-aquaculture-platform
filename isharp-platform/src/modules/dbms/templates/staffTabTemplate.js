@@ -94,28 +94,17 @@ export function getStaffTabHtml() {
                 </div>
 
                 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 0.85rem;">
-                    <!-- Initiative (Primary) -->
-                    <div class="form-group">
-                        <label for="input-initiative" style="font-size: 0.76rem; font-weight: 700; color: #334155; margin-bottom: 0.35rem; display: block;">
-                            🔬 Initiative (Primary Trial)
+                    <!-- Dynamic Initiatives Container -->
+                    <div class="form-group" style="grid-column: 1 / -1;">
+                        <label style="font-size: 0.76rem; font-weight: 700; color: #334155; margin-bottom: 0.35rem; display: block;">
+                            🔬 Initiatives & Special Trials
                         </label>
-                        <input type="text" id="input-initiative" class="form-control" placeholder="e.g. Probiotic Trial - Brand X" style="font-size: 0.82rem; padding: 0.5rem 0.75rem; border: 1px solid #cbd5e1; border-radius: 6px; width: 100%;">
-                    </div>
-
-                    <!-- Initiative 1 (Secondary) -->
-                    <div class="form-group">
-                        <label for="input-initiative1" style="font-size: 0.76rem; font-weight: 700; color: #334155; margin-bottom: 0.35rem; display: block;">
-                            ⚙️ Initiative 1 (Secondary Trial / Protocol)
-                        </label>
-                        <input type="text" id="input-initiative1" class="form-control" placeholder="e.g. Low Density Stocking (70 PL/m²)" style="font-size: 0.82rem; padding: 0.5rem 0.75rem; border: 1px solid #cbd5e1; border-radius: 6px; width: 100%;">
-                    </div>
-
-                    <!-- Initiative 2 (Tertiary) -->
-                    <div class="form-group">
-                        <label for="input-initiative2" style="font-size: 0.76rem; font-weight: 700; color: #334155; margin-bottom: 0.35rem; display: block;">
-                            🌊 Initiative 2 (Tertiary Trial / Equipment)
-                        </label>
-                        <input type="text" id="input-initiative2" class="form-control" placeholder="e.g. Custom Spiral Paddlewheel" style="font-size: 0.82rem; padding: 0.5rem 0.75rem; border: 1px solid #cbd5e1; border-radius: 6px; width: 100%;">
+                        <div id="initiative-list-container" style="display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 0.75rem;">
+                            <!-- Dynamic initiative inputs will be rendered here -->
+                        </div>
+                        <button type="button" id="btn-add-initiative" class="btn-action btn-secondary" style="font-size: 0.75rem; padding: 0.25rem 0.75rem; border-radius: 4px; display: inline-flex; align-items: center; gap: 0.2rem;">
+                            <span>➕ Add Initiative</span>
+                        </button>
                     </div>
                 </div>
             </div>

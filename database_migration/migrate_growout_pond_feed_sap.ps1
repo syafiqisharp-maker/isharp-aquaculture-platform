@@ -132,6 +132,10 @@ $occurrence = 1
 while ($reader.Read()) {
     $orderno = SafeString $reader["Orderno"]
     $pIdx = SafeString $reader["SapPondidx"]
+    # Ensure single-digit cycles (.1 -> .9) are normalized to standard 2-digit format (.01 -> .09)
+    if ($pIdx -and ($pIdx -match '\.([0-9])$')) {
+        $pIdx = $pIdx -replace '\.([0-9])$', '.0$1'
+    }
     $postDate = SafeDate $reader["SapPostDate"]
     $feedIdx = SafeString $reader["SapFeedidx"]
     $feedName = SafeString $reader["SapFeedName"]

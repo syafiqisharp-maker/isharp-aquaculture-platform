@@ -169,6 +169,8 @@ $cmd.CommandText = "SELECT PondIndex, pond, modl, row, cropno, cycleno, [pond st
 $reader = $cmd.ExecuteReader()
 
 $masterBatch = @()
+$dateBatch = @()
+$initBatch = @()
 $masterCount = 0
 
 while ($reader.Read()) {
@@ -203,6 +205,7 @@ while ($reader.Read()) {
 
     $pLabel = if ($pIdx.Length -ge 7) { "$($pIdx.Substring(1,2)).$($pIdx.Substring(3,2)).$($pIdx.Substring(5,2))" } else { SafeString $reader["pond"] }
 
+    # Refactored GrowoutPondMaster record (schema hardened, spreadsheet columns extracted)
     $obj = [ordered]@{
         pond_index = $pIdx
         pond = $pLabel
@@ -222,28 +225,52 @@ while ($reader.Read()) {
         idle_days = 0
         idle_status = SafeString $reader["IdleStatus"]
         water_type = $(if ($reader["water type"] -ne [DBNull]::Value) { SafeString $reader["water type"] } else { "SEA WATER" })
-        initiative = SafeString $reader["Initiative"]
-        initiative1 = SafeString $reader["Initiative1"]
-        initiative2 = SafeString $reader["Initiative2"]
         strategy = SafeString $reader["strategy"]
         tested = SafeString $reader["Tested"]
-        aerator_1hp = $(if ($reader["I HP"] -ne [DBNull]::Value) { SafeInt $reader["I HP"] } else { 0 })
-        aerator_2hp = $(if ($reader["2 HP"] -ne [DBNull]::Value) { SafeInt $reader["2 HP"] } else { 0 })
-        date_plan_stock = SafeDate $reader["DatePlanStock"]
-        date_disease = SafeDate $reader["date disease"]
-        date_cycle = SafeDate $reader["date cycle"]
-        date_cleaning = SafeDate $reader["date cleaning"]
-        date_repair = SafeDate $reader["DateRepair"]
-        date_filling = SafeDate $reader["date filling"]
-        date_culture = SafeDate $reader["date culture"]
-        date_baby_box = SafeDate $reader["DateBabyBox"]
-        date_qaqc = SafeDate $reader["DateQaqc"]
-        date_ready = SafeDate $reader["date ready"]
-        date_close = $dtClose
     }
     $masterBatch += $obj
     $sbPondIndices.Add($pIdx) | Out-Null
     $masterCount++
+
+    # Collect lifecycle event dates for pond_event_date table
+    $dateMap = @{
+        "disease"    = SafeDate $reader["date disease"]
+        "close"      = $dtClose
+        "cycle"      = SafeDate $reader["date cycle"]
+        "cleaning"   = SafeDate $reader["date cleaning"]
+        "repair"     = SafeDate $reader["DateRepair"]
+        "filling"    = SafeDate $reader["date filling"]
+        "culture"    = SafeDate $reader["date culture"]
+        "baby_box"   = SafeDate $reader["DateBabyBox"]
+        "qaqc"       = SafeDate $reader["DateQaqc"]
+        "ready"      = SafeDate $reader["date ready"]
+        "plan_stock" = SafeDate $reader["DatePlanStock"]
+    }
+    foreach ($evt in $dateMap.Keys) {
+        $dVal = $dateMap[$evt]
+        if ($dVal) {
+            $dateBatch += [ordered]@{
+                pond_index = $pIdx
+                event_name = $evt
+                event_date = $dVal
+            }
+        }
+    }
+
+    # Collect initiatives for pond_initiatives table
+    $rawInits = @(
+        (SafeString $reader["Initiative"]),
+        (SafeString $reader["Initiative1"]),
+        (SafeString $reader["Initiative2"])
+    )
+    foreach ($initStr in $rawInits) {
+        if ($initStr -and $initStr.Trim() -ne "") {
+            $initBatch += [ordered]@{
+                pond_index = $pIdx
+                initiative_name = $initStr.Trim()
+            }
+        }
+    }
 }
 $reader.Close()
 
@@ -252,6 +279,21 @@ if ($masterBatch.Count -gt 0) {
     Write-Output "  [OK] Upserted $masterCount active/recent culture cycles into growout_pond_master."
 } else {
     Write-Output "  [OK] All master cycles already up-to-date."
+}
+
+if ($dateBatch.Count -gt 0) {
+    # Chunk dates to avoid payload size limits
+    $chunkSize = 200
+    for ($i = 0; $i -lt $dateBatch.Count; $i += $chunkSize) {
+        $slice = $dateBatch[$i..[Math]::Min($i + $chunkSize - 1, $dateBatch.Count - 1)]
+        Post-BatchToSupabase "pond_event_date" $slice "pond_index,event_name"
+    }
+    Write-Output "  [OK] Upserted $($dateBatch.Count) lifecycle dates into pond_event_date."
+}
+
+if ($initBatch.Count -gt 0) {
+    Post-BatchToSupabase "pond_initiatives" $initBatch "pond_index,initiative_name"
+    Write-Output "  [OK] Upserted $($initBatch.Count) farm trials into pond_initiatives."
 }
 
 # -------------------------------------------------------------
@@ -865,6 +907,10 @@ if ($batch.Count -gt 0) {
     while ($reader.Read()) {
         $orderno = SafeString $reader["Orderno"]
         $pIdx = SafeString $reader["SapPondidx"]
+        # Ensure single-digit cycles (.1 -> .9) are normalized to standard 2-digit format (.01 -> .09)
+        if ($pIdx -and ($pIdx -match '\.([0-9])$')) {
+            $pIdx = $pIdx -replace '\.([0-9])$', '.0$1'
+        }
         $postDate = SafeDate $reader["SapPostDate"]
         $feedIdx = SafeString $reader["SapFeedidx"]
         $feedName = SafeString $reader["SapFeedName"]
