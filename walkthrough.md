@@ -323,6 +323,17 @@ This file serves as a persistent record of key milestones, architecture decision
   * **In-Flight Sync Deduplication:** Added `_syncPromise` mutex lock to avoid duplicate parallel Supabase fetches on application bootstrap.
   * **Security Test Suite Added:** Authored `tests/security.test.js` asserting all 12 credentials across both subsystems (98/98 tests passing).
 
+---
+
+## 2026-10-11: Friday Sync Engine Re-Targeted to Primary D:\DB Store
+* **Access DB Source Migration:**
+  * Re-targeted [`sync_weekly_access.ps1`](file:///c:/Users/syafiq/My%20Drive/Syafiq%20Water%20Quality%20Station%20Project/database_migration/sync_weekly_access.ps1) to scan `D:\DB` as the authoritative store.
+  * Hardened detection logic with `Bab SGo*.accdb` filter, ignoring Kerteh (`Bab KGo`) and non-Setiu files.
+  * Added resilient date parser handling both `26.MM.DD` and legacy `DD.MM.26` notations to guarantee selection of the newest weekly cycle database.
+  * Verified live detection: accurately resolves `D:\DB\Bab SGo (r41) 26.10.09.accdb` (2026-10-09 release).
+  * Verified OLEDB connection: `Microsoft.ACE.OLEDB.16.0` connects and opens the 180.8 MB database cleanly.
+
+
 
 
 

@@ -4,7 +4,7 @@ param(
 
 $ErrorActionPreference = "Stop"
 
-$legacyDbDir = "C:\Users\syafiq\My Drive\Syafiq Water Quality Station Project\Pond Operations Management System\Legacy Access DB"
+$legacyDbDir = "D:\DB"
 $supabaseUrl = "https://keappoukeagyzpoxkrru.supabase.co"
 $supabaseKey = "sb_publishable_kObmQ9Ha4NLrl9vQXy5k5w_Ie9-EQ4s"
 
@@ -20,19 +20,24 @@ Write-Output "  iSHARP ENTERPRISE SMART WEEKLY SYNC (Access -> Supabase)"
 Write-Output "  Start Time: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')"
 Write-Output "=========================================================="
 
-# Auto-detect latest Access file if not specified
+# Auto-detect latest Setiu Access file from D:\DB if not explicitly specified
 if (-not $dbPath -or -not (Test-Path $dbPath)) {
-    Write-Output "Scanning for latest Access DB in: $legacyDbDir"
-    $latestFile = Get-ChildItem -Path $legacyDbDir -Filter "*.accdb" |
+    if (-not (Test-Path $legacyDbDir)) {
+        throw "Access database directory not found: '$legacyDbDir'. Please ensure the D: drive is connected."
+    }
+    Write-Output "Scanning for latest Setiu Access DB in: $legacyDbDir"
+    $latestFile = Get-ChildItem -Path $legacyDbDir -Filter "Bab SGo*.accdb" |
         Sort-Object {
-            if ($_.Name -match '(\d{2})\.(\d{2})\.(\d{2})') {
-                "20$($Matches[1])-$($Matches[2])-$($Matches[3])"
+            if ($_.Name -match '26\.(\d{2})\.(\d{2})') {
+                "2026-$($Matches[1])-$($Matches[2])"
+            } elseif ($_.Name -match '(\d{2})\.(\d{2})\.26') {
+                "2026-$($Matches[2])-$($Matches[1])"
             } else {
                 $_.LastWriteTime.ToString("yyyy-MM-dd HH:mm:ss")
             }
         } -Descending | Select-Object -First 1
     if (-not $latestFile) {
-        throw "No .accdb database file found in $legacyDbDir"
+        throw "No Setiu Access database ('Bab SGo*.accdb') found in $legacyDbDir"
     }
     $dbPath = $latestFile.FullName
 }
