@@ -331,7 +331,34 @@ This file serves as a persistent record of key milestones, architecture decision
   * Hardened detection logic with `Bab SGo*.accdb` filter, ignoring Kerteh (`Bab KGo`) and non-Setiu files.
   * Added resilient date parser handling both `26.MM.DD` and legacy `DD.MM.26` notations to guarantee selection of the newest weekly cycle database.
   * Verified live detection: accurately resolves `D:\DB\Bab SGo (r41) 26.10.09.accdb` (2026-10-09 release).
-  * Verified OLEDB connection: `Microsoft.ACE.OLEDB.16.0` connects and opens the 180.8 MB database cleanly.
+  * Verified OLEDB connection: `Microsoft.ACE.OLEDB.16.0` connects and opens the 172.41 MB database cleanly.
+
+---
+
+## 2026-10-11: Live Synchronization Execution & Phase 4 Audit Verification
+* **Live Test Execution (`Run_Friday_Sync.bat` / `sync_weekly_access.ps1`):**
+  * Ran end-to-end delta synchronization from `D:\DB\Bab SGo (r41) 26.10.09.accdb` directly to Supabase cloud.
+  * **Result:** Exit code 0 (Completed cleanly in 2m 15s).
+  * **Master Cycles:** 312 active cycles upserted to `growout_pond_master` matching stripped 20-column schema.
+  * **Lifecycle Dates:** 2,122 dates mapped to `pond_event_date`.
+  * **Active Gatekeeper:** 132 ponds reconciled in `active_operational_ponds`.
+  * **Delta Additions:** 3 new stocking batches, 27 daily harvest logs, 65 harvest sales records, 89 biometrics samplings safely ingested with 0 duplicate collisions.
+  * **Aerator & SAP Feeds:** 216 aerator cycles synced to `pond_aerator_inventory`, and 3,764 SAP feed records safely synced to `growout_pond_feed_sap` with zero-padded cycle keys.
+
+---
+
+## 2026-10-11: Field Operations 24-Pond Map DOC Card Visual Hierarchy Improvement
+* **Mobile Layout Problem:**
+  * Floating `DOC` badge on the top right was colliding with pond code (e.g. `05.09.01`) on compact 2-column mobile screens, creating horizontal squeeze and awkward clipping against tile borders.
+* **UI/UX Pro Max Remediation:**
+  * **Full-Width Pond Header:** Freed up 100% of the tile top row for the pond number and 3D status orb in [`FieldOpsMap.js`](file:///c:/Users/syafiq/My%20Drive/Syafiq%20Water%20Quality%20Station%20Project/isharp-platform/src/modules/fieldOps/FieldOpsMap.js).
+  * **Integrated Metadata Subtitle:** Relocated DOC directly into the subtitle row alongside Cycle and Aerator HP (`C40 • DOC 65 • ⚡0 HP`).
+  * **Crisp Pill Styling:** Applied `.pond-doc-badge-pill` with soft-sky background (`#e0f2fe`), dark sky text (`#0369a1`), 1px border (`#bae6fd`), and subtle inner shine in [`field-ops-mobile.css`](file:///c:/Users/syafiq/My%20Drive/Syafiq%20Water%20Quality%20Station%20Project/isharp-platform/src/styles/field-ops-mobile.css).
+  * **Zero Wrapping / Collision:** Eliminates clipping and wrapping on mobile screens down to 320px width.
+* **Verification:**
+  * 98/98 unit & contract tests passed (`npm test`).
+  * Vite production build succeeded in 1.59s.
+
 
 
 
