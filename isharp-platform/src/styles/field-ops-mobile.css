@@ -1186,18 +1186,30 @@ input[type="number"] {
     color: rgba(100, 116, 139, 0.4) !important;
 }
 
-#view-field-ops .pond-doc-badge-neutral {
-    font-size: 0.68rem !important;
+#view-field-ops .pond-doc-badge-neutral,
+#view-field-ops .pond-doc-badge-pill {
+    font-size: 0.64rem !important;
     font-weight: 800 !important;
     background: #e0f2fe !important;
-    color: #0284c7 !important;
+    color: #0369a1 !important;
     border: 1px solid #bae6fd !important;
-    padding: 0.2rem 0.55rem !important;
+    padding: 0.12rem 0.45rem !important;
     border-radius: 999px !important;
     box-shadow: inset 0 1px 1px #fff !important;
     display: inline-flex !important;
     align-items: center !important;
     white-space: nowrap !important;
+    letter-spacing: 0.02em !important;
+    line-height: 1.2 !important;
+}
+
+#view-field-ops .pond-meta-row {
+    line-height: 1.2 !important;
+}
+
+#view-field-ops .pond-meta-separator {
+    opacity: 0.6 !important;
+    font-size: 0.65rem !important;
 }
 
 /* Ambient Micro-Bubble System Disabled for Field Ops (Maximizes Mobile Frame Rate) */

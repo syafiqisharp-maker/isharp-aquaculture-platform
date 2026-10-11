@@ -586,23 +586,20 @@ export class FieldOpsMap {
         return `
             <div class="field-ops-pond-tile pond-active ${todayRecord ? 'status-logged' : 'status-pending'}" data-pond-label="${pondLabel}" style="--pond-border: ${borderColor}; --pond-shadow: ${shadowGlow};" title="Click card to open Pond Details">
                 
-                <!-- Tile Header: High-Contrast Pond Code & DOC Badge -->
+                <!-- Tile Header: High-Contrast Pond Code & Subtitle Metadata (Cycle · DOC · HP) -->
                 <div>
-                    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.35rem;">
-                        <div>
-                            <div class="pond-no-box" style="font-size: 1.15rem; font-weight: 900; line-height: 1.1; display: flex; align-items: center; gap: 6px;">
-                                <span class="aero-orb ${data.orbClass || 'orb-emerald'}" title="Feeding Action: ${data.feedingAction?.badgeText || 'Normal Feed'}"></span>
-                                <span class="pond-title-text">${pondLabel}</span>
-                            </div>
-                            <div style="font-size: 0.72rem; font-weight: 800; color: #0284c7; margin-top: 0.15rem; display: flex; align-items: center; gap: 6px;">
-                                <span>Cycle ${cycleNumber}</span>
-                                <span style="color: #64748b; font-weight: 700;">•</span>
-                                <span style="color: #0369a1; font-weight: 800;">⚡ ${totalHP} HP</span>
-                            </div>
+                    <div class="pond-header-block" style="margin-bottom: 0.4rem;">
+                        <div class="pond-no-box" style="font-size: 1.15rem; font-weight: 900; line-height: 1.15; display: flex; align-items: center; gap: 6px; letter-spacing: -0.01em;">
+                            <span class="aero-orb ${data.orbClass || 'orb-emerald'}" title="Feeding Action: ${data.feedingAction?.badgeText || 'Normal Feed'}"></span>
+                            <span class="pond-title-text" style="color: #0f172a;">${pondLabel}</span>
                         </div>
-                        <span class="pond-doc-badge-neutral">
-                            DOC ${doc}
-                        </span>
+                        <div class="pond-meta-row" style="font-size: 0.72rem; font-weight: 700; color: #475569; margin-top: 0.25rem; display: flex; align-items: center; gap: 5px; flex-wrap: wrap;">
+                            <span style="color: #0369a1; font-weight: 800;">C${cycleNumber}</span>
+                            <span class="pond-meta-separator" style="color: #94a3b8; font-weight: 400;">•</span>
+                            <span class="pond-doc-badge-pill" title="Days of Culture: ${doc}">DOC ${doc}</span>
+                            <span class="pond-meta-separator" style="color: #94a3b8; font-weight: 400;">•</span>
+                            <span style="color: #0284c7; font-weight: 800; display: inline-flex; align-items: center; gap: 2px;">⚡${totalHP} HP</span>
+                        </div>
                     </div>
 
                     <!-- Middle Content: Live Telemetry & Alerts -->
