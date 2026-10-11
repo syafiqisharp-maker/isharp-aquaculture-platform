@@ -143,14 +143,19 @@ class SecurityService {
             const viewerPass = (this.cache.appPasswords.dbms_viewer || OFFLINE_PASSWORDS.app.dbms_viewer).toLowerCase();
             const managerPass = (this.cache.appPasswords.manager_master || OFFLINE_PASSWORDS.app.manager_master).toLowerCase();
 
-            // Manager master ("todak") or DBMS editor ("mantaray") grants full EDITOR role
-            if (normalized === editorPass || normalized === managerPass) {
+            // 1. Strict Editor: Only mantaray
+            if (normalized === editorPass) {
                 this.setDbmsSession("EDITOR");
                 return "EDITOR";
             }
 
-            // Viewer ("monodon") grants VIEWER read-only role
-            if (normalized === viewerPass) {
+            // 2. Check if entered password matches any of the 9 module/supervisor fish passwords
+            const allModulePasses = Object.values({ ...OFFLINE_PASSWORDS.modules, ...this.cache.modulePasswords })
+                .map(p => String(p).trim().toLowerCase());
+            const isModulePass = allModulePasses.includes(normalized);
+
+            // Viewer: monodon (viewer), todak (manager master), or any of the 9 supervisor passcodes
+            if (normalized === viewerPass || normalized === managerPass || isModulePass) {
                 this.setDbmsSession("VIEWER");
                 return "VIEWER";
             }
