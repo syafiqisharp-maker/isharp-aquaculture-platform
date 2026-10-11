@@ -311,6 +311,18 @@ This file serves as a persistent record of key milestones, architecture decision
   * Live E2E probe verified 100% operational (19/19 tests passed).
   * Vite production build generated cleanly with 0 errors (`npm run build`).
 
+---
+
+## 2026-10-11: Password Infrastructure Reliability & Latency Hotfix
+* **Root-Cause Remediation for "Hit-and-Miss" Authentication:**
+  * **0ms Cached Validation:** Re-architected `verifyDbmsPassword` and `verifyFieldOpsPassword` in `security.js` to immediately validate against in-memory cached credentials and offline defaults. Completely eliminates 25-second blocking network spinners when field operators on poor cellular connections enter valid passcodes.
+  * **Unified Manager Master Login:** Added `manager_master` (`todak`) check to `verifyDbmsPassword`, allowing farm managers to access DBMS as `EDITOR` using their master credential without getting rejected.
+  * **Universal Editor Login on Field Ops:** Allowed `dbms_editor` (`mantaray`) to unlock Field Ops modules seamlessly.
+  * **Module Number Normalization:** Enforced `Number(moduleNo)` type conversion so integer `1`, string `"1"`, and padded `"01"` all match consistently.
+  * **In-Flight Sync Deduplication:** Added `_syncPromise` mutex lock to avoid duplicate parallel Supabase fetches on application bootstrap.
+  * **Security Test Suite Added:** Authored `tests/security.test.js` validating DBMS editor, viewer, manager master, module-specific fish passwords, whitespace trimming, and case-insensitivity (98/98 tests passing).
+
+
 
 
 
