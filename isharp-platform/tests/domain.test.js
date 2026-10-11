@@ -21,7 +21,8 @@ import {
     isCycleClosed, 
     parsePondIndex,
     formatFinalStatus,
-    evaluateBiosecurityStatus
+    evaluateBiosecurityStatus,
+    sanitizeIdlePrepDate
 } from '../src/domain/rollover.js';
 
 test('Domain: calculateDOC', async (t) => {
@@ -286,5 +287,43 @@ test('Domain: evaluateBiosecurityStatus', async (t) => {
         assert.equal(res.isAlert, false);
     });
 });
+
+test('Domain: sanitizeIdlePrepDate (Idle Pond Preparation Dates Rule)', async (t) => {
+    await t.test('returns null for empty or null event date', () => {
+        assert.equal(sanitizeIdlePrepDate(null, '2026-10-05', true), null);
+        assert.equal(sanitizeIdlePrepDate('', '2026-10-05', true), null);
+        assert.equal(sanitizeIdlePrepDate('   ', '2026-10-05', true), null);
+    });
+
+    await t.test('returns null if idle pond date is from previous cycle (prior to date_cycle)', () => {
+        // e.g. Pond 2010107.43: Cycle started 2026-10-05, cleaning date was 2026-06-26 (from cycle 42)
+        const ghostCleaningDate = '2026-06-26';
+        const cycleStartDate = '2026-10-05';
+        assert.equal(sanitizeIdlePrepDate(ghostCleaningDate, cycleStartDate, true), null);
+
+        const ghostRepairDate = '2026-06-29';
+        assert.equal(sanitizeIdlePrepDate(ghostRepairDate, cycleStartDate, true), null);
+
+        const ghostStockPlanDate = '2026-07-19';
+        assert.equal(sanitizeIdlePrepDate(ghostStockPlanDate, cycleStartDate, true), null);
+    });
+
+    await t.test('preserves genuine preparation date occurring on or after date_cycle for idle pond', () => {
+        // e.g. Pond 2010108.43: Cycle started 2026-09-30, cleaning completed 2026-10-07
+        const genuineCleaningDate = '2026-10-07';
+        const cycleStartDate = '2026-09-30';
+        assert.equal(sanitizeIdlePrepDate(genuineCleaningDate, cycleStartDate, true), '2026-10-07');
+    });
+
+    await t.test('returns null for idle pond with preparation date if date_cycle is missing', () => {
+        assert.equal(sanitizeIdlePrepDate('2026-06-26', null, true), null);
+        assert.equal(sanitizeIdlePrepDate('2026-06-26', '', true), null);
+    });
+
+    await t.test('does not filter dates when pond is not idle (e.g. PRODUCTION)', () => {
+        assert.equal(sanitizeIdlePrepDate('2026-06-26', '2026-06-15', false), '2026-06-26');
+    });
+});
+
 
 

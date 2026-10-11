@@ -238,10 +238,11 @@ while ($reader.Read()) {
     $masterCount++
 
     # Collect lifecycle event dates for pond_event_date table
+    $dateCycle = SafeDate $reader["date cycle"]
     $dateMap = @{
         "disease"    = SafeDate $reader["date disease"]
         "close"      = $dtClose
-        "cycle"      = SafeDate $reader["date cycle"]
+        "cycle"      = $dateCycle
         "cleaning"   = SafeDate $reader["date cleaning"]
         "repair"     = SafeDate $reader["DateRepair"]
         "filling"    = SafeDate $reader["date filling"]
@@ -251,9 +252,22 @@ while ($reader.Read()) {
         "ready"      = SafeDate $reader["date ready"]
         "plan_stock" = SafeDate $reader["DatePlanStock"]
     }
+    $prepEvents = @("cleaning", "repair", "filling", "culture", "baby_box", "qaqc", "ready", "plan_stock")
+
     foreach ($evt in $dateMap.Keys) {
         $dVal = $dateMap[$evt]
         if ($dVal) {
+            # Idle pond rule: if pond is IDLE, preparation event dates must not belong to the previous cycle.
+            # If the event date is prior to date_cycle (or if date_cycle is absent for an IDLE pond),
+            # it is leftover from the last cycle and should NOT be imported.
+            if ($evt -in $prepEvents) {
+                if (-not $dateCycle) {
+                    if ($cleanStatus -eq "IDLE") { continue }
+                } else {
+                    if ([datetime]$dVal -lt [datetime]$dateCycle) { continue }
+                }
+            }
+
             $dateBatch += [ordered]@{
                 pond_index = $pIdx
                 event_name = $evt

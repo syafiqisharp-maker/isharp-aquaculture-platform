@@ -7,7 +7,7 @@ import { appState } from "../../state/appState.js";
 import { calculateTotalActiveHP, calculateAerationDensity } from "../../domain/aeration.js";
 import { calculateDOC, getEffectiveBiomassGain, getLatestSurvivalRate } from "../../domain/biometrics.js";
 import { calculateFCR } from "../../domain/feeding.js";
-import { isCycleClosed, formatFinalStatus, evaluateBiosecurityStatus } from "../../domain/rollover.js";
+import { isCycleClosed, formatFinalStatus, evaluateBiosecurityStatus, sanitizeIdlePrepDate } from "../../domain/rollover.js";
 import { InventoryRepository } from "../../infrastructure/repositories/inventoryRepository.js";
 import { PondRepository } from "../../infrastructure/repositories/pondRepository.js";
 import { SamplingRepository } from "../../infrastructure/repositories/samplingRepository.js";
@@ -100,15 +100,24 @@ export class MasterTab {
         if (!pond) return;
 
         // Populate Milestone Dates
+        const isIdle = (pond.pond_status || pond.status || "").toUpperCase() === "IDLE";
+        const cycleDate = pond.date_cycle || null;
+        
+        // Idle pond rule: if pond is IDLE, preparation dates must not show last cycle's event dates.
+        // If there is no date (or event occurred prior to date_cycle), show empty.
+        const getValidPrepDate = (dateVal) => {
+            return sanitizeIdlePrepDate(dateVal, cycleDate, isIdle) || "";
+        };
+
         if (this.dom.inputDateCycle) this.dom.inputDateCycle.value = pond.date_cycle || "";
-        if (this.dom.inputDateCleaning) this.dom.inputDateCleaning.value = pond.date_cleaning || "";
-        if (this.dom.inputDateRepair) this.dom.inputDateRepair.value = pond.date_repair || "";
-        if (this.dom.inputDateFilling) this.dom.inputDateFilling.value = pond.date_filling || "";
-        if (this.dom.inputDateCulture) this.dom.inputDateCulture.value = pond.date_culture || "";
-        if (this.dom.inputDateBabyBox) this.dom.inputDateBabyBox.value = pond.date_baby_box || pond.date_babybox || "";
-        if (this.dom.inputDateQaqc) this.dom.inputDateQaqc.value = pond.date_qaqc || "";
-        if (this.dom.inputDateReady) this.dom.inputDateReady.value = pond.date_ready || "";
-        if (this.dom.inputDatePlanStock) this.dom.inputDatePlanStock.value = pond.date_plan_stock || "";
+        if (this.dom.inputDateCleaning) this.dom.inputDateCleaning.value = getValidPrepDate(pond.date_cleaning);
+        if (this.dom.inputDateRepair) this.dom.inputDateRepair.value = getValidPrepDate(pond.date_repair);
+        if (this.dom.inputDateFilling) this.dom.inputDateFilling.value = getValidPrepDate(pond.date_filling);
+        if (this.dom.inputDateCulture) this.dom.inputDateCulture.value = getValidPrepDate(pond.date_culture);
+        if (this.dom.inputDateBabyBox) this.dom.inputDateBabyBox.value = getValidPrepDate(pond.date_baby_box || pond.date_babybox);
+        if (this.dom.inputDateQaqc) this.dom.inputDateQaqc.value = getValidPrepDate(pond.date_qaqc);
+        if (this.dom.inputDateReady) this.dom.inputDateReady.value = getValidPrepDate(pond.date_ready);
+        if (this.dom.inputDatePlanStock) this.dom.inputDatePlanStock.value = getValidPrepDate(pond.date_plan_stock);
         if (this.dom.inputIdleDays) this.dom.inputIdleDays.value = pond.idle_days || "0";
         if (this.dom.inputIdleStatus) this.dom.inputIdleStatus.value = pond.idle_status || "";
         if (this.dom.inputWaterType) this.dom.inputWaterType.value = pond.water_type || "Marine (Saltwater)";

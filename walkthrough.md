@@ -373,6 +373,22 @@ This file serves as a persistent record of key milestones, architecture decision
   * All 98 unit and contract tests passed (`npm test`).
   * Vite production build succeeded in 1.44s.
 
+---
+
+## 2026-10-11: Idle Pond Preparation Date Rule Remediation
+* **Root-Cause Analysis:**
+  * In MS Access (`Bab SGo*.accdb`), when farm staff roll over or duplicate a pond record to start an IDLE cycle (e.g. `2010107.43`), the record retains the old cycle's preparation milestone dates (Cleaning, Liner Repair, Filling, Culture, Baby Box, QA/QC, Ready, and Plan Stock) from months prior (June/July 2026), even though the new idle cycle only commenced on October 5, 2026.
+  * During sync, [`sync_weekly_access.ps1`](file:///c:/Users/syafiq/My%20Drive/Syafiq%20Water%20Quality%20Station%20Project/database_migration/sync_weekly_access.ps1) previously ingested these dates into `public.pond_event_date`, causing the DBMS Master Tab to incorrectly display last cycle's event dates for idle ponds.
+* **Remediation & Guardrails Implemented:**
+  * **Domain Validation Rule (`sanitizeIdlePrepDate`):** Added pure domain logic in [`rollover.js`](file:///c:/Users/syafiq/My%20Drive/Syafiq%20Water%20Quality%20Station%20Project/isharp-platform/src/domain/rollover.js). For any `IDLE` pond cycle, preparation milestone dates occurring prior to `date_cycle` (or when `date_cycle` is absent) are identified as obsolete events from prior cycles and sanitized to `null` / empty string. Genuine preparation dates occurring on or after `date_cycle` are strictly preserved.
+  * **UI & Data Access Alignment:** Integrated `sanitizeIdlePrepDate` into [`pondRepository.js`](file:///c:/Users/syafiq/My%20Drive/Syafiq%20Water%20Quality%20Station%20Project/isharp-platform/src/infrastructure/repositories/pondRepository.js), [`masterTab.js`](file:///c:/Users/syafiq/My%20Drive/Syafiq%20Water%20Quality%20Station%20Project/isharp-platform/src/modules/dbms/masterTab.js), and [`app.js`](file:///c:/Users/syafiq/My%20Drive/Syafiq%20Water%20Quality%20Station%20Project/isharp-platform/app.js). If there is no event date recorded for the current idle cycle, the input fields render clean and empty.
+  * **Phase 4 Preparation Date Update Routing:** Updated `PondRepository.updateCycle` to decouple milestone dates to `pond_event_date` (`on_conflict=pond_index,event_name`) and metadata to `growout_pond_master`, fixing Phase 4 save failures.
+  * **Sync Ingestion Filter:** Updated Stage 1 in [`sync_weekly_access.ps1`](file:///c:/Users/syafiq/My%20Drive/Syafiq%20Water%20Quality%20Station%20Project/database_migration/sync_weekly_access.ps1) to reject preparation event dates prior to `date_cycle` for IDLE ponds during Access synchronization.
+  * **Live Supabase Cleanup:** Successfully purged 46 orphaned ghost event records across the 6 affected IDLE ponds (`2010107.43`, `2010209.43`, `2010210.44`, `2010211.44`, `2061105.40`, `2061111.41`). Verified pond `2010107.43` now displays `date_cycle = 2026-10-05` and empty preparation dates. Verified genuine in-cycle cleaning dates (such as `2010108.43`) remain intact.
+* **Verification:**
+  * 104/104 unit and contract tests passed (`npm test`).
+  * Full Vite production build succeeded cleanly (`npm run build`).
+
 
 
 

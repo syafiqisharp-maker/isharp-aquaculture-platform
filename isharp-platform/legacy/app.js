@@ -695,15 +695,27 @@ class IsharpDBMS {
     }
 
     populateMasterTab(pond) {
+        const isIdle = (pond.pond_status || pond.status || "").toUpperCase() === "IDLE";
+        const cycleDate = pond.date_cycle ? new Date(pond.date_cycle) : null;
+        const getValidPrepDate = (dateVal) => {
+            if (!dateVal) return "";
+            if (isIdle) {
+                if (!cycleDate) return "";
+                const d = new Date(dateVal);
+                if (d < cycleDate) return "";
+            }
+            return dateVal;
+        };
+
         this.dom.inputDateCycle.value = pond.date_cycle || "";
-        this.dom.inputDateCleaning.value = pond.date_cleaning || "";
-        this.dom.inputDateRepair.value = pond.date_repair || "";
-        this.dom.inputDateFilling.value = pond.date_filling || "";
-        this.dom.inputDateCulture.value = pond.date_culture || "";
-        this.dom.inputDateBabyBox.value = pond.date_baby_box || "";
-        this.dom.inputDateQaqc.value = pond.date_qaqc || "";
-        this.dom.inputDateReady.value = pond.date_ready || "";
-        this.dom.inputDatePlanStock.value = pond.date_plan_stock || "";
+        this.dom.inputDateCleaning.value = getValidPrepDate(pond.date_cleaning);
+        this.dom.inputDateRepair.value = getValidPrepDate(pond.date_repair);
+        this.dom.inputDateFilling.value = getValidPrepDate(pond.date_filling);
+        this.dom.inputDateCulture.value = getValidPrepDate(pond.date_culture);
+        this.dom.inputDateBabyBox.value = getValidPrepDate(pond.date_baby_box || pond.date_babybox);
+        this.dom.inputDateQaqc.value = getValidPrepDate(pond.date_qaqc);
+        this.dom.inputDateReady.value = getValidPrepDate(pond.date_ready);
+        this.dom.inputDatePlanStock.value = getValidPrepDate(pond.date_plan_stock);
 
         this.dom.inputIdleDays.value = pond.idle_days || 0;
         this.dom.inputIdleStatus.value = pond.idle_status || "NORMAL";

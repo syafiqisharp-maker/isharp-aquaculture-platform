@@ -156,4 +156,26 @@ export function evaluateBiosecurityStatus(pond, labIssues = []) {
     };
 }
 
+/**
+ * Sanitizes preparation milestone dates for IDLE ponds.
+ * Rule: For IDLE ponds, preparation dates (cleaning, repair, filling, culture, baby box, qaqc, ready, plan stock)
+ * must not show event dates leftover from the previous cycle. If there is no date, or if the event occurred
+ * prior to date_cycle, return empty/null.
+ * 
+ * @param {string|null} dateVal 
+ * @param {string|null} dateCycle 
+ * @param {boolean} isIdle 
+ * @returns {string|null}
+ */
+export function sanitizeIdlePrepDate(dateVal, dateCycle, isIdle = true) {
+    if (!dateVal || !String(dateVal).trim()) return null;
+    if (!isIdle) return dateVal;
+    if (!dateCycle || !String(dateCycle).trim()) return null;
+    const dEvent = new Date(dateVal);
+    const dCycle = new Date(dateCycle);
+    if (isNaN(dEvent.getTime()) || isNaN(dCycle.getTime())) return null;
+    if (dEvent < dCycle) return null;
+    return dateVal;
+}
+
 

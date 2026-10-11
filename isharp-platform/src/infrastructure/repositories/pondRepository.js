@@ -4,6 +4,7 @@
  */
 
 import { supabase } from "../supabase.js";
+import { sanitizeIdlePrepDate } from "../../domain/rollover.js";
 
 export class PondRepository {
     /**
@@ -104,6 +105,12 @@ export class PondRepository {
         if (!res || res.length === 0) return null;
         const r = res[0];
         const isProd = (r.pond_status || "").toUpperCase() === "PRODUCTION";
+        const isIdle = (r.pond_status || "").toUpperCase() === "IDLE";
+        
+        // Idle pond rule: if pond is IDLE, preparation dates must not reflect previous cycle events.
+        // If event date occurred before date_cycle (or if date_cycle is absent for IDLE pond), show null/empty.
+        const sanitizePrepDate = (dateVal) => sanitizeIdlePrepDate(dateVal, r.date_cycle, isIdle);
+
         return {
             ...r,
             status: r.pond_status || "PRODUCTION",
@@ -117,7 +124,15 @@ export class PondRepository {
             stck_tank: isProd ? r.stck_tank : null,
             stck_allow: isProd ? (r.stck_allow || 0) : 0,
             stck_total: isProd ? (r.stck_total || (parseFloat(r.stck_pcs || 0) + parseFloat(r.stck_allow || 0))) : 0,
-            date_babybox: isProd ? (r.date_baby_box || r.date_babybox || null) : null,
+            date_cleaning: sanitizePrepDate(r.date_cleaning),
+            date_repair: sanitizePrepDate(r.date_repair),
+            date_filling: sanitizePrepDate(r.date_filling),
+            date_culture: sanitizePrepDate(r.date_culture),
+            date_baby_box: sanitizePrepDate(r.date_baby_box),
+            date_babybox: sanitizePrepDate(r.date_baby_box || r.date_babybox),
+            date_qaqc: sanitizePrepDate(r.date_qaqc),
+            date_ready: sanitizePrepDate(r.date_ready),
+            date_plan_stock: sanitizePrepDate(r.date_plan_stock),
             batch_count: r.batch_count || 0
         };
     }
@@ -155,18 +170,68 @@ export class PondRepository {
     }
 
     /**
-     * Updates cycle metadata in growout_pond_master.
+     * Updates cycle metadata in growout_pond_master and lifecycle event dates in pond_event_date.
      * @param {string} pondIndex 
      * @param {object} updates 
      * @returns {Promise<object>}
      */
     static async updateCycle(pondIndex, updates) {
         if (!pondIndex) throw new Error("pondIndex is required for update.");
-        const endpoint = `growout_pond_master?pond_index=eq.${encodeURIComponent(pondIndex)}`;
-        return await supabase.request(endpoint, {
-            method: "PATCH",
-            body: JSON.stringify(updates)
-        });
+        
+        const dateFieldMap = {
+            date_cycle: "cycle",
+            date_cleaning: "cleaning",
+            date_repair: "repair",
+            date_filling: "filling",
+            date_culture: "culture",
+            date_baby_box: "baby_box",
+            date_babybox: "baby_box",
+            date_qaqc: "qaqc",
+            date_ready: "ready",
+            date_plan_stock: "plan_stock",
+            date_disease: "disease",
+            date_close: "close"
+        };
+
+        const masterUpdates = {};
+        const datePromises = [];
+
+        for (const [key, value] of Object.entries(updates)) {
+            if (key in dateFieldMap) {
+                const eventName = dateFieldMap[key];
+                if (value) {
+                    datePromises.push(
+                        supabase.request("pond_event_date?on_conflict=pond_index,event_name", {
+                            method: "POST",
+                            headers: { "Prefer": "resolution=merge-duplicates" },
+                            body: JSON.stringify([{
+                                pond_index: pondIndex,
+                                event_name: eventName,
+                                event_date: value
+                            }])
+                        })
+                    );
+                } else {
+                    datePromises.push(
+                        supabase.request(`pond_event_date?pond_index=eq.${encodeURIComponent(pondIndex)}&event_name=eq.${encodeURIComponent(eventName)}`, {
+                            method: "DELETE"
+                        }).catch(() => {})
+                    );
+                }
+            } else {
+                masterUpdates[key] = value;
+            }
+        }
+
+        const masterPromise = Object.keys(masterUpdates).length > 0
+            ? supabase.request(`growout_pond_master?pond_index=eq.${encodeURIComponent(pondIndex)}`, {
+                method: "PATCH",
+                body: JSON.stringify(masterUpdates)
+            })
+            : Promise.resolve(null);
+
+        const [masterRes] = await Promise.all([masterPromise, ...datePromises]);
+        return masterRes;
     }
 
     /**
