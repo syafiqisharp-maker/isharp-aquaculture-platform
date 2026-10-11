@@ -65,10 +65,10 @@ class App {
                 this.navbar.selectPondByIndex(pondIndex);
             });
 
-            // Global Quick-Jump Keyboard Shortcut (Ctrl+K or Cmd+K)
+            // Global Quick-Jump Keyboard Shortcut (Ctrl+K or Cmd+K focuses Left Tree Search)
             window.addEventListener("keydown", (e) => {
                 if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
-                    const searchInput = document.getElementById("input-pond-search") || document.getElementById("sidebar-pond-search");
+                    const searchInput = document.getElementById("sidebar-pond-search");
                     if (searchInput) {
                         e.preventDefault();
                         searchInput.focus();

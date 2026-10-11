@@ -206,30 +206,19 @@ export function getDbmsShellHtml() {
                     <span id="badge-pond-active" class="active-pill active-yes" style="font-size:0.65rem; padding:2px 6px;">ACTIVE</span>
                 </div>
 
-                <!-- Center: Spotlight Search & Pond Stepper -->
+                <!-- Center: Pond Steppers, Refresh & Historical Cycle Switcher -->
                 <div class="command-bar-center">
-                    <div class="spotlight-search-pill" title="Press Ctrl + K to jump to any pond">
-                        <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.3">
-                            <circle cx="11" cy="11" r="8"></circle>
-                            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-                        </svg>
-                        <input type="text" id="input-pond-search" class="pond-search-input" placeholder="Jump to pond #..." />
-                        <kbd>Ctrl K</kbd>
+                    <div class="pond-nav-capsule">
+                        <button id="btn-prev-pond" class="btn-nav-step" title="Previous Pond (Ctrl + Left)">‹</button>
+                        <button id="btn-next-pond" class="btn-nav-step" title="Next Pond (Ctrl + Right)">›</button>
+                        <button id="btn-refresh-master" class="btn-icon" style="width:26px; height:26px;" title="Refresh all data from cloud">
+                            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2">
+                                <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.19"/>
+                            </svg>
+                        </button>
                     </div>
-                    <div class="pond-dropdown-capsule">
-                        <select id="select-pond-index" class="pond-master-dropdown" aria-label="Select Pond Cycle">
-                            <option value="" disabled selected>Loading...</option>
-                        </select>
-                    </div>
-                    <button id="btn-prev-pond" class="btn-nav-step" title="Previous Pond (Ctrl + Left)">‹</button>
-                    <button id="btn-next-pond" class="btn-nav-step" title="Next Pond (Ctrl + Right)">›</button>
-                    <button id="btn-refresh-master" class="btn-icon" style="width:26px; height:26px;" title="Refresh all data from cloud">
-                        <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2">
-                            <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.19"/>
-                        </svg>
-                    </button>
-                    <div style="display:flex; align-items:center;">
-                        <select id="select-cycle-history" class="cycle-history-dropdown" title="Historical Cycles for this Pond" style="font-size:0.72rem; padding:2px 6px; border-radius:6px; border:1px solid #cbd5e1; background:#ffffff;">
+                    <div class="cycle-history-capsule" style="display:flex; align-items:center;">
+                        <select id="select-cycle-history" class="cycle-history-dropdown" title="Historical Cycles for this Pond" style="font-size:0.75rem; font-weight:700; padding:3px 8px; border-radius:8px; border:1px solid #bae6fd; background:#ffffff; color:#0369a1;">
                             <option value="">Loading cycles...</option>
                         </select>
                     </div>
