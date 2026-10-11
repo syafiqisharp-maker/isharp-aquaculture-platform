@@ -251,20 +251,16 @@ export class PondTreeNav {
         if (!pond || !pond.pond_index) return;
         const pIdx = String(pond.pond_index);
 
-        // Update active class in DOM
+        // Update active class in DOM without auto-expanding modules
         if (this.container) {
             this.container.querySelectorAll(".pond-tree-item").forEach(item => {
                 if (item.getAttribute("data-pond-index") === pIdx) {
                     item.classList.add("active");
-                    // Expand parent module if collapsed
+                    // Smoothly scroll active item into view only if its parent module is currently open
                     const group = item.closest(".module-group");
-                    if (group && group.classList.contains("collapsed")) {
-                        group.classList.remove("collapsed");
-                        const arrow = group.querySelector(".arrow-indicator");
-                        if (arrow) arrow.textContent = "▼";
+                    if (group && !group.classList.contains("collapsed")) {
+                        item.scrollIntoView({ behavior: "smooth", block: "nearest" });
                     }
-                    // Smoothly scroll active item into view
-                    item.scrollIntoView({ behavior: "smooth", block: "nearest" });
                 } else {
                     item.classList.remove("active");
                 }
