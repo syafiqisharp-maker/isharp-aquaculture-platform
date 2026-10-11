@@ -68,8 +68,8 @@ def safe_date_str(val):
         return None
 
 def fetch_master_cycles():
-    print(f"[*] Fetching master cycles from {SUPABASE_URL}/rest/v1/growout_pond_master ...")
-    url_base = f"{SUPABASE_URL}/rest/v1/growout_pond_master?select=pond_index,pond,date_cycle,date_close,pond_status&order=pond,date_cycle.asc"
+    print(f"[*] Fetching master cycles from {SUPABASE_URL}/rest/v1/pond_cycles ...")
+    url_base = f"{SUPABASE_URL}/rest/v1/pond_cycles?select=pond_index,pond,date_cycle,date_close,pond_status&order=pond,date_cycle.asc"
     all_cycles = []
     offset = 0
     limit = 1000

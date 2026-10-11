@@ -97,7 +97,7 @@ export class StaffRepository {
             filter += `&order=date_cycle.desc.nullslast,cycle_no.desc.nullslast&limit=5`;
             filter += `&select=pond_index,pond,cycle_no,crop_no,date_cycle,pm_staff_no,sv_staff_no,rl_staff_no,po_staff_no,support_staff_no`;
 
-            const rows = await supabase.request(`growout_pond_master?${filter}`);
+            const rows = await supabase.request(`view_growout_pond_cycles?${filter}`);
             if (Array.isArray(rows) && rows.length > 0) {
                 const found = rows.find(r =>
                     Boolean(r.pm_staff_no || r.sv_staff_no || r.rl_staff_no || r.po_staff_no || r.support_staff_no)
@@ -106,7 +106,7 @@ export class StaffRepository {
             }
             return null;
         } catch (err) {
-            console.warn("Could not fetch last cycle staff from growout_pond_master:", err);
+            console.warn("Could not fetch last cycle staff from view_growout_pond_cycles:", err);
             return null;
         }
     }

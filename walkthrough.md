@@ -297,6 +297,21 @@ This file serves as a persistent record of key milestones, architecture decision
   * Extended `verify_dbms_e2e_write.mjs` to include Step 5 probing Phase 4 structures.
   * Probe verified 100% operational (19/19 tests passed with immediate synthetic data teardown).
 
+---
+
+## 2026-10-11: Phase 4 View Alignment for Lab Sync & Staff Allocation
+* **Lab Water Quality Ingestion Alignment:**
+  * Updated `sync_daily_lab_water_quality.py` and `database_migration/import_lab_water_quality.py` to query `pond_cycles` instead of `growout_pond_master` for cycle boundaries (`date_cycle`, `date_close`). Resolves HTTP 400 caused by Phase 4 decoupling of spreadsheet dates.
+  * Added exponential backoff and error logging to HTTP requests.
+  * Executed live incremental sync: verified 582 lab records successfully upserted into Supabase `lab_water_quality` in 32.9s.
+* **Staff Repository Query Alignment:**
+  * Updated `StaffRepository.getLastCycleStaff` in `staffRepository.js` to query `view_growout_pond_cycles` instead of `growout_pond_master`, fixing silent fallback when retrieving prior cycle crew allocations.
+* **Regression & Build Verification:**
+  * All 96 unit and contract tests passed cleanly (`npm test`).
+  * Live E2E probe verified 100% operational (19/19 tests passed).
+  * Vite production build generated cleanly with 0 errors (`npm run build`).
+
+
 
 
 

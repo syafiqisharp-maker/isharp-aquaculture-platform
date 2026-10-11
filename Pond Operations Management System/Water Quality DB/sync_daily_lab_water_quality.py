@@ -95,8 +95,8 @@ def safe_date_str(val):
         return None
 
 def fetch_master_cycles(max_retries=5):
-    log(f"Fetching master cycles from {SUPABASE_URL}/rest/v1/growout_pond_master ...")
-    url_base = f"{SUPABASE_URL}/rest/v1/growout_pond_master?select=pond_index,pond,date_cycle,date_close,pond_status&order=pond,date_cycle.asc"
+    log(f"Fetching master cycles from {SUPABASE_URL}/rest/v1/pond_cycles ...")
+    url_base = f"{SUPABASE_URL}/rest/v1/pond_cycles?select=pond_index,pond,date_cycle,date_close,pond_status&order=pond,date_cycle.asc"
     all_cycles = []
     offset = 0
     limit = 1000
@@ -110,6 +110,10 @@ def fetch_master_cycles(max_retries=5):
                     batch = json.loads(resp.read().decode())
                 success = True
                 break
+            except urllib.error.HTTPError as e:
+                err_body = e.read().decode("utf-8", errors="ignore")
+                log(f"Cycle fetch attempt {attempt} failed: HTTP {e.code} ({e.reason}) - {err_body[:200]}. Retrying...")
+                time.sleep(2 * attempt)
             except Exception as e:
                 log(f"Cycle fetch attempt {attempt} failed: {e}. Retrying...")
                 time.sleep(2 * attempt)
