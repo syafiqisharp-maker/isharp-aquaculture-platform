@@ -359,6 +359,21 @@ This file serves as a persistent record of key milestones, architecture decision
   * 98/98 unit & contract tests passed (`npm test`).
   * Vite production build succeeded in 1.59s.
 
+---
+
+## 2026-10-11: DBMS Top Command Bar Declutter & Space Optimization
+* **Header Cramping Problem:**
+  * The top 48px command bar was heavily cramped on narrow screens and desktop PWA windows due to redundant elements: a spotlight search box (`Jump to pond #... Ctrl K`) and a wide pond cycle select dropdown (`Pond 01.01.01 - 2010101.39 (DOC 140)`), duplicating the functionality already handled comprehensively by the Left Command Sidebar Pond Explorer tree.
+* **UI/UX Pro Max Remediation:**
+  * **Removed Redundant Controls:** Completely stripped the duplicate pond select dropdown and top search box from [`dbmsShellTemplate.js`](file:///c:/Users/syafiq/My%20Drive/Syafiq%20Water%20Quality%20Station%20Project/isharp-platform/src/modules/dbms/templates/dbmsShellTemplate.js).
+  * **Streamlined Central Capsule:** Grouped the quick pond steppers (`‹ ›`) and cloud refresh button (`🔄`) inside an elegant pill capsule (`.pond-nav-capsule`), paired cleanly with the Cycle History dropdown (`select-cycle-history`).
+  * **Clean Breathing Room:** The breadcrumb area (`Setiu / Pond 01.01.01 2010101.39 [CLOSE] [INACTIVE]`) and action buttons (`Paste Excel`, `Lock`) now have ample horizontal space without clipping or overlapping.
+  * **Keyboard Accessibility Preserved:** Re-targeted the global `Ctrl + K` / `Cmd + K` shortcut in [`main.js`](file:///c:/Users/syafiq/My%20Drive/Syafiq%20Water%20Quality%20Station%20Project/isharp-platform/src/main.js) to smoothly focus the Left Tree Search input (`#sidebar-pond-search`).
+* **Verification:**
+  * All 98 unit and contract tests passed (`npm test`).
+  * Vite production build succeeded in 1.44s.
+
+
 
 
 
