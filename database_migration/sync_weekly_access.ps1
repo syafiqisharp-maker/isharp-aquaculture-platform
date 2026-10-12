@@ -1,5 +1,6 @@
 param(
-    [string]$dbPath = ""
+    [string]$dbPath = "",
+    [int]$reconcileDays = 30
 )
 
 $ErrorActionPreference = "Stop"
@@ -7,6 +8,8 @@ $ErrorActionPreference = "Stop"
 $legacyDbDir = "D:\DB"
 $supabaseUrl = "https://keappoukeagyzpoxkrru.supabase.co"
 $supabaseKey = "sb_publishable_kObmQ9Ha4NLrl9vQXy5k5w_Ie9-EQ4s"
+
+$reconcileCutoff = (Get-Date).AddDays(-$reconcileDays).ToString("yyyy-MM-dd")
 
 $headers = @{
     "apikey" = $supabaseKey
@@ -404,9 +407,9 @@ while ($reader.Read()) {
     $stckDate = SafeDate $reader["stckdate"]
     $stckPcs = SafeDecimal $reader["stckpcs"]
     $pcsRound = if ($stckPcs -ne $null) { [math]::Round($stckPcs, 0) } else { 0 }
-    $sig = "${pIdx}_${stckDate}_${pcsRound}"
+    $isRecentWindow = ($stckDate -ne $null -and $stckDate -ge $reconcileCutoff)
 
-    if ($existingStockingKeys.Contains($sig)) {
+    if (-not $isRecentWindow -and $existingStockingKeys.Contains($sig)) {
         $skippedStockingDupes++
         continue
     }
@@ -488,9 +491,9 @@ while ($reader.Read()) {
     $hStts = $(if ($reader["harvstts"] -ne [DBNull]::Value) { SafeString $reader["harvstts"] } else { "TERMINATION" })
     $hWgt = $(if ($reader["harvwgt"] -ne [DBNull]::Value) { SafeDecimal $reader["harvwgt"] } else { 0.0 })
     $wtFormatted = "{0:F2}" -f [double]$hWgt
-    $sig = "${pIdx}_${hDate}_${hStts}_${wtFormatted}"
+    $isRecentWindow = ($hDate -ne $null -and $hDate -ge $reconcileCutoff)
 
-    if ($existingHarvestKeys.Contains($sig)) {
+    if (-not $isRecentWindow -and $existingHarvestKeys.Contains($sig)) {
         $skippedHarvestDupes++
         continue
     }
@@ -555,9 +558,9 @@ while ($reader.Read()) {
     $hvtBuyer = SafeString $reader["HvtBuyer"]
     $rawWgt = SafeDecimal $reader["RawWGT"]
     $rwFormatted = if ($rawWgt -ne $null) { "{0:F2}" -f [double]$rawWgt } else { "0.00" }
-    $sig = "${pIdx}_${hvtDate}_${hvtBuyer}_${rwFormatted}"
+    $isRecentWindow = ($hvtDate -ne $null -and $hvtDate -ge $reconcileCutoff)
 
-    if ($existingSalesKeys.Contains($sig)) {
+    if (-not $isRecentWindow -and $existingSalesKeys.Contains($sig)) {
         $skippedSalesDupes++
         continue
     }
@@ -627,9 +630,9 @@ while ($reader.Read()) {
     $iCat = $(if ($reader["issueCat"] -ne [DBNull]::Value) { SafeString $reader["issueCat"] } else { "DISEASE" })
     $iStts = $(if ($reader["issuestts"] -ne [DBNull]::Value) { SafeString $reader["issuestts"] } else { "EHP" })
     $iFlag = $(if ($reader["issueflag"] -ne [DBNull]::Value) { SafeString $reader["issueflag"] } else { "GREEN" })
-    $sig = "${pIdx}_${iDate}_${iCat}_${iStts}_${iFlag}"
+    $isRecentWindow = ($iDate -ne $null -and $iDate -ge $reconcileCutoff)
 
-    if ($existingIssueKeys.Contains($sig)) {
+    if (-not $isRecentWindow -and $existingIssueKeys.Contains($sig)) {
         $skippedIssueDupes++
         continue
     }
@@ -721,9 +724,9 @@ while ($reader.Read()) {
 
     $sDate = $(if ($reader["smpldate"] -ne [DBNull]::Value) { SafeDate $reader["smpldate"] } else { "2026-01-01" })
     $sDoc = $(if ($reader["SmplDoc"] -ne [DBNull]::Value) { SafeInt $reader["SmplDoc"] } else { 0 })
-    $sig = "${pIdx}_${sDate}_${sDoc}"
+    $isRecentWindow = ($sDate -ne $null -and $sDate -ge $reconcileCutoff)
 
-    if ($existingSamplingKeys.Contains($sig)) {
+    if (-not $isRecentWindow -and $existingSamplingKeys.Contains($sig)) {
         $skippedSamplingDupes++
         continue
     }

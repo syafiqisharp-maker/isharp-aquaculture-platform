@@ -11,6 +11,8 @@
  * Clean Coding Standard: Pure HTML template generator.
  */
 
+import { security } from "../../../config/security.js";
+
 /**
  * Generates the HTML layout for the Management Entry Page.
  * @param {object} params
@@ -36,6 +38,7 @@ export function getManagementEntryHtml({
     staffList = [],
     pondsList = []
 }) {
+    const canEdit = security.canEditFieldOps();
     const currIdx = (pondsList && pondsList.length > 0) ? pondsList.findIndex(p =>
         (p.pond_index && p.pond_index === pond?.pond_index) ||
         (p.pond && p.pond === pond?.pond)
@@ -90,6 +93,14 @@ export function getManagementEntryHtml({
                     <span>Next Pond ▶</span>
                 </button>
             </div>
+            ` : ''}
+
+            <!-- Viewer Read-Only Notice Banner -->
+            ${!canEdit ? `
+                <div id="mgmt-viewer-readonly-badge" style="background: rgba(224, 242, 254, 0.95); border: 1.5px solid #0284c7; border-radius: 12px; padding: 0.75rem 1rem; font-size: 0.8rem; color: #0369a1; font-weight: 800; display: flex; align-items: center; gap: 8px;">
+                    <span style="font-size: 1.2rem;">👁️</span>
+                    <span>Viewer Mode (Read-Only) — Personnel assignments, aeration units, and inventory are locked for viewing.</span>
+                </div>
             ` : ''}
 
             <!-- Smart Carry-Forward Banner (Auto-filled from previous cycle) -->
@@ -274,15 +285,17 @@ export function getManagementEntryHtml({
             <!-- BOTTOM ACTION BAR -->
             <div class="mgmt-action-bar mgmt-sticky-bottom-bar" style="display: flex; justify-content: flex-end; align-items: center; gap: 0.75rem; padding: 1rem 0; border-top: 1px solid #e2e8f0; flex-wrap: wrap;">
                 <button type="button" id="btn-mgmt-cancel" class="btn-action btn-secondary" style="font-size: 0.85rem; font-weight: 700; padding: 0.55rem 1.4rem;">
-                    <span>Cancel</span>
+                    <span>${canEdit ? 'Cancel' : '← Back'}</span>
                 </button>
-                <button type="button" id="btn-mgmt-save" class="btn-action btn-secondary" style="font-size: 0.88rem; font-weight: 800; padding: 0.6rem 1.4rem; display: flex; align-items: center; gap: 0.45rem;">
-                    <span>💾 Save</span>
-                </button>
-                ${totalPonds > 1 ? `
-                <button type="button" id="btn-mgmt-save-next" class="btn-action btn-primary" style="font-size: 0.9rem; font-weight: 800; padding: 0.6rem 1.6rem; display: flex; align-items: center; gap: 0.45rem; background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);">
-                    <span>💾 Save &amp; Next Pond ▶</span>
-                </button>
+                ${canEdit ? `
+                    <button type="button" id="btn-mgmt-save" class="btn-action btn-secondary" style="font-size: 0.88rem; font-weight: 800; padding: 0.6rem 1.4rem; display: flex; align-items: center; gap: 0.45rem;">
+                        <span>💾 Save</span>
+                    </button>
+                    ${totalPonds > 1 ? `
+                    <button type="button" id="btn-mgmt-save-next" class="btn-action btn-primary" style="font-size: 0.9rem; font-weight: 800; padding: 0.6rem 1.6rem; display: flex; align-items: center; gap: 0.45rem; background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);">
+                        <span>💾 Save &amp; Next Pond ▶</span>
+                    </button>
+                    ` : ''}
                 ` : ''}
             </div>
 

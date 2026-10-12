@@ -10,6 +10,7 @@ class ToastService {
     }
 
     init() {
+        if (typeof document === "undefined") return;
         if (!document.getElementById("toast-container")) {
             this.container = document.createElement("div");
             this.container.id = "toast-container";

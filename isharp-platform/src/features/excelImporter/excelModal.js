@@ -278,19 +278,24 @@ export class ExcelModal {
                 await SamplingRepository.insertBatch(records);
             } else if (this.activeCategory === "feed") {
                 const pondName = appState.currentPond?.pond || pondIndex.split("_")[0];
-                const records = this.parsedRows.map(cols => ({
-                    pond_index: pondIndex,
-                    pond: pondName,
-                    log_date: cols[0],
-                    shift: cols[1] || "Full Day",
-                    feed_kg: parseFloat(cols[2]) || 0,
-                    feed_tray_remnant_pct: parseInt(cols[3], 10) || 0,
-                    water_level_cm: parseInt(cols[4], 10) || null,
-                    water_colour: cols[5] || "Healthy Green",
-                    mortality_kg: parseFloat(cols[6]) || 0.0,
-                    mortality_count: Math.round(parseFloat(cols[6]) || 0),
-                    remarks: cols[7] || null
-                }));
+                const records = this.parsedRows.map(cols => {
+                    const shiftInfo = cols[1] && cols[1] !== "Full Day" ? `[Shift: ${cols[1]}] ` : "";
+                    const userRemarks = cols[7] || "";
+                    const fullRemarks = (shiftInfo + userRemarks).trim() || null;
+
+                    return {
+                        pond_index: pondIndex,
+                        pond: pondName,
+                        log_date: cols[0],
+                        feed_kg: parseFloat(cols[2]) || 0,
+                        feed_tray_remnant_pct: parseInt(cols[3], 10) || 0,
+                        water_level_cm: parseInt(cols[4], 10) || null,
+                        water_colour: cols[5] || "Healthy Green",
+                        mortality_kg: parseFloat(cols[6]) || 0.0,
+                        mortality_count: Math.round(parseFloat(cols[6]) || 0),
+                        remarks: fullRemarks
+                    };
+                });
 
                 await FeedRepository.insertBatch(records);
             } else if (this.activeCategory === "issues") {

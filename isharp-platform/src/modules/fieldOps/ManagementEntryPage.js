@@ -17,6 +17,7 @@ import { calculateTotalActiveHP, calculateAerationDensity } from "../../domain/a
 import { calculateDOC } from "../../domain/biometrics.js";
 import { Toast } from "../../components/Toast.js";
 import { OfflineSync } from "./offlineSync.js";
+import { security } from "../../config/security.js";
 import { getManagementEntryHtml } from "./templates/managementEntryTemplate.js";
 
 export class ManagementEntryPage {
@@ -73,6 +74,19 @@ export class ManagementEntryPage {
 
         this.bindEvents(pond);
         await this.loadInitialData(pond);
+
+        // Lock form inputs in Read-Only Viewer Mode (isharp / monodon)
+        if (!security.canEditFieldOps()) {
+            this.container.querySelectorAll("input, select, textarea, .stepper-btn, #btn-copy-prev-pond, #btn-mgmt-clear-autofill").forEach(el => {
+                el.disabled = true;
+                if (el.classList.contains("stepper-btn") || el.id === "btn-copy-prev-pond") {
+                    el.style.pointerEvents = "none";
+                    el.style.opacity = "0.5";
+                }
+            });
+            const copyPrevCont = this.container.querySelector("#mgmt-copy-prev-container");
+            if (copyPrevCont) copyPrevCont.style.display = "none";
+        }
     }
 
     bindEvents(pond) {
@@ -332,6 +346,11 @@ export class ManagementEntryPage {
     }
 
     async handleSave(pond, { advanceToNextPond = false } = {}) {
+        if (!security.canEditFieldOps()) {
+            Toast.warning("Viewing only. You do not have permission to edit or save management entries.");
+            return;
+        }
+
         if (!pond || !pond.pond_index) {
             Toast.error("No active pond cycle selected.");
             return;

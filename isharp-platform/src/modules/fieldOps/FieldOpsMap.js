@@ -17,6 +17,7 @@ import { StaffRepository } from "../../infrastructure/repositories/staffReposito
 import { LabRepository } from "../../infrastructure/repositories/labRepository.js";
 
 import { getLocalDateStr } from "../../utils/formatters.js";
+import { security } from "../../config/security.js";
 
 export class FieldOpsMap {
     /**
@@ -645,10 +646,10 @@ export class FieldOpsMap {
                     </div>
                 </div>
 
-                <!-- Tile Footer: 1-Tap Quick Action (Entire card navigates to Details, button logs) -->
+                <!-- Tile Footer: 1-Tap Quick Action (Entire card navigates to Details, button logs or views) -->
                 <div style="border-top: 1px solid rgba(0, 0, 0, 0.06); padding-top: 0.45rem; margin-top: 0.2rem;">
                     <button type="button" class="btn-quick-log-pond ${todayRecord ? 'btn-quick-log-logged' : 'btn-quick-log-pending'}" data-pond-label="${pondLabel}">
-                        <span>${todayRecord ? '✏️ Edit Today\'s Log' : '⚡ + Log Today'}</span>
+                        <span>${!security.canEditFieldOps() ? (todayRecord ? "👁️ View Today's Log" : "👁️ View Logbook") : (todayRecord ? '✏️ Edit Today\'s Log' : '⚡ + Log Today')}</span>
                     </button>
                 </div>
 

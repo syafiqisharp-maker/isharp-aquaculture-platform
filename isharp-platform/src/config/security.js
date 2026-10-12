@@ -9,12 +9,13 @@ import { ROLES } from "./permissions.js";
 
 const DBMS_SESSION_KEY = "isharp_dbms_session";
 const FIELD_OPS_SESSION_KEY = "isharp_field_ops_module";
+const FIELD_OPS_ROLE_KEY = "isharp_field_ops_role";
 
 // Offline default passwords matching database setup
 const OFFLINE_PASSWORDS = {
     app: {
         dbms_editor: "mantaray",
-        dbms_viewer: "monodon",
+        dbms_viewer: "isharp",
         manager_master: "todak"
     },
     modules: {
@@ -38,6 +39,11 @@ class SecurityService {
             lastFetched: 0
         };
         this._syncPromise = null;
+        this._inMemorySessions = {
+            dbms: null,
+            fieldOpsModule: null,
+            fieldOpsRole: null
+        };
 
         // Eager background sync
         this.syncPasswords().catch(() => {});
@@ -86,16 +92,17 @@ class SecurityService {
     }
 
     /**
-     * Get DBMS Session from sessionStorage
+     * Get DBMS Session from sessionStorage or in-memory
      * @returns {"EDITOR"|"VIEWER"|null}
      */
     getDbmsSession() {
-        if (typeof sessionStorage === "undefined") return null;
-        const session = sessionStorage.getItem(DBMS_SESSION_KEY);
-        if (session === "EDITOR" || session === "VIEWER") {
-            return session;
+        if (typeof sessionStorage !== "undefined") {
+            const session = sessionStorage.getItem(DBMS_SESSION_KEY);
+            if (session === "EDITOR" || session === "VIEWER") {
+                return session;
+            }
         }
-        return null;
+        return this._inMemorySessions.dbms;
     }
 
     /**
@@ -103,9 +110,11 @@ class SecurityService {
      * @param {"EDITOR"|"VIEWER"} roleType
      */
     setDbmsSession(roleType) {
-        if (typeof sessionStorage === "undefined") return;
         if (roleType === "EDITOR" || roleType === "VIEWER") {
-            sessionStorage.setItem(DBMS_SESSION_KEY, roleType);
+            this._inMemorySessions.dbms = roleType;
+            if (typeof sessionStorage !== "undefined") {
+                sessionStorage.setItem(DBMS_SESSION_KEY, roleType);
+            }
         }
     }
 
@@ -113,17 +122,65 @@ class SecurityService {
      * Clear DBMS Session (Lock / Logout)
      */
     clearDbmsSession() {
+        this._inMemorySessions.dbms = null;
         if (typeof sessionStorage !== "undefined") {
             sessionStorage.removeItem(DBMS_SESSION_KEY);
         }
     }
 
     /**
+     * Set Field Ops Session
+     * @param {number|string} moduleNo
+     * @param {"SUPERVISOR"|"VIEWER"} role
+     */
+    setFieldOpsSession(moduleNo, role = "SUPERVISOR") {
+        this._inMemorySessions.fieldOpsModule = String(moduleNo);
+        this._inMemorySessions.fieldOpsRole = role;
+        if (typeof sessionStorage !== "undefined") {
+            sessionStorage.setItem(FIELD_OPS_SESSION_KEY, String(moduleNo));
+            sessionStorage.setItem(FIELD_OPS_ROLE_KEY, role);
+        }
+    }
+
+    /**
+     * Get current Field Ops Role
+     * @returns {"SUPERVISOR"|"VIEWER"}
+     */
+    getFieldOpsRole() {
+        if (typeof sessionStorage !== "undefined") {
+            const role = sessionStorage.getItem(FIELD_OPS_ROLE_KEY);
+            if (role === "SUPERVISOR" || role === "VIEWER") {
+                return role;
+            }
+            if (sessionStorage.getItem(FIELD_OPS_SESSION_KEY)) {
+                return "SUPERVISOR";
+            }
+        }
+        if (this._inMemorySessions.fieldOpsRole) {
+            return this._inMemorySessions.fieldOpsRole;
+        }
+        // Default to SUPERVISOR if unauthenticated or backward-compatible
+        return "SUPERVISOR";
+    }
+
+    /**
+     * Check if Field Ops allows editing (only SUPERVISOR or DBMS EDITOR)
+     * @returns {boolean}
+     */
+    canEditFieldOps() {
+        const role = this.getFieldOpsRole();
+        return role !== "VIEWER";
+    }
+
+    /**
      * Clear Field Ops Session
      */
     clearFieldOpsSession() {
+        this._inMemorySessions.fieldOpsModule = null;
+        this._inMemorySessions.fieldOpsRole = null;
         if (typeof sessionStorage !== "undefined") {
             sessionStorage.removeItem(FIELD_OPS_SESSION_KEY);
+            sessionStorage.removeItem(FIELD_OPS_ROLE_KEY);
         }
     }
 
@@ -154,8 +211,8 @@ class SecurityService {
                 .map(p => String(p).trim().toLowerCase());
             const isModulePass = allModulePasses.includes(normalized);
 
-            // Viewer: monodon (viewer), todak (manager master), or any of the 9 supervisor passcodes
-            if (normalized === viewerPass || normalized === managerPass || isModulePass) {
+            // Viewer: isharp, monodon (legacy fallback), todak (manager master), or any of the 9 supervisor passcodes
+            if (normalized === viewerPass || normalized === "isharp" || normalized === "monodon" || normalized === managerPass || isModulePass) {
                 this.setDbmsSession("VIEWER");
                 return "VIEWER";
             }
@@ -177,47 +234,52 @@ class SecurityService {
     }
 
     /**
-     * Verify entered password for a Field Ops module (or manager master / editor).
+     * Verify entered password for a Field Ops module (or manager master / editor / viewer).
      * Supports module numbers as integers (1), strings ("1"), or padded strings ("01").
+     * Returns "SUPERVISOR", "VIEWER", or null.
+     * Also supports boolean check if caller expects truthy.
      * @param {number|string} moduleNo
      * @param {string} inputPassword
-     * @returns {Promise<boolean>}
+     * @returns {Promise<"SUPERVISOR"|"VIEWER"|null>}
      */
     async verifyFieldOpsPassword(moduleNo, inputPassword) {
         const normalized = (inputPassword || "").trim().toLowerCase();
-        if (!normalized) return false;
+        if (!normalized) return null;
 
         const modKey = Number(moduleNo);
 
         const checkMatch = () => {
             const managerPass = (this.cache.appPasswords.manager_master || OFFLINE_PASSWORDS.app.manager_master).toLowerCase();
             const editorPass = (this.cache.appPasswords.dbms_editor || OFFLINE_PASSWORDS.app.dbms_editor).toLowerCase();
+            const viewerPass = (this.cache.appPasswords.dbms_viewer || OFFLINE_PASSWORDS.app.dbms_viewer).toLowerCase();
             const modulePass = (this.cache.modulePasswords[modKey] || OFFLINE_PASSWORDS.modules[modKey] || "").toLowerCase();
 
-            // Check against manager master ("todak"), DBMS editor ("mantaray"), OR module-specific fish password
-            return normalized === managerPass || normalized === editorPass || (Boolean(modulePass) && normalized === modulePass);
+            // 1. Supervisor / Editor Full Access: Module fish password, manager master ("todak"), or DBMS editor ("mantaray")
+            if (normalized === managerPass || normalized === editorPass || (Boolean(modulePass) && normalized === modulePass)) {
+                this.setFieldOpsSession(modKey, "SUPERVISOR");
+                return "SUPERVISOR";
+            }
+
+            // 2. Read-Only Viewer Access: Universal viewer ("isharp" / legacy "monodon")
+            if (normalized === viewerPass || normalized === "isharp" || normalized === "monodon") {
+                this.setFieldOpsSession(modKey, "VIEWER");
+                return "VIEWER";
+            }
+
+            return null;
         };
 
         // 1. Instant check against cache/offline defaults (0ms latency)
-        if (checkMatch()) {
-            if (typeof sessionStorage !== "undefined") {
-                sessionStorage.setItem(FIELD_OPS_SESSION_KEY, String(modKey));
-            }
-            return true;
-        }
+        const instantMatch = checkMatch();
+        if (instantMatch) return instantMatch;
 
         // 2. If unmatched and cache is older than 30s, fetch latest from Supabase and retry
         if (Date.now() - this.cache.lastFetched > 30000) {
             await this.syncPasswords();
-            if (checkMatch()) {
-                if (typeof sessionStorage !== "undefined") {
-                    sessionStorage.setItem(FIELD_OPS_SESSION_KEY, String(modKey));
-                }
-                return true;
-            }
+            return checkMatch();
         }
 
-        return false;
+        return null;
     }
 
     /**

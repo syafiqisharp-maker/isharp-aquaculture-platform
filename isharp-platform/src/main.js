@@ -29,6 +29,7 @@ import { LifecycleTab } from "./modules/dbms/lifecycleTab.js";
 import { LaboratoryTab } from "./modules/dbms/laboratoryTab.js";
 import { StaffTab } from "./modules/dbms/staffTab.js";
 import { UtilitiesTab } from "./modules/dbms/utilitiesTab.js";
+import { pwaUpdateManager } from "./infrastructure/pwaUpdateManager.js";
 
 class App {
     constructor() {
@@ -104,29 +105,12 @@ class App {
                 await this.loadInitialData();
             }
 
-            // 5. Register PWA Service Worker for Offline Functionality
-            this.registerServiceWorker();
+            // 5. Initialize PWA Service Worker & Automated Update Manager
+            pwaUpdateManager.init();
 
         } catch (err) {
             console.error("App bootstrap error:", err);
             Toast.error(`Failed to initialize DBMS: ${err.message}`);
-        }
-    }
-
-    /**
-     * Registers the PWA Service Worker if supported by the browser
-     */
-    registerServiceWorker() {
-        if (typeof window !== "undefined" && "serviceWorker" in navigator) {
-            window.addEventListener("load", () => {
-                navigator.serviceWorker.register("/sw.js")
-                    .then((reg) => {
-                        console.log("📲 [ServiceWorker] Registered with scope:", reg.scope);
-                    })
-                    .catch((err) => {
-                        console.warn("⚠️ [ServiceWorker] Registration failed:", err);
-                    });
-            });
         }
     }
 

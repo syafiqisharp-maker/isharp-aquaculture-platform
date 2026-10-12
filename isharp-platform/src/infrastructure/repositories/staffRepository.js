@@ -30,14 +30,61 @@ export class StaffRepository {
     }
 
     /**
-     * Synchronous lookup of a staff member by ID number from in-memory cache.
-     * @param {string} staffNo 
+     * Synchronous lookup of a staff member by ID number or Name from in-memory cache.
+     * Supports:
+     *  - Exact ID ("0042", "1638")
+     *  - Unpadded ID ("42", "397")
+     *  - Datalist formatted selection ("0042 - Bujang Slamat (Deputy Farm Manager)")
+     *  - Full or partial staff name match
+     * @param {string} query 
      * @returns {object|null}
      */
-    static findStaffByNo(staffNo) {
-        if (!staffNo || !this._directoryCache) return null;
-        const normalized = String(staffNo).trim().padStart(4, "0"); // Handles "42" -> "0042" as well as exact match
-        return this._directoryCache.find(s => s.staff_no === staffNo.trim() || s.staff_no === normalized) || null;
+    static findStaffByNo(query) {
+        return this.findStaff(query);
+    }
+
+    /**
+     * Flexible lookup supporting ID (padded or unpadded) or Name
+     * @param {string} query
+     * @returns {object|null}
+     */
+    static findStaff(query) {
+        if (!query || !this._directoryCache || this._directoryCache.length === 0) return null;
+        const q = String(query).trim();
+        if (!q) return null;
+
+        // 1. If user selected from datalist or format like "0042 - Name..."
+        const prefixIdMatch = q.match(/^(\d{1,6})\s*[-–:]/);
+        if (prefixIdMatch) {
+            const extractedId = prefixIdMatch[1].padStart(4, "0");
+            const match = this._directoryCache.find(s => s.staff_no === extractedId);
+            if (match) return match;
+        }
+
+        // 2. Numeric ID search (handles "42" -> "0042", exact "0042", "1638")
+        if (/^\d+$/.test(q)) {
+            const normalized = q.padStart(4, "0");
+            const match = this._directoryCache.find(s => s.staff_no === q || s.staff_no === normalized);
+            if (match) return match;
+        }
+
+        // 3. Exact staff_no match
+        const exactIdMatch = this._directoryCache.find(s => s.staff_no.toLowerCase() === q.toLowerCase());
+        if (exactIdMatch) return exactIdMatch;
+
+        // 4. Exact staff_name match (case-insensitive)
+        const exactNameMatch = this._directoryCache.find(s => s.staff_name.toLowerCase() === q.toLowerCase());
+        if (exactNameMatch) return exactNameMatch;
+
+        // 5. Partial name search: starts with or contains
+        const cleanQuery = q.toLowerCase();
+        const startsWithName = this._directoryCache.find(s => s.staff_name.toLowerCase().startsWith(cleanQuery));
+        if (startsWithName) return startsWithName;
+
+        const containsName = this._directoryCache.find(s => s.staff_name.toLowerCase().includes(cleanQuery));
+        if (containsName) return containsName;
+
+        return null;
     }
 
     /**

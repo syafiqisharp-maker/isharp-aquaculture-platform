@@ -1,0 +1,1868 @@
+{
+  "summary": {
+    "db_total": 121,
+    "excel_total": 121,
+    "new_in_excel_count": 43,
+    "missing_from_excel_count": 43,
+    "differences_count": 61
+  },
+  "new_in_excel": [
+    {
+      "staff_no": "42",
+      "staff_name": "Bujang Slamat",
+      "staff_position": "Deputy Farm Manager"
+    },
+    {
+      "staff_no": "397",
+      "staff_name": "Che Zulkifli Bin Che Abdul Latif",
+      "staff_position": "Leader, Production"
+    },
+    {
+      "staff_no": "401",
+      "staff_name": "Muhammad Syafiq Bin Sulaiman",
+      "staff_position": "Farm Operator"
+    },
+    {
+      "staff_no": "406",
+      "staff_name": "Zulkepeli Bin Amin",
+      "staff_position": "Leader, Production"
+    },
+    {
+      "staff_no": "407",
+      "staff_name": "Mat Jusoh@Zulkifli Bin Md Ramli",
+      "staff_position": "Leader, Production"
+    },
+    {
+      "staff_no": "414",
+      "staff_name": "Said Bin Tawang",
+      "staff_position": "Leader, Production"
+    },
+    {
+      "staff_no": "415",
+      "staff_name": "Rosidi Bin Tawang",
+      "staff_position": "Leader, Production"
+    },
+    {
+      "staff_no": "423",
+      "staff_name": "Shamsu Bin Besar",
+      "staff_position": "Leader, Production"
+    },
+    {
+      "staff_no": "752",
+      "staff_name": "Mohd Zamberi Bin Mohd Noor",
+      "staff_position": "Leader, Production"
+    },
+    {
+      "staff_no": "756",
+      "staff_name": "Saipudin Bin Hamzah",
+      "staff_position": "Farm Operator"
+    },
+    {
+      "staff_no": "767",
+      "staff_name": "Mohd Kairul Hafizu Bin Draman",
+      "staff_position": "Farm Operator"
+    },
+    {
+      "staff_no": "809",
+      "staff_name": "Rizal Sahril Bin Rozali",
+      "staff_position": "Farm Operator"
+    },
+    {
+      "staff_no": "838",
+      "staff_name": "Mohd Muslihin Bin Mazelih",
+      "staff_position": "Farm Operator"
+    },
+    {
+      "staff_no": "850",
+      "staff_name": "Nik Nurhisam Bin Musa",
+      "staff_position": "Farm Operator"
+    },
+    {
+      "staff_no": "921",
+      "staff_name": "Mohd Aliff Bin Ahmad",
+      "staff_position": "Leader, Production"
+    },
+    {
+      "staff_no": "927",
+      "staff_name": "Mohd Faizal Bin Mohamad",
+      "staff_position": "Farm Operator"
+    },
+    {
+      "staff_no": "937",
+      "staff_name": "Muhd Ranzi Bin Abdullah Dawawi",
+      "staff_position": "Senior, Supervisor Production"
+    },
+    {
+      "staff_no": "972",
+      "staff_name": "Mohamad Bin Ghani",
+      "staff_position": "Leader, Production"
+    },
+    {
+      "staff_no": "976",
+      "staff_name": "Zamrul Hisham Bin Che Hassim",
+      "staff_position": "Farm Operator"
+    },
+    {
+      "staff_no": "2435",
+      "staff_name": "Mohamad Ikmal Hakim bin Mohd Jeefry",
+      "staff_position": "Supervisor Production"
+    },
+    {
+      "staff_no": "2634",
+      "staff_name": "Muhamad Faris Bin Azhari",
+      "staff_position": "Farm Operator"
+    },
+    {
+      "staff_no": "2651",
+      "staff_name": "Darwish Jazly bin Rosmadi",
+      "staff_position": "Farm Operator"
+    },
+    {
+      "staff_no": "2654",
+      "staff_name": "Muhammad Zulfadhlie bin Abdul Wahab",
+      "staff_position": "Farm Operator"
+    },
+    {
+      "staff_no": "2666",
+      "staff_name": "Muhammad Arif Safwan bin Azizudin",
+      "staff_position": "Farm Operator"
+    },
+    {
+      "staff_no": "2671",
+      "staff_name": "Wan Muhammad Aqif bin Wan Ali",
+      "staff_position": "Farm Operator"
+    },
+    {
+      "staff_no": "2676",
+      "staff_name": "Muhammad Fatah Najmi bin Mohd Noor",
+      "staff_position": "Farm Operator"
+    },
+    {
+      "staff_no": "2683",
+      "staff_name": "Muhammad Sayutie bin Ahamad Subki",
+      "staff_position": "Farm Operator"
+    },
+    {
+      "staff_no": "2684",
+      "staff_name": "Mohd Hashim bin Yahya",
+      "staff_position": "Farm Operator"
+    },
+    {
+      "staff_no": "2685",
+      "staff_name": "Adam Mukhlis bin Rosidi",
+      "staff_position": "Farm Operator"
+    },
+    {
+      "staff_no": "2688",
+      "staff_name": "Muhammad Hafizuddin bi  Md Hussin",
+      "staff_position": "Farm Operator"
+    },
+    {
+      "staff_no": "2689",
+      "staff_name": "Iqkhbal Haikal bin Hausni",
+      "staff_position": "Farm Operator"
+    },
+    {
+      "staff_no": "2690",
+      "staff_name": "Muhamad Idham Izzudin bin Mohd Suami",
+      "staff_position": "Farm Operator"
+    },
+    {
+      "staff_no": "2693",
+      "staff_name": "Muhammad Nor Aiman Hakimee bin Abdullah",
+      "staff_position": "Farm Operator"
+    },
+    {
+      "staff_no": "2695",
+      "staff_name": "Abdul Redzuan bin Abdul Majid",
+      "staff_position": "Farm Operator"
+    },
+    {
+      "staff_no": "2696",
+      "staff_name": "Muhammad Afiq Alauddin bin Azani Putra",
+      "staff_position": "Farm Operator"
+    },
+    {
+      "staff_no": "2697",
+      "staff_name": "Muhammad Azry Firdaus bin Harun",
+      "staff_position": "Farm Operator"
+    },
+    {
+      "staff_no": "2700",
+      "staff_name": "Muhammad Adib Fakhri Nabil bin Che Din",
+      "staff_position": "Farm Operator"
+    },
+    {
+      "staff_no": "2704",
+      "staff_name": "Zulhilmi Faisal bin Zainal",
+      "staff_position": "Farm Operator"
+    },
+    {
+      "staff_no": "2716",
+      "staff_name": "Mohamad Aliff bin Dollah",
+      "staff_position": "Supervisor, Production Grow Out"
+    },
+    {
+      "staff_no": "2723",
+      "staff_name": "Aiman Shahir bin Zaidi",
+      "staff_position": "Farm Operator"
+    },
+    {
+      "staff_no": "2724",
+      "staff_name": "Mohd Nazri bin Mukhtar",
+      "staff_position": "Farm Operator"
+    },
+    {
+      "staff_no": "2726",
+      "staff_name": "Muhammad Fazreen Adiff Daniel bin Mohd Nazri",
+      "staff_position": "Farm Operator"
+    },
+    {
+      "staff_no": "2735",
+      "staff_name": "Muhammad Syaqirin bin Salahuddin",
+      "staff_position": "Farm Operator"
+    }
+  ],
+  "missing_from_excel": [
+    {
+      "staff_no": "0756",
+      "staff_name": "Saipudin Hamzah",
+      "staff_position": "Farm Operator",
+      "is_active": true,
+      "created_at": "2026-09-29T13:01:05.675128+08:00"
+    },
+    {
+      "staff_no": "2572",
+      "staff_name": "Muhammad Hairiy Chek Jais",
+      "staff_position": "Farm Operator",
+      "is_active": true,
+      "created_at": "2026-09-29T13:01:05.675128+08:00"
+    },
+    {
+      "staff_no": "0767",
+      "staff_name": "Mohd Kairul Hafizu Bin Deraman",
+      "staff_position": "Farm Operator",
+      "is_active": true,
+      "created_at": "2026-09-29T13:01:05.675128+08:00"
+    },
+    {
+      "staff_no": "0809",
+      "staff_name": "Rizal Sahril Bin Rozali",
+      "staff_position": "Farm Operator",
+      "is_active": true,
+      "created_at": "2026-09-29T13:01:05.675128+08:00"
+    },
+    {
+      "staff_no": "1691",
+      "staff_name": "Mohd Dzuhairi Bin Hasbullah",
+      "staff_position": "Farm Operator",
+      "is_active": true,
+      "created_at": "2026-09-29T13:01:05.675128+08:00"
+    },
+    {
+      "staff_no": "0401",
+      "staff_name": "Muhammad Syafiq Bin Sulaiman",
+      "staff_position": "Farm Operator",
+      "is_active": true,
+      "created_at": "2026-09-29T13:01:05.675128+08:00"
+    },
+    {
+      "staff_no": "0850",
+      "staff_name": "Nik Nurhisam Bin Musa",
+      "staff_position": "Farm Operator",
+      "is_active": true,
+      "created_at": "2026-09-29T13:01:05.675128+08:00"
+    },
+    {
+      "staff_no": "2490",
+      "staff_name": "Muhammad Adib Adhwa Bin Lotfi",
+      "staff_position": "Farm Operator",
+      "is_active": true,
+      "created_at": "2026-09-29T13:01:05.675128+08:00"
+    },
+    {
+      "staff_no": "2256",
+      "staff_name": "Mohd Rozey Bin Razali",
+      "staff_position": "Farm Operator",
+      "is_active": true,
+      "created_at": "2026-09-29T13:01:05.675128+08:00"
+    },
+    {
+      "staff_no": "1398",
+      "staff_name": "Mohd Zurkarnain Zakaria",
+      "staff_position": "Farm Operator",
+      "is_active": true,
+      "created_at": "2026-09-29T13:01:05.675128+08:00"
+    },
+    {
+      "staff_no": "0948",
+      "staff_name": "Muhamad Khairudin Bin Harun",
+      "staff_position": "Farm Operator",
+      "is_active": true,
+      "created_at": "2026-09-29T13:01:05.675128+08:00"
+    },
+    {
+      "staff_no": "0955",
+      "staff_name": "Rohzaimi Bin Derahim",
+      "staff_position": "Farm Operator",
+      "is_active": true,
+      "created_at": "2026-09-29T13:01:05.675128+08:00"
+    },
+    {
+      "staff_no": "1720",
+      "staff_name": "Muslim Bin Mohd Ali",
+      "staff_position": "Farm Operator",
+      "is_active": true,
+      "created_at": "2026-09-29T13:01:05.675128+08:00"
+    },
+    {
+      "staff_no": "0927",
+      "staff_name": "Mohd Faizal Bin Mohamad",
+      "staff_position": "Farm Operator",
+      "is_active": true,
+      "created_at": "2026-09-29T13:01:05.675128+08:00"
+    },
+    {
+      "staff_no": "0976",
+      "staff_name": "Zamrul Hisham Bin Che Hassim",
+      "staff_position": "Farm Operator",
+      "is_active": true,
+      "created_at": "2026-09-29T13:01:05.675128+08:00"
+    },
+    {
+      "staff_no": "1898",
+      "staff_name": "Mohd Khairol Anwar Bin Abdullah",
+      "staff_position": "Farm Operator",
+      "is_active": true,
+      "created_at": "2026-09-29T13:01:05.675128+08:00"
+    },
+    {
+      "staff_no": "0921",
+      "staff_name": "Mohd Aliff Bin Ahmad",
+      "staff_position": "Farm Operator",
+      "is_active": true,
+      "created_at": "2026-09-29T13:01:05.675128+08:00"
+    },
+    {
+      "staff_no": "2388",
+      "staff_name": "Azulan B. Mat Nor",
+      "staff_position": "Farm Operator",
+      "is_active": true,
+      "created_at": "2026-09-29T13:01:05.675128+08:00"
+    },
+    {
+      "staff_no": "1617",
+      "staff_name": "Muhammad Zulfadlie Bin Mohd Azam",
+      "staff_position": "Farm Operator",
+      "is_active": true,
+      "created_at": "2026-09-29T13:01:05.675128+08:00"
+    },
+    {
+      "staff_no": "2305",
+      "staff_name": "Nik Md Zainini Nasir",
+      "staff_position": "Farm Operator",
+      "is_active": true,
+      "created_at": "2026-09-29T13:01:05.675128+08:00"
+    },
+    {
+      "staff_no": "2582",
+      "staff_name": "Muhammad Aiman Bin Mohd Termizi",
+      "staff_position": "Farm Operator",
+      "is_active": true,
+      "created_at": "2026-09-29T13:01:05.675128+08:00"
+    },
+    {
+      "staff_no": "2617",
+      "staff_name": "Aiman Mukhriz Bin Zaitong",
+      "staff_position": "Farm Operator",
+      "is_active": true,
+      "created_at": "2026-09-29T13:01:05.675128+08:00"
+    },
+    {
+      "staff_no": "0397",
+      "staff_name": "Che Zulkifli Bin Che Abdul Latif",
+      "staff_position": "Farm Operator (Row Leader)",
+      "is_active": true,
+      "created_at": "2026-09-29T13:01:05.675128+08:00"
+    },
+    {
+      "staff_no": "0406",
+      "staff_name": "Zulkepeli Bin Amin",
+      "staff_position": "Farm Operator (Row Leader)",
+      "is_active": true,
+      "created_at": "2026-09-29T13:01:05.675128+08:00"
+    },
+    {
+      "staff_no": "0414",
+      "staff_name": "Said Bin Tawang",
+      "staff_position": "Farm Operator (Row Leader)",
+      "is_active": true,
+      "created_at": "2026-09-29T13:01:05.675128+08:00"
+    },
+    {
+      "staff_no": "0400",
+      "staff_name": "Zahid Bin Umar",
+      "staff_position": "Farm Operator (Row Leader)",
+      "is_active": true,
+      "created_at": "2026-09-29T13:01:05.675128+08:00"
+    },
+    {
+      "staff_no": "0407",
+      "staff_name": "Mat Jusoh@Zulkifli Bin Md Ramli",
+      "staff_position": "Farm Operator (Row Leader)",
+      "is_active": true,
+      "created_at": "2026-09-29T13:01:05.675128+08:00"
+    },
+    {
+      "staff_no": "0972",
+      "staff_name": "Mohamad Bin Ghani",
+      "staff_position": "Farm Operator (Row Leader)",
+      "is_active": true,
+      "created_at": "2026-09-29T13:01:05.675128+08:00"
+    },
+    {
+      "staff_no": "0423",
+      "staff_name": "Shamsu Bin Besar",
+      "staff_position": "Farm Operator (Row Leader)",
+      "is_active": true,
+      "created_at": "2026-09-29T13:01:05.675128+08:00"
+    },
+    {
+      "staff_no": "0752",
+      "staff_name": "Mohd Zamberi Bin Mohd Noor",
+      "staff_position": "Farm Operator (Row Leader)",
+      "is_active": true,
+      "created_at": "2026-09-29T13:01:05.675128+08:00"
+    },
+    {
+      "staff_no": "1140",
+      "staff_name": "Wan Azlan Bin Wan Yusoff",
+      "staff_position": "Farm Operator (Row Leader)",
+      "is_active": true,
+      "created_at": "2026-09-29T13:01:05.675128+08:00"
+    },
+    {
+      "staff_no": "0418",
+      "staff_name": "Mohd Nazri B. Yaacob",
+      "staff_position": "Farm Operator (Row Leader)",
+      "is_active": true,
+      "created_at": "2026-09-29T13:01:05.675128+08:00"
+    },
+    {
+      "staff_no": "0415",
+      "staff_name": "Rosidi Tawang",
+      "staff_position": "Farm Operator (Row Leader)",
+      "is_active": true,
+      "created_at": "2026-09-29T13:01:05.675128+08:00"
+    },
+    {
+      "staff_no": "0838",
+      "staff_name": "Mohd Muslihin Mazelih",
+      "staff_position": "Farm Operator (Support)",
+      "is_active": true,
+      "created_at": "2026-09-29T13:01:05.675128+08:00"
+    },
+    {
+      "staff_no": "0801",
+      "staff_name": "Mohd Shawalludin Bin Md Ramli",
+      "staff_position": "Farm Operator (Support)",
+      "is_active": true,
+      "created_at": "2026-09-29T13:01:05.675128+08:00"
+    },
+    {
+      "staff_no": "2463",
+      "staff_name": "Muhamad Amirudin Bin Othman",
+      "staff_position": "Farm Operator (Support)",
+      "is_active": true,
+      "created_at": "2026-09-29T13:01:05.675128+08:00"
+    },
+    {
+      "staff_no": "2357",
+      "staff_name": "Fairoz Fauzi",
+      "staff_position": "Farm Operator (Support)",
+      "is_active": true,
+      "created_at": "2026-09-29T13:01:05.675128+08:00"
+    },
+    {
+      "staff_no": "2588",
+      "staff_name": "Muhammad Mustakiem Bin Mazle",
+      "staff_position": "Farm Operator (Support)",
+      "is_active": true,
+      "created_at": "2026-09-29T13:01:05.675128+08:00"
+    },
+    {
+      "staff_no": "2589",
+      "staff_name": "Ahmad Naim Bin Muhamad Kamal",
+      "staff_position": "Farm Operator (Support)",
+      "is_active": true,
+      "created_at": "2026-09-29T13:01:05.675128+08:00"
+    },
+    {
+      "staff_no": "0937",
+      "staff_name": "Muhd Ranzi Bin Abdullah Dawawi",
+      "staff_position": "Supervisor, Production",
+      "is_active": true,
+      "created_at": "2026-09-29T13:01:05.675128+08:00"
+    },
+    {
+      "staff_no": "0042",
+      "staff_name": "Bujang Slamat",
+      "staff_position": "Asst Manager",
+      "is_active": true,
+      "created_at": "2026-09-29T13:01:05.675128+08:00"
+    },
+    {
+      "staff_no": "1497",
+      "staff_name": "Trisnanto Nugroho",
+      "staff_position": "Asst Manager",
+      "is_active": true,
+      "created_at": "2026-09-29T13:01:05.675128+08:00"
+    },
+    {
+      "staff_no": "1494",
+      "staff_name": "Trisnanto Nugruho",
+      "staff_position": "Asst Manager",
+      "is_active": true,
+      "created_at": "2026-09-29T13:01:05.675128+08:00"
+    }
+  ],
+  "differences": [
+    {
+      "staff_no": "1086",
+      "diffs": {
+        "name": {
+          "excel": "Zulhaidi Bin Din",
+          "db": "Mohd Zulhaidi Bin Din"
+        },
+        "position": {
+          "excel": "Farm Operator",
+          "db": "Farm Operator (Support)"
+        }
+      },
+      "excel": {
+        "staff_no": "1086",
+        "staff_name": "Zulhaidi Bin Din",
+        "staff_position": "Farm Operator"
+      },
+      "db": {
+        "staff_no": "1086",
+        "staff_name": "Mohd Zulhaidi Bin Din",
+        "staff_position": "Farm Operator (Support)",
+        "is_active": true,
+        "created_at": "2026-09-29T13:01:05.675128+08:00"
+      }
+    },
+    {
+      "staff_no": "1120",
+      "diffs": {
+        "name": {
+          "excel": "Mohammad Fathuddin Bin Salleh",
+          "db": "Mohammad Fathuddin Salleh"
+        },
+        "position": {
+          "excel": "Leader, Production",
+          "db": "Farm Operator (Row Leader)"
+        }
+      },
+      "excel": {
+        "staff_no": "1120",
+        "staff_name": "Mohammad Fathuddin Bin Salleh",
+        "staff_position": "Leader, Production"
+      },
+      "db": {
+        "staff_no": "1120",
+        "staff_name": "Mohammad Fathuddin Salleh",
+        "staff_position": "Farm Operator (Row Leader)",
+        "is_active": true,
+        "created_at": "2026-09-29T13:01:05.675128+08:00"
+      }
+    },
+    {
+      "staff_no": "1134",
+      "diffs": {
+        "position": {
+          "excel": "Leader, Production",
+          "db": "Farm Operator (Row Leader)"
+        }
+      },
+      "excel": {
+        "staff_no": "1134",
+        "staff_name": "Mohd Hafiz Bin Manah",
+        "staff_position": "Leader, Production"
+      },
+      "db": {
+        "staff_no": "1134",
+        "staff_name": "Mohd Hafiz Bin Manah",
+        "staff_position": "Farm Operator (Row Leader)",
+        "is_active": true,
+        "created_at": "2026-09-29T13:01:05.675128+08:00"
+      }
+    },
+    {
+      "staff_no": "1157",
+      "diffs": {
+        "position": {
+          "excel": "Senior, Supervisor Production",
+          "db": "Supervisor, Production"
+        }
+      },
+      "excel": {
+        "staff_no": "1157",
+        "staff_name": "Mohd Azlie Bin Baharudin",
+        "staff_position": "Senior, Supervisor Production"
+      },
+      "db": {
+        "staff_no": "1157",
+        "staff_name": "Mohd Azlie Bin Baharudin",
+        "staff_position": "Supervisor, Production",
+        "is_active": true,
+        "created_at": "2026-09-29T13:01:05.675128+08:00"
+      }
+    },
+    {
+      "staff_no": "1216",
+      "diffs": {
+        "name": {
+          "excel": "Mohd Ridzuan Bin Ramli",
+          "db": "Mohd Ridzuan Ramli"
+        }
+      },
+      "excel": {
+        "staff_no": "1216",
+        "staff_name": "Mohd Ridzuan Bin Ramli",
+        "staff_position": "Farm Operator"
+      },
+      "db": {
+        "staff_no": "1216",
+        "staff_name": "Mohd Ridzuan Ramli",
+        "staff_position": "Farm Operator",
+        "is_active": true,
+        "created_at": "2026-09-29T13:01:05.675128+08:00"
+      }
+    },
+    {
+      "staff_no": "1264",
+      "diffs": {
+        "position": {
+          "excel": "Leader, Production",
+          "db": "Farm Operator (Row Leader)"
+        }
+      },
+      "excel": {
+        "staff_no": "1264",
+        "staff_name": "Mohamad Izudin Bin Abdul Manaf",
+        "staff_position": "Leader, Production"
+      },
+      "db": {
+        "staff_no": "1264",
+        "staff_name": "Mohamad Izudin Bin Abdul Manaf",
+        "staff_position": "Farm Operator (Row Leader)",
+        "is_active": true,
+        "created_at": "2026-09-29T13:01:05.675128+08:00"
+      }
+    },
+    {
+      "staff_no": "1284",
+      "diffs": {
+        "name": {
+          "excel": "Mohamad Azar Bin Mat Husin",
+          "db": "Mohd Azar Bin Mat Husin"
+        }
+      },
+      "excel": {
+        "staff_no": "1284",
+        "staff_name": "Mohamad Azar Bin Mat Husin",
+        "staff_position": "Farm Operator"
+      },
+      "db": {
+        "staff_no": "1284",
+        "staff_name": "Mohd Azar Bin Mat Husin",
+        "staff_position": "Farm Operator",
+        "is_active": true,
+        "created_at": "2026-09-29T13:01:05.675128+08:00"
+      }
+    },
+    {
+      "staff_no": "1291",
+      "diffs": {
+        "position": {
+          "excel": "Leader, Production",
+          "db": "Farm Operator (Row Leader)"
+        }
+      },
+      "excel": {
+        "staff_no": "1291",
+        "staff_name": "Mohd Azizan Bin Azmi",
+        "staff_position": "Leader, Production"
+      },
+      "db": {
+        "staff_no": "1291",
+        "staff_name": "Mohd Azizan Bin Azmi",
+        "staff_position": "Farm Operator (Row Leader)",
+        "is_active": true,
+        "created_at": "2026-09-29T13:01:05.675128+08:00"
+      }
+    },
+    {
+      "staff_no": "1348",
+      "diffs": {
+        "name": {
+          "excel": "Che Khairul Nizam Bin Hasim",
+          "db": "Che Khairul Nizam Hasim"
+        }
+      },
+      "excel": {
+        "staff_no": "1348",
+        "staff_name": "Che Khairul Nizam Bin Hasim",
+        "staff_position": "Farm Operator"
+      },
+      "db": {
+        "staff_no": "1348",
+        "staff_name": "Che Khairul Nizam Hasim",
+        "staff_position": "Farm Operator",
+        "is_active": true,
+        "created_at": "2026-09-29T13:01:05.675128+08:00"
+      }
+    },
+    {
+      "staff_no": "1357",
+      "diffs": {
+        "position": {
+          "excel": "Acting Deputy Farm Manager",
+          "db": "Asst Manager"
+        }
+      },
+      "excel": {
+        "staff_no": "1357",
+        "staff_name": "Ahmad Rohaimee Bin Abdullah",
+        "staff_position": "Acting Deputy Farm Manager"
+      },
+      "db": {
+        "staff_no": "1357",
+        "staff_name": "Ahmad Rohaimee Bin Abdullah",
+        "staff_position": "Asst Manager",
+        "is_active": true,
+        "created_at": "2026-09-29T13:01:05.675128+08:00"
+      }
+    },
+    {
+      "staff_no": "1428",
+      "diffs": {
+        "name": {
+          "excel": "Mohamad Asrul Bin Abdul Manaf",
+          "db": "Muhamad Asrol Manaf"
+        }
+      },
+      "excel": {
+        "staff_no": "1428",
+        "staff_name": "Mohamad Asrul Bin Abdul Manaf",
+        "staff_position": "Farm Operator"
+      },
+      "db": {
+        "staff_no": "1428",
+        "staff_name": "Muhamad Asrol Manaf",
+        "staff_position": "Farm Operator",
+        "is_active": true,
+        "created_at": "2026-09-29T13:01:05.675128+08:00"
+      }
+    },
+    {
+      "staff_no": "1447",
+      "diffs": {
+        "name": {
+          "excel": "Ahmad Adam Bin Muhammad",
+          "db": "Ahmad Adam Muhammad"
+        }
+      },
+      "excel": {
+        "staff_no": "1447",
+        "staff_name": "Ahmad Adam Bin Muhammad",
+        "staff_position": "Farm Operator"
+      },
+      "db": {
+        "staff_no": "1447",
+        "staff_name": "Ahmad Adam Muhammad",
+        "staff_position": "Farm Operator",
+        "is_active": true,
+        "created_at": "2026-09-29T13:01:05.675128+08:00"
+      }
+    },
+    {
+      "staff_no": "1590",
+      "diffs": {
+        "position": {
+          "excel": "Farm Operator",
+          "db": "Farm Operator (Support)"
+        }
+      },
+      "excel": {
+        "staff_no": "1590",
+        "staff_name": "Azmi Bin Daud",
+        "staff_position": "Farm Operator"
+      },
+      "db": {
+        "staff_no": "1590",
+        "staff_name": "Azmi Bin Daud",
+        "staff_position": "Farm Operator (Support)",
+        "is_active": true,
+        "created_at": "2026-09-29T13:01:05.675128+08:00"
+      }
+    },
+    {
+      "staff_no": "1638",
+      "diffs": {
+        "position": {
+          "excel": "Assistant Manager, Production",
+          "db": "Supervisor, Production"
+        }
+      },
+      "excel": {
+        "staff_no": "1638",
+        "staff_name": "Hairi Azha Bin Mohd Azam",
+        "staff_position": "Assistant Manager, Production"
+      },
+      "db": {
+        "staff_no": "1638",
+        "staff_name": "Hairi Azha Bin Mohd Azam",
+        "staff_position": "Supervisor, Production",
+        "is_active": true,
+        "created_at": "2026-09-29T13:01:05.675128+08:00"
+      }
+    },
+    {
+      "staff_no": "1693",
+      "diffs": {
+        "name": {
+          "excel": "Mohd Amerullah Bin Raziha",
+          "db": "Mohd Amerullah Raziha"
+        }
+      },
+      "excel": {
+        "staff_no": "1693",
+        "staff_name": "Mohd Amerullah Bin Raziha",
+        "staff_position": "Farm Operator"
+      },
+      "db": {
+        "staff_no": "1693",
+        "staff_name": "Mohd Amerullah Raziha",
+        "staff_position": "Farm Operator",
+        "is_active": true,
+        "created_at": "2026-09-29T13:01:05.675128+08:00"
+      }
+    },
+    {
+      "staff_no": "1694",
+      "diffs": {
+        "name": {
+          "excel": "Mohamad Nur Farhan Hakim Bin Mat Adanan",
+          "db": "Mohd Nur Farhan Hakim Mat Adanan"
+        }
+      },
+      "excel": {
+        "staff_no": "1694",
+        "staff_name": "Mohamad Nur Farhan Hakim Bin Mat Adanan",
+        "staff_position": "Farm Operator"
+      },
+      "db": {
+        "staff_no": "1694",
+        "staff_name": "Mohd Nur Farhan Hakim Mat Adanan",
+        "staff_position": "Farm Operator",
+        "is_active": true,
+        "created_at": "2026-09-29T13:01:05.675128+08:00"
+      }
+    },
+    {
+      "staff_no": "1705",
+      "diffs": {
+        "position": {
+          "excel": "Leader, Production",
+          "db": "Farm Operator (Row Leader)"
+        }
+      },
+      "excel": {
+        "staff_no": "1705",
+        "staff_name": "Muhammad Zarul Haikal Bin Omar",
+        "staff_position": "Leader, Production"
+      },
+      "db": {
+        "staff_no": "1705",
+        "staff_name": "Muhammad Zarul Haikal Bin Omar",
+        "staff_position": "Farm Operator (Row Leader)",
+        "is_active": true,
+        "created_at": "2026-09-29T13:01:05.675128+08:00"
+      }
+    },
+    {
+      "staff_no": "1782",
+      "diffs": {
+        "name": {
+          "excel": "Azman Bin Jaafar",
+          "db": "Azman Jaafar"
+        },
+        "position": {
+          "excel": "Leader, Production",
+          "db": "Farm Operator (Row Leader)"
+        }
+      },
+      "excel": {
+        "staff_no": "1782",
+        "staff_name": "Azman Bin Jaafar",
+        "staff_position": "Leader, Production"
+      },
+      "db": {
+        "staff_no": "1782",
+        "staff_name": "Azman Jaafar",
+        "staff_position": "Farm Operator (Row Leader)",
+        "is_active": true,
+        "created_at": "2026-09-29T13:01:05.675128+08:00"
+      }
+    },
+    {
+      "staff_no": "1835",
+      "diffs": {
+        "name": {
+          "excel": "Muhamad Faiz Bin Zakaria",
+          "db": "Muhamad Faiz B Zakaria"
+        },
+        "position": {
+          "excel": "Supervisor, Production Grow Out",
+          "db": "Supervisor, Production"
+        }
+      },
+      "excel": {
+        "staff_no": "1835",
+        "staff_name": "Muhamad Faiz Bin Zakaria",
+        "staff_position": "Supervisor, Production Grow Out"
+      },
+      "db": {
+        "staff_no": "1835",
+        "staff_name": "Muhamad Faiz B Zakaria",
+        "staff_position": "Supervisor, Production",
+        "is_active": true,
+        "created_at": "2026-09-29T13:01:05.675128+08:00"
+      }
+    },
+    {
+      "staff_no": "1969",
+      "diffs": {
+        "position": {
+          "excel": "Farm Operator",
+          "db": "Farm Operator (Support)"
+        }
+      },
+      "excel": {
+        "staff_no": "1969",
+        "staff_name": "Mohd Khairul Hakimi Bin Abd Rahim",
+        "staff_position": "Farm Operator"
+      },
+      "db": {
+        "staff_no": "1969",
+        "staff_name": "Mohd Khairul Hakimi Bin Abd Rahim",
+        "staff_position": "Farm Operator (Support)",
+        "is_active": true,
+        "created_at": "2026-09-29T13:01:05.675128+08:00"
+      }
+    },
+    {
+      "staff_no": "2037",
+      "diffs": {
+        "position": {
+          "excel": "Leader, Production",
+          "db": "Farm Operator"
+        }
+      },
+      "excel": {
+        "staff_no": "2037",
+        "staff_name": "Muhammad Nazriel Hafiziey Bin Shamsudin",
+        "staff_position": "Leader, Production"
+      },
+      "db": {
+        "staff_no": "2037",
+        "staff_name": "Muhammad Nazriel Hafiziey Bin Shamsudin",
+        "staff_position": "Farm Operator",
+        "is_active": true,
+        "created_at": "2026-09-29T13:01:05.675128+08:00"
+      }
+    },
+    {
+      "staff_no": "2042",
+      "diffs": {
+        "name": {
+          "excel": "Muhamad Azizi Azrie Bin Junaidi",
+          "db": "Mohd Azizi Azrie Bin Junaidi"
+        }
+      },
+      "excel": {
+        "staff_no": "2042",
+        "staff_name": "Muhamad Azizi Azrie Bin Junaidi",
+        "staff_position": "Farm Operator"
+      },
+      "db": {
+        "staff_no": "2042",
+        "staff_name": "Mohd Azizi Azrie Bin Junaidi",
+        "staff_position": "Farm Operator",
+        "is_active": true,
+        "created_at": "2026-09-29T13:01:05.675128+08:00"
+      }
+    },
+    {
+      "staff_no": "2057",
+      "diffs": {
+        "position": {
+          "excel": "Farm Operator",
+          "db": "Farm Operator (Support)"
+        }
+      },
+      "excel": {
+        "staff_no": "2057",
+        "staff_name": "Che Amat Bin Ali",
+        "staff_position": "Farm Operator"
+      },
+      "db": {
+        "staff_no": "2057",
+        "staff_name": "Che Amat Bin Ali",
+        "staff_position": "Farm Operator (Support)",
+        "is_active": true,
+        "created_at": "2026-09-29T13:01:05.675128+08:00"
+      }
+    },
+    {
+      "staff_no": "2083",
+      "diffs": {
+        "name": {
+          "excel": "Mohammad Izham Bin Hassan",
+          "db": "Mohammad Izham Hassan"
+        },
+        "position": {
+          "excel": "Supervisor, Production Grow Out",
+          "db": "Supervisor, Production"
+        }
+      },
+      "excel": {
+        "staff_no": "2083",
+        "staff_name": "Mohammad Izham Bin Hassan",
+        "staff_position": "Supervisor, Production Grow Out"
+      },
+      "db": {
+        "staff_no": "2083",
+        "staff_name": "Mohammad Izham Hassan",
+        "staff_position": "Supervisor, Production",
+        "is_active": true,
+        "created_at": "2026-09-29T13:01:05.675128+08:00"
+      }
+    },
+    {
+      "staff_no": "2104",
+      "diffs": {
+        "name": {
+          "excel": "Mohd Hasif Bin Muhammad",
+          "db": "Mohd Hasif Muhammad"
+        },
+        "position": {
+          "excel": "Supervisor, Production Grow Out",
+          "db": "Supervisor, Production"
+        }
+      },
+      "excel": {
+        "staff_no": "2104",
+        "staff_name": "Mohd Hasif Bin Muhammad",
+        "staff_position": "Supervisor, Production Grow Out"
+      },
+      "db": {
+        "staff_no": "2104",
+        "staff_name": "Mohd Hasif Muhammad",
+        "staff_position": "Supervisor, Production",
+        "is_active": true,
+        "created_at": "2026-09-29T13:01:05.675128+08:00"
+      }
+    },
+    {
+      "staff_no": "2127",
+      "diffs": {
+        "position": {
+          "excel": "Leader, Production",
+          "db": "Farm Operator (Row Leader)"
+        }
+      },
+      "excel": {
+        "staff_no": "2127",
+        "staff_name": "Muhammad Khairul Bin Mat Sopi",
+        "staff_position": "Leader, Production"
+      },
+      "db": {
+        "staff_no": "2127",
+        "staff_name": "Muhammad Khairul Bin Mat Sopi",
+        "staff_position": "Farm Operator (Row Leader)",
+        "is_active": true,
+        "created_at": "2026-09-29T13:01:05.675128+08:00"
+      }
+    },
+    {
+      "staff_no": "2154",
+      "diffs": {
+        "position": {
+          "excel": "Farm Operator",
+          "db": "Farm Operator (Support)"
+        }
+      },
+      "excel": {
+        "staff_no": "2154",
+        "staff_name": "Wan Muhamad Redzuwan Bin Wan Omar",
+        "staff_position": "Farm Operator"
+      },
+      "db": {
+        "staff_no": "2154",
+        "staff_name": "Wan Muhamad Redzuwan Bin Wan Omar",
+        "staff_position": "Farm Operator (Support)",
+        "is_active": true,
+        "created_at": "2026-09-29T13:01:05.675128+08:00"
+      }
+    },
+    {
+      "staff_no": "2173",
+      "diffs": {
+        "name": {
+          "excel": "Nik Mohd Fadzil Bin Nik Husin",
+          "db": "Nik Mohd Fadzil Nik Husin"
+        },
+        "position": {
+          "excel": "Leader, Production",
+          "db": "Farm Operator"
+        }
+      },
+      "excel": {
+        "staff_no": "2173",
+        "staff_name": "Nik Mohd Fadzil Bin Nik Husin",
+        "staff_position": "Leader, Production"
+      },
+      "db": {
+        "staff_no": "2173",
+        "staff_name": "Nik Mohd Fadzil Nik Husin",
+        "staff_position": "Farm Operator",
+        "is_active": true,
+        "created_at": "2026-09-29T13:01:05.675128+08:00"
+      }
+    },
+    {
+      "staff_no": "2196",
+      "diffs": {
+        "position": {
+          "excel": "Senior, Supervisor Production",
+          "db": "Supervisor, Production"
+        }
+      },
+      "excel": {
+        "staff_no": "2196",
+        "staff_name": "Nazronha Bin Napi",
+        "staff_position": "Senior, Supervisor Production"
+      },
+      "db": {
+        "staff_no": "2196",
+        "staff_name": "Nazronha Bin Napi",
+        "staff_position": "Supervisor, Production",
+        "is_active": true,
+        "created_at": "2026-09-29T13:01:05.675128+08:00"
+      }
+    },
+    {
+      "staff_no": "2241",
+      "diffs": {
+        "name": {
+          "excel": "Mohd Izzany Bin Ismail",
+          "db": "Mohd Izanny Bin Ismail"
+        }
+      },
+      "excel": {
+        "staff_no": "2241",
+        "staff_name": "Mohd Izzany Bin Ismail",
+        "staff_position": "Farm Operator"
+      },
+      "db": {
+        "staff_no": "2241",
+        "staff_name": "Mohd Izanny Bin Ismail",
+        "staff_position": "Farm Operator",
+        "is_active": true,
+        "created_at": "2026-09-29T13:01:05.675128+08:00"
+      }
+    },
+    {
+      "staff_no": "2261",
+      "diffs": {
+        "name": {
+          "excel": "Mohamad Hanif Bin Rosli",
+          "db": "Muhammad Hanif Rosli"
+        }
+      },
+      "excel": {
+        "staff_no": "2261",
+        "staff_name": "Mohamad Hanif Bin Rosli",
+        "staff_position": "Farm Operator"
+      },
+      "db": {
+        "staff_no": "2261",
+        "staff_name": "Muhammad Hanif Rosli",
+        "staff_position": "Farm Operator",
+        "is_active": true,
+        "created_at": "2026-09-29T13:01:05.675128+08:00"
+      }
+    },
+    {
+      "staff_no": "2263",
+      "diffs": {
+        "position": {
+          "excel": "Farm Operator",
+          "db": "Farm Operator (Support)"
+        }
+      },
+      "excel": {
+        "staff_no": "2263",
+        "staff_name": "Muhammad Alfiyzul Bin Azmi",
+        "staff_position": "Farm Operator"
+      },
+      "db": {
+        "staff_no": "2263",
+        "staff_name": "Muhammad Alfiyzul Bin Azmi",
+        "staff_position": "Farm Operator (Support)",
+        "is_active": true,
+        "created_at": "2026-09-29T13:01:05.675128+08:00"
+      }
+    },
+    {
+      "staff_no": "2301",
+      "diffs": {
+        "name_case_or_spacing": {
+          "excel": "Farizul Akif bin Makhtar",
+          "db": "Farizul Akif Bin Makhtar"
+        }
+      },
+      "excel": {
+        "staff_no": "2301",
+        "staff_name": "Farizul Akif bin Makhtar",
+        "staff_position": "Farm Operator"
+      },
+      "db": {
+        "staff_no": "2301",
+        "staff_name": "Farizul Akif Bin Makhtar",
+        "staff_position": "Farm Operator",
+        "is_active": true,
+        "created_at": "2026-09-29T13:01:05.675128+08:00"
+      }
+    },
+    {
+      "staff_no": "2303",
+      "diffs": {
+        "name": {
+          "excel": "Mohammad Shahrul Naim bin Mohd Shariff",
+          "db": "Mohammad Shahrul Naim Mohd Shariff"
+        }
+      },
+      "excel": {
+        "staff_no": "2303",
+        "staff_name": "Mohammad Shahrul Naim bin Mohd Shariff",
+        "staff_position": "Farm Operator"
+      },
+      "db": {
+        "staff_no": "2303",
+        "staff_name": "Mohammad Shahrul Naim Mohd Shariff",
+        "staff_position": "Farm Operator",
+        "is_active": true,
+        "created_at": "2026-09-29T13:01:05.675128+08:00"
+      }
+    },
+    {
+      "staff_no": "2310",
+      "diffs": {
+        "name": {
+          "excel": "Burhanuddin Al-Helmi bin Jusoh @ Abd Rahman",
+          "db": "Burhanuddin Al Helmi Bin Jusoh"
+        }
+      },
+      "excel": {
+        "staff_no": "2310",
+        "staff_name": "Burhanuddin Al-Helmi bin Jusoh @ Abd Rahman",
+        "staff_position": "Farm Operator"
+      },
+      "db": {
+        "staff_no": "2310",
+        "staff_name": "Burhanuddin Al Helmi Bin Jusoh",
+        "staff_position": "Farm Operator",
+        "is_active": true,
+        "created_at": "2026-09-29T13:01:05.675128+08:00"
+      }
+    },
+    {
+      "staff_no": "2314",
+      "diffs": {
+        "name_case_or_spacing": {
+          "excel": "Muhammad Najwa Asraf bin Azaman",
+          "db": "Muhammad Najwa Asraf Bin Azaman"
+        },
+        "position": {
+          "excel": "Farm Operator",
+          "db": "Farm Operator (Support)"
+        }
+      },
+      "excel": {
+        "staff_no": "2314",
+        "staff_name": "Muhammad Najwa Asraf bin Azaman",
+        "staff_position": "Farm Operator"
+      },
+      "db": {
+        "staff_no": "2314",
+        "staff_name": "Muhammad Najwa Asraf Bin Azaman",
+        "staff_position": "Farm Operator (Support)",
+        "is_active": true,
+        "created_at": "2026-09-29T13:01:05.675128+08:00"
+      }
+    },
+    {
+      "staff_no": "2315",
+      "diffs": {
+        "name": {
+          "excel": "Mat Kheirifarid bin Mat Sopi",
+          "db": "Mat Kheirifarid Mat Sopi"
+        }
+      },
+      "excel": {
+        "staff_no": "2315",
+        "staff_name": "Mat Kheirifarid bin Mat Sopi",
+        "staff_position": "Farm Operator"
+      },
+      "db": {
+        "staff_no": "2315",
+        "staff_name": "Mat Kheirifarid Mat Sopi",
+        "staff_position": "Farm Operator",
+        "is_active": true,
+        "created_at": "2026-09-29T13:01:05.675128+08:00"
+      }
+    },
+    {
+      "staff_no": "2327",
+      "diffs": {
+        "name_case_or_spacing": {
+          "excel": "Muhammad Badruddin bin Mat Sopi",
+          "db": "Muhammad Badruddin Bin Mat Sopi"
+        }
+      },
+      "excel": {
+        "staff_no": "2327",
+        "staff_name": "Muhammad Badruddin bin Mat Sopi",
+        "staff_position": "Farm Operator"
+      },
+      "db": {
+        "staff_no": "2327",
+        "staff_name": "Muhammad Badruddin Bin Mat Sopi",
+        "staff_position": "Farm Operator",
+        "is_active": true,
+        "created_at": "2026-09-29T13:01:05.675128+08:00"
+      }
+    },
+    {
+      "staff_no": "2371",
+      "diffs": {
+        "name": {
+          "excel": "Wan Fahiminuddin bin Wan Mohd Nasir",
+          "db": "Wan Fahiminuddin Wan Mohd Nasir"
+        }
+      },
+      "excel": {
+        "staff_no": "2371",
+        "staff_name": "Wan Fahiminuddin bin Wan Mohd Nasir",
+        "staff_position": "Farm Operator"
+      },
+      "db": {
+        "staff_no": "2371",
+        "staff_name": "Wan Fahiminuddin Wan Mohd Nasir",
+        "staff_position": "Farm Operator",
+        "is_active": true,
+        "created_at": "2026-09-29T13:01:05.675128+08:00"
+      }
+    },
+    {
+      "staff_no": "2386",
+      "diffs": {
+        "name_case_or_spacing": {
+          "excel": "Syahrul Nizam bin Said",
+          "db": "Syahrul Nizam Bin Said"
+        }
+      },
+      "excel": {
+        "staff_no": "2386",
+        "staff_name": "Syahrul Nizam bin Said",
+        "staff_position": "Farm Operator"
+      },
+      "db": {
+        "staff_no": "2386",
+        "staff_name": "Syahrul Nizam Bin Said",
+        "staff_position": "Farm Operator",
+        "is_active": true,
+        "created_at": "2026-09-29T13:01:05.675128+08:00"
+      }
+    },
+    {
+      "staff_no": "2398",
+      "diffs": {
+        "name": {
+          "excel": "Muhammad Najmi Aiman bin Syaipuddin",
+          "db": "Muhammad Najmi Aiman Bin Syaipudin"
+        }
+      },
+      "excel": {
+        "staff_no": "2398",
+        "staff_name": "Muhammad Najmi Aiman bin Syaipuddin",
+        "staff_position": "Farm Operator"
+      },
+      "db": {
+        "staff_no": "2398",
+        "staff_name": "Muhammad Najmi Aiman Bin Syaipudin",
+        "staff_position": "Farm Operator",
+        "is_active": true,
+        "created_at": "2026-09-29T13:01:05.675128+08:00"
+      }
+    },
+    {
+      "staff_no": "2404",
+      "diffs": {
+        "name_case_or_spacing": {
+          "excel": "Mohd Zukairo bin Mohd Yuni",
+          "db": "Mohd Zukairo Bin Mohd Yuni"
+        }
+      },
+      "excel": {
+        "staff_no": "2404",
+        "staff_name": "Mohd Zukairo bin Mohd Yuni",
+        "staff_position": "Farm Operator"
+      },
+      "db": {
+        "staff_no": "2404",
+        "staff_name": "Mohd Zukairo Bin Mohd Yuni",
+        "staff_position": "Farm Operator",
+        "is_active": true,
+        "created_at": "2026-09-29T13:01:05.675128+08:00"
+      }
+    },
+    {
+      "staff_no": "2480",
+      "diffs": {
+        "name": {
+          "excel": "Muhammad Asyraf Hakimi bin Had",
+          "db": "Muhammad Asyraff Hakimi Bin Had"
+        }
+      },
+      "excel": {
+        "staff_no": "2480",
+        "staff_name": "Muhammad Asyraf Hakimi bin Had",
+        "staff_position": "Farm Operator"
+      },
+      "db": {
+        "staff_no": "2480",
+        "staff_name": "Muhammad Asyraff Hakimi Bin Had",
+        "staff_position": "Farm Operator",
+        "is_active": true,
+        "created_at": "2026-09-29T13:01:05.675128+08:00"
+      }
+    },
+    {
+      "staff_no": "2491",
+      "diffs": {
+        "name": {
+          "excel": "Mohd Ridzuaniza bin Md Yasin",
+          "db": "Mohd Ridzuaniza Bin Mat Yasin"
+        }
+      },
+      "excel": {
+        "staff_no": "2491",
+        "staff_name": "Mohd Ridzuaniza bin Md Yasin",
+        "staff_position": "Farm Operator"
+      },
+      "db": {
+        "staff_no": "2491",
+        "staff_name": "Mohd Ridzuaniza Bin Mat Yasin",
+        "staff_position": "Farm Operator",
+        "is_active": true,
+        "created_at": "2026-09-29T13:01:05.675128+08:00"
+      }
+    },
+    {
+      "staff_no": "2493",
+      "diffs": {
+        "name": {
+          "excel": "Mustakim bin Mohamad",
+          "db": "Mustakim Bin Mohammad"
+        }
+      },
+      "excel": {
+        "staff_no": "2493",
+        "staff_name": "Mustakim bin Mohamad",
+        "staff_position": "Farm Operator"
+      },
+      "db": {
+        "staff_no": "2493",
+        "staff_name": "Mustakim Bin Mohammad",
+        "staff_position": "Farm Operator",
+        "is_active": true,
+        "created_at": "2026-09-29T13:01:05.675128+08:00"
+      }
+    },
+    {
+      "staff_no": "2507",
+      "diffs": {
+        "name_case_or_spacing": {
+          "excel": "Muhammad Hanif Ikram bin Mohd Razali",
+          "db": "Muhammad Hanif Ikram Bin Mohd Razali"
+        },
+        "position": {
+          "excel": "Farm Operator",
+          "db": "Farm Operator (Support)"
+        }
+      },
+      "excel": {
+        "staff_no": "2507",
+        "staff_name": "Muhammad Hanif Ikram bin Mohd Razali",
+        "staff_position": "Farm Operator"
+      },
+      "db": {
+        "staff_no": "2507",
+        "staff_name": "Muhammad Hanif Ikram Bin Mohd Razali",
+        "staff_position": "Farm Operator (Support)",
+        "is_active": true,
+        "created_at": "2026-09-29T13:01:05.675128+08:00"
+      }
+    },
+    {
+      "staff_no": "2543",
+      "diffs": {
+        "name_case_or_spacing": {
+          "excel": "Mohammad Hafiz Fadli bin Mohammad Effendi",
+          "db": "Mohammad Hafiz Fadli Bin Mohammad Effendi"
+        },
+        "position": {
+          "excel": "Supervisor, Production Grow Out",
+          "db": "Supervisor, Production"
+        }
+      },
+      "excel": {
+        "staff_no": "2543",
+        "staff_name": "Mohammad Hafiz Fadli bin Mohammad Effendi",
+        "staff_position": "Supervisor, Production Grow Out"
+      },
+      "db": {
+        "staff_no": "2543",
+        "staff_name": "Mohammad Hafiz Fadli Bin Mohammad Effendi",
+        "staff_position": "Supervisor, Production",
+        "is_active": true,
+        "created_at": "2026-09-29T13:01:05.675128+08:00"
+      }
+    },
+    {
+      "staff_no": "2554",
+      "diffs": {
+        "name_case_or_spacing": {
+          "excel": "Muhammad Nur Ikhwan bin Rozali",
+          "db": "Muhammad Nur Ikhwan Bin Rozali"
+        }
+      },
+      "excel": {
+        "staff_no": "2554",
+        "staff_name": "Muhammad Nur Ikhwan bin Rozali",
+        "staff_position": "Farm Operator"
+      },
+      "db": {
+        "staff_no": "2554",
+        "staff_name": "Muhammad Nur Ikhwan Bin Rozali",
+        "staff_position": "Farm Operator",
+        "is_active": true,
+        "created_at": "2026-09-29T13:01:05.675128+08:00"
+      }
+    },
+    {
+      "staff_no": "2578",
+      "diffs": {
+        "name_case_or_spacing": {
+          "excel": "Mohd Shahril bin Jaafar",
+          "db": "Mohd Shahril Bin Jaafar"
+        },
+        "position": {
+          "excel": "Farm Operator",
+          "db": "Farm Operator (Support)"
+        }
+      },
+      "excel": {
+        "staff_no": "2578",
+        "staff_name": "Mohd Shahril bin Jaafar",
+        "staff_position": "Farm Operator"
+      },
+      "db": {
+        "staff_no": "2578",
+        "staff_name": "Mohd Shahril Bin Jaafar",
+        "staff_position": "Farm Operator (Support)",
+        "is_active": true,
+        "created_at": "2026-09-29T13:01:05.675128+08:00"
+      }
+    },
+    {
+      "staff_no": "2579",
+      "diffs": {
+        "name_case_or_spacing": {
+          "excel": "Zaidi bin Azmi",
+          "db": "Zaidi Bin Azmi"
+        },
+        "position": {
+          "excel": "Farm Operator",
+          "db": "Farm Operator (Support)"
+        }
+      },
+      "excel": {
+        "staff_no": "2579",
+        "staff_name": "Zaidi bin Azmi",
+        "staff_position": "Farm Operator"
+      },
+      "db": {
+        "staff_no": "2579",
+        "staff_name": "Zaidi Bin Azmi",
+        "staff_position": "Farm Operator (Support)",
+        "is_active": true,
+        "created_at": "2026-09-29T13:01:05.675128+08:00"
+      }
+    },
+    {
+      "staff_no": "2581",
+      "diffs": {
+        "name_case_or_spacing": {
+          "excel": "Muhammad Luqman bin Mazle",
+          "db": "Muhammad Luqman Bin Mazle"
+        }
+      },
+      "excel": {
+        "staff_no": "2581",
+        "staff_name": "Muhammad Luqman bin Mazle",
+        "staff_position": "Farm Operator"
+      },
+      "db": {
+        "staff_no": "2581",
+        "staff_name": "Muhammad Luqman Bin Mazle",
+        "staff_position": "Farm Operator",
+        "is_active": true,
+        "created_at": "2026-09-29T13:01:05.675128+08:00"
+      }
+    },
+    {
+      "staff_no": "2584",
+      "diffs": {
+        "name_case_or_spacing": {
+          "excel": "Muhammad Syahmer Amirul bin Azizan",
+          "db": "Muhammad Syahmer Amirul Bin Azizan"
+        }
+      },
+      "excel": {
+        "staff_no": "2584",
+        "staff_name": "Muhammad Syahmer Amirul bin Azizan",
+        "staff_position": "Farm Operator"
+      },
+      "db": {
+        "staff_no": "2584",
+        "staff_name": "Muhammad Syahmer Amirul Bin Azizan",
+        "staff_position": "Farm Operator",
+        "is_active": true,
+        "created_at": "2026-09-29T13:01:05.675128+08:00"
+      }
+    },
+    {
+      "staff_no": "2585",
+      "diffs": {
+        "name_case_or_spacing": {
+          "excel": "Muhamad Amirul Amir bin Malek",
+          "db": "Muhamad Amirul Amir Bin Malek"
+        }
+      },
+      "excel": {
+        "staff_no": "2585",
+        "staff_name": "Muhamad Amirul Amir bin Malek",
+        "staff_position": "Farm Operator"
+      },
+      "db": {
+        "staff_no": "2585",
+        "staff_name": "Muhamad Amirul Amir Bin Malek",
+        "staff_position": "Farm Operator",
+        "is_active": true,
+        "created_at": "2026-09-29T13:01:05.675128+08:00"
+      }
+    },
+    {
+      "staff_no": "2586",
+      "diffs": {
+        "name_case_or_spacing": {
+          "excel": "Wan Muhammad Syahrul Aziziy bin Wan Hussin",
+          "db": "Wan Muhammad Syahrul Aziziy Bin Wan Hussin"
+        }
+      },
+      "excel": {
+        "staff_no": "2586",
+        "staff_name": "Wan Muhammad Syahrul Aziziy bin Wan Hussin",
+        "staff_position": "Farm Operator"
+      },
+      "db": {
+        "staff_no": "2586",
+        "staff_name": "Wan Muhammad Syahrul Aziziy Bin Wan Hussin",
+        "staff_position": "Farm Operator",
+        "is_active": true,
+        "created_at": "2026-09-29T13:01:05.675128+08:00"
+      }
+    },
+    {
+      "staff_no": "2587",
+      "diffs": {
+        "name_case_or_spacing": {
+          "excel": "Abdul Rahman bin Abd Muluk",
+          "db": "Abdul Rahman Bin Abd Muluk"
+        }
+      },
+      "excel": {
+        "staff_no": "2587",
+        "staff_name": "Abdul Rahman bin Abd Muluk",
+        "staff_position": "Farm Operator"
+      },
+      "db": {
+        "staff_no": "2587",
+        "staff_name": "Abdul Rahman Bin Abd Muluk",
+        "staff_position": "Farm Operator",
+        "is_active": true,
+        "created_at": "2026-09-29T13:01:05.675128+08:00"
+      }
+    },
+    {
+      "staff_no": "2590",
+      "diffs": {
+        "name_case_or_spacing": {
+          "excel": "Muhammad Khairul Hafiz bin Roslan",
+          "db": "Muhammad Khairul Hafiz Bin Roslan"
+        }
+      },
+      "excel": {
+        "staff_no": "2590",
+        "staff_name": "Muhammad Khairul Hafiz bin Roslan",
+        "staff_position": "Farm Operator"
+      },
+      "db": {
+        "staff_no": "2590",
+        "staff_name": "Muhammad Khairul Hafiz Bin Roslan",
+        "staff_position": "Farm Operator",
+        "is_active": true,
+        "created_at": "2026-09-29T13:01:05.675128+08:00"
+      }
+    },
+    {
+      "staff_no": "2591",
+      "diffs": {
+        "name": {
+          "excel": "Mohammad Amierul Yusrie bin Mohd Safri",
+          "db": "Mohamad Amierul Yusrie Mohd Safri"
+        }
+      },
+      "excel": {
+        "staff_no": "2591",
+        "staff_name": "Mohammad Amierul Yusrie bin Mohd Safri",
+        "staff_position": "Farm Operator"
+      },
+      "db": {
+        "staff_no": "2591",
+        "staff_name": "Mohamad Amierul Yusrie Mohd Safri",
+        "staff_position": "Farm Operator",
+        "is_active": true,
+        "created_at": "2026-09-29T13:01:05.675128+08:00"
+      }
+    },
+    {
+      "staff_no": "2611",
+      "diffs": {
+        "name": {
+          "excel": "Muhammad Aqimi bin Ab Rhahim",
+          "db": "Muhammad Aqimi Bin Abdul Rhahim"
+        }
+      },
+      "excel": {
+        "staff_no": "2611",
+        "staff_name": "Muhammad Aqimi bin Ab Rhahim",
+        "staff_position": "Farm Operator"
+      },
+      "db": {
+        "staff_no": "2611",
+        "staff_name": "Muhammad Aqimi Bin Abdul Rhahim",
+        "staff_position": "Farm Operator",
+        "is_active": true,
+        "created_at": "2026-09-29T13:01:05.675128+08:00"
+      }
+    },
+    {
+      "staff_no": "2613",
+      "diffs": {
+        "name_case_or_spacing": {
+          "excel": "Mohd Nuzulsa'dam bin Hussain",
+          "db": "Mohd Nuzulsa'Dam Bin Hussain"
+        }
+      },
+      "excel": {
+        "staff_no": "2613",
+        "staff_name": "Mohd Nuzulsa'dam bin Hussain",
+        "staff_position": "Farm Operator"
+      },
+      "db": {
+        "staff_no": "2613",
+        "staff_name": "Mohd Nuzulsa'Dam Bin Hussain",
+        "staff_position": "Farm Operator",
+        "is_active": true,
+        "created_at": "2026-09-29T13:01:05.675128+08:00"
+      }
+    },
+    {
+      "staff_no": "2623",
+      "diffs": {
+        "name_case_or_spacing": {
+          "excel": "Muhammad Zarif Iqwan bin Ab Samat",
+          "db": "Muhammad Zarif Iqwan Bin Ab Samat"
+        },
+        "position": {
+          "excel": "Farm Operator",
+          "db": "Farm Operator (Support)"
+        }
+      },
+      "excel": {
+        "staff_no": "2623",
+        "staff_name": "Muhammad Zarif Iqwan bin Ab Samat",
+        "staff_position": "Farm Operator"
+      },
+      "db": {
+        "staff_no": "2623",
+        "staff_name": "Muhammad Zarif Iqwan Bin Ab Samat",
+        "staff_position": "Farm Operator (Support)",
+        "is_active": true,
+        "created_at": "2026-09-29T13:01:05.675128+08:00"
+      }
+    },
+    {
+      "staff_no": "2630",
+      "diffs": {
+        "name": {
+          "excel": "Mohamad Farhan bin Mohd Zaki",
+          "db": "Mohamad Farhan Mohd Zaki"
+        },
+        "position": {
+          "excel": "Farm Operator",
+          "db": "Farm Operator (Support)"
+        }
+      },
+      "excel": {
+        "staff_no": "2630",
+        "staff_name": "Mohamad Farhan bin Mohd Zaki",
+        "staff_position": "Farm Operator"
+      },
+      "db": {
+        "staff_no": "2630",
+        "staff_name": "Mohamad Farhan Mohd Zaki",
+        "staff_position": "Farm Operator (Support)",
+        "is_active": true,
+        "created_at": "2026-09-29T13:01:05.675128+08:00"
+      }
+    }
+  ]
+}

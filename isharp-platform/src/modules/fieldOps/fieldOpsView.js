@@ -16,6 +16,7 @@ import { DOM_IDS } from "../../config/domContracts.js";
 import { OfflineSync } from "./offlineSync.js";
 import { pwaInstallManager } from "./pwaInstallManager.js";
 import { security } from "../../config/security.js";
+import { ROLES } from "../../config/permissions.js";
 
 const SESSION_KEY = "isharp_field_ops_module";
 
@@ -173,11 +174,17 @@ export class FieldOpsView {
             btnVerify.textContent = "Verifying...";
 
             try {
-                const isValid = await security.verifyFieldOpsPassword(selectedMod, entered);
+                const role = await security.verifyFieldOpsPassword(selectedMod, entered);
 
-                if (isValid) {
+                if (role) {
                     this.currentModule = selectedMod;
-                    Toast.success(`Welcome to Module ${String(selectedMod).padStart(2, "0")}!`);
+                    if (role === "VIEWER") {
+                        appState.setUserRole(ROLES.VIEWER);
+                        Toast.info(`Module ${String(selectedMod).padStart(2, "0")} unlocked in Viewer Mode (Read-Only).`);
+                    } else {
+                        appState.setUserRole(ROLES.SUPERVISOR);
+                        Toast.success(`Welcome to Module ${String(selectedMod).padStart(2, "0")}!`);
+                    }
                     modal.style.display = "none";
                     this.renderSupervisorWorkspace();
                 } else {
@@ -204,6 +211,7 @@ export class FieldOpsView {
      */
     renderSupervisorWorkspace() {
         const modStr = String(this.currentModule).padStart(2, "0");
+        const isViewer = !security.canEditFieldOps();
 
         this.container.innerHTML = `
             <div class="field-ops-workspace" style="min-height: 100vh; padding: 1.25rem 2rem; background: transparent;">
@@ -216,8 +224,13 @@ export class FieldOpsView {
                         <button type="button" class="btn-action btn-secondary" data-nav-view="portal" style="font-size: 0.78rem; font-weight: 700; padding: 0.45rem 0.85rem; border-radius: 8px;">
                             <span>← Portal</span>
                         </button>
-                        <h1 style="margin: 0; font-size: 1.2rem; font-weight: 900; color: #0f172a;">
-                            Field Ops — M${modStr}
+                        <h1 style="margin: 0; font-size: 1.2rem; font-weight: 900; color: #0f172a; display: flex; align-items: center; gap: 0.5rem;">
+                            <span>Field Ops — M${modStr}</span>
+                            ${isViewer ? `
+                                <span style="font-size: 0.68rem; font-weight: 800; background: #e0f2fe; color: #0369a1; border: 1px solid #bae6fd; padding: 0.2rem 0.6rem; border-radius: 999px; text-transform: uppercase; letter-spacing: 0.04em;">
+                                    👁️ Viewer (Read Only)
+                                </span>
+                            ` : ''}
                         </h1>
                     </div>
 

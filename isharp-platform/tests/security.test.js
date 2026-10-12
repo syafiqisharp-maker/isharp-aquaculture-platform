@@ -15,9 +15,12 @@ test("Security: DBMS Password Verification", async (t) => {
     const managerResult = await security.verifyDbmsPassword("todak");
     assert.equal(managerResult, "VIEWER", "todak should grant VIEWER access to DBMS");
 
-    // 4. Viewer password ("monodon")
-    const viewerResult = await security.verifyDbmsPassword("monodon");
-    assert.equal(viewerResult, "VIEWER", "monodon should grant VIEWER access");
+    // 4. Viewer password ("isharp" and legacy "monodon")
+    const isharpResult = await security.verifyDbmsPassword("isharp");
+    assert.equal(isharpResult, "VIEWER", "isharp should grant VIEWER access");
+
+    const monodonResult = await security.verifyDbmsPassword("monodon");
+    assert.equal(monodonResult, "VIEWER", "monodon should also grant VIEWER access (backward-compatible)");
 
     // 5. All 9 module supervisor passcodes should grant VIEWER access to DBMS
     const moduleFishPasscodes = [
@@ -39,31 +42,49 @@ test("Security: DBMS Password Verification", async (t) => {
 });
 
 test("Security: Field Ops Password Verification", async (t) => {
-    // 1. Module 01 specific fish password ("siakap")
+    // 1. Module 01 specific fish password ("siakap") -> SUPERVISOR
     const mod1Result = await security.verifyFieldOpsPassword(1, "siakap");
-    assert.equal(mod1Result, true, "siakap should unlock Module 1");
+    assert.equal(mod1Result, "SUPERVISOR", "siakap should unlock Module 1 as SUPERVISOR");
+    assert.equal(security.getFieldOpsRole(), "SUPERVISOR", "Field Ops role should be SUPERVISOR");
+    assert.equal(security.canEditFieldOps(), true, "canEditFieldOps should be true for SUPERVISOR");
 
     // 2. Padded string moduleNo ("01")
     const paddedMod1Result = await security.verifyFieldOpsPassword("01", "siakap");
-    assert.equal(paddedMod1Result, true, "siakap should unlock Module '01'");
+    assert.equal(paddedMod1Result, "SUPERVISOR", "siakap should unlock Module '01'");
 
     // 3. String moduleNo ("2")
     const mod2Result = await security.verifyFieldOpsPassword("2", "kerapu");
-    assert.equal(mod2Result, true, "kerapu should unlock Module '2'");
+    assert.equal(mod2Result, "SUPERVISOR", "kerapu should unlock Module '2'");
 
-    // 4. Manager master ("todak") unlocks any module
+    // 4. Manager master ("todak") unlocks any module as SUPERVISOR
     const masterMod3Result = await security.verifyFieldOpsPassword(3, "todak");
-    assert.equal(masterMod3Result, true, "todak should unlock any module");
+    assert.equal(masterMod3Result, "SUPERVISOR", "todak should unlock any module as SUPERVISOR");
+    assert.equal(security.canEditFieldOps(), true, "canEditFieldOps should be true for manager master");
 
     // 5. DBMS editor ("mantaray") unlocks any module as admin override
     const editorMod4Result = await security.verifyFieldOpsPassword(4, "mantaray");
-    assert.equal(editorMod4Result, true, "mantaray should unlock any module");
+    assert.equal(editorMod4Result, "SUPERVISOR", "mantaray should unlock any module as admin");
+    assert.equal(security.canEditFieldOps(), true, "canEditFieldOps should be true for admin");
 
-    // 6. Wrong password
+    // 6. Universal viewer ("isharp" and legacy "monodon") unlocks any module as VIEWER (Read-Only)
+    const viewerMod1Result = await security.verifyFieldOpsPassword(1, "isharp");
+    assert.equal(viewerMod1Result, "VIEWER", "isharp should unlock Module 1 as VIEWER");
+    assert.equal(security.getFieldOpsRole(), "VIEWER", "Field Ops role should be VIEWER");
+    assert.equal(security.canEditFieldOps(), false, "canEditFieldOps should be false for VIEWER");
+
+    const viewerMod9Result = await security.verifyFieldOpsPassword("09", "  ISHARP  ");
+    assert.equal(viewerMod9Result, "VIEWER", "isharp with case/spacing should unlock Module 09 as VIEWER");
+    assert.equal(security.canEditFieldOps(), false, "canEditFieldOps should be false for VIEWER");
+
+    const legacyViewerResult = await security.verifyFieldOpsPassword(2, "monodon");
+    assert.equal(legacyViewerResult, "VIEWER", "monodon should also unlock Module 2 as VIEWER");
+    assert.equal(security.canEditFieldOps(), false, "canEditFieldOps should be false for legacy monodon");
+
+    // 7. Wrong password
     const wrongModResult = await security.verifyFieldOpsPassword(1, "wrongfish");
-    assert.equal(wrongModResult, false, "wrong password should be rejected");
+    assert.equal(wrongModResult, null, "wrong password should return null");
 
-    // 7. Wrong module for fish password (e.g. kerapu on module 1)
+    // 8. Wrong module for fish password (e.g. kerapu on module 1)
     const wrongModuleFish = await security.verifyFieldOpsPassword(1, "kerapu");
-    assert.equal(wrongModuleFish, false, "kerapu should not unlock module 1");
+    assert.equal(wrongModuleFish, null, "kerapu should not unlock module 1");
 });

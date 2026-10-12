@@ -16,6 +16,7 @@ import {
     STANDARD_PROBIOTICS,
     WATER_COLOUR_OPTIONS
 } from "./dailyRecordsConstants.js";
+import { security } from "../../../config/security.js";
 
 /**
  * Generates the modal HTML markup for daily pond logging.
@@ -27,6 +28,7 @@ import {
 export function renderDailyEntryModalMarkup(pond, activePondsList = [], isModalOnlyMode = false) {
     const pondLabel = pond ? (pond.pond || pond.pond_index || "Pond") : "Pond";
     const doc = pond && pond.stck_date ? calculateDOC(pond.stck_date, pond.date_close) : "—";
+    const canEdit = security.canEditFieldOps();
 
     return `
         <div id="modal-daily-entry" class="modal-backdrop-aero hidden" style="display: none !important;">
@@ -83,6 +85,14 @@ export function renderDailyEntryModalMarkup(pond, activePondsList = [], isModalO
                             </div>
                         `;
                     })() : ''}
+
+                    <!-- Viewer Read-Only Notice Banner -->
+                    ${!canEdit ? `
+                        <div id="modal-viewer-readonly-badge" style="background: rgba(224, 242, 254, 0.95); border: 1.5px solid #0284c7; border-radius: 12px; padding: 8px 12px; font-size: 0.76rem; color: #0369a1; font-weight: 800; display: flex; align-items: center; gap: 8px; flex-shrink: 0;">
+                            <span style="font-size: 1.1rem;">👁️</span>
+                            <span>Viewer Mode (Read-Only) — Form is locked. You can browse and review all records.</span>
+                        </div>
+                    ` : ''}
 
                     <!-- Smart Yesterday Carry-Forward Banner -->
                     <div id="carry-forward-badge" style="display: none; background: rgba(224, 242, 254, 0.75); border: 1.5px solid #bae6fd; border-radius: 12px; padding: 8px 12px; font-size: 0.75rem; color: #0369a1; font-weight: 700; align-items: center; justify-content: space-between; gap: 6px; flex-shrink: 0;">
@@ -225,19 +235,23 @@ export function renderDailyEntryModalMarkup(pond, activePondsList = [], isModalO
 
                 <!-- Modal Sheet Footer (Sticky Dock) -->
                 <div class="modal-sheet-footer">
-                    <button type="button" id="btn-delete-entry" class="aero-btn" style="background: #fee2e2; border: 1.5px solid #fca5a5; color: #b91c1c; font-weight: 800; padding: 0.55rem 0.85rem; display: none;">
-                        🗑️ Delete
-                    </button>
-                    <button type="button" id="btn-cancel-modal" class="aero-btn aero-btn-secondary" style="flex: 1;">
-                        Cancel
-                    </button>
-                    <button type="submit" id="btn-save-record" class="aero-btn aero-btn-primary" style="flex: 2;">
-                        💾 Save
-                    </button>
-                    ${(activePondsList && activePondsList.length > 1) ? `
-                        <button type="button" id="btn-save-and-next" class="aero-btn aero-btn-primary" style="flex: 2;">
-                            ⚡ Save &amp; Next ➔
+                    ${canEdit ? `
+                        <button type="button" id="btn-delete-entry" class="aero-btn" style="background: #fee2e2; border: 1.5px solid #fca5a5; color: #b91c1c; font-weight: 800; padding: 0.55rem 0.85rem; display: none;">
+                            🗑️ Delete
                         </button>
+                    ` : ''}
+                    <button type="button" id="btn-cancel-modal" class="aero-btn aero-btn-secondary" style="flex: 1;">
+                        ${canEdit ? 'Cancel' : '✕ Close'}
+                    </button>
+                    ${canEdit ? `
+                        <button type="submit" id="btn-save-record" class="aero-btn aero-btn-primary" style="flex: 2;">
+                            💾 Save
+                        </button>
+                        ${(activePondsList && activePondsList.length > 1) ? `
+                            <button type="button" id="btn-save-and-next" class="aero-btn aero-btn-primary" style="flex: 2;">
+                                ⚡ Save &amp; Next ➔
+                            </button>
+                        ` : ''}
                     ` : ''}
                 </div>
 

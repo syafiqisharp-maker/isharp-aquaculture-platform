@@ -107,9 +107,19 @@ The cloud database (`keappoukeagyzpoxkrru.supabase.co`) operates under an enterp
    * Established `pond_aerator_inventory` as the single source of truth for paddlewheels.
    * Reconstructed backward-compatible virtual views (`view_growout_pond_cycles`) with zero frontend breakage.
 
-### Run Automated E2E REST Client Probe
+### Run Automated Testing & Schema Verification Probes
 ```bash
 cd isharp-platform
-npm run test:e2e    # 19/19 comprehensive live REST operations against Supabase with auto-teardown
+
+# 1. Comprehensive Data Entry Schema Audit Probe (18/18 operations with pre-test snapshot & rollback)
+npm run test:audit
+
+# 2. Permanent Live REST Client Probe (19/19 storage operations against Supabase with auto-teardown)
+npm run test:e2e
+
+# 3. Domain & UI Contract Unit Tests (114/114 tests)
+npm test
 ```
+
+For full documentation and audit logs, see [database_migration/SCHEMA_AUDIT_GUIDE.md](database_migration/SCHEMA_AUDIT_GUIDE.md).
 

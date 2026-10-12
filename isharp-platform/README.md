@@ -149,11 +149,17 @@ To maintain high code quality and make future modifications seamless for any hum
 
 ## 🧪 Testing & Verification
 
-The project includes an automated test suite utilizing Node.js native test runner (zero external testing dependencies):
+The project includes an automated test suite utilizing Node.js native test runner and live Supabase REST probes:
 
 ```bash
-# Run domain calculation unit tests
+# Run domain calculation and UI contract unit tests (114 tests)
 npm test
+
+# Run comprehensive data entry schema audit probe (18 form buttons & automatic rollback)
+npm run test:audit
+
+# Run permanent live REST client probe against Supabase (19 operations)
+npm run test:e2e
 
 # Run 15-user concurrency stress test against Supabase
 npm run test:stress

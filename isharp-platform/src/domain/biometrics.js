@@ -567,3 +567,116 @@ export function getEffectiveBiomassGain(pond, latestSampling, harvestSummary) {
     };
 }
 
+/**
+ * Evaluates the authoritative operational state of a pond cycle across all views.
+ * Single Source of Truth (SSOT): A pond CANNOT be active in culture without verified stocking (stck_date).
+ * 
+ * @param {object|null} cycle 
+ * @returns {{
+ *   isStocked: boolean,
+ *   isProduction: boolean,
+ *   isIdle: boolean,
+ *   isClosed: boolean,
+ *   isPrep: boolean,
+ *   statusLabel: string,
+ *   doc: number,
+ *   docDisplay: string,
+ *   speciesLabel: string,
+ *   speciesCode: string,
+ *   speciesBadgeClass: string,
+ *   idleDays: number
+ * }}
+ */
+export function getOperationalPondState(cycle) {
+    if (!cycle) {
+        return {
+            isStocked: false,
+            isProduction: false,
+            isIdle: true,
+            isClosed: false,
+            isPrep: false,
+            statusLabel: "IDLE",
+            doc: 0,
+            docDisplay: "—",
+            speciesLabel: "IDLE",
+            speciesCode: "IDLE",
+            speciesBadgeClass: "sp-idle",
+            idleDays: 0
+        };
+    }
+
+    const rawStatus = String(cycle.pond_status || cycle.status || "").trim().toUpperCase();
+    const isClosed = isCycleClosed(cycle);
+    const hasStock = Boolean(cycle.stck_date && String(cycle.stck_date).trim() !== "");
+
+    if (isClosed) {
+        const doc = hasStock ? calculateDOC(cycle.stck_date, cycle.date_close) : 0;
+        const rawSp = String(cycle.species || cycle.stck_species || "").toUpperCase();
+        const speciesLabel = rawSp.includes("MON") ? "MON" : (hasStock ? "VAN" : "—");
+        return {
+            isStocked: hasStock,
+            isProduction: false,
+            isIdle: false,
+            isClosed: true,
+            isPrep: false,
+            statusLabel: "CLOSE",
+            doc,
+            docDisplay: hasStock ? `${doc}` : "—",
+            speciesLabel,
+            speciesCode: speciesLabel,
+            speciesBadgeClass: "sp-idle",
+            idleDays: 0
+        };
+    }
+
+    // Calculate idle days from date_cycle or idle_days field
+    let idleDays = 0;
+    if (cycle.date_cycle) {
+        const start = new Date(cycle.date_cycle);
+        if (!isNaN(start.getTime())) {
+            idleDays = Math.max(0, Math.floor((Date.now() - start.getTime()) / (1000 * 60 * 60 * 24)));
+        }
+    } else if (cycle.idle_days) {
+        idleDays = parseInt(cycle.idle_days, 10) || 0;
+    }
+
+    // Unstocked pond logic (cannot be in live culture without stocking date)
+    if (!hasStock) {
+        const isPrep = rawStatus === "PREPARATION" || rawStatus === "PRODUCTION";
+        return {
+            isStocked: false,
+            isProduction: false,
+            isIdle: !isPrep,
+            isClosed: false,
+            isPrep: isPrep,
+            statusLabel: isPrep ? "PREPARATION" : (rawStatus || "IDLE"),
+            doc: 0,
+            docDisplay: isPrep ? "PREP" : `${idleDays}d`,
+            speciesLabel: isPrep ? "PREP" : "IDLE",
+            speciesCode: isPrep ? "PREP" : "IDLE",
+            speciesBadgeClass: isPrep ? "sp-prep" : "sp-idle",
+            idleDays
+        };
+    }
+
+    // Stocked production culture
+    const doc = calculateDOC(cycle.stck_date, cycle.date_close);
+    const rawSp = String(cycle.species || cycle.stck_species || "VAN").toUpperCase();
+    const speciesLabel = (rawSp.includes("MON") || rawSp.includes("BLACK") || rawSp.includes("TIGER")) ? "MON" : "VAN";
+
+    return {
+        isStocked: true,
+        isProduction: true,
+        isIdle: false,
+        isClosed: false,
+        isPrep: false,
+        statusLabel: "PRODUCTION",
+        doc,
+        docDisplay: `${doc}`,
+        speciesLabel,
+        speciesCode: speciesLabel,
+        speciesBadgeClass: speciesLabel === "MON" ? "sp-mon" : "sp-van",
+        idleDays: 0
+    };
+}
+

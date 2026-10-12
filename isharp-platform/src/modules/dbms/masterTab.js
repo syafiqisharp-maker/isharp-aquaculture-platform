@@ -148,16 +148,18 @@ export class MasterTab {
         const isProd = (pond.pond_status || pond.status || "").toUpperCase() === "PRODUCTION";
         const isClosed = (pond.pond_status || pond.status || "").toUpperCase() === "CLOSE";
 
+        const hasStock = Boolean(pond.stck_date && String(pond.stck_date).trim() !== "");
+
         // ==========================================
         // ROW 1: CARD 1 — Species / Line
         // ==========================================
         const species = pond.species || pond.stck_species;
         if (this.dom.snapSpecies) {
-            this.dom.snapSpecies.textContent = (species && species !== "—") ? species : (isProd ? "P. VANNAMEi" : "—");
+            this.dom.snapSpecies.textContent = (species && species !== "—") ? species : (hasStock ? "P. VANNAMEi" : "—");
         }
         const genetic = pond.genetic_line || pond.bs_line;
         if (this.dom.snapGenetic) {
-            this.dom.snapGenetic.textContent = (genetic && genetic !== "—") ? genetic : (isProd ? "Standard Line" : "—");
+            this.dom.snapGenetic.textContent = (genetic && genetic !== "—") ? genetic : (hasStock ? "Standard Line" : "—");
         }
 
         // ==========================================
@@ -165,25 +167,25 @@ export class MasterTab {
         // ==========================================
         const hatchery = pond.pl_origin || pond.stck_source;
         if (this.dom.snapHatcherySource) {
-            this.dom.snapHatcherySource.textContent = (hatchery && hatchery !== "—") ? hatchery : (isProd ? "Hatchery" : "—");
+            this.dom.snapHatcherySource.textContent = (hatchery && hatchery !== "—") ? hatchery : (hasStock ? "Hatchery" : "—");
         }
         if (this.dom.snapHatcheryFoot) {
             const tank = pond.stck_tank ? `Tank: ${pond.stck_tank}` : "";
             const size = pond.stck_size ? `Size: ${pond.stck_size}` : "";
             const details = [tank, size].filter(Boolean).join(" · ");
-            this.dom.snapHatcheryFoot.textContent = details || "PL Delivery Manifest";
+            this.dom.snapHatcheryFoot.textContent = details || (hasStock ? "PL Delivery Manifest" : "Awaiting Stocking");
         }
 
         // ==========================================
         // ROW 1: CARD 3 — DOC (Days of Culture)
         // ==========================================
         let calculatedDoc = 0;
-        if (pond.stck_date && String(pond.stck_date).trim() !== "") {
+        if (hasStock) {
             calculatedDoc = calculateDOC(pond.stck_date, pond.date_close || null);
             if (this.dom.snapDocVal) this.dom.snapDocVal.textContent = `${calculatedDoc}`;
             if (this.dom.snapDocFoot) this.dom.snapDocFoot.textContent = `Stocked: ${pond.stck_date}`;
         } else {
-            if (this.dom.snapDocVal) this.dom.snapDocVal.textContent = isProd ? "0" : "—";
+            if (this.dom.snapDocVal) this.dom.snapDocVal.textContent = "—";
             if (this.dom.snapDocFoot) this.dom.snapDocFoot.textContent = isProd ? "Awaiting Stocking" : "Pond Not Stocked";
         }
 
@@ -305,7 +307,7 @@ export class MasterTab {
                 } else if (effectiveBiomass.currentBiomassKg > 0 && latestSr !== null) {
                     this.dom.snapBiomassHarvestFoot.textContent = `Est. Survival: ${latestSr.toFixed(1)}% (DOC ${samplingDoc})`;
                 } else {
-                    this.dom.snapBiomassHarvestFoot.textContent = isClosed ? "Status: CYCLE CLOSED" : (isProd ? "Status: IN CULTURE" : "Status: IDLE / PREPARATION");
+                    this.dom.snapBiomassHarvestFoot.textContent = isClosed ? "Status: CYCLE CLOSED" : (hasStock ? "Status: IN CULTURE" : (isProd ? "Status: AWAITING STOCKING" : "Status: IDLE / PREPARATION"));
                 }
             }
             if (this.dom.snapFinalStatusBadge) {

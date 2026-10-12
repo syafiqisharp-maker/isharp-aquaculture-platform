@@ -10,7 +10,7 @@ import { PondRepository } from "../../infrastructure/repositories/pondRepository
 import { LabRepository } from "../../infrastructure/repositories/labRepository.js";
 import { SamplingRepository } from "../../infrastructure/repositories/samplingRepository.js";
 import { appState } from "../../state/appState.js";
-import { calculateDOC } from "../../domain/biometrics.js";
+import { calculateDOC, getOperationalPondState } from "../../domain/biometrics.js";
 import { Toast } from "../../components/Toast.js";
 import { getFarmMapShellHtml, renderPondTileHtml } from "./templates/pondGridCellTemplate.js";
 import { getDrawerHtml, getDrawerSamplingHtml } from "./templates/pondDrawerTemplate.js";
@@ -354,52 +354,26 @@ export class PondGridMap {
                 health: "IDLE",
                 healthDescription: "Idle / Preparation Pond",
                 stageCode: "IDLE",
-                cssClass: "risk-idle"
+                cssClass: "risk-idle",
+                idleDays: 0
             };
         }
 
-        const isProd = (cycle.pond_status || "").toUpperCase() === "PRODUCTION";
-        const doc = cycle.stck_date ? calculateDOC(cycle.stck_date, cycle.date_close) : 0;
-        
-        let idleDays = 0;
-        if (!isProd) {
-            if (cycle.date_cycle) {
-                const start = new Date(cycle.date_cycle);
-                if (!isNaN(start.getTime())) {
-                    idleDays = Math.max(0, Math.floor((Date.now() - start.getTime()) / (1000 * 60 * 60 * 24)));
-                }
-            } else if (cycle.idle_days) {
-                idleDays = parseInt(cycle.idle_days, 10) || 0;
-            }
-        }
-
-        const rawSpecies = (cycle.species || cycle.stck_species || "").toUpperCase();
-        let speciesCode = "VAN";
-        let speciesLabel = "VAN";
-        let speciesBadgeClass = "sp-van";
-
-        if (rawSpecies.includes("MON") || rawSpecies.includes("BLACK") || rawSpecies.includes("TIGER")) {
-            speciesCode = "MON";
-            speciesLabel = "MON";
-            speciesBadgeClass = "sp-mon";
-        }
+        const opState = getOperationalPondState(cycle);
 
         let stageCode = "EARLY";
-        if (doc >= 30 && doc <= 70) stageCode = "MID";
-        else if (doc > 70) stageCode = "FINISHING";
+        if (opState.doc >= 30 && opState.doc <= 70) stageCode = "MID";
+        else if (opState.doc > 70) stageCode = "FINISHING";
 
         // Biosecurity determination
         let health = "GREEN";
         let healthDesc = "Clean Biosecurity";
         let cssClass = "risk-green";
 
-        if (!isProd) {
+        if (!opState.isStocked) {
             health = "IDLE";
-            healthDesc = `Idle / Preparation (${idleDays} days)`;
-            speciesCode = "IDLE";
-            speciesLabel = "IDLE";
-            speciesBadgeClass = "sp-idle";
-            cssClass = (idleDays > 30) ? "risk-idle idle-overdue" : "risk-idle";
+            healthDesc = opState.isPrep ? "Pond in Preparation / Awaiting Stocking" : `Idle / Preparation (${opState.idleDays} days)`;
+            cssClass = (opState.idleDays > 30) ? "risk-idle idle-overdue" : "risk-idle";
         } else {
             const pondIssues = this.issuesMap.get(String(cycle.pond_index)) || [];
             const hasRed = pondIssues.some(i => (i.issue_flag || "").toUpperCase() === "RED" || (i.pcr_result || "").toUpperCase() === "POSITIVE");
@@ -419,17 +393,17 @@ export class PondGridMap {
         return {
             pondCode,
             pondIndex: cycle.pond_index,
-            isActive: isProd,
-            doc,
-            docDisplay: isProd ? `${doc}` : `${idleDays}d`,
-            speciesCode,
-            speciesLabel,
-            speciesBadgeClass,
+            isActive: opState.isStocked,
+            doc: opState.doc,
+            docDisplay: opState.docDisplay,
+            speciesCode: opState.speciesCode,
+            speciesLabel: opState.speciesLabel,
+            speciesBadgeClass: opState.speciesBadgeClass,
             health,
             healthDescription: healthDesc,
-            stageCode: isProd ? stageCode : "IDLE",
+            stageCode: opState.isStocked ? stageCode : "IDLE",
             cssClass,
-            idleDays
+            idleDays: opState.idleDays
         };
     }
 

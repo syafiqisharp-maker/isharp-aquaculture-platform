@@ -109,26 +109,31 @@ export class StaffTab {
         roles.forEach(({ idInput, nameInput }) => {
             if (!idInput || !nameInput) return;
 
-            const handleLookup = () => {
+            const handleLookup = (event) => {
                 const val = idInput.value ? idInput.value.trim() : "";
                 if (!val) {
                     nameInput.value = "";
                     return;
                 }
 
-                const staff = StaffRepository.findStaffByNo(val);
+                const staff = StaffRepository.findStaff(val);
                 if (staff) {
                     nameInput.value = `${staff.staff_name} (${staff.staff_position || 'Staff'})`;
                     nameInput.style.color = "#0f172a";
+
+                    // On commit events (change or blur), normalize the ID box to the 4-digit ID
+                    if (event && (event.type === "change" || event.type === "blur")) {
+                        idInput.value = staff.staff_no;
+                    }
                 } else {
-                    nameInput.value = "⚠️ Unrecognized Staff ID";
+                    nameInput.value = "⚠️ Unrecognized Staff ID / Name";
                     nameInput.style.color = "#b91c1c";
                 }
             };
 
-            idInput.addEventListener("input", handleLookup);
-            idInput.addEventListener("change", handleLookup);
-            idInput.addEventListener("blur", handleLookup);
+            idInput.addEventListener("input", (e) => handleLookup(e));
+            idInput.addEventListener("change", (e) => handleLookup(e));
+            idInput.addEventListener("blur", (e) => handleLookup(e));
         });
     }
 

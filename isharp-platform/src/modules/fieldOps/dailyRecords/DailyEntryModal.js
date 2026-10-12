@@ -17,6 +17,7 @@ import { MineralProbioticRepository } from "../../../infrastructure/repositories
 import { calculateDOC } from "../../../domain/biometrics.js";
 import { Toast } from "../../../components/Toast.js";
 import { OfflineSync } from "../offlineSync.js";
+import { security } from "../../../config/security.js";
 import {
     getLocalDateStr,
     formatLocalDateDisplay,
@@ -516,6 +517,24 @@ export class DailyEntryModal {
         if (minCard) minCard.style.display = existingMinerals.length > 0 ? "block" : "none";
         if (proCard) proCard.style.display = existingProbiotics.length > 0 ? "block" : "none";
 
+        // Read-Only Enforcement for Viewers (isharp / monodon)
+        const canEdit = security.canEditFieldOps();
+        if (!canEdit) {
+            // Disable all inputs
+            [inputFeed, inputTray, inputWaterLevel, inputColour, inputMortality, inputRemarks].forEach(inp => {
+                if (inp) inp.disabled = true;
+            });
+            // Disable all stepper buttons, chips, swatch buttons, and add-row buttons
+            this.container.querySelectorAll(".stepper-btn, .tray-chip, .water-colour-sphere, #btn-add-mineral-row, #btn-add-probiotic-row, .btn-remove-row, .quick-toggle-pill").forEach(el => {
+                el.disabled = true;
+                el.style.pointerEvents = "none";
+                el.style.opacity = "0.5";
+            });
+            if (btnSave) btnSave.style.display = "none";
+            if (btnSaveNext) btnSaveNext.style.display = "none";
+            if (btnDelete) btnDelete.style.display = "none";
+        }
+
         this.syncPresetHighlights();
         this.syncOptionalTogglePills();
 
@@ -547,6 +566,11 @@ export class DailyEntryModal {
      * Handles saving daily log and treatments
      */
     async handleSaveRecord({ advanceToNextPond = false } = {}) {
+        if (!security.canEditFieldOps()) {
+            Toast.warning("Viewing only. You do not have permission to edit or save field records.");
+            return;
+        }
+
         const inputDate = this.container.querySelector("#input-entry-date");
         const inputFeed = this.container.querySelector("#input-feed-kg");
         const inputTray = this.container.querySelector("#input-tray-pct");

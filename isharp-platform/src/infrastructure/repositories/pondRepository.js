@@ -272,12 +272,110 @@ export class PondRepository {
     static async terminateCycle(pondIndex, harvestDate, finalStatus = "NORMAL HARVEST", createNextCycle = true) {
         if (!pondIndex) throw new Error("pondIndex is required for termination.");
         const dateStr = harvestDate || new Date().toISOString().split("T")[0];
-        return await supabase.rpc("fn_terminate_cycle", {
-            p_pond_index: pondIndex,
-            p_harvest_date: dateStr,
-            p_final_status: finalStatus,
-            p_create_next_cycle: createNextCycle
-        });
+        try {
+            return await supabase.rpc("fn_terminate_cycle", {
+                p_pond_index: pondIndex,
+                p_harvest_date: dateStr,
+                p_final_status: finalStatus,
+                p_create_next_cycle: createNextCycle
+            });
+        } catch (rpcErr) {
+            console.warn("RPC fn_terminate_cycle failed, executing client-side Phase 4 fallback:", rpcErr.message);
+            // 1. Fetch current pond record
+            const pondRes = await supabase.request(`growout_pond_master?pond_index=eq.${encodeURIComponent(pondIndex)}`);
+            if (!pondRes || pondRes.length === 0) throw new Error(`Pond cycle ${pondIndex} not found.`);
+            const curPond = pondRes[0];
+
+            // 2. Close current cycle in growout_pond_master
+            await supabase.request(`growout_pond_master?pond_index=eq.${encodeURIComponent(pondIndex)}`, {
+                method: "PATCH",
+                body: JSON.stringify({
+                    pond_status: "CLOSE",
+                    pond_active: "INACTIVE",
+                    final_status: finalStatus || "NORMAL HARVEST"
+                })
+            });
+
+            // 3. Save close date to pond_event_date
+            await supabase.request("pond_event_date?on_conflict=pond_index,event_name", {
+                method: "POST",
+                headers: { "Prefer": "resolution=merge-duplicates" },
+                body: JSON.stringify([{
+                    pond_index: pondIndex,
+                    event_name: "close",
+                    event_date: dateStr
+                }])
+            }).catch(() => {});
+
+            // 4. Remove from active operational ponds gatekeeper
+            await supabase.request(`active_operational_ponds?pond_index=eq.${encodeURIComponent(pondIndex)}`, {
+                method: "DELETE"
+            }).catch(() => {});
+
+            let action = "TERMINATE_ONLY";
+            let nextPondIndex = null;
+
+            if (createNextCycle) {
+                const parts = pondIndex.split(".");
+                const base = parts[0];
+                const curCycle = parseInt(parts[1] || curPond.cycle_no || 0, 10);
+                const nextCycle = curCycle + 1;
+                nextPondIndex = `${base}.${nextCycle}`;
+
+                // Check if next cycle already exists
+                const existingNext = await supabase.request(`growout_pond_master?pond_index=eq.${encodeURIComponent(nextPondIndex)}`);
+                if (existingNext && existingNext.length > 0) {
+                    action = "TERMINATE_EXISTING_NEXT";
+                } else {
+                    const nextRow = {
+                        pond_index: nextPondIndex,
+                        pond: curPond.pond,
+                        farm: curPond.farm || "SETIU",
+                        modl: curPond.modl,
+                        row_no: curPond.row_no,
+                        area: curPond.area,
+                        pond_type: curPond.pond_type,
+                        pond_usage: curPond.pond_usage,
+                        crop_no: curPond.crop_no,
+                        cycle_no: String(nextCycle),
+                        pond_status: "IDLE",
+                        pond_active: "INACTIVE",
+                        culture_status: null,
+                        strategy: curPond.strategy,
+                        final_status: null,
+                        disease_status: "NO ISSUES",
+                        idle_days: 0,
+                        idle_status: "NORMAL",
+                        water_type: curPond.water_type
+                    };
+
+                    await supabase.request("growout_pond_master", {
+                        method: "POST",
+                        body: JSON.stringify(nextRow)
+                    });
+
+                    await supabase.request("pond_event_date?on_conflict=pond_index,event_name", {
+                        method: "POST",
+                        headers: { "Prefer": "resolution=merge-duplicates" },
+                        body: JSON.stringify([{
+                            pond_index: nextPondIndex,
+                            event_name: "cycle",
+                            event_date: dateStr
+                        }])
+                    }).catch(() => {});
+
+                    action = "TERMINATE_AND_ROLLOVER";
+                }
+            }
+
+            return {
+                success: true,
+                pond: curPond.pond,
+                pond_index: pondIndex,
+                new_pond_index: nextPondIndex,
+                action: action
+            };
+        }
     }
 
     /**
@@ -295,10 +393,65 @@ export class PondRepository {
      */
     static async reviveCycle(pondIndex, deleteNextCycle = false) {
         if (!pondIndex) throw new Error("pondIndex is required for revive.");
-        return await supabase.rpc("fn_revive_cycle", {
-            p_pond_index: pondIndex,
-            p_delete_next_cycle: deleteNextCycle
-        });
+        try {
+            return await supabase.rpc("fn_revive_cycle", {
+                p_pond_index: pondIndex,
+                p_delete_next_cycle: deleteNextCycle
+            });
+        } catch (rpcErr) {
+            console.warn("RPC fn_revive_cycle failed, executing client-side Phase 4 fallback:", rpcErr.message);
+            const pondRes = await supabase.request(`growout_pond_master?pond_index=eq.${encodeURIComponent(pondIndex)}`);
+            if (!pondRes || pondRes.length === 0) throw new Error(`Pond cycle ${pondIndex} not found.`);
+            const curPond = pondRes[0];
+
+            // 1. Reopen current cycle in growout_pond_master
+            await supabase.request(`growout_pond_master?pond_index=eq.${encodeURIComponent(pondIndex)}`, {
+                method: "PATCH",
+                body: JSON.stringify({
+                    pond_status: "PRODUCTION",
+                    pond_active: "ACTIVE",
+                    final_status: null
+                })
+            });
+
+            // 2. Remove close date
+            await supabase.request(`pond_event_date?pond_index=eq.${encodeURIComponent(pondIndex)}&event_name=eq.close`, {
+                method: "DELETE"
+            }).catch(() => {});
+
+            // 3. Restore in gatekeeper
+            await supabase.request("active_operational_ponds?on_conflict=pond", {
+                method: "POST",
+                headers: { "Prefer": "resolution=merge-duplicates" },
+                body: JSON.stringify([{
+                    pond: curPond.pond,
+                    pond_index: pondIndex
+                }])
+            }).catch(() => {});
+
+            // 4. Optionally delete next cycle
+            let nextCycleDeleted = false;
+            const parts = pondIndex.split(".");
+            const base = parts[0];
+            const curCycle = parseInt(parts[1] || curPond.cycle_no || 0, 10);
+            const nextPondIndex = `${base}.${curCycle + 1}`;
+
+            if (deleteNextCycle) {
+                const nextRes = await supabase.request(`growout_pond_master?pond_index=eq.${encodeURIComponent(nextPondIndex)}&pond_status=eq.IDLE`);
+                if (nextRes && nextRes.length > 0) {
+                    await this.deleteIdleCycle(nextPondIndex).catch(() => {});
+                    nextCycleDeleted = true;
+                }
+            }
+
+            return {
+                success: true,
+                revived_pond_index: pondIndex,
+                next_pond_index: nextPondIndex,
+                next_cycle_deleted: nextCycleDeleted,
+                status: "PRODUCTION"
+            };
+        }
     }
 
     /**
@@ -314,13 +467,84 @@ export class PondRepository {
     static async createCustomCycle({ pond, cycleNo, area = 0.50, status = "IDLE", planStockDate = null }) {
         if (!pond) throw new Error("Pond code is required.");
         if (!cycleNo) throw new Error("Cycle number is required.");
-        return await supabase.rpc("fn_create_custom_cycle", {
-            p_pond: pond,
-            p_cycle_no: parseInt(cycleNo, 10),
-            p_area: parseFloat(area) || 0.50,
-            p_status: status,
-            p_plan_stock_date: planStockDate || null
-        });
+        try {
+            return await supabase.rpc("fn_create_custom_cycle", {
+                p_pond: pond,
+                p_cycle_no: parseInt(cycleNo, 10),
+                p_area: parseFloat(area) || 0.50,
+                p_status: status,
+                p_plan_stock_date: planStockDate || null
+            });
+        } catch (rpcErr) {
+            console.warn("RPC fn_create_custom_cycle failed, executing client-side Phase 4 fallback:", rpcErr.message);
+            const cleanPond = String(pond).trim();
+            const existingRes = await supabase.request(`growout_pond_master?pond=eq.${encodeURIComponent(cleanPond)}&limit=1`);
+            const template = (existingRes && existingRes.length > 0) ? existingRes[0] : null;
+
+            let baseIndex = template ? template.pond_index.split(".")[0] : null;
+            if (!baseIndex) {
+                baseIndex = "2" + cleanPond.replace(/[^0-9]/g, "");
+            }
+            const pondIndex = `${baseIndex}.${parseInt(cycleNo, 10)}`;
+
+            const upperStatus = String(status).trim().toUpperCase();
+            const masterRow = {
+                pond_index: pondIndex,
+                pond: cleanPond,
+                farm: template?.farm || "SETIU",
+                modl: template?.modl || "MODULE 01",
+                row_no: template?.row_no || "ROW 01",
+                area: parseFloat(area) || template?.area || 0.50,
+                pond_type: template?.pond_type || "FULL LINING",
+                pond_usage: template?.pond_usage || "COMMERCIAL",
+                crop_no: template?.crop_no || String(new Date().getFullYear()),
+                cycle_no: String(cycleNo),
+                pond_status: upperStatus,
+                pond_active: upperStatus === "PRODUCTION" ? "ACTIVE" : "INACTIVE",
+                culture_status: upperStatus === "PRODUCTION" ? "NORMAL" : null,
+                strategy: template?.strategy || "STANDARD",
+                final_status: null,
+                disease_status: "NO ISSUES",
+                idle_days: 0,
+                idle_status: upperStatus === "IDLE" ? "NORMAL" : null,
+                water_type: template?.water_type || "FULL SEA WATER"
+            };
+
+            await supabase.request("growout_pond_master", {
+                method: "POST",
+                body: JSON.stringify(masterRow)
+            });
+
+            if (planStockDate) {
+                await supabase.request("pond_event_date?on_conflict=pond_index,event_name", {
+                    method: "POST",
+                    headers: { "Prefer": "resolution=merge-duplicates" },
+                    body: JSON.stringify([{
+                        pond_index: pondIndex,
+                        event_name: "plan_stock",
+                        event_date: planStockDate
+                    }])
+                }).catch(() => {});
+            }
+
+            if (upperStatus === "PRODUCTION") {
+                await supabase.request("active_operational_ponds?on_conflict=pond", {
+                    method: "POST",
+                    headers: { "Prefer": "resolution=merge-duplicates" },
+                    body: JSON.stringify([{
+                        pond: cleanPond,
+                        pond_index: pondIndex
+                    }])
+                }).catch(() => {});
+            }
+
+            return {
+                success: true,
+                pond_index: pondIndex,
+                status: upperStatus,
+                message: `Cycle ${pondIndex} successfully initialized.`
+            };
+        }
     }
 
     /**
@@ -330,9 +554,33 @@ export class PondRepository {
      */
     static async deleteIdleCycle(pondIndex) {
         if (!pondIndex) throw new Error("pondIndex is required for deletion.");
-        return await supabase.rpc("fn_delete_idle_cycle", {
-            p_pond_index: pondIndex
-        });
+        try {
+            return await supabase.rpc("fn_delete_idle_cycle", {
+                p_pond_index: pondIndex
+            });
+        } catch (rpcErr) {
+            console.warn("RPC fn_delete_idle_cycle failed, executing client-side Phase 4 fallback:", rpcErr.message);
+            const pondRes = await supabase.request(`growout_pond_master?pond_index=eq.${encodeURIComponent(pondIndex)}`);
+            if (!pondRes || pondRes.length === 0) throw new Error(`Cycle ${pondIndex} not found.`);
+            const p = pondRes[0];
+            if (p.pond_status !== "IDLE") {
+                throw new Error(`Cannot delete cycle ${pondIndex} with status ${p.pond_status} (only IDLE cycles can be removed).`);
+            }
+
+            // Cascade delete child config records
+            await supabase.request(`pond_event_date?pond_index=eq.${encodeURIComponent(pondIndex)}`, { method: "DELETE" }).catch(() => {});
+            await supabase.request(`pond_initiatives?pond_index=eq.${encodeURIComponent(pondIndex)}`, { method: "DELETE" }).catch(() => {});
+            await supabase.request(`pond_aerator_inventory?pond_index=eq.${encodeURIComponent(pondIndex)}`, { method: "DELETE" }).catch(() => {});
+            await supabase.request(`pond_inventories?pond_index=eq.${encodeURIComponent(pondIndex)}`, { method: "DELETE" }).catch(() => {});
+            await supabase.request(`active_operational_ponds?pond_index=eq.${encodeURIComponent(pondIndex)}`, { method: "DELETE" }).catch(() => {});
+            await supabase.request(`growout_pond_master?pond_index=eq.${encodeURIComponent(pondIndex)}`, { method: "DELETE" });
+
+            return {
+                success: true,
+                pond_index: pondIndex,
+                message: `Idle cycle ${pondIndex} safely deleted.`
+            };
+        }
     }
 
     /**

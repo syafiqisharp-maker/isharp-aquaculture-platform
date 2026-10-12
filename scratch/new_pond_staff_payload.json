@@ -1,0 +1,728 @@
+[
+  {
+    "staff_no": "0042",
+    "staff_name": "Bujang Slamat",
+    "staff_position": "Deputy Farm Manager",
+    "is_active": true
+  },
+  {
+    "staff_no": "0397",
+    "staff_name": "Che Zulkifli Bin Che Abdul Latif",
+    "staff_position": "Leader, Production",
+    "is_active": true
+  },
+  {
+    "staff_no": "0401",
+    "staff_name": "Muhammad Syafiq Bin Sulaiman",
+    "staff_position": "Farm Operator",
+    "is_active": true
+  },
+  {
+    "staff_no": "0406",
+    "staff_name": "Zulkepeli Bin Amin",
+    "staff_position": "Leader, Production",
+    "is_active": true
+  },
+  {
+    "staff_no": "0407",
+    "staff_name": "Mat Jusoh@Zulkifli Bin Md Ramli",
+    "staff_position": "Leader, Production",
+    "is_active": true
+  },
+  {
+    "staff_no": "0414",
+    "staff_name": "Said Bin Tawang",
+    "staff_position": "Leader, Production",
+    "is_active": true
+  },
+  {
+    "staff_no": "0415",
+    "staff_name": "Rosidi Bin Tawang",
+    "staff_position": "Leader, Production",
+    "is_active": true
+  },
+  {
+    "staff_no": "0423",
+    "staff_name": "Shamsu Bin Besar",
+    "staff_position": "Leader, Production",
+    "is_active": true
+  },
+  {
+    "staff_no": "0752",
+    "staff_name": "Mohd Zamberi Bin Mohd Noor",
+    "staff_position": "Leader, Production",
+    "is_active": true
+  },
+  {
+    "staff_no": "0756",
+    "staff_name": "Saipudin Bin Hamzah",
+    "staff_position": "Farm Operator",
+    "is_active": true
+  },
+  {
+    "staff_no": "0767",
+    "staff_name": "Mohd Kairul Hafizu Bin Draman",
+    "staff_position": "Farm Operator",
+    "is_active": true
+  },
+  {
+    "staff_no": "0809",
+    "staff_name": "Rizal Sahril Bin Rozali",
+    "staff_position": "Farm Operator",
+    "is_active": true
+  },
+  {
+    "staff_no": "0838",
+    "staff_name": "Mohd Muslihin Bin Mazelih",
+    "staff_position": "Farm Operator",
+    "is_active": true
+  },
+  {
+    "staff_no": "0850",
+    "staff_name": "Nik Nurhisam Bin Musa",
+    "staff_position": "Farm Operator",
+    "is_active": true
+  },
+  {
+    "staff_no": "0921",
+    "staff_name": "Mohd Aliff Bin Ahmad",
+    "staff_position": "Leader, Production",
+    "is_active": true
+  },
+  {
+    "staff_no": "0927",
+    "staff_name": "Mohd Faizal Bin Mohamad",
+    "staff_position": "Farm Operator",
+    "is_active": true
+  },
+  {
+    "staff_no": "0937",
+    "staff_name": "Muhd Ranzi Bin Abdullah Dawawi",
+    "staff_position": "Senior, Supervisor Production",
+    "is_active": true
+  },
+  {
+    "staff_no": "0972",
+    "staff_name": "Mohamad Bin Ghani",
+    "staff_position": "Leader, Production",
+    "is_active": true
+  },
+  {
+    "staff_no": "0976",
+    "staff_name": "Zamrul Hisham Bin Che Hassim",
+    "staff_position": "Farm Operator",
+    "is_active": true
+  },
+  {
+    "staff_no": "1086",
+    "staff_name": "Zulhaidi Bin Din",
+    "staff_position": "Farm Operator",
+    "is_active": true
+  },
+  {
+    "staff_no": "1120",
+    "staff_name": "Mohammad Fathuddin Bin Salleh",
+    "staff_position": "Leader, Production",
+    "is_active": true
+  },
+  {
+    "staff_no": "1134",
+    "staff_name": "Mohd Hafiz Bin Manah",
+    "staff_position": "Leader, Production",
+    "is_active": true
+  },
+  {
+    "staff_no": "1157",
+    "staff_name": "Mohd Azlie Bin Baharudin",
+    "staff_position": "Senior, Supervisor Production",
+    "is_active": true
+  },
+  {
+    "staff_no": "1216",
+    "staff_name": "Mohd Ridzuan Bin Ramli",
+    "staff_position": "Farm Operator",
+    "is_active": true
+  },
+  {
+    "staff_no": "1245",
+    "staff_name": "Wan Amirul Afiq Bin Wan Zainudin",
+    "staff_position": "Farm Operator",
+    "is_active": true
+  },
+  {
+    "staff_no": "1264",
+    "staff_name": "Mohamad Izudin Bin Abdul Manaf",
+    "staff_position": "Leader, Production",
+    "is_active": true
+  },
+  {
+    "staff_no": "1282",
+    "staff_name": "Mohamad Khairul Kamal Ros Bin Ramli",
+    "staff_position": "Farm Operator",
+    "is_active": true
+  },
+  {
+    "staff_no": "1284",
+    "staff_name": "Mohamad Azar Bin Mat Husin",
+    "staff_position": "Farm Operator",
+    "is_active": true
+  },
+  {
+    "staff_no": "1291",
+    "staff_name": "Mohd Azizan Bin Azmi",
+    "staff_position": "Leader, Production",
+    "is_active": true
+  },
+  {
+    "staff_no": "1348",
+    "staff_name": "Che Khairul Nizam Bin Hasim",
+    "staff_position": "Farm Operator",
+    "is_active": true
+  },
+  {
+    "staff_no": "1357",
+    "staff_name": "Ahmad Rohaimee Bin Abdullah",
+    "staff_position": "Acting Deputy Farm Manager",
+    "is_active": true
+  },
+  {
+    "staff_no": "1428",
+    "staff_name": "Mohamad Asrul Bin Abdul Manaf",
+    "staff_position": "Farm Operator",
+    "is_active": true
+  },
+  {
+    "staff_no": "1447",
+    "staff_name": "Ahmad Adam Bin Muhammad",
+    "staff_position": "Farm Operator",
+    "is_active": true
+  },
+  {
+    "staff_no": "1549",
+    "staff_name": "Roski Bin Derahim",
+    "staff_position": "Farm Operator",
+    "is_active": true
+  },
+  {
+    "staff_no": "1590",
+    "staff_name": "Azmi Bin Daud",
+    "staff_position": "Farm Operator",
+    "is_active": true
+  },
+  {
+    "staff_no": "1592",
+    "staff_name": "Mohd Sharul Amirul Bin Hassam",
+    "staff_position": "Farm Operator",
+    "is_active": true
+  },
+  {
+    "staff_no": "1638",
+    "staff_name": "Hairi Azha Bin Mohd Azam",
+    "staff_position": "Assistant Manager, Production",
+    "is_active": true
+  },
+  {
+    "staff_no": "1668",
+    "staff_name": "Nik Nurhikmal Bin Musa",
+    "staff_position": "Farm Operator",
+    "is_active": true
+  },
+  {
+    "staff_no": "1693",
+    "staff_name": "Mohd Amerullah Bin Raziha",
+    "staff_position": "Farm Operator",
+    "is_active": true
+  },
+  {
+    "staff_no": "1694",
+    "staff_name": "Mohamad Nur Farhan Hakim Bin Mat Adanan",
+    "staff_position": "Farm Operator",
+    "is_active": true
+  },
+  {
+    "staff_no": "1705",
+    "staff_name": "Muhammad Zarul Haikal Bin Omar",
+    "staff_position": "Leader, Production",
+    "is_active": true
+  },
+  {
+    "staff_no": "1760",
+    "staff_name": "Wan Azizi Farhan Bin Wan Yusoff",
+    "staff_position": "Farm Operator",
+    "is_active": true
+  },
+  {
+    "staff_no": "1782",
+    "staff_name": "Azman Bin Jaafar",
+    "staff_position": "Leader, Production",
+    "is_active": true
+  },
+  {
+    "staff_no": "1835",
+    "staff_name": "Muhamad Faiz Bin Zakaria",
+    "staff_position": "Supervisor, Production Grow Out",
+    "is_active": true
+  },
+  {
+    "staff_no": "1895",
+    "staff_name": "Baharudin Bin Saleh",
+    "staff_position": "Farm Operator",
+    "is_active": true
+  },
+  {
+    "staff_no": "1969",
+    "staff_name": "Mohd Khairul Hakimi Bin Abd Rahim",
+    "staff_position": "Farm Operator",
+    "is_active": true
+  },
+  {
+    "staff_no": "1997",
+    "staff_name": "Mohd Mustaffa Bin Ismail",
+    "staff_position": "Farm Operator",
+    "is_active": true
+  },
+  {
+    "staff_no": "2037",
+    "staff_name": "Muhammad Nazriel Hafiziey Bin Shamsudin",
+    "staff_position": "Leader, Production",
+    "is_active": true
+  },
+  {
+    "staff_no": "2042",
+    "staff_name": "Muhamad Azizi Azrie Bin Junaidi",
+    "staff_position": "Farm Operator",
+    "is_active": true
+  },
+  {
+    "staff_no": "2057",
+    "staff_name": "Che Amat Bin Ali",
+    "staff_position": "Farm Operator",
+    "is_active": true
+  },
+  {
+    "staff_no": "2083",
+    "staff_name": "Mohammad Izham Bin Hassan",
+    "staff_position": "Supervisor, Production Grow Out",
+    "is_active": true
+  },
+  {
+    "staff_no": "2087",
+    "staff_name": "Mohd Shahru Ramdan Bin Azizan",
+    "staff_position": "Farm Operator",
+    "is_active": true
+  },
+  {
+    "staff_no": "2104",
+    "staff_name": "Mohd Hasif Bin Muhammad",
+    "staff_position": "Supervisor, Production Grow Out",
+    "is_active": true
+  },
+  {
+    "staff_no": "2127",
+    "staff_name": "Muhammad Khairul Bin Mat Sopi",
+    "staff_position": "Leader, Production",
+    "is_active": true
+  },
+  {
+    "staff_no": "2133",
+    "staff_name": "Mohd Jefri Bin Mohamed Zibri",
+    "staff_position": "Farm Operator",
+    "is_active": true
+  },
+  {
+    "staff_no": "2149",
+    "staff_name": "Mohamad Amirulsham Bin Azaman",
+    "staff_position": "Farm Operator",
+    "is_active": true
+  },
+  {
+    "staff_no": "2154",
+    "staff_name": "Wan Muhamad Redzuwan Bin Wan Omar",
+    "staff_position": "Farm Operator",
+    "is_active": true
+  },
+  {
+    "staff_no": "2164",
+    "staff_name": "Muhamad Fazli Bin Mustapa",
+    "staff_position": "Farm Operator",
+    "is_active": true
+  },
+  {
+    "staff_no": "2171",
+    "staff_name": "Che Mohd Akram Bin Che Murad",
+    "staff_position": "Farm Operator",
+    "is_active": true
+  },
+  {
+    "staff_no": "2173",
+    "staff_name": "Nik Mohd Fadzil Bin Nik Husin",
+    "staff_position": "Leader, Production",
+    "is_active": true
+  },
+  {
+    "staff_no": "2196",
+    "staff_name": "Nazronha Bin Napi",
+    "staff_position": "Senior, Supervisor Production",
+    "is_active": true
+  },
+  {
+    "staff_no": "2241",
+    "staff_name": "Mohd Izzany Bin Ismail",
+    "staff_position": "Farm Operator",
+    "is_active": true
+  },
+  {
+    "staff_no": "2245",
+    "staff_name": "Muhammad Khairul Nizam Bin Che Aziz",
+    "staff_position": "Farm Operator",
+    "is_active": true
+  },
+  {
+    "staff_no": "2246",
+    "staff_name": "Abdul Mu'Iz Bin Mat Rabi",
+    "staff_position": "Supervisor, Production",
+    "is_active": true
+  },
+  {
+    "staff_no": "2253",
+    "staff_name": "Mazlan Bin Mohamad",
+    "staff_position": "Farm Operator",
+    "is_active": true
+  },
+  {
+    "staff_no": "2261",
+    "staff_name": "Mohamad Hanif Bin Rosli",
+    "staff_position": "Farm Operator",
+    "is_active": true
+  },
+  {
+    "staff_no": "2262",
+    "staff_name": "Muhammad Amirhakimie Bin Mohd Zamzurihailani",
+    "staff_position": "Farm Operator",
+    "is_active": true
+  },
+  {
+    "staff_no": "2263",
+    "staff_name": "Muhammad Alfiyzul Bin Azmi",
+    "staff_position": "Farm Operator",
+    "is_active": true
+  },
+  {
+    "staff_no": "2301",
+    "staff_name": "Farizul Akif bin Makhtar",
+    "staff_position": "Farm Operator",
+    "is_active": true
+  },
+  {
+    "staff_no": "2303",
+    "staff_name": "Mohammad Shahrul Naim bin Mohd Shariff",
+    "staff_position": "Farm Operator",
+    "is_active": true
+  },
+  {
+    "staff_no": "2310",
+    "staff_name": "Burhanuddin Al-Helmi bin Jusoh @ Abd Rahman",
+    "staff_position": "Farm Operator",
+    "is_active": true
+  },
+  {
+    "staff_no": "2314",
+    "staff_name": "Muhammad Najwa Asraf bin Azaman",
+    "staff_position": "Farm Operator",
+    "is_active": true
+  },
+  {
+    "staff_no": "2315",
+    "staff_name": "Mat Kheirifarid bin Mat Sopi",
+    "staff_position": "Farm Operator",
+    "is_active": true
+  },
+  {
+    "staff_no": "2327",
+    "staff_name": "Muhammad Badruddin bin Mat Sopi",
+    "staff_position": "Farm Operator",
+    "is_active": true
+  },
+  {
+    "staff_no": "2371",
+    "staff_name": "Wan Fahiminuddin bin Wan Mohd Nasir",
+    "staff_position": "Farm Operator",
+    "is_active": true
+  },
+  {
+    "staff_no": "2386",
+    "staff_name": "Syahrul Nizam bin Said",
+    "staff_position": "Farm Operator",
+    "is_active": true
+  },
+  {
+    "staff_no": "2398",
+    "staff_name": "Muhammad Najmi Aiman bin Syaipuddin",
+    "staff_position": "Farm Operator",
+    "is_active": true
+  },
+  {
+    "staff_no": "2404",
+    "staff_name": "Mohd Zukairo bin Mohd Yuni",
+    "staff_position": "Farm Operator",
+    "is_active": true
+  },
+  {
+    "staff_no": "2435",
+    "staff_name": "Mohamad Ikmal Hakim bin Mohd Jeefry",
+    "staff_position": "Supervisor Production",
+    "is_active": true
+  },
+  {
+    "staff_no": "2480",
+    "staff_name": "Muhammad Asyraf Hakimi bin Had",
+    "staff_position": "Farm Operator",
+    "is_active": true
+  },
+  {
+    "staff_no": "2491",
+    "staff_name": "Mohd Ridzuaniza bin Md Yasin",
+    "staff_position": "Farm Operator",
+    "is_active": true
+  },
+  {
+    "staff_no": "2493",
+    "staff_name": "Mustakim bin Mohamad",
+    "staff_position": "Farm Operator",
+    "is_active": true
+  },
+  {
+    "staff_no": "2507",
+    "staff_name": "Muhammad Hanif Ikram bin Mohd Razali",
+    "staff_position": "Farm Operator",
+    "is_active": true
+  },
+  {
+    "staff_no": "2543",
+    "staff_name": "Mohammad Hafiz Fadli bin Mohammad Effendi",
+    "staff_position": "Supervisor, Production Grow Out",
+    "is_active": true
+  },
+  {
+    "staff_no": "2554",
+    "staff_name": "Muhammad Nur Ikhwan bin Rozali",
+    "staff_position": "Farm Operator",
+    "is_active": true
+  },
+  {
+    "staff_no": "2578",
+    "staff_name": "Mohd Shahril bin Jaafar",
+    "staff_position": "Farm Operator",
+    "is_active": true
+  },
+  {
+    "staff_no": "2579",
+    "staff_name": "Zaidi bin Azmi",
+    "staff_position": "Farm Operator",
+    "is_active": true
+  },
+  {
+    "staff_no": "2581",
+    "staff_name": "Muhammad Luqman bin Mazle",
+    "staff_position": "Farm Operator",
+    "is_active": true
+  },
+  {
+    "staff_no": "2584",
+    "staff_name": "Muhammad Syahmer Amirul bin Azizan",
+    "staff_position": "Farm Operator",
+    "is_active": true
+  },
+  {
+    "staff_no": "2585",
+    "staff_name": "Muhamad Amirul Amir bin Malek",
+    "staff_position": "Farm Operator",
+    "is_active": true
+  },
+  {
+    "staff_no": "2586",
+    "staff_name": "Wan Muhammad Syahrul Aziziy bin Wan Hussin",
+    "staff_position": "Farm Operator",
+    "is_active": true
+  },
+  {
+    "staff_no": "2587",
+    "staff_name": "Abdul Rahman bin Abd Muluk",
+    "staff_position": "Farm Operator",
+    "is_active": true
+  },
+  {
+    "staff_no": "2590",
+    "staff_name": "Muhammad Khairul Hafiz bin Roslan",
+    "staff_position": "Farm Operator",
+    "is_active": true
+  },
+  {
+    "staff_no": "2591",
+    "staff_name": "Mohammad Amierul Yusrie bin Mohd Safri",
+    "staff_position": "Farm Operator",
+    "is_active": true
+  },
+  {
+    "staff_no": "2611",
+    "staff_name": "Muhammad Aqimi bin Ab Rhahim",
+    "staff_position": "Farm Operator",
+    "is_active": true
+  },
+  {
+    "staff_no": "2613",
+    "staff_name": "Mohd Nuzulsa'dam bin Hussain",
+    "staff_position": "Farm Operator",
+    "is_active": true
+  },
+  {
+    "staff_no": "2623",
+    "staff_name": "Muhammad Zarif Iqwan bin Ab Samat",
+    "staff_position": "Farm Operator",
+    "is_active": true
+  },
+  {
+    "staff_no": "2630",
+    "staff_name": "Mohamad Farhan bin Mohd Zaki",
+    "staff_position": "Farm Operator",
+    "is_active": true
+  },
+  {
+    "staff_no": "2634",
+    "staff_name": "Muhamad Faris Bin Azhari",
+    "staff_position": "Farm Operator",
+    "is_active": true
+  },
+  {
+    "staff_no": "2651",
+    "staff_name": "Darwish Jazly bin Rosmadi",
+    "staff_position": "Farm Operator",
+    "is_active": true
+  },
+  {
+    "staff_no": "2654",
+    "staff_name": "Muhammad Zulfadhlie bin Abdul Wahab",
+    "staff_position": "Farm Operator",
+    "is_active": true
+  },
+  {
+    "staff_no": "2666",
+    "staff_name": "Muhammad Arif Safwan bin Azizudin",
+    "staff_position": "Farm Operator",
+    "is_active": true
+  },
+  {
+    "staff_no": "2671",
+    "staff_name": "Wan Muhammad Aqif bin Wan Ali",
+    "staff_position": "Farm Operator",
+    "is_active": true
+  },
+  {
+    "staff_no": "2676",
+    "staff_name": "Muhammad Fatah Najmi bin Mohd Noor",
+    "staff_position": "Farm Operator",
+    "is_active": true
+  },
+  {
+    "staff_no": "2683",
+    "staff_name": "Muhammad Sayutie bin Ahamad Subki",
+    "staff_position": "Farm Operator",
+    "is_active": true
+  },
+  {
+    "staff_no": "2684",
+    "staff_name": "Mohd Hashim bin Yahya",
+    "staff_position": "Farm Operator",
+    "is_active": true
+  },
+  {
+    "staff_no": "2685",
+    "staff_name": "Adam Mukhlis bin Rosidi",
+    "staff_position": "Farm Operator",
+    "is_active": true
+  },
+  {
+    "staff_no": "2688",
+    "staff_name": "Muhammad Hafizuddin bi Md Hussin",
+    "staff_position": "Farm Operator",
+    "is_active": true
+  },
+  {
+    "staff_no": "2689",
+    "staff_name": "Iqkhbal Haikal bin Hausni",
+    "staff_position": "Farm Operator",
+    "is_active": true
+  },
+  {
+    "staff_no": "2690",
+    "staff_name": "Muhamad Idham Izzudin bin Mohd Suami",
+    "staff_position": "Farm Operator",
+    "is_active": true
+  },
+  {
+    "staff_no": "2693",
+    "staff_name": "Muhammad Nor Aiman Hakimee bin Abdullah",
+    "staff_position": "Farm Operator",
+    "is_active": true
+  },
+  {
+    "staff_no": "2695",
+    "staff_name": "Abdul Redzuan bin Abdul Majid",
+    "staff_position": "Farm Operator",
+    "is_active": true
+  },
+  {
+    "staff_no": "2696",
+    "staff_name": "Muhammad Afiq Alauddin bin Azani Putra",
+    "staff_position": "Farm Operator",
+    "is_active": true
+  },
+  {
+    "staff_no": "2697",
+    "staff_name": "Muhammad Azry Firdaus bin Harun",
+    "staff_position": "Farm Operator",
+    "is_active": true
+  },
+  {
+    "staff_no": "2700",
+    "staff_name": "Muhammad Adib Fakhri Nabil bin Che Din",
+    "staff_position": "Farm Operator",
+    "is_active": true
+  },
+  {
+    "staff_no": "2704",
+    "staff_name": "Zulhilmi Faisal bin Zainal",
+    "staff_position": "Farm Operator",
+    "is_active": true
+  },
+  {
+    "staff_no": "2716",
+    "staff_name": "Mohamad Aliff bin Dollah",
+    "staff_position": "Supervisor, Production Grow Out",
+    "is_active": true
+  },
+  {
+    "staff_no": "2723",
+    "staff_name": "Aiman Shahir bin Zaidi",
+    "staff_position": "Farm Operator",
+    "is_active": true
+  },
+  {
+    "staff_no": "2724",
+    "staff_name": "Mohd Nazri bin Mukhtar",
+    "staff_position": "Farm Operator",
+    "is_active": true
+  },
+  {
+    "staff_no": "2726",
+    "staff_name": "Muhammad Fazreen Adiff Daniel bin Mohd Nazri",
+    "staff_position": "Farm Operator",
+    "is_active": true
+  },
+  {
+    "staff_no": "2735",
+    "staff_name": "Muhammad Syaqirin bin Salahuddin",
+    "staff_position": "Farm Operator",
+    "is_active": true
+  }
+]

@@ -7,7 +7,8 @@ import {
     calculateADG,
     getStandardABW,
     getEffectiveBiomassGain,
-    getLatestSurvivalRate
+    getLatestSurvivalRate,
+    getOperationalPondState
 } from '../src/domain/biometrics.js';
 import { 
     calculateTotalActiveHP, 
@@ -322,6 +323,88 @@ test('Domain: sanitizeIdlePrepDate (Idle Pond Preparation Dates Rule)', async (t
 
     await t.test('does not filter dates when pond is not idle (e.g. PRODUCTION)', () => {
         assert.equal(sanitizeIdlePrepDate('2026-06-26', '2026-06-15', false), '2026-06-26');
+    });
+});
+
+test('Domain: getOperationalPondState (Operational Status SSOT)', async (t) => {
+    await t.test('null cycle returns default IDLE state', () => {
+        const res = getOperationalPondState(null);
+        assert.equal(res.isStocked, false);
+        assert.equal(res.isProduction, false);
+        assert.equal(res.isIdle, true);
+        assert.equal(res.docDisplay, '—');
+        assert.equal(res.speciesLabel, 'IDLE');
+    });
+
+    await t.test('cycle with pond_status PRODUCTION but no stck_date is treated as PREPARATION and NEVER 0 VAN', () => {
+        const cycle = {
+            pond: '01.01.03',
+            pond_index: '2010103.43',
+            pond_status: 'PRODUCTION',
+            stck_date: null,
+            species: 'P. VANNAMEi',
+            date_cycle: '2026-09-24'
+        };
+        const res = getOperationalPondState(cycle);
+        assert.equal(res.isStocked, false);
+        assert.equal(res.isProduction, false);
+        assert.equal(res.isPrep, true);
+        assert.equal(res.docDisplay, 'PREP');
+        assert.equal(res.speciesLabel, 'PREP');
+        assert.equal(res.speciesCode, 'PREP');
+        assert.equal(res.statusLabel, 'PREPARATION');
+    });
+
+    await t.test('cycle with pond_status IDLE displays idle days and IDLE species', () => {
+        const cycle = {
+            pond: '01.01.07',
+            pond_index: '2010107.43',
+            pond_status: 'IDLE',
+            stck_date: null,
+            idle_days: 7
+        };
+        const res = getOperationalPondState(cycle);
+        assert.equal(res.isStocked, false);
+        assert.equal(res.isProduction, false);
+        assert.equal(res.isIdle, true);
+        assert.equal(res.docDisplay, '7d');
+        assert.equal(res.speciesLabel, 'IDLE');
+        assert.equal(res.speciesCode, 'IDLE');
+    });
+
+    await t.test('stocked production cycle displays numeric DOC and correct species', () => {
+        // Stocked 40 days ago
+        const stckDate = new Date(Date.now() - 40 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+        const cycle = {
+            pond: '01.01.01',
+            pond_index: '2010101.40',
+            pond_status: 'PRODUCTION',
+            stck_date: stckDate,
+            species: 'P. VANNAMEi'
+        };
+        const res = getOperationalPondState(cycle);
+        assert.equal(res.isStocked, true);
+        assert.equal(res.isProduction, true);
+        assert.equal(res.isIdle, false);
+        assert.equal(res.doc, 40);
+        assert.equal(res.docDisplay, '40');
+        assert.equal(res.speciesLabel, 'VAN');
+    });
+
+    await t.test('closed cycle displays CLOSE status', () => {
+        const cycle = {
+            pond: '01.01.01',
+            pond_index: '2010101.39',
+            pond_status: 'CLOSE',
+            pond_active: 'INACTIVE',
+            stck_date: '2026-03-01',
+            date_close: '2026-05-15',
+            species: 'P. VANNAMEi'
+        };
+        const res = getOperationalPondState(cycle);
+        assert.equal(res.isClosed, true);
+        assert.equal(res.isProduction, false);
+        assert.equal(res.statusLabel, 'CLOSE');
     });
 });
 

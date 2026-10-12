@@ -19,44 +19,44 @@ export function getStaffTabHtml() {
 
                 <div class="alert-info-glass" style="font-size: 0.75rem; color: #475569; background: rgba(240, 249, 255, 0.85); border: 1px solid #bae6fd; border-radius: 8px; padding: 0.5rem 0.75rem; margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.4rem;">
                     <span style="font-size: 1rem;">💡</span>
-                    <span>Enter the staff's <strong>Employee ID</strong> (e.g. <code>0042</code>, <code>1157</code>, <code>1216</code>). The system looks up their official name automatically.</span>
+                    <span>Enter <strong>Employee ID</strong> (e.g. <code>0042</code>, <code>1638</code>) or <strong>Staff Name</strong>. The system matches and verifies their record automatically.</span>
                 </div>
 
                 <!-- Staff ID Entry Grid -->
                 <div class="staff-allocation-form" style="display: flex; flex-direction: column; gap: 0.6rem;">
                     
                     <!-- 1. Asst Manager (PM) -->
-                    <div class="staff-entry-row" style="display: grid; grid-template-columns: 120px 105px 1fr; gap: 0.5rem; align-items: center;">
+                    <div class="staff-entry-row" style="display: grid; grid-template-columns: 120px 140px 1fr; gap: 0.5rem; align-items: center;">
                         <label style="font-size: 0.75rem; font-weight: 700; color: #334155; margin: 0;">👔 Asst Manager</label>
-                        <input type="text" id="input-pm-id" list="staff-directory-datalist" class="form-control" placeholder="ID (e.g. 0042)" style="font-size: 0.8rem; font-weight: 700; text-align: center; letter-spacing: 0.05em;">
+                        <input type="text" id="input-pm-id" list="staff-directory-datalist" class="form-control" placeholder="ID or Name (e.g. 0042)" style="font-size: 0.8rem; font-weight: 700; text-align: center; letter-spacing: 0.03em;">
                         <input type="text" id="input-pm-name" class="form-control" placeholder="Asst Manager Name will appear" readonly style="background: rgba(248, 250, 252, 0.85); font-size: 0.8rem; color: #0f172a; font-weight: 600;">
                     </div>
 
                     <!-- 2. Field Supervisor (SV) -->
-                    <div class="staff-entry-row" style="display: grid; grid-template-columns: 120px 105px 1fr; gap: 0.5rem; align-items: center;">
+                    <div class="staff-entry-row" style="display: grid; grid-template-columns: 120px 140px 1fr; gap: 0.5rem; align-items: center;">
                         <label style="font-size: 0.75rem; font-weight: 700; color: #334155; margin: 0;">📋 Supervisor</label>
-                        <input type="text" id="input-sv-id" list="staff-directory-datalist" class="form-control" placeholder="ID (e.g. 1157)" style="font-size: 0.8rem; font-weight: 700; text-align: center; letter-spacing: 0.05em;">
+                        <input type="text" id="input-sv-id" list="staff-directory-datalist" class="form-control" placeholder="ID or Name (e.g. 1157)" style="font-size: 0.8rem; font-weight: 700; text-align: center; letter-spacing: 0.03em;">
                         <input type="text" id="input-sv-name" class="form-control" placeholder="Supervisor Name will appear" readonly style="background: rgba(248, 250, 252, 0.85); font-size: 0.8rem; color: #0f172a; font-weight: 600;">
                     </div>
 
                     <!-- 3. Row Leader (RL) -->
-                    <div class="staff-entry-row" style="display: grid; grid-template-columns: 120px 105px 1fr; gap: 0.5rem; align-items: center;">
+                    <div class="staff-entry-row" style="display: grid; grid-template-columns: 120px 140px 1fr; gap: 0.5rem; align-items: center;">
                         <label style="font-size: 0.75rem; font-weight: 700; color: #334155; margin: 0;">🚜 Row Leader</label>
-                        <input type="text" id="input-rl-id" list="staff-directory-datalist" class="form-control" placeholder="ID (e.g. 1120)" style="font-size: 0.8rem; font-weight: 700; text-align: center; letter-spacing: 0.05em;">
+                        <input type="text" id="input-rl-id" list="staff-directory-datalist" class="form-control" placeholder="ID or Name (e.g. 1120)" style="font-size: 0.8rem; font-weight: 700; text-align: center; letter-spacing: 0.03em;">
                         <input type="text" id="input-rl-name" class="form-control" placeholder="Row Leader Name will appear" readonly style="background: rgba(248, 250, 252, 0.85); font-size: 0.8rem; color: #0f172a; font-weight: 600;">
                     </div>
 
                     <!-- 4. Primary Operator (PO) -->
-                    <div class="staff-entry-row" style="display: grid; grid-template-columns: 120px 105px 1fr; gap: 0.5rem; align-items: center;">
+                    <div class="staff-entry-row" style="display: grid; grid-template-columns: 120px 140px 1fr; gap: 0.5rem; align-items: center;">
                         <label style="font-size: 0.75rem; font-weight: 700; color: #334155; margin: 0;">🦐 Primary Operator</label>
-                        <input type="text" id="input-po-id" list="staff-directory-datalist" class="form-control" placeholder="ID (e.g. 1216)" style="font-size: 0.8rem; font-weight: 700; text-align: center; letter-spacing: 0.05em;">
+                        <input type="text" id="input-po-id" list="staff-directory-datalist" class="form-control" placeholder="ID or Name (e.g. 1216)" style="font-size: 0.8rem; font-weight: 700; text-align: center; letter-spacing: 0.03em;">
                         <input type="text" id="input-po-name" class="form-control" placeholder="Primary Operator Name will appear" readonly style="background: rgba(248, 250, 252, 0.85); font-size: 0.8rem; color: #0f172a; font-weight: 600;">
                     </div>
 
                     <!-- 5. Support Operator -->
-                    <div class="staff-entry-row" style="display: grid; grid-template-columns: 120px 105px 1fr; gap: 0.5rem; align-items: center;">
+                    <div class="staff-entry-row" style="display: grid; grid-template-columns: 120px 140px 1fr; gap: 0.5rem; align-items: center;">
                         <label style="font-size: 0.75rem; font-weight: 700; color: #334155; margin: 0;">🛠️ Support Operator</label>
-                        <input type="text" id="input-support-id" list="staff-directory-datalist" class="form-control" placeholder="ID (e.g. 2057)" style="font-size: 0.8rem; font-weight: 700; text-align: center; letter-spacing: 0.05em;">
+                        <input type="text" id="input-support-id" list="staff-directory-datalist" class="form-control" placeholder="ID or Name (e.g. 2057)" style="font-size: 0.8rem; font-weight: 700; text-align: center; letter-spacing: 0.03em;">
                         <input type="text" id="input-support-name" class="form-control" placeholder="Support Operator Name will appear" readonly style="background: rgba(248, 250, 252, 0.85); font-size: 0.8rem; color: #0f172a; font-weight: 600;">
                     </div>
 

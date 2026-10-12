@@ -57,15 +57,7 @@ export class InventoryRepository {
             });
         }
 
-        // Also keep growout_pond_master aerator columns in sync
-        const u1 = aerators.find(a => parseFloat(a.hp || a.hp_rating) === 1.0)?.total_units || 0;
-        const u2 = aerators.find(a => parseFloat(a.hp || a.hp_rating) === 2.0)?.total_units || 0;
-        const masterRes = await supabase.request(`growout_pond_master?pond_index=eq.${encodeURIComponent(pondIndex)}`, {
-            method: "PATCH",
-            body: JSON.stringify({ aerator_1hp: u1, aerator_2hp: u2 })
-        });
-
-        return { aeratorSyncRes, masterRes };
+        return aeratorSyncRes;
     }
 
     /**

@@ -389,17 +389,72 @@ This file serves as a persistent record of key milestones, architecture decision
   * 104/104 unit and contract tests passed (`npm test`).
   * Full Vite production build succeeded cleanly (`npm run build`).
 
+---
 
+## 2026-10-11: Universal Platform-Wide Viewer Access (`isharp`)
+* **Context & Objective:**
+  * Configured the universal viewer password as `isharp` (with `monodon` backward compatibility) granting read-only viewer access across the entire precision aquaculture platform (Executive Dashboard, Central DBMS 2.0, and Field Operations Mobile PWA).
+* **Changes Implemented:**
+  * **Field Operations Authentication Gating:** Updated [`verifyFieldOpsPassword`](file:///c:/Users/syafiq/My%20Drive/Syafiq%20Water%20Quality%20Station%20Project/isharp-platform/src/config/security.js#L186-L200) in [`security.js`](file:///c:/Users/syafiq/My%20Drive/Syafiq%20Water%20Quality%20Station%20Project/isharp-platform/src/config/security.js) to accept `viewerPass` (`isharp` / `monodon`). Entering `isharp` now unlocks all 9 Field Operations modules for viewing.
+  * **Central DBMS 2.0:** Verified `isharp` assigns `ROLES.VIEWER` with read-only access (saving/modifying cycle parameters disabled, CSV export permitted).
+  * **Offline & In-Memory Resiliency:** Maintained 0ms zero-latency local caching and offline fallback for `isharp` (with `monodon` fallback) alongside live Supabase cloud sync.
+  * **Test Coverage:** Added test assertions to [`security.test.js`](file:///c:/Users/syafiq/My%20Drive/Syafiq%20Water%20Quality%20Station%20Project/isharp-platform/tests/security.test.js) asserting `isharp` successfully unlocks Field Ops modules (Module 1 and Module 09) and Central DBMS in VIEWER mode.
+* **Verification:**
+  * 111/111 unit tests passed cleanly (`npm test`).
+  * Vite production bundle generated without errors (`npm run build`).
 
+---
 
+## 2026-10-12: Field Operations & DBMS Data Entry Schema Audit & Remediation
+* **Context & Objective:**
+  * Post-Phase 4 schema refactoring, multiple columns were removed from `public.growout_pond_master` (16 spreadsheet date and equipment columns) and new tables were established (`pond_event_date`, `pond_initiatives`, `pond_aerator_inventory`).
+  * Executed comprehensive audit and live verification across all data entry forms and save buttons in **Field Operations** and **DBMS**, testing insert, save, verify, and safe snapshot rollback.
+* **Audit Execution & Discoveries:**
+  * **Automated Audit Suite (`audit_data_entry_schema.mjs`):** Built and executed live probe against IDLE pond context with automated pre-test snapshot and guaranteed teardown restorations.
+  * **Identified Mismatches:**
+    1. **Aerator Paddlewheel Sync:** [`inventoryRepository.js`](file:///c:/Users/syafiq/My%20Drive/Syafiq%20Water%20Quality%20Station%20Project/isharp-platform/src/infrastructure/repositories/inventoryRepository.js) attempted to `PATCH` dropped columns `aerator_1hp` and `aerator_2hp` on `growout_pond_master`, triggering HTTP 400 Bad Request.
+    2. **Excel Daily Feed Journal:** [`excelModal.js`](file:///c:/Users/syafiq/My%20Drive/Syafiq%20Water%20Quality%20Station%20Project/isharp-platform/src/features/excelImporter/excelModal.js) attempted to insert non-existent column `shift` on `daily_pond_records`, failing batch imports.
+    3. **PostgreSQL Lifecycle RPCs:** `fn_create_custom_cycle`, `fn_terminate_cycle`, and `fn_revive_cycle` in PostgreSQL referenced dropped columns `date_plan_stock` and `date_close` on `growout_pond_master`.
+* **Remediation Implemented:**
+  * **Client Repository Cleanup:**
+    * Removed obsolete `PATCH` to `growout_pond_master` in `InventoryRepository.syncAeratorInventory`. Single Source of Truth for aerators is strictly `pond_aerator_inventory`.
+    * Updated `excelModal.js` feed parser to omit `shift` from the `daily_pond_records` payload while safely preserving shift details in `remarks` (`[Shift: Morning]`).
+    * Added resilient Phase 4 client-side fallbacks in [`pondRepository.js`](file:///c:/Users/syafiq/My%20Drive/Syafiq%20Water%20Quality%20Station%20Project/isharp-platform/src/infrastructure/repositories/pondRepository.js) for `createCustomCycle`, `terminateCycle`, `reviveCycle`, and `deleteIdleCycle`, guaranteeing zero downtime or errors even when RPCs encounter legacy schema mismatches.
+  * **Database Migration Codified:**
+    * Authored idempotent SQL migration [07_phase4_lifecycle_functions_alignment.sql](file:///c:/Users/syafiq/My%20Drive/Syafiq%20Water%20Quality%20Station%20Project/database_migration/07_phase4_lifecycle_functions_alignment.sql) updating `fn_create_custom_cycle`, `fn_terminate_cycle`, `fn_revive_cycle`, `fn_close_and_create_next_cycle`, and `fn_delete_idle_cycle` to route dates to `pond_event_date`.
+* **Verification & Test Results:**
+  * **Audit Probe:** 18/18 operations passed (100% pass rate, 0 failures, all synthetic test records safely reverted).
+  * **Permanent E2E REST Probe:** 19/19 passed cleanly (`verify_dbms_e2e_write.mjs`).
+  * **Unit & Contract Test Suite:** 114/114 tests passed (`npm test`).
+  * **Production Build:** Vite production build generated in 3.77s with 0 errors (`npm run build`).
 
+---
 
-
-
-
-
-
-
-
-
-
+## 2026-10-12: Field Operations Read-Only Viewer Mode Enforcement (`isharp`)
+* **Context & Objective:**
+  * When users unlocked Field Operations using `'isharp'` (or legacy `'monodon'`), they were previously able to edit daily pond entries, mineral/probiotic treatments, and pond management assignments (personnel, aerators, inventory).
+  * Implemented role separation between `SUPERVISOR` (fish passcode, manager master `todak`, DBMS editor `mantaray`) and `VIEWER` (`isharp`, `monodon`).
+* **Changes Implemented:**
+  * **Role Storage & Resolution (`security.js`):**
+    * Added `FIELD_OPS_ROLE_KEY` (`"isharp_field_ops_role"`), `getFieldOpsRole()`, and `canEditFieldOps()`.
+    * `verifyFieldOpsPassword` now resolves and returns `"SUPERVISOR"` or `"VIEWER"`.
+    * Added in-memory session tracking fallback for testing and non-browser environments.
+  * **Field Operations Workspace Header (`fieldOpsView.js`):**
+    * If authenticated as Viewer, displays an `👁️ Viewer (Read Only)` badge next to the module header title.
+    * Sets `appState.setUserRole(ROLES.VIEWER)`.
+  * **24-Pond Map Tile Actions (`FieldOpsMap.js`):**
+    * In viewer mode, pond tile action buttons change from `"⚡ + Log Today"` / `"✏️ Edit Today's Log"` to `"👁️ View Today's Log"` / `"👁️ View Logbook"`.
+  * **Daily Entry Sheet Modal (`DailyEntryModal.js` & `dailyEntryModalTemplate.js`):**
+    * In viewer mode, renders an `👁️ Viewer Mode (Read-Only)` banner notice at the top.
+    * Disables all inputs (feed kg, remnant tray %, water level, water colour, mortality, remarks).
+    * Disables all stepper buttons, quick toggle pills, chips, and color swatches.
+    * Hides Save, Save & Next, and Delete buttons.
+    * In `handleSaveRecord()`, adds a hard guard blocking save operations if `!security.canEditFieldOps()`.
+  * **Management Entry Page (`ManagementEntryPage.js` & `managementEntryTemplate.js`):**
+    * In viewer mode, displays an `👁️ Viewer Mode (Read-Only)` banner notice.
+    * Disables personnel lookup inputs, paddlewheel steppers, hut condition dropdown, and field notes.
+    * Hides Save, Save & Next Pond, and Copy Previous Pond buttons.
+    * In `handleSave()`, adds a hard guard blocking save operations if `!security.canEditFieldOps()`.
+* **Verification:**
+  * 114/114 unit and contract tests passed cleanly (`npm test`).
+  * Full production build succeeded with zero errors (`npm run build`).
