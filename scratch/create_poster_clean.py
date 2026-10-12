@@ -689,12 +689,12 @@ html_content = f"""<!DOCTYPE html>
             <div class="step-badge">1</div>
             <div class="step-title-text">Tap the <span>3-Dots Menu (⋮)</span></div>
           </div>
-          <div class="mock-wrap">
-            <div class="mock-mobile-bar">
-              <div class="url">🔒 ...-platform.netlify.app</div>
-              <div class="dots-indicator">⋮</div>
+            <div class="mock-wrap">
+              <div class="mock-mobile-bar">
+                <div class="url">🔒 isharp-platform.netlify.app</div>
+                <div class="dots-indicator">⋮</div>
+              </div>
             </div>
-          </div>
         </div>
 
         <!-- Step 2 -->
@@ -775,7 +775,7 @@ html_content = f"""<!DOCTYPE html>
           </div>
           <div class="mock-wrap">
             <div class="mock-desktop-bar">
-              <div class="url">🔒 https://isharp.bluearchipelago.com</div>
+              <div class="url">🔒 https://isharp-platform.netlify.app/</div>
               <div style="font-size: 10.5px; color: #64748b; font-weight: 700;">[Ready]</div>
             </div>
           </div>
@@ -789,7 +789,7 @@ html_content = f"""<!DOCTYPE html>
           </div>
           <div class="mock-wrap">
             <div class="mock-desktop-bar">
-              <div class="url">🔒 ...-platform.netlify.app</div>
+              <div class="url">🔒 isharp-platform.netlify.app</div>
               <div class="desktop-btn-inst">
                 <span>💻⬇️</span>
                 <span>Install app</span>
