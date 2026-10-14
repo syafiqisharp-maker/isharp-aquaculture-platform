@@ -109,7 +109,19 @@ test("FieldOps Contracts: ManagementEntry template contains zero inline backdrop
 
 test("FieldOps Contracts: CSS enforces zero blur and content-visibility on mobile", () => {
     const cssPath = path.resolve(process.cwd(), "src/styles/field-ops-mobile.css");
-    const cssContent = fs.readFileSync(cssPath, "utf-8");
+    let cssContent = fs.readFileSync(cssPath, "utf-8");
+
+    // If using modular CSS imports, resolve imported stylesheets
+    if (cssContent.includes("@import")) {
+        const importRegex = /@import\s+["']([^"']+)["'];/g;
+        let match;
+        while ((match = importRegex.exec(cssContent)) !== null) {
+            const importedPath = path.resolve(path.dirname(cssPath), match[1]);
+            if (fs.existsSync(importedPath)) {
+                cssContent += "\n" + fs.readFileSync(importedPath, "utf-8");
+            }
+        }
+    }
 
     // Verify mobile media query has backdrop-filter: none
     assert.ok(cssContent.includes("backdrop-filter: none !important"), "CSS must enforce backdrop-filter: none on mobile");

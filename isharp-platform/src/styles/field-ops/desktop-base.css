@@ -1,0 +1,27 @@
+/* ==========================================================================
+   0. DESKTOP / BASE VISIBILITY UTILITIES
+   ========================================================================== */
+.show-mobile {
+    display: none !important;
+}
+
+.hide-mobile {
+    display: initial;
+}
+
+.btn-text-short {
+    display: none !important;
+}
+
+.btn-text-full {
+    display: inline !important;
+}
+
+.mineral-item-row,
+.probiotic-item-row {
+    display: grid;
+    grid-template-columns: 1fr 110px 90px 36px;
+    gap: 0.5rem;
+    align-items: center;
+}
+

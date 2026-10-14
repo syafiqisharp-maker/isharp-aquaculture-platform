@@ -1,0 +1,115 @@
+/* ==========================================================================
+   9. RAPID FIELD LOGGING: MODAL-ONLY OVERLAY & 1-TAP CHIPS (DESKTOP + MOBILE)
+   ========================================================================== */
+.daily-mount-modal-only .daily-records-page-wrapper {
+    padding: 0 !important;
+    margin: 0 !important;
+    min-height: 0 !important;
+}
+
+.daily-mount-modal-only .daily-records-page-wrapper > *:not(#modal-daily-entry):not(#modal-usage-summary) {
+    display: none !important;
+}
+
+.water-swatch-orb {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    border: 1px solid rgba(0, 0, 0, 0.28);
+    box-shadow: inset 0 1.5px 2px rgba(255, 255, 255, 0.75), 0 1px 2px rgba(0, 0, 0, 0.16);
+    display: inline-block;
+    flex-shrink: 0;
+    vertical-align: middle;
+}
+
+.btn-modal-pond-nav {
+    flex: 0 0 auto !important;
+    width: auto !important;
+    min-width: 64px !important;
+    max-width: 80px !important;
+    padding: 0.35rem 0.55rem !important;
+    font-size: 0.76rem !important;
+    font-weight: 800 !important;
+    min-height: 36px !important;
+    background: #ffffff !important;
+    border: 1.5px solid #cbd5e1 !important;
+    border-radius: 8px !important;
+    color: #0369a1 !important;
+    cursor: pointer !important;
+    text-align: center !important;
+    box-sizing: border-box !important;
+    user-select: none;
+}
+
+.btn-modal-pond-nav:active {
+    background: #e0f2fe !important;
+    border-color: #0284c7 !important;
+}
+
+.quick-chip-btn {
+    background: #f8fafc;
+    border: 1.5px solid #cbd5e1;
+    border-radius: 8px;
+    color: #1e293b;
+    font-size: 0.78rem;
+    font-weight: 800;
+    padding: 0.38rem 0.25rem;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    text-align: center;
+    user-select: none;
+    min-height: 36px;
+    min-width: 0;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    overflow: hidden;
+}
+
+.quick-chip-btn:hover {
+    background: #f0f9ff;
+    border-color: #38bdf8;
+    color: #0369a1;
+}
+
+.quick-chip-btn.active {
+    background: #e0f2fe !important;
+    border-color: #0284c7 !important;
+    color: #0369a1 !important;
+    box-shadow: 0 0 0 1px #0284c7;
+}
+
+.quick-toggle-pill {
+    background: #ffffff;
+    border: 1.5px solid #cbd5e1;
+    border-radius: 999px;
+    color: #334155;
+    font-size: 0.75rem;
+    font-weight: 800;
+    padding: 0.35rem 0.75rem;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    user-select: none;
+}
+
+.quick-toggle-pill:hover {
+    border-color: #0284c7;
+    color: #0284c7;
+}
+
+.quick-toggle-pill.active {
+    background: #e0f2fe !important;
+    border-color: #0284c7 !important;
+    color: #0369a1 !important;
+}
+
+/* ==========================================================================
+   GLOBAL TABULAR NUMERALS FOR DATA & KPI ALIGNMENT (UI/UX PRO MAX)
+   ========================================================================== */
+.exec-kpi-num,
+.logbook-row td,
+.daily-mobile-card,
+input[type="number"] {
+    font-variant-numeric: tabular-nums;
+}
+

@@ -1,0 +1,26 @@
+/* ==========================================================================
+   12. 60FPS MOBILE PERFORMANCE & HARDWARE ACCELERATION
+   ========================================================================== */
+/* Content Visibility: Skips layout and paint for off-screen cards until scrolled into view */
+.field-ops-pond-tile,
+.daily-mobile-card {
+    content-visibility: auto;
+    contain-intrinsic-size: 0 140px;
+}
+
+/* Zero Tap Delay & Anti-Accidental-Selection for Steppers & Action Controls */
+.btn-feed-stepper,
+.btn-tray-chip,
+.btn-water-stepper,
+.btn-colour-chip,
+.aero-stepper-btn,
+.btn-action,
+.btn-filter-action,
+.btn-modal-pond-nav,
+.field-ops-pond-tile,
+.module-select-card {
+    touch-action: manipulation !important;
+    -webkit-tap-highlight-color: transparent !important;
+    user-select: none !important;
+}
+

@@ -1,0 +1,105 @@
+/* ==========================================================================
+   12. HIGH-PERFORMANCE MOBILE INFRASTRUCTURE & ZERO-BLUR SOLID ARCHITECTURE
+   Enforces silky 60fps rendering, zero compositor stalls, and high-contrast
+   sunlight readability on all budget and legacy mobile devices (<= 768px).
+   ========================================================================== */
+@media (max-width: 768px) {
+    /* 1. Hardware-friendly scrolling wallpaper on mobile (Candidate 1: Vibrant Frutiger Aero Lagoon) */
+    #view-field-ops::before {
+        display: none !important;
+    }
+    #view-field-ops {
+        background-color: #0c4a6e !important;
+        background-image: linear-gradient(to bottom, rgba(12, 74, 110, 0.40) 0%, rgba(8, 47, 73, 0.65) 100%),
+                          url('/assets/field_ops_seagrass_bg.jpg') !important;
+        background-position: center top !important;
+        background-size: cover !important;
+        background-repeat: no-repeat !important;
+        background-attachment: scroll !important;
+    }
+
+    /* 2. Zero multi-pass backdrop-filter shaders on ANY element on mobile */
+    #view-field-ops,
+    #view-field-ops *,
+    #view-field-ops *::before,
+    #view-field-ops *::after {
+        backdrop-filter: none !important;
+        -webkit-backdrop-filter: none !important;
+    }
+
+    /* 3. Strip expensive pseudo-element gloss/glow shader layers on mobile */
+    #view-field-ops .field-ops-pond-tile::before,
+    #view-field-ops .field-ops-pond-tile::after,
+    #view-field-ops .module-select-card::before,
+    #view-field-ops .field-ops-header::before,
+    #view-field-ops .wqs-nav-bar::before,
+    #view-field-ops .glass-card::before {
+        display: none !important;
+    }
+
+    /* 4. Solid, high-contrast, GPU-friendly white cards & panels */
+    #view-field-ops .field-ops-header,
+    #view-field-ops .wqs-nav-bar,
+    #view-field-ops .mgmt-header-bar,
+    #view-field-ops .mgmt-nav-bar,
+    #view-field-ops .field-ops-toolbar,
+    #view-field-ops .field-ops-row-section,
+    #view-field-ops .glass-card,
+    #view-field-ops .module-select-card,
+    #view-field-ops .mgmt-card,
+    #view-field-ops .daily-entry-card,
+    #view-field-ops .sensor-aero-card,
+    #view-field-ops .field-ops-pond-tile,
+    #view-field-ops .modal-glass {
+        background: #ffffff !important;
+        border: 1px solid #cbd5e1 !important;
+        box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06), 0 1px 2px rgba(15, 23, 42, 0.04) !important;
+    }
+
+    /* 5. Active pond cards: crisp status borders without expensive glow filters */
+    #view-field-ops .field-ops-pond-tile.pond-active {
+        box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08) !important;
+    }
+    #view-field-ops .field-ops-pond-tile.pond-idle {
+        background: #f8fafc !important;
+        border: 1.5px dashed #cbd5e1 !important;
+        box-shadow: none !important;
+    }
+
+    /* 6. High-Performance CSS Containment for 24-Pond Overview Grid */
+    #view-field-ops .field-ops-pond-tile {
+        contain: layout paint;
+        content-visibility: auto;
+        contain-intrinsic-size: 0 176px;
+    }
+    #view-field-ops .field-ops-row-section {
+        contain: layout paint;
+    }
+
+    /* 7. Mobile Telemetry Twin Pills: Crisp, zero-blur, high-contrast */
+    #view-field-ops .pond-telemetry-pill {
+        box-shadow: none !important;
+    }
+    #view-field-ops .pond-telemetry-pill.telemetry-optimal {
+        background: #f0fdf4 !important;
+        border: 1px solid #bbf7d0 !important;
+    }
+    #view-field-ops .pond-telemetry-pill.telemetry-warning {
+        background: #fefce8 !important;
+        border: 1px solid #fef08a !important;
+    }
+    #view-field-ops .pond-telemetry-pill.telemetry-alert {
+        background: #fef2f2 !important;
+        border: 1px solid #fecaca !important;
+    }
+
+    /* 8. Outdoor Sunlight Typography: Crisp dark slate without washed-out shadows */
+    #view-field-ops h1,
+    #view-field-ops h2,
+    #view-field-ops h3,
+    #view-field-ops .pond-title-text {
+        text-shadow: none !important;
+        color: #0f172a !important;
+    }
+}
+

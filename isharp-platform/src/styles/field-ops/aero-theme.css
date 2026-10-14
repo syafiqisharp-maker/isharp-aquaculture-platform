@@ -1,0 +1,565 @@
+/* ==========================================================================
+   10. FRUTIGER AERO THEME ARCHITECTURE — OPTION 3 & CRYSTAL 18% STANDARD
+   Scoped strictly to #view-field-ops to keep all other views untouched.
+   ========================================================================== */
+
+#view-field-ops {
+    --aero-deep-ocean: #072642;
+    --aero-ink-subtle: #0f3d63;
+    --aero-cerulean: #0284c7;
+    --aero-sky-wash: linear-gradient(180deg, #d8f1fc 0%, #bde7f8 40%, #76d0ee 100%);
+    
+    /* Aero 28% Glassmorphism Standard */
+    --glass-opacity: 0.28;
+    --glass-blur: 14px;
+
+    /* Organic Aero Glass Surface (Aero 28% Standard) */
+    --aero-card-bg: linear-gradient(
+        135deg,
+        rgba(255, 255, 255, calc(var(--glass-opacity) + 0.18)) 0%,
+        rgba(240, 249, 255, var(--glass-opacity)) 45%,
+        rgba(218, 241, 254, calc(var(--glass-opacity) + 0.10)) 100%
+    );
+    --aero-card-border: 1.5px solid rgba(255, 255, 255, 0.75);
+    --aero-card-border-b: 2px solid rgba(2, 132, 199, 0.45);
+    --aero-card-shadow: 
+        0 12px 30px -4px rgba(2, 132, 199, 0.20),
+        0 4px 10px rgba(7, 38, 66, 0.08),
+        inset 0 1.5px 2px rgba(255, 255, 255, 0.95),
+        inset 0 -1.5px 2px rgba(2, 132, 199, 0.15);
+
+    /* Decoupled Wallpaper Architecture: Clean hardware-composited static underlay */
+    background: transparent !important;
+    min-height: 100vh !important;
+    color: var(--aero-deep-ocean);
+    position: relative !important;
+    z-index: 1 !important;
+}
+
+/* Stationary Hardware-Composited Wallpaper Underlay (Desktop Only: >= 769px) */
+@media (min-width: 769px) {
+    #view-field-ops::before {
+        content: '' !important;
+        position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
+        right: 0 !important;
+        bottom: 0 !important;
+        width: 100vw !important;
+        height: 100vh !important;
+        height: 100dvh !important;
+        background-color: #0c4a6e !important;
+        background-image: linear-gradient(to bottom, rgba(12, 74, 110, 0.25) 0%, rgba(12, 74, 110, 0.45) 100%), url('/assets/field_ops_seagrass_bg.jpg') !important;
+        background-position: center bottom !important;
+        background-size: cover !important;
+        background-repeat: no-repeat !important;
+        pointer-events: none !important;
+        z-index: 0 !important;
+        will-change: transform;
+        transform: translateZ(0);
+    }
+}
+
+/* Clear solid/gradient backgrounds on inner wrapper containers & position above bubble layer */
+#view-field-ops > *:not(.bubble-layer):not(#aero-global-bubble-layer),
+#view-field-ops .field-ops-workspace,
+#view-field-ops .field-ops-login-stage,
+#view-field-ops .pond-wqs-wrapper,
+#view-field-ops .mgmt-entry-wrapper {
+    position: relative !important;
+    z-index: 2 !important;
+    background: transparent !important;
+    background-image: none !important;
+}
+
+/* Daily records mount & wrapper: unconstrained stacking context so modal can escape */
+#view-field-ops #field-ops-daily-records-mount {
+    position: relative;
+    z-index: 9999 !important;
+}
+
+#view-field-ops .daily-records-page-wrapper {
+    position: static !important;
+    z-index: auto !important;
+    background: transparent !important;
+    background-image: none !important;
+}
+
+#view-field-ops #field-ops-daily-records-mount.daily-mount-modal-only {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    height: 100dvh !important;
+    z-index: 10050 !important;
+    background: transparent !important;
+    pointer-events: none !important;
+    overflow: hidden !important;
+}
+
+#view-field-ops #field-ops-daily-records-mount.daily-mount-modal-only .daily-records-page-wrapper {
+    padding: 0 !important;
+    margin: 0 !important;
+    max-width: none !important;
+    display: block !important;
+}
+
+#view-field-ops #field-ops-daily-records-mount.daily-mount-modal-only .daily-records-page-wrapper > *:not(#modal-daily-entry) {
+    display: none !important;
+}
+
+#view-field-ops #field-ops-daily-records-mount.daily-mount-modal-only #modal-daily-entry {
+    pointer-events: auto !important;
+}
+
+/* Hide header whenever daily entry modal is open so it cannot block or overlap the modal */
+#view-field-ops.has-modal-open .field-ops-header,
+#view-field-ops:has(#modal-daily-entry:not(.hidden):not([style*="display: none"]):not([style*="display:none"])) .field-ops-header {
+    display: none !important;
+}
+
+/* Typography Mapping per Frutiger Aero Preview Standard */
+#view-field-ops h1,
+#view-field-ops h2,
+#view-field-ops h3,
+#view-field-ops .field-ops-header h1,
+#view-field-ops .wqs-nav-bar h1,
+#view-field-ops .btn-action,
+#view-field-ops .btn-filter-action,
+#view-field-ops .banner-headline,
+#view-field-ops .form-section-label,
+#view-field-ops .badge-aero-pill,
+#view-field-ops .badge,
+#view-field-ops .aero-btn {
+    font-family: 'Plus Jakarta Sans', -apple-system, sans-serif !important;
+}
+
+#view-field-ops .pond-no-box,
+#view-field-ops .field-ops-pond-tile [style*="font-size: 1.1rem"],
+#view-field-ops .sensor-big-val,
+#view-field-ops .exec-kpi-num,
+#view-field-ops input[type="number"],
+#view-field-ops .aero-stepper-btn,
+#view-field-ops .tile-feed-val {
+    font-family: 'Space Grotesk', monospace, sans-serif !important;
+    font-variant-numeric: tabular-nums;
+}
+
+/* Primary Translucent Aero Glass Containers (Desktop Only: >= 769px) */
+@media (min-width: 769px) {
+    #view-field-ops .field-ops-header,
+    #view-field-ops .wqs-nav-bar,
+    #view-field-ops .mgmt-header-bar,
+    #view-field-ops .mgmt-nav-bar,
+    #view-field-ops .field-ops-toolbar,
+    #view-field-ops .field-ops-row-section,
+    #view-field-ops .glass-card,
+    #view-field-ops .module-select-card,
+    #view-field-ops .mgmt-card,
+    #view-field-ops .daily-entry-card,
+    #view-field-ops .feeding-horizon-banner {
+        background: var(--aero-card-bg) !important;
+        backdrop-filter: blur(var(--glass-blur)) saturate(180%) brightness(105%) !important;
+        -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(180%) brightness(105%) !important;
+        border: var(--aero-card-border) !important;
+        border-bottom: var(--aero-card-border-b) !important;
+        box-shadow: var(--aero-card-shadow) !important;
+        position: relative !important;
+        overflow: hidden !important;
+        z-index: 3 !important;
+    }
+}
+
+/* High-Performance 24-Pond Tiles: Zero backdrop-filter overhead for instant 60fps mobile rendering */
+#view-field-ops .field-ops-pond-tile {
+    background: rgba(255, 255, 255, 0.95) !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    border: var(--aero-card-border) !important;
+    border-bottom: var(--aero-card-border-b) !important;
+    box-shadow: 0 4px 14px rgba(2, 132, 199, 0.12) !important;
+    position: relative !important;
+    overflow: hidden !important;
+    z-index: 3 !important;
+    contain: content;
+}
+
+/* Header & Nav Bars: Organic Asymmetric Liquid Shell */
+#view-field-ops .field-ops-header,
+#view-field-ops .wqs-nav-bar,
+#view-field-ops .mgmt-header-bar {
+    border-radius: 28px 14px 28px 14px !important;
+}
+
+/* Cards & Sections: Asymmetric Liquid Pod Silhouette */
+#view-field-ops .field-ops-pond-tile,
+#view-field-ops .module-select-card,
+#view-field-ops .glass-card,
+#view-field-ops .mgmt-card,
+#view-field-ops .daily-entry-card,
+#view-field-ops .field-ops-toolbar,
+#view-field-ops .field-ops-row-section {
+    border-radius: 24px 12px 24px 12px !important;
+}
+
+/* Curved Crescent Specular Highlight Sheen (Desktop Only: >= 769px) */
+@media (min-width: 769px) {
+    #view-field-ops .field-ops-pond-tile::before,
+    #view-field-ops .module-select-card::before,
+    #view-field-ops .field-ops-header::before,
+    #view-field-ops .wqs-nav-bar::before,
+    #view-field-ops .glass-card::before {
+        content: '' !important;
+        position: absolute !important;
+        top: 0 !important;
+        left: 0 !important;
+        right: 0 !important;
+        height: 42% !important;
+        background: linear-gradient(180deg, rgba(255, 255, 255, 0.65) 0%, rgba(255, 255, 255, 0.08) 80%, transparent 100%) !important;
+        border-top-left-radius: inherit !important;
+        border-top-right-radius: inherit !important;
+        pointer-events: none !important;
+    }
+
+    /* Subtle Aqua Hydro Glow at Bottom of Active Pond Tiles */
+    #view-field-ops .field-ops-pond-tile:not(.pond-idle)::after {
+        content: '' !important;
+        position: absolute !important;
+        bottom: 0 !important;
+        left: 15% !important;
+        right: 15% !important;
+        height: 4px !important;
+        background: radial-gradient(ellipse at 50% 100%, #00c2ff 0%, transparent 80%) !important;
+        pointer-events: none !important;
+    }
+}
+
+/* Option A: Drained Basin Idle Pond Styles — Zero blur overhead */
+#view-field-ops .field-ops-pond-tile.pond-idle {
+    background: rgba(241, 245, 249, 0.85) !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    border: 1.5px dashed rgba(148, 163, 184, 0.65) !important;
+    border-bottom: 2px dashed rgba(148, 163, 184, 0.75) !important;
+    border-radius: 20px 10px 20px 10px !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04) !important;
+    opacity: 0.82 !important;
+    padding: 0.85rem 0.95rem !important;
+    min-height: 162px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: space-between !important;
+    cursor: pointer !important;
+    transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s ease !important;
+}
+
+@media (hover: hover) {
+    #view-field-ops .field-ops-pond-tile.pond-idle:hover {
+        opacity: 0.98 !important;
+        transform: translateY(-2px) !important;
+        border-color: #94a3b8 !important;
+        background: rgba(248, 250, 252, 0.95) !important;
+        box-shadow: 0 6px 18px rgba(100, 116, 139, 0.16) !important;
+    }
+}
+
+#view-field-ops .field-ops-pond-tile.pond-idle::before {
+    opacity: 0.18 !important;
+}
+
+#view-field-ops .field-ops-pond-tile.pond-idle::after {
+    display: none !important;
+}
+
+#view-field-ops .field-ops-pond-tile.pond-idle .pond-no-box,
+#view-field-ops .field-ops-pond-tile.pond-idle .pond-no-box span {
+    color: #94a3b8 !important;
+    text-shadow: none !important;
+    font-weight: 700 !important;
+}
+
+#view-field-ops .pond-badge-idle {
+    font-size: 0.68rem !important;
+    font-weight: 700 !important;
+    background: rgba(241, 245, 249, 0.65) !important;
+    color: #94a3b8 !important;
+    border: 1px dashed rgba(148, 163, 184, 0.5) !important;
+    padding: 0.15rem 0.5rem !important;
+    border-radius: 999px !important;
+    box-shadow: none !important;
+    letter-spacing: 0.04em !important;
+    text-shadow: none !important;
+}
+
+#view-field-ops .aero-orb.orb-idle {
+    background: radial-gradient(circle at 35% 30%, #f8fafc 0%, #cbd5e1 60%, #94a3b8 100%) !important;
+    box-shadow: inset 0 -2px 3px rgba(0, 0, 0, 0.25), 0 1px 3px rgba(0, 0, 0, 0.12) !important;
+    border: 1px solid rgba(148, 163, 184, 0.4) !important;
+}
+
+/* High-Contrast Anti-Washout Typography for Tropical Direct Sunlight */
+#view-field-ops h1,
+#view-field-ops h2,
+#view-field-ops h3,
+#view-field-ops .header-titles h1,
+#view-field-ops .field-ops-pond-tile:not(.pond-idle) [style*="font-size: 1.1rem"],
+#view-field-ops .exec-kpi-num,
+#view-field-ops strong {
+    color: var(--aero-deep-ocean) !important;
+    text-shadow: 0 1px 2px rgba(255, 255, 255, 0.9) !important;
+}
+
+#view-field-ops p,
+#view-field-ops span,
+#view-field-ops label {
+    text-shadow: 0 1px 1px rgba(255, 255, 255, 0.75);
+}
+
+/* Tactile 3D Aero Glass Buttons */
+#view-field-ops .btn-action.btn-primary,
+#view-field-ops .aero-btn-primary {
+    background: linear-gradient(180deg, #38bdf8 0%, #0284c7 52%, #0369a1 100%) !important;
+    border: 1px solid rgba(255, 255, 255, 0.8) !important;
+    color: #ffffff !important;
+    text-shadow: 0 1px 2px rgba(7, 38, 66, 0.4) !important;
+    box-shadow: 0 4px 14px rgba(2, 132, 199, 0.35), inset 0 1.5px 1px rgba(255, 255, 255, 0.8), inset 0 -2px 3px rgba(3, 105, 161, 0.6) !important;
+    border-radius: 999px !important;
+    position: relative !important;
+    overflow: hidden !important;
+}
+#view-field-ops .btn-action.btn-primary::after,
+#view-field-ops .aero-btn-primary::after {
+    content: '' !important;
+    position: absolute !important;
+    top: 2px !important;
+    left: 8px !important;
+    right: 8px !important;
+    height: 42% !important;
+    border-radius: 999px !important;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.65) 0%, transparent 100%) !important;
+    pointer-events: none !important;
+}
+
+#view-field-ops .btn-action.btn-secondary,
+#view-field-ops .aero-btn-secondary {
+    background: linear-gradient(180deg, #ffffff 0%, #f0f9ff 60%, #e0f2fe 100%) !important;
+    border: 1px solid rgba(255, 255, 255, 0.95) !important;
+    border-bottom: 2px solid #bae6fd !important;
+    color: var(--aero-deep-ocean) !important;
+    box-shadow: 0 3px 8px rgba(2, 132, 199, 0.1), inset 0 1.5px 1px #fff !important;
+    border-radius: 12px !important;
+}
+
+#view-field-ops .btn-action:active,
+#view-field-ops .aero-btn:active {
+    transform: translateY(1.5px) scale(0.97) !important;
+}
+
+/* Micro-Hover (Desktops/Pointers Only) & Active Physical Bounce */
+@media (hover: hover) {
+    #view-field-ops .field-ops-pond-tile:hover,
+    #view-field-ops .module-select-card:hover {
+        transform: translateY(-3px) scale(1.01) !important;
+        box-shadow: 0 12px 24px rgba(2, 132, 199, 0.22), inset 0 2px 2px #fff !important;
+    }
+}
+#view-field-ops .field-ops-pond-tile:active,
+#view-field-ops .module-select-card:active {
+    transform: scale(0.97) !important;
+}
+
+/* 3D Jewel Status Orbs */
+#view-field-ops .aero-orb {
+    width: 13px !important;
+    height: 13px !important;
+    border-radius: 50% !important;
+    position: relative !important;
+    flex-shrink: 0 !important;
+    display: inline-block !important;
+    box-shadow: 0 0 8px currentColor, inset 0 -2px 3px rgba(0, 0, 0, 0.35) !important;
+    vertical-align: middle !important;
+}
+#view-field-ops .aero-orb::after {
+    content: '' !important;
+    position: absolute !important;
+    top: 2px !important;
+    left: 2px !important;
+    width: 4px !important;
+    height: 3px !important;
+    border-radius: 50% !important;
+    background: rgba(255, 255, 255, 0.95) !important;
+}
+#view-field-ops .orb-emerald {
+    background: radial-gradient(circle at 35% 30%, #a7f3d0 0%, #10b981 60%, #047857 100%) !important;
+    color: rgba(16, 185, 129, 0.6) !important;
+}
+#view-field-ops .orb-amber {
+    background: radial-gradient(circle at 35% 30%, #fde68a 0%, #f59e0b 60%, #b45309 100%) !important;
+    color: rgba(245, 158, 11, 0.6) !important;
+}
+#view-field-ops .orb-crimson,
+#view-field-ops .orb-red {
+    background: radial-gradient(circle at 35% 30%, #fecaca 0%, #ef4444 60%, #b91c1c 100%) !important;
+    color: rgba(239, 68, 68, 0.6) !important;
+    box-shadow: 0 0 8px rgba(239, 68, 68, 0.7), inset 0 -2px 3px rgba(0, 0, 0, 0.35) !important;
+}
+#view-field-ops .orb-idle {
+    background: radial-gradient(circle at 35% 30%, #f1f5f9 0%, #cbd5e1 60%, #64748b 100%) !important;
+    color: rgba(100, 116, 139, 0.4) !important;
+}
+
+#view-field-ops .pond-doc-badge-neutral,
+#view-field-ops .pond-doc-badge-pill {
+    font-size: 0.64rem !important;
+    font-weight: 800 !important;
+    background: #e0f2fe !important;
+    color: #0369a1 !important;
+    border: 1px solid #bae6fd !important;
+    padding: 0.12rem 0.45rem !important;
+    border-radius: 999px !important;
+    box-shadow: inset 0 1px 1px #fff !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    white-space: nowrap !important;
+    letter-spacing: 0.02em !important;
+    line-height: 1.2 !important;
+}
+
+#view-field-ops .pond-meta-row {
+    line-height: 1.2 !important;
+}
+
+#view-field-ops .pond-meta-separator {
+    opacity: 0.6 !important;
+    font-size: 0.65rem !important;
+}
+
+/* Ambient Micro-Bubble System Disabled for Field Ops (Maximizes Mobile Frame Rate) */
+.bubble-layer,
+#view-field-ops .bubble-layer,
+#aero-global-bubble-layer,
+.aero-bubble,
+#view-field-ops .aero-bubble,
+#aero-global-bubble-layer .aero-bubble {
+    display: none !important;
+    animation: none !important;
+    pointer-events: none !important;
+    visibility: hidden !important;
+}
+
+/* Feeding Horizon Banner & 4-Sensor Grid in WQS Detail */
+#view-field-ops .feeding-horizon-banner {
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.96) 0%, rgba(224, 242, 254, 0.88) 100%) !important;
+    border: 1.5px solid rgba(255, 255, 255, 0.95) !important;
+    border-bottom: 2.5px solid #38bdf8 !important;
+    border-radius: 28px 14px 28px 14px !important;
+    padding: 1.25rem 1.5rem !important;
+    box-shadow: var(--aero-card-shadow) !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 0.85rem !important;
+}
+
+#view-field-ops .aero-badge-optimal {
+    background: linear-gradient(180deg, #34d399 0%, #10b981 50%, #059669 100%) !important;
+    color: #ffffff !important;
+    padding: 4px 12px !important;
+    border-radius: 999px !important;
+    font-weight: 800 !important;
+    font-size: 0.76rem !important;
+    text-shadow: 0 1px 2px rgba(6, 78, 59, 0.4) !important;
+    border: 1px solid rgba(255, 255, 255, 0.8) !important;
+    box-shadow: 0 3px 10px rgba(16, 185, 129, 0.35), inset 0 1px 1px #fff !important;
+}
+
+#view-field-ops .telemetry-grid-4 {
+    display: grid !important;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)) !important;
+    gap: 1rem !important;
+}
+
+#view-field-ops .sensor-aero-card {
+    background: #ffffff !important;
+    border: 1px solid #cbd5e1 !important;
+    border-radius: 14px !important;
+    padding: 1.1rem 1.25rem !important;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05) !important;
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: space-between !important;
+    position: relative !important;
+    overflow: hidden !important;
+}
+
+@media (min-width: 769px) {
+    #view-field-ops .sensor-aero-card {
+        background: rgba(255, 255, 255, 0.75) !important;
+        backdrop-filter: blur(8px) saturate(180%) !important;
+        -webkit-backdrop-filter: blur(8px) saturate(180%) !important;
+        border: 1.5px solid rgba(255, 255, 255, 0.85) !important;
+        box-shadow: 0 4px 12px rgba(2, 132, 199, 0.08), inset 0 1px 1px rgba(255, 255, 255, 0.9) !important;
+    }
+}
+
+#view-field-ops .sensor-aero-card .sensor-title-row {
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    color: #0369a1 !important;
+    font-size: 0.85rem !important;
+    font-weight: 800 !important;
+    letter-spacing: -0.01em !important;
+}
+
+#view-field-ops .sensor-aero-card .sensor-big-val {
+    font-size: 1.75rem !important;
+    font-weight: 900 !important;
+    line-height: 1.15 !important;
+    margin: 0.35rem 0 !important;
+    letter-spacing: -0.02em !important;
+}
+
+#view-field-ops .standby-housing-box {
+    background: rgba(248, 250, 252, 0.9) !important;
+    border: 1px dashed #94a3b8 !important;
+    border-radius: 12px !important;
+    padding: 0.75rem !important;
+    text-align: center !important;
+    color: #475569 !important;
+}
+
+/* Modal Dialog Glassmorphism (High-readability Frosted Acrylic on Desktop, Solid on Mobile) */
+#view-field-ops .modal-glass {
+    background: #ffffff !important;
+    border: 1.5px solid rgba(255, 255, 255, 0.95) !important;
+    border-radius: 28px 14px 28px 14px !important;
+    box-shadow: 0 20px 50px rgba(7, 38, 66, 0.28) !important;
+}
+
+@media (min-width: 769px) {
+    #view-field-ops .modal-glass {
+        background: linear-gradient(
+            135deg,
+            rgba(255, 255, 255, 0.92) 0%,
+            rgba(240, 249, 255, 0.84) 50%,
+            rgba(224, 242, 254, 0.90) 100%
+        ) !important;
+        backdrop-filter: blur(20px) saturate(180%) !important;
+        -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
+    }
+}
+
+/* Inputs stay crisp white for 100% data entry legibility under bright sun (Rule 9) */
+#view-field-ops input[type="text"],
+#view-field-ops input[type="number"],
+#view-field-ops input[type="date"],
+#view-field-ops input[type="password"],
+#view-field-ops select,
+#view-field-ops textarea {
+    background: #ffffff !important;
+    border: 1.5px solid #cbd5e1 !important;
+    color: #072642 !important;
+    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.06) !important;
+}
+

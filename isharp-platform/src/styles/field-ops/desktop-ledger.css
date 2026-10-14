@@ -1,0 +1,62 @@
+/* ==========================================================================
+   DESKTOP LOGBOOK LEDGER READABILITY (>=769px ONLY — mobile cards untouched)
+   Fixes: generic .glass-card 28% !important background made the table
+   see-through; empty-day text was too faint; badges wrapped.
+   ========================================================================== */
+@media (min-width: 769px) {
+    /* Frosted, mostly opaque surface (beats generic .glass-card rule) */
+    #view-field-ops .glass-card.logbook-ledger-card {
+        background: rgba(255, 255, 255, 0.93) !important;
+        backdrop-filter: blur(18px) saturate(140%) !important;
+        -webkit-backdrop-filter: blur(18px) saturate(140%) !important;
+    }
+
+    #view-field-ops .logbook-table-container {
+        background: #ffffff;
+        border: 1px solid #cbd5e1 !important;
+    }
+
+    /* Slightly larger type for the desktop table */
+    #view-field-ops .logbook-table-container table {
+        font-size: 0.9rem !important;
+    }
+    #view-field-ops .logbook-table-container thead th {
+        font-size: 0.78rem !important;
+        background: #f1f5f9;
+        color: #1e293b !important;
+        white-space: nowrap;
+    }
+    #view-field-ops .logbook-table-container td span {
+        font-size: 0.8rem !important;
+    }
+    #view-field-ops .logbook-table-container td button {
+        font-size: 0.8rem !important;
+        padding: 0.3rem 0.7rem !important;
+    }
+
+    /* Solid rows, zebra striping, today highlight, hover */
+    #view-field-ops .logbook-table-container tbody tr.logbook-row {
+        background: #ffffff;
+        transition: background 0.15s ease;
+    }
+    #view-field-ops .logbook-table-container tbody tr.logbook-row:nth-child(even) {
+        background: #f8fafc;
+    }
+    #view-field-ops .logbook-table-container tbody tr.logbook-row.is-today {
+        background: #ecfdf3;
+        box-shadow: inset 3px 0 0 #16a34a;
+    }
+    #view-field-ops .logbook-table-container tbody tr.logbook-row:hover {
+        background: #e0f2fe;
+    }
+
+    /* No wrapping of badges / compact cells; treatments may wrap */
+    #view-field-ops .logbook-table-container td {
+        white-space: nowrap;
+        vertical-align: middle;
+    }
+    #view-field-ops .logbook-table-container td.cell-wrap {
+        white-space: normal;
+    }
+}
+
