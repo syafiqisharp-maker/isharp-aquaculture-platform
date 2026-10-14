@@ -1,0 +1,25 @@
+/* ==========================================================================
+   10B. ACTIONABLE EMPTY STATES
+   ========================================================================== */
+.empty-state-box {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 1.25rem;
+    text-align: center;
+}
+
+.empty-icon-wrap {
+    width: 58px;
+    height: 58px;
+    border-radius: 50%;
+    background: linear-gradient(180deg, #f0f9ff 0%, #e0f2fe 100%);
+    border: 1px solid rgba(186, 230, 253, 0.95);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 12px rgba(14, 165, 233, 0.12);
+    margin-bottom: 0.25rem;
+}
+

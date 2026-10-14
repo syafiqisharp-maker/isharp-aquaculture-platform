@@ -1,0 +1,245 @@
+/* ==========================================================================
+   4. MASTER STATUS BANNER (Compact Bento KPI Strip)
+   ========================================================================= */
+.master-banner {
+    background: rgba(255, 255, 255, 0.94);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-bottom: 1px solid rgba(186, 230, 253, 0.8);
+    box-shadow: 0 2px 6px rgba(12, 74, 110, 0.03);
+    padding: 0.45rem 1.25rem;
+}
+
+.banner-grid {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+}
+
+.banner-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    border-right: 1px solid rgba(186, 230, 253, 0.7);
+    padding-right: 0.85rem;
+}
+
+.banner-item:last-child {
+    border-right: none;
+    padding-right: 0;
+}
+
+.banner-item .label {
+    font-size: 0.64rem;
+    font-weight: 800;
+    letter-spacing: 0.05em;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    white-space: nowrap;
+}
+
+.val-group {
+    display: flex;
+    align-items: baseline;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.val-highlight {
+    font-size: 1.18rem;
+    font-weight: 800;
+    color: var(--text-primary);
+    font-family: var(--font-mono);
+    letter-spacing: -0.02em;
+}
+
+.val-bold {
+    font-size: 0.92rem;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.val-sub {
+    font-size: 0.76rem;
+    color: var(--text-secondary);
+    font-family: var(--font-mono);
+    font-weight: 600;
+}
+
+/* 3D Gel Status Badges */
+.status-pill,
+.status-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 3px 10px;
+    border-radius: var(--radius-full);
+    font-size: 0.72rem;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08), var(--gloss-top);
+    text-transform: uppercase;
+}
+
+.status-pill::before,
+.status-badge::before {
+    content: '';
+    position: absolute;
+    top: 1px;
+    left: 2px;
+    right: 2px;
+    height: 45%;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.7) 0%, rgba(255, 255, 255, 0.05) 100%);
+    border-radius: var(--radius-full);
+    pointer-events: none;
+}
+
+.status-production {
+    background: linear-gradient(180deg, #d1fae5 0%, #a7f3d0 100%);
+    color: var(--status-production-text);
+    border: 1px solid #34d399;
+    box-shadow: 0 2px 6px var(--status-production-glow), var(--gloss-top);
+}
+
+.status-idle {
+    background: linear-gradient(180deg, #e0f2fe 0%, #bae6fd 100%);
+    color: var(--status-idle-text);
+    border: 1px solid #7dd3fc;
+    box-shadow: 0 2px 6px rgba(14, 165, 233, 0.25), var(--gloss-top);
+}
+
+.status-close {
+    background: linear-gradient(180deg, #f1f5f9 0%, #e2e8f0 100%);
+    color: var(--status-close-text);
+    border: 1px solid #cbd5e1;
+}
+
+.status-maintenance {
+    background: linear-gradient(180deg, #fef3c7 0%, #fde68a 100%);
+    color: var(--status-maintenance-text);
+    border: 1px solid #f59e0b;
+}
+
+.status-reservoir {
+    background: linear-gradient(180deg, #cffafe 0%, #a5f3fc 100%);
+    color: var(--status-reservoir-text);
+    border: 1px solid #22d3ee;
+}
+
+.status-danger {
+    background: linear-gradient(180deg, #fee2e2 0%, #fecaca 100%);
+    color: #991b1b;
+    border: 1px solid #f87171;
+    box-shadow: 0 2px 6px rgba(239, 68, 68, 0.25), var(--gloss-top);
+}
+
+.status-warning {
+    background: linear-gradient(180deg, #fef3c7 0%, #fde68a 100%);
+    color: #92400e;
+    border: 1px solid #f59e0b;
+    box-shadow: 0 2px 6px rgba(245, 158, 11, 0.2), var(--gloss-top);
+}
+
+.active-pill {
+    font-size: 0.68rem;
+    font-weight: 800;
+    padding: 3px 8px;
+    border-radius: var(--radius-full);
+    letter-spacing: 0.03em;
+}
+
+.active-yes {
+    background: linear-gradient(180deg, #e0f2fe 0%, #bae6fd 100%);
+    color: var(--aero-sky-800);
+    border: 1px solid #7dd3fc;
+    box-shadow: var(--gloss-top);
+}
+
+/* Telemetry Num Boxes */
+.num-box, .doc-box {
+    background: #ffffff;
+    border: 1px solid rgba(186, 230, 253, 0.9);
+    padding: 3px 9px;
+    border-radius: var(--radius-sm);
+    font-size: 0.8rem;
+    font-family: var(--font-mono);
+    font-weight: 700;
+    color: var(--text-primary);
+    box-shadow: inset 0 1px 2px rgba(0, 30, 60, 0.06), 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+
+.doc-box {
+    border-color: #38bdf8;
+    color: var(--aero-sky-800);
+    background: linear-gradient(180deg, #f0f9ff 0%, #e0f2fe 100%);
+    box-shadow: 0 1px 3px rgba(2, 132, 199, 0.15), var(--gloss-top);
+}
+
+.cycle-history-dropdown {
+    background: #ffffff;
+    border: 1px solid rgba(186, 230, 253, 0.9);
+    color: var(--text-primary);
+    padding: 3px 8px;
+    border-radius: var(--radius-sm);
+    font-size: 0.76rem;
+    font-family: var(--font-mono);
+    font-weight: 700;
+    cursor: pointer;
+    outline: none;
+    max-width: 190px;
+    box-shadow: inset 0 1px 2px rgba(0, 30, 60, 0.06);
+    transition: var(--transition-fast);
+}
+
+.cycle-history-dropdown:hover,
+.cycle-history-dropdown:focus {
+    border-color: var(--aero-sky-500);
+    box-shadow: 0 0 0 2px rgba(14, 165, 233, 0.2);
+}
+
+.disease-block {
+    cursor: pointer;
+    transition: var(--transition-fast);
+}
+
+.disease-block:hover .disease-pill {
+    transform: translateY(-1px);
+    filter: brightness(1.04);
+}
+
+.disease-pill {
+    padding: 4px 10px;
+    border-radius: var(--radius-full);
+    font-size: 0.74rem;
+    font-weight: 800;
+    letter-spacing: 0.02em;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    transition: var(--transition-fast);
+}
+
+.disease-ok {
+    background: linear-gradient(180deg, #d1fae5 0%, #a7f3d0 100%);
+    color: var(--status-production-text);
+    border: 1px solid #34d399;
+    box-shadow: 0 1px 4px rgba(16, 185, 129, 0.2), var(--gloss-top);
+}
+
+.disease-warning {
+    background: linear-gradient(180deg, #fef3c7 0%, #fde68a 100%);
+    color: #92400e;
+    border: 1px solid #f59e0b;
+    box-shadow: 0 1px 4px rgba(245, 158, 11, 0.2), var(--gloss-top);
+}
+
+.disease-danger {
+    background: linear-gradient(180deg, #fee2e2 0%, #fecaca 100%);
+    color: #991b1b;
+    border: 1px solid #f87171;
+    box-shadow: 0 1px 4px rgba(239, 68, 68, 0.25), var(--gloss-top);
+}
+

@@ -1,0 +1,47 @@
+/* ==========================================================================
+   11. RESPONSIVE MEDIA QUERIES
+   ========================================================================== */
+@media (max-width: 1200px) {
+    .telemetry-cockpit-grid {
+        grid-template-columns: 1fr;
+    }
+    .banner-grid {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.85rem;
+        justify-content: space-between;
+    }
+    .panel-layout {
+        flex-direction: column;
+    }
+    .side-column {
+        width: 100%;
+    }
+}
+
+@media (max-width: 768px) {
+    .app-header {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    .header-pond-selector {
+        width: 100%;
+    }
+    .header-actions {
+        justify-content: flex-end;
+    }
+    .banner-grid {
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+    .banner-item {
+        border-right: none;
+        border-bottom: 1px solid rgba(186, 230, 253, 0.6);
+        padding-bottom: 0.75rem;
+    }
+    .form-grid-3 {
+        grid-template-columns: 1fr;
+    }
+}
+

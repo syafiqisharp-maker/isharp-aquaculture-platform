@@ -1,0 +1,65 @@
+/* ==========================================================================
+   10. TOAST NOTIFICATION STACK (Aero Glass Bubbles)
+   ========================================================================== */
+.toast-stack, #toast-container {
+    position: fixed;
+    bottom: 1.5rem;
+    right: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+    z-index: 9990;
+    pointer-events: none;
+}
+
+@media (max-width: 640px) {
+    .toast-stack, #toast-container {
+        bottom: auto;
+        top: 1rem;
+        left: 1rem;
+        right: 1rem;
+        align-items: center;
+    }
+}
+
+.toast {
+    pointer-events: auto;
+    background: var(--surface-glass-solid);
+    backdrop-filter: var(--backdrop-blur-md);
+    -webkit-backdrop-filter: var(--backdrop-blur-md);
+    border: 1px solid var(--border-glass);
+    color: var(--text-primary);
+    padding: 10px 18px;
+    border-radius: var(--radius-full);
+    box-shadow: 0 10px 30px rgba(2, 132, 199, 0.25), var(--gloss-top);
+    font-size: 0.86rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    animation: aeroToastSlide 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.toast-success {
+    border-color: #34d399;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.96) 0%, rgba(209, 250, 229, 0.9) 100%);
+    color: var(--status-production-text);
+}
+
+.toast-error {
+    border-color: #f87171;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.96) 0%, rgba(254, 226, 226, 0.9) 100%);
+    color: var(--status-alert-text);
+}
+
+.toast-info {
+    border-color: #38bdf8;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.96) 0%, rgba(224, 242, 254, 0.9) 100%);
+    color: var(--aero-sky-800);
+}
+
+@keyframes aeroToastSlide {
+    from { opacity: 0; transform: translateX(25px) scale(0.95); }
+    to { opacity: 1; transform: translateX(0) scale(1); }
+}
+
