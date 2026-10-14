@@ -201,7 +201,7 @@ export function getPondWqsDetailHtml({
 
                 <!-- Bento KPI Grid (8 Cards) -->
                 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 0.75rem;">
-                    <div class="wqs-metric-card">
+                    <div class="wqs-metric-card wqs-metric-card-interactive" data-action="open-lab-wq-modal" title="Click to view complete water quality history">
                         <div style="font-size: 0.76rem; font-weight: 900; color: #0369a1; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 0.25rem;">Salinity</div>
                         <div style="font-size: 1.45rem; font-weight: 900; color: ${labSalColor}; margin: 0.2rem 0; font-family: var(--font-mono, monospace);">
                             ${labSalinity} <span style="font-size: 0.75rem; font-weight: 800; color: #0f3d63;">ppt</span>
@@ -209,7 +209,7 @@ export function getPondWqsDetailHtml({
                         <div style="font-size: 0.7rem; color: #0f3d63; font-weight: 700;">Target: ${formatParameterTarget("salinity")}</div>
                     </div>
 
-                    <div class="wqs-metric-card">
+                    <div class="wqs-metric-card wqs-metric-card-interactive" data-action="open-lab-wq-modal" title="Click to view complete water quality history">
                         <div style="font-size: 0.76rem; font-weight: 900; color: #0369a1; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 0.25rem;">Alkalinity</div>
                         <div style="font-size: 1.45rem; font-weight: 900; color: ${labAlkColor}; margin: 0.2rem 0; font-family: var(--font-mono, monospace);">
                             ${labAlkalinity} <span style="font-size: 0.75rem; font-weight: 800; color: #0f3d63;">mg/L</span>
@@ -217,7 +217,7 @@ export function getPondWqsDetailHtml({
                         <div style="font-size: 0.7rem; color: #0f3d63; font-weight: 700;">Target: ${formatParameterTarget("alkalinity")}</div>
                     </div>
 
-                    <div class="wqs-metric-card">
+                    <div class="wqs-metric-card wqs-metric-card-interactive" data-action="open-lab-wq-modal" title="Click to view complete water quality history">
                         <div style="font-size: 0.76rem; font-weight: 900; color: #0369a1; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 0.25rem;">Ammonia (NH₃)</div>
                         <div style="font-size: 1.45rem; font-weight: 900; color: ${labNh3Color}; margin: 0.2rem 0; font-family: var(--font-mono, monospace);">
                             ${labAmmonia} <span style="font-size: 0.75rem; font-weight: 800; color: #0f3d63;">mg/L</span>
@@ -225,7 +225,7 @@ export function getPondWqsDetailHtml({
                         <div style="font-size: 0.7rem; color: #0f3d63; font-weight: 700;">Safe: ${formatParameterTarget("ammonia")}</div>
                     </div>
 
-                    <div class="wqs-metric-card">
+                    <div class="wqs-metric-card wqs-metric-card-interactive" data-action="open-lab-wq-modal" title="Click to view complete water quality history">
                         <div style="font-size: 0.76rem; font-weight: 900; color: #0369a1; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 0.25rem;">Nitrite (NO₂⁻)</div>
                         <div style="font-size: 1.45rem; font-weight: 900; color: ${labNo2Color}; margin: 0.2rem 0; font-family: var(--font-mono, monospace);">
                             ${labNitrite} <span style="font-size: 0.75rem; font-weight: 800; color: #0f3d63;">mg/L</span>
@@ -233,7 +233,7 @@ export function getPondWqsDetailHtml({
                         <div style="font-size: 0.7rem; color: #0f3d63; font-weight: 700;">Safe: ${formatParameterTarget("nitrite")}</div>
                     </div>
 
-                    <div class="wqs-metric-card">
+                    <div class="wqs-metric-card wqs-metric-card-interactive" data-action="open-lab-wq-modal" title="Click to view complete water quality history">
                         <div style="font-size: 0.76rem; font-weight: 900; color: #0369a1; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 0.25rem;">Calcium (Ca)</div>
                         <div style="font-size: 1.45rem; font-weight: 900; color: ${labCaColor}; margin: 0.2rem 0; font-family: var(--font-mono, monospace);">
                             ${labCalcium} <span style="font-size: 0.75rem; font-weight: 800; color: #0f3d63;">mg/L</span>
@@ -241,7 +241,7 @@ export function getPondWqsDetailHtml({
                         <div style="font-size: 0.7rem; color: #0f3d63; font-weight: 700;">Target: ${formatParameterTarget("calcium")}</div>
                     </div>
 
-                    <div class="wqs-metric-card">
+                    <div class="wqs-metric-card wqs-metric-card-interactive" data-action="open-lab-wq-modal" title="Click to view complete water quality history">
                         <div style="font-size: 0.76rem; font-weight: 900; color: #0369a1; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 0.25rem;">Magnesium (Mg)</div>
                         <div style="font-size: 1.45rem; font-weight: 900; color: ${labMgColor}; margin: 0.2rem 0; font-family: var(--font-mono, monospace);">
                             ${labMagnesium} <span style="font-size: 0.75rem; font-weight: 800; color: #0f3d63;">mg/L</span>
@@ -249,7 +249,7 @@ export function getPondWqsDetailHtml({
                         <div style="font-size: 0.7rem; color: #0f3d63; font-weight: 700;">Target: ${formatParameterTarget("magnesium")}</div>
                     </div>
 
-                    <div class="wqs-metric-card">
+                    <div class="wqs-metric-card wqs-metric-card-interactive" data-action="open-lab-wq-modal" title="Click to view complete water quality history">
                         <div style="font-size: 0.76rem; font-weight: 900; color: #0369a1; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 0.25rem;">Ca : Mg Ratio</div>
                         <div style="font-size: 1.45rem; font-weight: 900; color: #072642; margin: 0.2rem 0; font-family: var(--font-mono, monospace);">
                             ${labRatio}
@@ -257,7 +257,7 @@ export function getPondWqsDetailHtml({
                         <div style="font-size: 0.7rem; color: #0f3d63; font-weight: 700;">Target: ${formatParameterTarget("camg_ratio")}</div>
                     </div>
 
-                    <div class="wqs-metric-card">
+                    <div class="wqs-metric-card wqs-metric-card-interactive" data-action="open-lab-wq-modal" title="Click to view complete water quality history">
                         <div style="font-size: 0.76rem; font-weight: 900; color: #0369a1; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 0.25rem;">Turbidity</div>
                         <div style="font-size: 1.45rem; font-weight: 900; color: ${labTurbColor}; margin: 0.2rem 0; font-family: var(--font-mono, monospace);">
                             ${labTurbidity} <span style="font-size: 0.75rem; font-weight: 800; color: #0f3d63;">NTU</span>

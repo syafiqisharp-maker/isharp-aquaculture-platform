@@ -19,6 +19,7 @@ import { LabRepository } from "../../infrastructure/repositories/labRepository.j
 import { calculateTotalActiveHP, calculateAerationDensity } from "../../domain/aeration.js";
 import { supabase } from "../../infrastructure/supabase.js";
 import { getPondWqsDetailHtml } from "./templates/pondWqsDetailTemplate.js";
+import { WaterQualityHistoryModal } from "./waterQualityModal/WaterQualityHistoryModal.js";
 
 export class PondWqsDetail {
     /**
@@ -29,6 +30,7 @@ export class PondWqsDetail {
         this.container = document.getElementById(containerId);
         this.callbacks = callbacks;
         this.pond = null;
+        this.labWqModal = new WaterQualityHistoryModal();
     }
 
     /**
@@ -204,6 +206,16 @@ export class PondWqsDetail {
 
         if (btnMgmt) btnMgmt.addEventListener("click", openMgmt);
         if (btnEditCrew) btnEditCrew.addEventListener("click", openMgmt);
+
+        // Bind Laboratory Results KPI cards to open Water Quality History modal
+        const labCards = this.container.querySelectorAll('[data-action="open-lab-wq-modal"]');
+        labCards.forEach(card => {
+            card.addEventListener("click", () => {
+                if (this.labWqModal && this.pond) {
+                    this.labWqModal.open(this.pond);
+                }
+            });
+        });
     }
 
     async loadBiometrics(pondIndex) {
