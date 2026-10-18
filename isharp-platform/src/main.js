@@ -17,6 +17,7 @@ import { LandingPage } from "./modules/landing/landingPage.js";
 import { ExecutiveView } from "./modules/executive/executiveTab.js";
 import { FieldOpsView } from "./modules/fieldOps/fieldOpsView.js";
 import { DbmsView } from "./modules/dbms/dbmsView.js";
+import { SimulationPage } from "./modules/simulation/SimulationPage.js";
 
 // Tab Modules (System 2: iSHARP DBMS)
 import { MasterTab } from "./modules/dbms/masterTab.js";
@@ -33,6 +34,7 @@ import { pwaUpdateManager } from "./infrastructure/pwaUpdateManager.js";
 
 class App {
     constructor() {
+        window.__isharpApp = this;
         this.init();
     }
 
@@ -40,13 +42,18 @@ class App {
         try {
             console.log("🦐 Bootstrapping iSHARP DBMS 2.0 (Frutiger Aero Edition)...");
 
-            // 0. Initialize View Router, Landing Page, Executive Dashboard, Field Operations, and DBMS View
+            // 0. Initialize View Router, Landing Page, Executive Dashboard, Field Operations, DBMS View, and Simulation View
             this.landingPage = new LandingPage("view-portal");
             this.executiveView = new ExecutiveView("view-executive");
             this.fieldOpsView = new FieldOpsView("view-field-ops");
             this.dbmsView = new DbmsView("view-dbms");
+            this.simulationPage = new SimulationPage("view-simulation");
             this.router = new ViewRouter();
             this.landingPage.setRouter(this.router);
+
+            if (window.location.hash.toLowerCase().includes("simulation")) {
+                this.simulationPage.ensureInitialized();
+            }
 
             // 1. Initialize Subsystems & Components
             this.excelModal = new ExcelModal((category, pondIndex) => {
@@ -215,7 +222,8 @@ document.addEventListener("DOMContentLoaded", () => {
         promptTerminatePond: (createNext = true) => window.__isharpApp.lifecycleTab?.openTerminateModal(createNext),
         promptRevivePond: () => window.__isharpApp.lifecycleTab?.openReviveModal(),
         exportCycleCsv: () => window.__isharpApp.tabs["tab-utilities"]?.exportCycleCsv(),
-        verifySyncStatus: () => window.__isharpApp.tabs["tab-utilities"]?.verifySyncStatus()
+        verifySyncStatus: () => window.__isharpApp.tabs["tab-utilities"]?.verifySyncStatus(),
+        get simulationPage() { return window.__isharpApp?.simulationPage; }
     };
 });
 

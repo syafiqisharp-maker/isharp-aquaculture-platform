@@ -51,7 +51,13 @@ class ToastService {
             toast.style.opacity = "0";
             toast.style.transform = "translateY(10px)";
             toast.style.transition = "all 0.3s ease";
-            setTimeout(() => toast.remove(), 300);
+            setTimeout(() => {
+                if (typeof toast.remove === "function") {
+                    toast.remove();
+                } else if (toast.parentNode && typeof toast.parentNode.removeChild === "function") {
+                    toast.parentNode.removeChild(toast);
+                }
+            }, 300);
         }, duration);
     }
 

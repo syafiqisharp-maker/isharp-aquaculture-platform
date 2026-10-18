@@ -142,10 +142,10 @@ export class LandingPage {
                         </div>
                     </div>
 
-                    <!-- 6. SATELLITE 5 (Bottom-Left): iSHARP Simulator (UPCOMING) -->
-                    <div class="portal-option-orb orb-satellite pos-bottom-left orb-disabled" id="btn-portal-simulator" role="button" tabindex="0" aria-label="iSHARP Simulator (Upcoming)">
-                        <div class="orb-sphere-shell orb-upcoming">
-                            <svg class="orb-icon" aria-hidden="true" viewBox="0 0 24 24" width="38" height="38" fill="none" stroke="#0369a1" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                    <!-- 6. SATELLITE 5 (Bottom-Left): iSHARP Simulator (ACTIVE) -->
+                    <div class="portal-option-orb orb-satellite pos-bottom-left" id="btn-portal-simulator" role="button" tabindex="0" aria-label="Enter iSHARP Frontier Simulator">
+                        <div class="orb-sphere-shell orb-simulator" style="background: radial-gradient(circle at 35% 30%, #ffffff 0%, #a78bfa 50%, #6d28d9 100%); box-shadow: inset 0 2px 4px #ffffff, 0 6px 20px rgba(109, 40, 217, 0.35); color: #ffffff;">
+                            <svg class="orb-icon" viewBox="0 0 24 24" width="38" height="38" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
                                 <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
                                 <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
                                 <line x1="12" y1="22.08" x2="12" y2="12"></line>
@@ -154,7 +154,7 @@ export class LandingPage {
                         <div class="orb-content">
                             <div class="orb-title-row">
                                 <h2 class="orb-title">iSHARP Simulator</h2>
-                                <span class="orb-badge-upcoming">Upcoming</span>
+                                <span class="orb-badge-active" style="background: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%); color: #ffffff;">FRONTIER AI</span>
                             </div>
                         </div>
                     </div>
@@ -251,7 +251,7 @@ export class LandingPage {
             btnLab.addEventListener("click", () => Toast.info("🔬 Lab & QA/QC module is currently under development."));
         }
         if (btnSimulator) {
-            btnSimulator.addEventListener("click", () => Toast.info("🕹️ iSHARP Digital Twin Simulator is currently under development."));
+            btnSimulator.addEventListener("click", () => this.handleSelection("simulation", btnSimulator, [btnExec, btnFieldOps, btnDbms]));
         }
         if (btnFuture) {
             btnFuture.addEventListener("click", () => Toast.info("🚀 Future Expansion slot reserved for upcoming Blue Archipelago operations."));

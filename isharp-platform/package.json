@@ -10,7 +10,8 @@
     "test": "node --test tests/*.test.js",
     "test:e2e": "node scripts/verify_dbms_e2e_write.mjs",
     "test:audit": "node scripts/audit_data_entry_schema.mjs",
-    "test:stress": "node scripts/stress_15_users.mjs"
+    "test:stress": "node scripts/stress_15_users.mjs",
+    "test:stress:management": "node scripts/stress_management_flow.mjs"
   },
   "devDependencies": {
     "vite": "^5.4.14"

@@ -14,7 +14,8 @@ export class ViewRouter {
             portal: document.getElementById("view-portal"),
             executive: document.getElementById("view-executive"),
             "field-ops": document.getElementById("view-field-ops"),
-            dbms: document.getElementById("view-dbms")
+            dbms: document.getElementById("view-dbms"),
+            simulation: document.getElementById("view-simulation")
         };
 
         this.currentView = null;
@@ -22,7 +23,8 @@ export class ViewRouter {
             portal: 0,
             executive: 0,
             "field-ops": 0,
-            dbms: 0
+            dbms: 0,
+            simulation: 0
         };
         this.isNavigatingBack = false;
         this.viewHistory = [];
@@ -185,6 +187,8 @@ export class ViewRouter {
             targetView = "field-ops";
         } else if (hash === "#/dbms" || hash === "#dbms") {
             targetView = "dbms";
+        } else if (hash === "#/simulation" || hash === "#simulation") {
+            targetView = "simulation";
         } else {
             targetView = "portal";
         }
@@ -221,10 +225,15 @@ export class ViewRouter {
 
         appState.setView(targetView);
         this.renderView(targetView);
+
+        const simPage = window.app?.simulationPage || window.__isharpApp?.simulationPage;
+        if (targetView === "simulation" && simPage) {
+            simPage.ensureInitialized();
+        }
     }
 
     navigate(viewName) {
-        if (!["portal", "executive", "field-ops", "dbms"].includes(viewName)) {
+        if (!["portal", "executive", "field-ops", "dbms", "simulation"].includes(viewName)) {
             viewName = "portal";
         }
         window.location.hash = `#/${viewName}`;

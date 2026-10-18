@@ -1047,6 +1047,95 @@ if ($batch.Count -gt 0) {
     }
     Write-Output "  [OK] Synchronized $newHarvestPlanCount harvest planning targets in pond_harvest_plan."
 
+    # -------------------------------------------------------------
+    # STAGE 14: Incremental GrowoutPondFinance -> growout_pond_finance
+    # Audited cycle-by-cycle financials from Finance department
+    # -------------------------------------------------------------
+    Write-Output "--- STAGE 14: Synchronizing GrowoutPondFinance -> growout_pond_finance ---"
+    $maxFinanceIndex = Get-SupabaseMaxIndex "growout_pond_finance"
+
+    $cmd.CommandText = @"
+SELECT 
+    [indexNo], [Pond No], [Revenue], [Premium], [Small], 
+    [Cons Of Fries], [Cons Of Feed], [Cons Of Chem Fert], [Cons Of Supplies], 
+    [Wages Benefits (Direct)], [Wages Benefits (Indirect)], [Electricity], 
+    [Repair Maintenance], [Consultant], [Rental], [Travel Entertainment], 
+    [Training Seminar], [Depreciation Fc], [Harvest Expenses], [Security Charges], 
+    [Other UtilitiesIns], [Other Charges], [Total Cost], [Gross Profit], 
+    [SAG], [EBIT], [Depreciation with SAG], [EBITDA], [YTD SAG], 
+    [YTD SAG Annualised], [Cost per kg], [Cash Cost per kg], 
+    [Total Cost per kg with SAG], [Total Cash Cost per kg with SAG], 
+    [Depreciation SAG per pond], [YTD SAG Depreciation], 
+    [YTD SAG Depreciation Annualised], [Revenue per kg] 
+FROM [GrowoutPondFinance] 
+WHERE indexNo > $maxFinanceIndex 
+ORDER BY indexNo ASC
+"@
+
+    $reader = $cmd.ExecuteReader()
+    $batch = @()
+    $newFinanceCount = 0
+
+    while ($reader.Read()) {
+        $pIdx = SafeString $reader["Pond No"]
+        $idxNo = SafeInt $reader["indexNo"]
+        if (-not $pIdx -or -not $idxNo) { continue }
+
+        $batch += [ordered]@{
+            index_no = $idxNo
+            pond_index = $pIdx
+            revenue = SafeDecimal $reader["Revenue"]
+            premium_pct = SafeDecimal $reader["Premium"]
+            small_pct = SafeDecimal $reader["Small"]
+            cons_of_fries = SafeDecimal $reader["Cons Of Fries"]
+            cons_of_feed = SafeDecimal $reader["Cons Of Feed"]
+            cons_of_chem_fert = SafeDecimal $reader["Cons Of Chem Fert"]
+            cons_of_supplies = SafeDecimal $reader["Cons Of Supplies"]
+            wages_direct = SafeDecimal $reader["Wages Benefits (Direct)"]
+            wages_indirect = SafeDecimal $reader["Wages Benefits (Indirect)"]
+            electricity = SafeDecimal $reader["Electricity"]
+            repair_maintenance = SafeDecimal $reader["Repair Maintenance"]
+            consultant = SafeDecimal $reader["Consultant"]
+            rental = SafeDecimal $reader["Rental"]
+            travel_entertainment = SafeDecimal $reader["Travel Entertainment"]
+            training_seminar = SafeDecimal $reader["Training Seminar"]
+            depreciation_fc = SafeDecimal $reader["Depreciation Fc"]
+            harvest_expenses = SafeDecimal $reader["Harvest Expenses"]
+            security_charges = SafeDecimal $reader["Security Charges"]
+            other_utilities_ins = SafeDecimal $reader["Other UtilitiesIns"]
+            other_charges = SafeDecimal $reader["Other Charges"]
+            total_cost = SafeDecimal $reader["Total Cost"]
+            gross_profit = SafeDecimal $reader["Gross Profit"]
+            sag = SafeDecimal $reader["SAG"]
+            ebit = SafeDecimal $reader["EBIT"]
+            depreciation_with_sag = SafeDecimal $reader["Depreciation with SAG"]
+            ebitda = SafeDecimal $reader["EBITDA"]
+            ytd_sag = SafeDecimal $reader["YTD SAG"]
+            ytd_sag_annualised = SafeDecimal $reader["YTD SAG Annualised"]
+            cost_per_kg = SafeDecimal $reader["Cost per kg"]
+            cash_cost_per_kg = SafeDecimal $reader["Cash Cost per kg"]
+            total_cost_per_kg_with_sag = SafeDecimal $reader["Total Cost per kg with SAG"]
+            total_cash_cost_per_kg_with_sag = SafeDecimal $reader["Total Cash Cost per kg with SAG"]
+            depreciation_sag_per_pond = SafeDecimal $reader["Depreciation SAG per pond"]
+            ytd_sag_depreciation = SafeDecimal $reader["YTD SAG Depreciation"]
+            ytd_sag_depreciation_annualised = SafeDecimal $reader["YTD SAG Depreciation Annualised"]
+            revenue_per_kg = SafeDecimal $reader["Revenue per kg"]
+        }
+
+        $newFinanceCount++
+
+        if ($batch.Count -ge 500) {
+            Post-BatchToSupabase "growout_pond_finance" $batch "index_no"
+            $batch = @()
+        }
+    }
+    $reader.Close()
+
+    if ($batch.Count -gt 0) {
+        Post-BatchToSupabase "growout_pond_finance" $batch "index_no"
+    }
+    Write-Output "  [OK] Synchronized $newFinanceCount financial ledgers in growout_pond_finance."
+
     $conn.Close()
 
     Write-Output ""
@@ -1065,5 +1154,6 @@ if ($batch.Count -gt 0) {
     Write-Output "  Final Cycle Audits Synced:    $newFinalCount"
     Write-Output "  SAP Feed Records Synced:      $newSapFeedCount"
     Write-Output "  Harvest Plans Synced:         $newHarvestPlanCount"
+    Write-Output "  Financial Ledgers Synced:     $newFinanceCount"
     Write-Output "  Finish Time: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')"
     Write-Output "=========================================================="
