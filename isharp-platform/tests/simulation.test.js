@@ -21,6 +21,7 @@ import {
     evaluateMonsoonEffect,
     evaluateDensityAndCarryingCapacity,
     inferActivePondGrowthQuantile,
+    projectActivePondHarvestDoc,
     simulatePondCycleTrajectory,
     CHEMICAL_FERTILIZER_MRP_CATALOG,
     partitionHarvestQualityGrades,
@@ -30,6 +31,7 @@ import {
     spliceActualYtdWithForecast,
     auditScheduleRisks,
     generateOptimal156WeekSchedule,
+    weekIndexToCalendar,
     evaluateActiveShocks,
     run156WeekSimulation,
     runCorrelatedMonteCarlo
@@ -210,16 +212,62 @@ describe("Phase 3 Frontier Simulation Engine — Pillars 1 to 4 Biological & Pat
         assert.ok(slowPond.bayesianAdgMultiplier < 0.85);
         assert.ok(slowPond.estimatedPercentile < 35);
     });
+
+    it("Pillar 4: projectActivePondHarvestDoc projects harvest out to target final DOC and conditions on sampling", () => {
+        // 1. Unconditioned active pond (e.g. DOC 47 on DS1 target 92d)
+        const unconditioned = projectActivePondHarvestDoc({
+            species: SPECIES.VANNAMEI,
+            strategyCode: "DS1",
+            docDays: 47
+        });
+        assert.equal(unconditioned.isConditioned, false);
+        assert.equal(unconditioned.targetFinalDoc, 92);
+        assert.equal(unconditioned.durationWeeks, 14); // Math.ceil(92 / 7) = 14
+
+        // 2. High growth pond (DOC 47, sampled at DOC 45 with high ABW 12.5g vs typical ~7.5g)
+        const fastPond = projectActivePondHarvestDoc(
+            { species: SPECIES.VANNAMEI, strategyCode: "DS1", docDays: 47 },
+            { smplDoc: 45, smplAbw: 12.5 }
+        );
+        assert.equal(fastPond.isConditioned, true);
+        assert.ok(fastPond.targetFinalDoc < 92, `Expected fast pond harvest DOC < 92, got ${fastPond.targetFinalDoc}`);
+        assert.ok(fastPond.targetFinalDoc >= 92 - 14, "Within -14d clamp");
+
+        // 3. Slow growth pond (DOC 47, sampled at DOC 45 with low ABW 4.0g)
+        const slowPond = projectActivePondHarvestDoc(
+            { species: SPECIES.VANNAMEI, strategyCode: "DS1", docDays: 47 },
+            { smplDoc: 45, smplAbw: 4.0 }
+        );
+        assert.equal(slowPond.isConditioned, true);
+        assert.ok(slowPond.targetFinalDoc > 92, `Expected slow pond harvest DOC > 92, got ${slowPond.targetFinalDoc}`);
+        assert.ok(slowPond.targetFinalDoc <= 92 + 14, "Within +14d clamp");
+
+        // 4. Clamping safety: target DOC never projects in the past (at least currentDoc + 7)
+        const latePond = projectActivePondHarvestDoc({
+            species: SPECIES.VANNAMEI,
+            strategyCode: "DS1",
+            docDays: 95
+        });
+        assert.ok(latePond.targetFinalDoc >= 102); // 95 + 7
+    });
 });
 
-describe("Phase 3 Frontier Simulation Engine — Pillar 5 Financial, 28-Chemical MRP & Splicing", () => {
-    it("Itemizes all 28 Pond-Prep & Culture Chemicals/Fertilizers in MRP", () => {
-        assert.equal(CHEMICAL_FERTILIZER_MRP_CATALOG.length, 28);
-        const mrp = calculatePondChemicalMRP({ moduleId: "04", areaHa: 0.5, dopDays: 45, activeDocDays: 92 });
-        assert.equal(mrp.items.length, 28);
-        assert.ok(mrp.prepCostRM > 0);
-        assert.ok(mrp.cultureCostRM > 0);
-        assert.equal(Number((mrp.prepCostRM + mrp.cultureCostRM).toFixed(2)), mrp.totalChemFertCostRM);
+describe("Phase 3 Frontier Simulation Engine — Pillar 5 Financial & Chemicals/Fertilizers (cons_of_chem_fert)", () => {
+    it("Calculates Chemicals & Fertilizers (cons_of_chem_fert) aligned with Finance Table empirical priors", () => {
+        assert.equal(CHEMICAL_FERTILIZER_MRP_CATALOG.length, 0); // Deprecated synthetic 28-catalog
+        const mrpVannamei = calculatePondChemicalMRP({ species: SPECIES.VANNAMEI, areaHa: 0.5, dopDays: 45, activeDocDays: 92 });
+        assert.equal(mrpVannamei.items.length, 0);
+        assert.ok(mrpVannamei.prepCostRM > 0);
+        assert.ok(mrpVannamei.cultureCostRM > 0);
+        assert.equal(Number((mrpVannamei.prepCostRM + mrpVannamei.cultureCostRM).toFixed(2)), mrpVannamei.totalChemFertCostRM);
+        assert.equal(mrpVannamei.totalChemFertCostRM, 1711.0); // Vannamei empirical ground truth
+
+        const mrpMonodon = calculatePondChemicalMRP({ species: SPECIES.MONODON, areaHa: 0.5, dopDays: 45, activeDocDays: 112 });
+        assert.equal(mrpMonodon.totalChemFertCostRM, 2114.0); // Monodon empirical ground truth at standard 112-day DOC
+
+        // Shorter culture (DOC 92 vs 112 std) scales down culture chemical consumption proportionally
+        const mrpMonodonShorter = calculatePondChemicalMRP({ species: SPECIES.MONODON, areaHa: 0.5, dopDays: 45, activeDocDays: 92 });
+        assert.equal(mrpMonodonShorter.totalChemFertCostRM, 1887.50);
     });
 
     it("Models Electricity strictly as RM/active pond-day (~RM 95.40/d) and dilutes fixed overhead by active pond count", () => {
@@ -364,6 +412,55 @@ describe("Phase 3 Frontier Simulation Engine — 156-Week Scheduler, Risk Audito
         assert.ok(simResult.grandTotals.bySpecies.VANNAMEI.ebitdaRM > 0);
     });
 
+    it("generateOptimal156WeekSchedule enforces <=50 ponds/mo, M01-M03 monsoon elevation & 4-week spread", () => {
+        const fullFarmPonds = [];
+        for (let m = 1; m <= 10; m++) {
+            const mStr = String(m).padStart(2, "0");
+            for (let p = 1; p <= 24; p++) {
+                fullFarmPonds.push({
+                    pondId: `${mStr}.01.${String(p).padStart(2, "0")}`,
+                    moduleId: mStr,
+                    areaHa: 0.5
+                });
+            }
+        }
+
+        const schedule = generateOptimal156WeekSchedule(fullFarmPonds, {
+            horizonWeeks: 52,
+            baseYear: 2026,
+            baseMonth: 1,
+            maxPondsPerMonth: 50
+        });
+
+        // 1. Verify monthly stocking counts across all 12 months never exceed 50
+        const monthlyCounts = {};
+        for (const c of schedule) {
+            const cal = weekIndexToCalendar(c.startWeekIndex, 2026, 1);
+            const mKey = `M${cal.month}`;
+            monthlyCounts[mKey] = (monthlyCounts[mKey] || 0) + 1;
+        }
+
+        for (const [mKey, count] of Object.entries(monthlyCounts)) {
+            assert.ok(count <= 50, `Month ${mKey} had ${count} ponds stocked, which exceeds 50-pond limit!`);
+        }
+
+        // 2. Verify only elevated modules (M01, M02, M03) stock during peak monsoon (Months 11-12)
+        const monsoonCycles = schedule.filter(c => c.stockMonth === 11 || c.stockMonth === 12);
+        const monsoonMods = new Set(monsoonCycles.map(c => c.moduleId));
+        for (const mod of monsoonMods) {
+            assert.ok(["01", "02", "03"].includes(mod), `Non-elevated module ${mod} was stocked during monsoon!`);
+        }
+        for (const c of monsoonCycles) {
+            assert.equal(c.strategyCode, "DS2", "Monsoon stocking in elevated modules must use hardy SPR DS2");
+            assert.equal(c.plType, "SPR");
+        }
+
+        // 3. Verify 4-week spread: within any 24-pond module wave, ponds are spread across 4 weeks (~6 ponds/wk)
+        const m01Wave1 = schedule.filter(c => c.moduleId === "01" && c.startWeekIndex <= 6);
+        const startWeeks = new Set(m01Wave1.map(c => c.startWeekIndex));
+        assert.ok(startWeeks.size >= 4, `Module 01 should be spread across 4 distinct weeks, got: ${Array.from(startWeeks)}`);
+    });
+
     it("Evaluates time-scoped TemporalShockEvent and Correlated Monte Carlo P10/P50/P90 risk bands", () => {
         const samplePonds = [
             { pondId: "M04-P01", moduleId: "M04", areaHa: 0.5 },
@@ -400,5 +497,47 @@ describe("Phase 3 Frontier Simulation Engine — 156-Week Scheduler, Risk Audito
         assert.equal(mc.iterations, 50);
         assert.ok(mc.quantiles.P10_Downside.ebitdaRM <= mc.quantiles.P50_Median.ebitdaRM);
         assert.ok(mc.quantiles.P50_Median.ebitdaRM <= mc.quantiles.P90_Upside.ebitdaRM);
+    });
+
+    it("generateOptimal156WeekSchedule rotates Monodon across all modules (supervisor equity), enforces <=30% seed cap, and aims for 2 cycles/year", () => {
+        const fullFarmPonds = [];
+        for (let m = 1; m <= 10; m++) {
+            const mStr = String(m).padStart(2, "0");
+            for (let p = 1; p <= 24; p++) {
+                fullFarmPonds.push({
+                    pondId: `${mStr}.01.${String(p).padStart(2, "0")}`,
+                    moduleId: mStr,
+                    areaHa: 0.5
+                });
+            }
+        }
+
+        const schedule = generateOptimal156WeekSchedule(fullFarmPonds, {
+            horizonWeeks: 156,
+            baseYear: 2026,
+            baseMonth: 1
+        });
+
+        // 1. Audit risks: must have zero empirical violations
+        const audit = auditScheduleRisks(schedule);
+        assert.equal(audit.totalAlerts, 0, `Expected 0 violations, got: ${JSON.stringify(audit.alerts)}`);
+
+        // 2. Check supervisor equity: modules across the farm get a taste of Monodon over the 3-year horizon
+        const monodonModules = new Set(schedule.filter(c => c.species === SPECIES.MONODON).map(c => c.moduleId));
+        assert.ok(monodonModules.size >= 8, `Expected at least 8 modules to get Monodon rotation, got ${monodonModules.size}`);
+
+        // 3. Farm-wide annual Monodon ratio <= 30% for each calendar year
+        const byYear = {};
+        for (const c of schedule) {
+            const cal = weekIndexToCalendar(c.startWeekIndex, 2026, 1);
+            if (!byYear[cal.year]) byYear[cal.year] = { total: 0, monodon: 0 };
+            byYear[cal.year].total += 1;
+            if (c.species === SPECIES.MONODON) byYear[cal.year].monodon += 1;
+        }
+
+        for (const [yr, stats] of Object.entries(byYear)) {
+            const ratio = stats.monodon / stats.total;
+            assert.ok(ratio <= 0.35, `Year ${yr} Monodon ratio ${ratio.toFixed(2)} exceeded cap!`);
+        }
     });
 });

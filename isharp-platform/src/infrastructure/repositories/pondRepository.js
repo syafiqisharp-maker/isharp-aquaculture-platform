@@ -144,7 +144,7 @@ export class PondRepository {
      */
     static async getStockingBatches(pondIndex) {
         if (!pondIndex) return [];
-        const endpoint = `pond_stocking_batches?pond_index=eq.${encodeURIComponent(pondIndex)}&order=stck_date.asc,index_no.asc`;
+        const endpoint = `pond_stocking_batches?pond_index=eq.${encodeURIComponent(pondIndex)}&order=stck_date.asc`;
         try {
             return await supabase.request(endpoint);
         } catch (err) {

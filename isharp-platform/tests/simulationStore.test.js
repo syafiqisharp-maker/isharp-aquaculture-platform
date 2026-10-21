@@ -185,4 +185,85 @@ describe("Phase 4 SimulationStore — Reactive State, Actions & Debounced Simula
         assert.equal(loaded, true);
         assert.equal(simulationStore.scheduledCycles.length, 2);
     });
+
+    it("strictly excludes idle ponds (like 01.01.03) from live active cycles and mid-2026 stocking in _constructHybridSchedule", () => {
+        const masterPonds = [
+            { pondId: "01.01.01", moduleId: "01", areaHa: 0.5 },
+            { pondId: "01.01.03", moduleId: "01", areaHa: 0.5 }
+        ];
+
+        const livePonds = [
+            {
+                pondId: "01.01.01",
+                pondIndex: "2010101.40",
+                moduleId: "01",
+                areaHa: 0.5,
+                pondStatus: "PRODUCTION",
+                isProduction: true,
+                stckDate: "2026-09-03",
+                docDays: 45,
+                species: SPECIES.VANNAMEI,
+                geneticLine: "SPF",
+                bsLine: "SYAQUA",
+                stckSource: "SHT",
+                stockDensityPlM2: 95,
+                hasActiveDisease: false
+            },
+            {
+                pondId: "01.01.03",
+                pondIndex: "2010103.43",
+                moduleId: "01",
+                areaHa: 0.5,
+                pondStatus: "IDLE",
+                isProduction: false,
+                stckDate: null,
+                docDays: 0,
+                species: SPECIES.VANNAMEI,
+                geneticLine: "SPF",
+                bsLine: "SYAQUA",
+                stckSource: "SHT",
+                stockDensityPlM2: 95,
+                hasActiveDisease: false
+            }
+        ];
+
+        const samplingMap = new Map();
+        const hybridList = simulationStore._constructHybridSchedule(
+            masterPonds,
+            livePonds,
+            samplingMap,
+            156,
+            2026,
+            1
+        );
+
+        // 1. Verify 01.01.01 has active live cycle with projected harvest timing (not truncated at current DOC)
+        const live01 = hybridList.find(c => c.pondId === "01.01.01" && c.isLivePondCycle);
+        assert.ok(live01, "01.01.01 should have a genuine live cycle");
+        assert.equal(live01.startWeekIndex, 36);
+        assert.equal(live01.docDays, 45, "Elapsed DOC should be preserved for badge display");
+        assert.equal(live01.targetFinalDoc, 92, "Target harvest DOC should be 92 for DS1, not truncated at DOC 45");
+        assert.equal(live01.endWeekIndex, 49, "Harvest week should extend to W49 (36 + 14 - 1), not truncated at W42/W43");
+
+        // Verify any subsequent planned cycle on 01.01.01 starts strictly AFTER harvest + turnaround
+        const nextCycles01 = hybridList.filter(c => c.pondId === "01.01.01" && !c.isLivePondCycle);
+        for (const nc of nextCycles01) {
+            assert.ok(
+                nc.startWeekIndex > live01.endWeekIndex,
+                `Future cycle on 01.01.01 must start after harvest week ${live01.endWeekIndex}, got ${nc.startWeekIndex}`
+            );
+        }
+
+        // 2. Verify 01.01.03 has NO live cycles and NO cycles in 2026 (weeks 1 to 52)
+        const p3Cycles = hybridList.filter(c => c.pondId === "01.01.03");
+        assert.ok(!p3Cycles.some(c => c.isLivePondCycle), "Idle pond 01.01.03 must NEVER have isLivePondCycle=true");
+        assert.ok(!p3Cycles.some(c => c.startWeekIndex <= 52), "Idle pond 01.01.03 must NOT have any stocking cycles during 2026 (Weeks 1-52)");
+        assert.ok(!p3Cycles.some(c => c.startWeekIndex === 42), "Idle pond 01.01.03 must NEVER have a stocking cycle at Week 42 (this week)");
+
+        // 3. Verify future cycles for 01.01.03 only start in FY 2027+
+        if (p3Cycles.length > 0) {
+            assert.ok(p3Cycles.every(c => c.startWeekIndex >= 53), "All future cycles on idle pond 01.01.03 must start in FY 2027+ (week >= 53)");
+        }
+    });
 });
+

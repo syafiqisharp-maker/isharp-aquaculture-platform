@@ -127,28 +127,27 @@ export function run156WeekSimulation(
     }
 
     // 3. Initialize 156 Weekly Buckets & 36 Monthly Buckets
-function addChemicalQtyToMrp(chemicalMrp, itemCode, qty) {
-    if (!chemicalMrp || !itemCode || !qty) return;
-    switch (itemCode) {
-        case "CH01": chemicalMrp.dolomiteBags += qty / 25; break;
-        case "CH02": chemicalMrp.gasChlorineKg += qty; break;
-        case "CH03": chemicalMrp.powderChlorineKg += qty; break;
-        case "CH04": chemicalMrp.caco3Bags += qty / 25; break;
-        case "CH05": chemicalMrp.caoh2Bags += qty / 25; break;
-        case "CH06": chemicalMrp.grainPelletBags += qty / 50; break;
-        case "CH07": chemicalMrp.riceBranBags += qty / 50; break;
-        case "CH08": chemicalMrp.molassesKg += qty; break;
-        case "CH09": chemicalMrp.teaSeedCakeKg += qty; break;
-        case "CH10": chemicalMrp.ureaBags += qty / 50; break;
-        case "CH11": chemicalMrp.tspBags += qty / 50; break;
-        case "CH12": chemicalMrp.pvpiLiters += qty; break;
-        case "CH13": chemicalMrp.cuso4Kg += qty; break;
-        case "CH14": chemicalMrp.bkcLiters += qty; break;
-        case "CH15": chemicalMrp.emProbioticLiters += qty; break;
-        case "CH16": chemicalMrp.superBioticKg += qty; break;
-        case "CH17": chemicalMrp.hclLiters += qty; break;
-    }
-}
+    const createSpeciesMonthBucket = () => ({
+        stockedPonds: 0,
+        stockedPlPcs: 0,
+        pondsHarvested: 0,
+        partialHarvestPonds: 0,
+        partialHarvestKg: 0,
+        yieldKg: 0,
+        yieldMt: 0,
+        feedKg: 0,
+        revenueRM: 0,
+        cashCostRM: 0,
+        ebitdaRM: 0,
+        _harvestWeightAbwSum: 0,
+        _harvestWeightSrSum: 0,
+        _harvestWeightFcrSum: 0,
+        _harvestWeightAdgSum: 0,
+        _totalHarvestKgForAvg: 0,
+        _densitySum: 0,
+        _dopSum: 0,
+        _stockedForAvg: 0
+    });
 
     const weeklyTimeline = [];
     const monthlyMap = new Map();
@@ -169,6 +168,7 @@ function addChemicalQtyToMrp(chemicalMrp, itemCode, qty) {
             stockedPondsCount: 0,
             stockedPlPcs: 0,
             pondsHarvestedCount: 0,
+            harvestedPondsCount: 0,
             harvestYieldKg: 0,
             harvestYieldMt: 0,
             partialHarvestKg: 0,
@@ -182,28 +182,16 @@ function addChemicalQtyToMrp(chemicalMrp, itemCode, qty) {
             _totalHarvestKgForAvg: 0,
             plDemandMpcs: { total: 0, spf: 0, spr: 0, spt: 0, monodon: 0 },
             feedDemandMt: { total: 0, starter1: 0, starter2: 0, grower3: 0, finisher4: 0, monodonFeed: 0 },
-            chemicalMrp: {
-                dolomiteBags: 0,
-                gasChlorineKg: 0,
-                powderChlorineKg: 0,
-                caco3Bags: 0,
-                caoh2Bags: 0,
-                grainPelletBags: 0,
-                riceBranBags: 0,
-                molassesKg: 0,
-                teaSeedCakeKg: 0,
-                ureaBags: 0,
-                tspBags: 0,
-                pvpiLiters: 0,
-                cuso4Kg: 0,
-                bkcLiters: 0,
-                emProbioticLiters: 0,
-                superBioticKg: 0,
-                hclLiters: 0
-            },
+            chemicalMrp: {},
+            chemFertPrepCostRM: 0,
+            chemFertCultureCostRM: 0,
+            chemFertCostRM: 0,
+            suppliesCostRM: 0,
+            repairMaintenanceRM: 0,
+            harvestExpensesRM: 0,
+            directWagesRM: 0,
             feedConsumedKg: 0,
             sapFeedKgByCode: {},
-            chemFertCostRM: 0,
             electricityCostRM: 0,
             electricityKwh: 0,
             revenueRM: 0,
@@ -226,6 +214,8 @@ function addChemicalQtyToMrp(chemicalMrp, itemCode, qty) {
                 stockedPonds: 0,
                 stockedPlPcs: 0,
                 pondsHarvested: 0,
+                partialHarvestPonds: 0,
+                partialHarvestKg: 0,
                 yieldKg: 0,
                 yieldMt: 0,
                 feedKg: 0,
@@ -237,28 +227,20 @@ function addChemicalQtyToMrp(chemicalMrp, itemCode, qty) {
                 _harvestWeightAbwSum: 0,
                 _harvestWeightSrSum: 0,
                 _harvestWeightFcrSum: 0,
+                _harvestWeightAdgSum: 0,
                 _totalHarvestKgForAvg: 0,
+                _densitySum: 0,
+                _dopSum: 0,
+                _stockedForAvg: 0,
+                bySpecies: {
+                    [SPECIES.VANNAMEI]: createSpeciesMonthBucket(),
+                    [SPECIES.MONODON]: createSpeciesMonthBucket()
+                },
                 plDemandMpcs: { total: 0, spf: 0, spr: 0, spt: 0, monodon: 0 },
                 feedDemandMt: { total: 0, starter1: 0, starter2: 0, grower3: 0, finisher4: 0, monodonFeed: 0 },
-                chemicalMrp: {
-                    dolomiteBags: 0,
-                    gasChlorineKg: 0,
-                    powderChlorineKg: 0,
-                    caco3Bags: 0,
-                    caoh2Bags: 0,
-                    grainPelletBags: 0,
-                    riceBranBags: 0,
-                    molassesKg: 0,
-                    teaSeedCakeKg: 0,
-                    ureaBags: 0,
-                    tspBags: 0,
-                    pvpiLiters: 0,
-                    cuso4Kg: 0,
-                    bkcLiters: 0,
-                    emProbioticLiters: 0,
-                    superBioticKg: 0,
-                    hclLiters: 0
-                },
+                chemicalMrp: {},
+                chemFertPrepCostRM: 0,
+                chemFertCultureCostRM: 0,
                 cons_of_fries: 0,
                 cons_of_feed: 0,
                 cons_of_chem_fert: 0,
@@ -353,17 +335,29 @@ function addChemicalQtyToMrp(chemicalMrp, itemCode, qty) {
             else if (trajectory.species === SPECIES.MONODON || trajectory.geneticLine === GENETIC_LINES.MONODON) wStock.plDemandMpcs.monodon += plMpcs;
             else wStock.plDemandMpcs.spf += plMpcs;
 
-            // Apply pond-prep chemicals at stocking
-            for (const item of pnl.chemicalMrp?.items || []) {
-                if (item.prepQty > 0) {
-                    addChemicalQtyToMrp(wStock.chemicalMrp, item.code, item.prepQty);
-                }
-            }
+            // Apply pond-prep chemicals & maintenance at stocking
+            const prepChemCost = pnl.chemicalMrp?.prepCostRM || 0;
+            wStock.chemFertPrepCostRM += prepChemCost;
+            wStock.chemFertCostRM += prepChemCost;
+            wStock.repairMaintenanceRM += pnl.costElementsRM.repair_maintenance || 0;
 
             const mStock = monthlyMap.get(wStock.yearMonth);
             if (mStock) {
                 mStock.stockedPonds += 1;
                 mStock.stockedPlPcs += trajectory.stockedPlPcs;
+                mStock._densitySum += Number(trajectory.stockDensityPlM2) || 95;
+                mStock._dopSum += Number(config.dopDays) || 35;
+                mStock._stockedForAvg += 1;
+
+                const spStockBucket = mStock.bySpecies[trajectory.species];
+                if (spStockBucket) {
+                    spStockBucket.stockedPonds += 1;
+                    spStockBucket.stockedPlPcs += trajectory.stockedPlPcs;
+                    spStockBucket._densitySum += Number(trajectory.stockDensityPlM2) || 95;
+                    spStockBucket._dopSum += Number(config.dopDays) || 35;
+                    spStockBucket._stockedForAvg += 1;
+                }
+
                 mStock.plDemandMpcs.total += plMpcs;
                 if (trajectory.geneticLine === GENETIC_LINES.SPF) mStock.plDemandMpcs.spf += plMpcs;
                 else if (trajectory.geneticLine === GENETIC_LINES.SPR) mStock.plDemandMpcs.spr += plMpcs;
@@ -371,17 +365,15 @@ function addChemicalQtyToMrp(chemicalMrp, itemCode, qty) {
                 else if (trajectory.species === SPECIES.MONODON || trajectory.geneticLine === GENETIC_LINES.MONODON) mStock.plDemandMpcs.monodon += plMpcs;
                 else mStock.plDemandMpcs.spf += plMpcs;
 
-                for (const item of pnl.chemicalMrp?.items || []) {
-                    if (item.prepQty > 0) {
-                        addChemicalQtyToMrp(mStock.chemicalMrp, item.code, item.prepQty);
-                    }
-                }
+                mStock.chemFertPrepCostRM += prepChemCost;
             }
         }
 
         // Allocate weekly feed, electricity, chemicals, and ongoing operating costs across active weeks
         const numSteps = Math.max(1, trajectory.weeklySteps.length);
-        const weeklyChemCost = pnl.costElementsRM.cons_of_chem_fert / numSteps;
+        const weeklyChemCost = (pnl.chemicalMrp?.cultureCostRM || pnl.costElementsRM.cons_of_chem_fert) / numSteps;
+        const weeklySuppliesCost = (pnl.costElementsRM.cons_of_supplies || 0) / numSteps;
+        const weeklyDirectWages = (pnl.costElementsRM.wages_direct || 0) / numSteps;
         const weeklyElecCost = pnl.costElementsRM.electricity / numSteps;
         const weeklyElecKwh = pnl.estimatedElectricityKwh / numSteps;
         const nonFeedCashCostPerStep =
@@ -394,7 +386,10 @@ function addChemicalQtyToMrp(chemicalMrp, itemCode, qty) {
             wBucket.feedConsumedKg += step.expectedWeeklyFeedKg;
             wBucket.sapFeedKgByCode[step.sapFeedCode] =
                 (wBucket.sapFeedKgByCode[step.sapFeedCode] || 0) + step.expectedWeeklyFeedKg;
+            wBucket.chemFertCultureCostRM += weeklyChemCost;
             wBucket.chemFertCostRM += weeklyChemCost;
+            wBucket.suppliesCostRM += weeklySuppliesCost;
+            wBucket.directWagesRM += weeklyDirectWages;
             wBucket.electricityCostRM += weeklyElecCost;
             wBucket.electricityKwh += weeklyElecKwh;
 
@@ -410,13 +405,6 @@ function addChemicalQtyToMrp(chemicalMrp, itemCode, qty) {
                 wBucket.feedDemandMt.grower3 += stepFeedMt;
             }
 
-            // Apply weekly culture chemicals
-            for (const item of pnl.chemicalMrp?.items || []) {
-                if (item.cultureQty > 0) {
-                    addChemicalQtyToMrp(wBucket.chemicalMrp, item.code, item.cultureQty / numSteps);
-                }
-            }
-
             const mBucket = monthlyMap.get(wBucket.yearMonth);
             if (mBucket) {
                 mBucket.feedDemandMt.total += stepFeedMt;
@@ -429,12 +417,7 @@ function addChemicalQtyToMrp(chemicalMrp, itemCode, qty) {
                 } else {
                     mBucket.feedDemandMt.grower3 += stepFeedMt;
                 }
-
-                for (const item of pnl.chemicalMrp?.items || []) {
-                    if (item.cultureQty > 0) {
-                        addChemicalQtyToMrp(mBucket.chemicalMrp, item.code, item.cultureQty / numSteps);
-                    }
-                }
+                mBucket.chemFertCultureCostRM += weeklyChemCost;
             }
 
             // Partial harvest skims occurring in this week
@@ -442,6 +425,16 @@ function addChemicalQtyToMrp(chemicalMrp, itemCode, qty) {
                 const expectedSkim = step.partialHarvestKg * step.cumPondSurvivalProb;
                 wBucket.partialHarvestKg += expectedSkim;
                 wBucket.harvestYieldKg += expectedSkim;
+
+                if (mBucket) {
+                    mBucket.partialHarvestPonds += 1;
+                    mBucket.partialHarvestKg += expectedSkim;
+                    const spPartBucket = mBucket.bySpecies[trajectory.species];
+                    if (spPartBucket) {
+                        spPartBucket.partialHarvestPonds += 1;
+                        spPartBucket.partialHarvestKg += expectedSkim;
+                    }
+                }
             }
 
             const stepFeedCost =
@@ -463,14 +456,18 @@ function addChemicalQtyToMrp(chemicalMrp, itemCode, qty) {
         const finalAbw = trajectory.finalHarvestEvent?.finalAbwGrams || trajectory.expectedOutcomes.expectedAbwGrams || 0;
         const finalSr = trajectory.expectedOutcomes.expectedSurvivalPct || 0;
         const finalFcr = trajectory.expectedOutcomes.expectedFcr || 0;
+        const activeDoc = Math.max(1, trajectory.expectedOutcomes.expectedActiveDocDays || 90);
+        const finalAdg = finalAbw / activeDoc;
 
         wHarv.pondsHarvestedCount += 1;
+        wHarv.harvestedPondsCount += 1;
         wHarv.finalHarvestKg += finalYieldKg;
         wHarv.harvestYieldKg += finalYieldKg;
         wHarv.revenueRM += pnl.revenueBreakdownRM.totalRevenueRM;
         wHarv.revenueRm += pnl.revenueBreakdownRM.totalRevenueRM;
         wHarv.ebitdaRM += pnl.revenueBreakdownRM.totalRevenueRM;
         wHarv.ebitdaRm += pnl.revenueBreakdownRM.totalRevenueRM;
+        wHarv.harvestExpensesRM += pnl.costElementsRM.harvest_expenses || 0;
 
         wHarv._harvestWeightAbwSum += finalYieldKg * finalAbw;
         wHarv._harvestWeightSrSum += finalYieldKg * finalSr;
@@ -491,7 +488,23 @@ function addChemicalQtyToMrp(chemicalMrp, itemCode, qty) {
             mHarv._harvestWeightAbwSum += finalYieldKg * finalAbw;
             mHarv._harvestWeightSrSum += finalYieldKg * finalSr;
             mHarv._harvestWeightFcrSum += finalYieldKg * finalFcr;
+            mHarv._harvestWeightAdgSum += finalYieldKg * finalAdg;
             mHarv._totalHarvestKgForAvg += finalYieldKg;
+
+            const spHarvBucket = mHarv.bySpecies[trajectory.species];
+            if (spHarvBucket) {
+                spHarvBucket.pondsHarvested += 1;
+                spHarvBucket.yieldKg += pnl.totalYieldKg;
+                spHarvBucket.feedKg += trajectory.expectedOutcomes.expectedTotalFeedKg;
+                spHarvBucket.revenueRM += pnl.revenueBreakdownRM.totalRevenueRM;
+                spHarvBucket.cashCostRM += pnl.totalCashCostRM;
+                spHarvBucket.ebitdaRM += pnl.ebitdaRM;
+                spHarvBucket._harvestWeightAbwSum += finalYieldKg * finalAbw;
+                spHarvBucket._harvestWeightSrSum += finalYieldKg * finalSr;
+                spHarvBucket._harvestWeightFcrSum += finalYieldKg * finalFcr;
+                spHarvBucket._harvestWeightAdgSum += finalYieldKg * finalAdg;
+                spHarvBucket._totalHarvestKgForAvg += finalYieldKg;
+            }
 
             // 16-Line Cost Ledger allocation
             mHarv.cons_of_fries += pnl.costElementsRM.cons_of_fries;
@@ -531,7 +544,13 @@ function addChemicalQtyToMrp(chemicalMrp, itemCode, qty) {
             ? Number((wBucket._harvestWeightFcrSum / wBucket._totalHarvestKgForAvg).toFixed(2))
             : 0;
         wBucket.feedConsumedKg = Number(wBucket.feedConsumedKg.toFixed(1));
+        wBucket.chemFertPrepCostRM = Number(wBucket.chemFertPrepCostRM.toFixed(2));
+        wBucket.chemFertCultureCostRM = Number(wBucket.chemFertCultureCostRM.toFixed(2));
         wBucket.chemFertCostRM = Number(wBucket.chemFertCostRM.toFixed(2));
+        wBucket.suppliesCostRM = Number(wBucket.suppliesCostRM.toFixed(2));
+        wBucket.repairMaintenanceRM = Number(wBucket.repairMaintenanceRM.toFixed(2));
+        wBucket.harvestExpensesRM = Number(wBucket.harvestExpensesRM.toFixed(2));
+        wBucket.directWagesRM = Number(wBucket.directWagesRM.toFixed(2));
         wBucket.electricityCostRM = Number(wBucket.electricityCostRM.toFixed(2));
         wBucket.electricityKwh = Math.round(wBucket.electricityKwh);
         wBucket.revenueRM = Number(wBucket.revenueRM.toFixed(2));
@@ -540,11 +559,44 @@ function addChemicalQtyToMrp(chemicalMrp, itemCode, qty) {
         wBucket.ebitdaRM = Number(wBucket.ebitdaRM.toFixed(2));
         wBucket.ebitdaRm = wBucket.ebitdaRM;
         wBucket.isHarvestLogisticsCongested = wBucket.harvestYieldMt > harvestLogisticsCapMt;
-
-        for (const k of Object.keys(wBucket.chemicalMrp)) {
-            wBucket.chemicalMrp[k] = Number(wBucket.chemicalMrp[k].toFixed(1));
-        }
     }
+
+    const finalizeSpeciesMonth = (spB) => {
+        const spYieldMt = Number((spB.yieldKg / 1000).toFixed(2));
+        return {
+            stockedPonds: spB.stockedPonds,
+            stockedPondsCount: spB.stockedPonds,
+            stockedPlPcs: spB.stockedPlPcs,
+            pondsHarvested: spB.pondsHarvested,
+            harvestedPondsCount: spB.pondsHarvested,
+            partial_harvest_ponds: spB.partialHarvestPonds,
+            partial_harvest_mt: Number((spB.partialHarvestKg / 1000).toFixed(2)),
+            yieldKg: Number(spB.yieldKg.toFixed(1)),
+            yieldMt: spYieldMt,
+            harvestYieldMt: spYieldMt,
+            feedKg: Number(spB.feedKg.toFixed(1)),
+            revenueRM: Number(spB.revenueRM.toFixed(2)),
+            ebitdaRM: Number(spB.ebitdaRM.toFixed(2)),
+            averageHarvestAbwG: spB._totalHarvestKgForAvg > 0
+                ? Number((spB._harvestWeightAbwSum / spB._totalHarvestKgForAvg).toFixed(1))
+                : 0,
+            averageSurvivalRatePct: spB._totalHarvestKgForAvg > 0
+                ? Number((spB._harvestWeightSrSum / spB._totalHarvestKgForAvg).toFixed(1))
+                : 0,
+            fcr: spB._totalHarvestKgForAvg > 0
+                ? Number((spB._harvestWeightFcrSum / spB._totalHarvestKgForAvg).toFixed(2))
+                : 0,
+            adg: spB._totalHarvestKgForAvg > 0
+                ? Number((spB._harvestWeightAdgSum / spB._totalHarvestKgForAvg).toFixed(3))
+                : 0,
+            averageDensityPlM2: spB._stockedForAvg > 0
+                ? Math.round(spB._densitySum / spB._stockedForAvg)
+                : 0,
+            dopDays: spB._stockedForAvg > 0
+                ? Math.round(spB._dopSum / spB._stockedForAvg)
+                : 0
+        };
+    };
 
     // Finalize monthly summary
     const monthlySummary = Array.from(monthlyMap.values()).map(m => {
@@ -559,10 +611,11 @@ function addChemicalQtyToMrp(chemicalMrp, itemCode, qty) {
         const avgFcr = m._totalHarvestKgForAvg > 0
             ? Number((m._harvestWeightFcrSum / m._totalHarvestKgForAvg).toFixed(2))
             : 0;
-
-        for (const k of Object.keys(m.chemicalMrp)) {
-            m.chemicalMrp[k] = Number(m.chemicalMrp[k].toFixed(1));
-        }
+        const avgAdg = m._totalHarvestKgForAvg > 0
+            ? Number((m._harvestWeightAdgSum / m._totalHarvestKgForAvg).toFixed(3))
+            : 0;
+        const avgDensity = m._stockedForAvg > 0 ? Math.round(m._densitySum / m._stockedForAvg) : 0;
+        const avgDop = m._stockedForAvg > 0 ? Math.round(m._dopSum / m._stockedForAvg) : 0;
 
         const revRM = Number(m.revenueRM.toFixed(2));
         const cashCostRM = Number(m.cashCostRM.toFixed(2));
@@ -582,6 +635,8 @@ function addChemicalQtyToMrp(chemicalMrp, itemCode, qty) {
             stockedPlPcs: m.stockedPlPcs,
             pondsHarvested: m.pondsHarvested,
             harvestedPondsCount: m.pondsHarvested,
+            partial_harvest_ponds: m.partialHarvestPonds,
+            partial_harvest_mt: Number((m.partialHarvestKg / 1000).toFixed(2)),
             yieldKg: Number(m.yieldKg.toFixed(1)),
             yieldMt: Number(yieldMt.toFixed(2)),
             harvestYieldMt: Number(yieldMt.toFixed(2)),
@@ -589,6 +644,13 @@ function addChemicalQtyToMrp(chemicalMrp, itemCode, qty) {
             averageHarvestAbwG: avgAbw,
             averageSurvivalRatePct: avgSr,
             fcr: avgFcr,
+            adg: avgAdg,
+            averageDensityPlM2: avgDensity,
+            dopDays: avgDop,
+            bySpecies: {
+                [SPECIES.VANNAMEI]: finalizeSpeciesMonth(m.bySpecies[SPECIES.VANNAMEI]),
+                [SPECIES.MONODON]: finalizeSpeciesMonth(m.bySpecies[SPECIES.MONODON])
+            },
             averageRealizedPriceRmKg: m.yieldKg > 0 ? Number((revRM / m.yieldKg).toFixed(2)) : 0,
             averageCashCostRmKg: m.yieldKg > 0 ? Number((cashCostRM / m.yieldKg).toFixed(2)) : 0,
             averageTotalCostRmKg: m.yieldKg > 0 ? Number((totalCostRM / m.yieldKg).toFixed(2)) : 0,
@@ -611,6 +673,8 @@ function addChemicalQtyToMrp(chemicalMrp, itemCode, qty) {
             cons_of_feed: Number(m.cons_of_feed.toFixed(2)),
             feedCostRm: Number(m.cons_of_feed.toFixed(2)),
             cons_of_chem_fert: Number(m.cons_of_chem_fert.toFixed(2)),
+            chemFertPrepCostRM: Number(m.chemFertPrepCostRM.toFixed(2)),
+            chemFertCultureCostRM: Number(m.chemFertCultureCostRM.toFixed(2)),
             chemicalCostRm: Number(m.cons_of_chem_fert.toFixed(2)),
             electricity: Number(m.electricity.toFixed(2)),
             electricityCostRm: Number(m.electricity.toFixed(2)),
@@ -894,13 +958,25 @@ export function runCorrelatedMonteCarlo(
     const probPositiveEbitdaPct =
         (iterResults.filter(r => r.ebitdaRM > 0).length / iterations) * 100;
 
+    const p10 = getQuantile(0.10);
+    const p50 = getQuantile(0.50);
+    const p90 = getQuantile(0.90);
+
     return {
         iterations,
         deterministicTotals: deterministicBaseline.grandTotals.totalFarm,
         quantiles: {
-            P10_Downside: getQuantile(0.10),
-            P50_Median: getQuantile(0.50),
-            P90_Upside: getQuantile(0.90)
+            P10_Downside: p10,
+            P50_Median: p50,
+            P90_Upside: p90
+        },
+        summary: {
+            ebitdaP10RM: p10.ebitdaRM,
+            ebitdaP50RM: p50.ebitdaRM,
+            ebitdaP90RM: p90.ebitdaRM,
+            yieldP10Mt: p10.yieldMt,
+            yieldP50Mt: p50.yieldMt,
+            yieldP90Mt: p90.yieldMt
         },
         probabilities: {
             probMeetYieldTargetPct: Number(probMeetYieldTargetPct.toFixed(1)),

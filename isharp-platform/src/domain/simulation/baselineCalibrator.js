@@ -64,143 +64,389 @@ export const VANNAMEI_BROODSTOCK_LINES = Object.freeze([
 
 /**
  * 10 Culture Strategies (DS1-DS4 Direct Stocking, NT1-NT3 Nursery Transfer, PT1-PT3 Pond Transfer)
+ * Single Source of Truth across Domain Engine, StockingThemesTab ('ass'), and ModulePlannerGrid ('main').
  */
-export const CULTURE_STRATEGIES = Object.freeze({
+export const CULTURE_STRATEGIES = {
     DS1: {
         code: "DS1",
         category: "DIRECT",
+        name: "DS1 • Direct Stocking 1X (SPF)",
         label: "Direct Stocking 1X (Standard)",
         speciesDefault: SPECIES.VANNAMEI,
+        geneticLineDefault: GENETIC_LINES.SPF,
         initialWeightGrams: 0.01,
         transferSurvivalPct: 100.0,
         harvestPlanCount: 1,
         partialSkimKg: [0, 0],
         partialTriggerDoc: [],
         targetFinalDoc: 92,
-        defaultDensityPlM2: 96
+        durationWeeks: 13,
+        restWeeks: 5,
+        defaultDensityPlM2: 96,
+        expectedYieldPondKg: 2950,
+        expectedAbwG: 16.5,
+        expectedSrPct: 68.0,
+        expectedFcr: 1.55,
+        expectedFeedPondMt: 4.6,
+        expectedEbitdaPondRm: 14500,
+        targetYieldPondKg: 3500,
+        targetAbwG: 18.0,
+        targetSrPct: 76.0,
+        targetFcr: 1.45,
+        targetEbitdaPondRm: 21500,
+        feedWk: 0.45,
+        plM: 0.48,
+        badgeClass: "bg-theme-ds1",
+        description: "Standard 1X direct-stocked SPF Vannamei crop for baseline cycle completion."
     },
     DS2: {
         code: "DS2",
         category: "DIRECT",
+        name: "DS2 • Direct Stocking 2X (SPR)",
         label: "Direct Stocking 2X (Partial + Final)",
         speciesDefault: SPECIES.VANNAMEI,
+        geneticLineDefault: GENETIC_LINES.SPR,
         initialWeightGrams: 0.01,
         transferSurvivalPct: 100.0,
         harvestPlanCount: 2,
         partialSkimKg: [1000, 0],
         partialTriggerDoc: [70],
         targetFinalDoc: 98,
-        defaultDensityPlM2: 112
+        durationWeeks: 14,
+        restWeeks: 5,
+        defaultDensityPlM2: 112,
+        expectedYieldPondKg: 4200,
+        expectedAbwG: 19.5,
+        expectedSrPct: 74.0,
+        expectedFcr: 1.58,
+        expectedFeedPondMt: 6.6,
+        expectedEbitdaPondRm: 24200,
+        targetYieldPondKg: 4800,
+        targetAbwG: 21.0,
+        targetSrPct: 80.0,
+        targetFcr: 1.48,
+        targetEbitdaPondRm: 31800,
+        feedWk: 0.50,
+        plM: 0.56,
+        badgeClass: "bg-theme-ds2",
+        description: "Hardy SPR broodstock (API Golden/Fire Dragon) with 1,000kg partial thinning at DOC 70."
     },
     DS3: {
         code: "DS3",
         category: "DIRECT",
+        name: "DS3 • Direct Stocking 3X (SPT)",
         label: "Direct Stocking 3X (2 Partials + Final)",
         speciesDefault: SPECIES.VANNAMEI,
+        geneticLineDefault: GENETIC_LINES.SPT,
         initialWeightGrams: 0.01,
         transferSurvivalPct: 100.0,
         harvestPlanCount: 3,
         partialSkimKg: [900, 900],
         partialTriggerDoc: [68, 84],
         targetFinalDoc: 105,
-        defaultDensityPlM2: 122
+        durationWeeks: 15,
+        restWeeks: 5,
+        defaultDensityPlM2: 122,
+        expectedYieldPondKg: 4850,
+        expectedAbwG: 20.4,
+        expectedSrPct: 75.0,
+        expectedFcr: 1.56,
+        expectedFeedPondMt: 7.5,
+        expectedEbitdaPondRm: 29800,
+        targetYieldPondKg: 5500,
+        targetAbwG: 22.0,
+        targetSrPct: 82.0,
+        targetFcr: 1.46,
+        targetEbitdaPondRm: 38400,
+        feedWk: 0.52,
+        plM: 0.61,
+        badgeClass: "bg-theme-ds3",
+        description: "Commercial 3X Vannamei strategy with two 900kg partial skims at DOC 68 & 84."
     },
     DS4: {
         code: "DS4",
         category: "DIRECT",
+        name: "DS4 • Direct Stocking Monodon",
         label: "Direct Stocking Monodon (Black Tiger)",
         speciesDefault: SPECIES.MONODON,
+        geneticLineDefault: GENETIC_LINES.MONODON,
         initialWeightGrams: 0.015,
         transferSurvivalPct: 100.0,
         harvestPlanCount: 1,
         partialSkimKg: [0, 0],
         partialTriggerDoc: [],
         targetFinalDoc: 112,
-        defaultDensityPlM2: 45
+        durationWeeks: 16,
+        restWeeks: 6,
+        defaultDensityPlM2: 45,
+        expectedYieldPondKg: 4500,
+        expectedAbwG: 32.0,
+        expectedSrPct: 73.0,
+        expectedFcr: 1.91,
+        expectedFeedPondMt: 8.6,
+        expectedEbitdaPondRm: 38500,
+        targetYieldPondKg: 5100,
+        targetAbwG: 35.0,
+        targetSrPct: 78.0,
+        targetFcr: 1.80,
+        targetEbitdaPondRm: 46500,
+        feedWk: 0.54,
+        plM: 0.23,
+        badgeClass: "bg-theme-ds4",
+        description: "Premium Penaeus monodon (CP Thai/Moana) in dedicated high-salinity strongholds (M07–M09)."
     },
     NT1: {
         code: "NT1",
         category: "NURSERY_TRANSFER",
+        name: "NT1 • Nursery Transfer 1X",
         label: "Nursery Transfer 1X (1.0g Juvenile)",
         speciesDefault: SPECIES.VANNAMEI,
+        geneticLineDefault: GENETIC_LINES.SPR,
+        isNurseryTransfer: true,
         initialWeightGrams: 1.0,
         transferSurvivalPct: 80.0,
         harvestPlanCount: 1,
         partialSkimKg: [0, 0],
         partialTriggerDoc: [],
         targetFinalDoc: 72,
-        defaultDensityPlM2: 95
+        durationWeeks: 11,
+        restWeeks: 5,
+        defaultDensityPlM2: 95,
+        expectedYieldPondKg: 4400,
+        expectedAbwG: 20.0,
+        expectedSrPct: 78.0,
+        expectedFcr: 1.50,
+        expectedFeedPondMt: 6.6,
+        expectedEbitdaPondRm: 27800,
+        targetYieldPondKg: 4900,
+        targetAbwG: 21.5,
+        targetSrPct: 84.0,
+        targetFcr: 1.42,
+        targetEbitdaPondRm: 34200,
+        feedWk: 0.60,
+        plM: 0.48,
+        badgeClass: "bg-theme-nt1",
+        description: "Pre-conditioned 1.0g nursery juveniles transferred for rapid 72-day growout."
     },
     NT2: {
         code: "NT2",
         category: "NURSERY_TRANSFER",
+        name: "NT2 • Nursery Transfer 2X",
         label: "Nursery Transfer 2X (1.0g + 1,200kg Skim)",
         speciesDefault: SPECIES.VANNAMEI,
+        geneticLineDefault: GENETIC_LINES.SPR,
+        isNurseryTransfer: true,
         initialWeightGrams: 1.0,
         transferSurvivalPct: 80.0,
         harvestPlanCount: 2,
         partialSkimKg: [1200, 0],
         partialTriggerDoc: [55],
         targetFinalDoc: 78,
-        defaultDensityPlM2: 115
+        durationWeeks: 12,
+        restWeeks: 5,
+        defaultDensityPlM2: 115,
+        expectedYieldPondKg: 5200,
+        expectedAbwG: 21.5,
+        expectedSrPct: 82.0,
+        expectedFcr: 1.52,
+        expectedFeedPondMt: 7.9,
+        expectedEbitdaPondRm: 34500,
+        targetYieldPondKg: 5800,
+        targetAbwG: 23.0,
+        targetSrPct: 86.0,
+        targetFcr: 1.44,
+        targetEbitdaPondRm: 42100,
+        feedWk: 0.66,
+        plM: 0.58,
+        badgeClass: "bg-theme-nt2",
+        description: "High-density 1.0g nursery stock with mid-cycle 1,200kg carrying-capacity skim at DOC 55."
     },
     NT3: {
         code: "NT3",
         category: "NURSERY_TRANSFER",
+        name: "NT3 • Nursery Transfer 3X",
         label: "Nursery Transfer 3X (1.0g + 2x1,200kg Skim)",
         speciesDefault: SPECIES.VANNAMEI,
+        geneticLineDefault: GENETIC_LINES.SPR,
+        isNurseryTransfer: true,
         initialWeightGrams: 1.0,
         transferSurvivalPct: 80.0,
         harvestPlanCount: 3,
         partialSkimKg: [1200, 1200],
         partialTriggerDoc: [52, 68],
         targetFinalDoc: 85,
-        defaultDensityPlM2: 125
+        durationWeeks: 13,
+        restWeeks: 5,
+        defaultDensityPlM2: 125,
+        expectedYieldPondKg: 6050,
+        expectedAbwG: 23.2,
+        expectedSrPct: 83.0,
+        expectedFcr: 1.49,
+        expectedFeedPondMt: 9.0,
+        expectedEbitdaPondRm: 46800,
+        targetYieldPondKg: 6700,
+        targetAbwG: 25.0,
+        targetSrPct: 88.0,
+        targetFcr: 1.40,
+        targetEbitdaPondRm: 55200,
+        feedWk: 0.69,
+        plM: 0.63,
+        badgeClass: "bg-theme-nt2",
+        description: "Two 1,200kg partial skims on 1.0g nursery stock for maximum annual pond turnover."
     },
     PT1: {
         code: "PT1",
         category: "POND_TRANSFER",
+        name: "PT1 • Pond Transfer 1X",
         label: "Pond Transfer 1X (1.2g Juvenile)",
         speciesDefault: SPECIES.VANNAMEI,
+        geneticLineDefault: GENETIC_LINES.SPT,
         initialWeightGrams: 1.2,
         transferSurvivalPct: 70.0,
         harvestPlanCount: 1,
         partialSkimKg: [0, 0],
         partialTriggerDoc: [],
         targetFinalDoc: 70,
-        defaultDensityPlM2: 90
+        durationWeeks: 10,
+        restWeeks: 5,
+        defaultDensityPlM2: 90,
+        expectedYieldPondKg: 4100,
+        expectedAbwG: 19.5,
+        expectedSrPct: 72.0,
+        expectedFcr: 1.56,
+        expectedFeedPondMt: 6.4,
+        expectedEbitdaPondRm: 23400,
+        targetYieldPondKg: 4600,
+        targetAbwG: 21.0,
+        targetSrPct: 78.0,
+        targetFcr: 1.48,
+        targetEbitdaPondRm: 29800,
+        feedWk: 0.64,
+        plM: 0.45,
+        badgeClass: "bg-theme-pt2",
+        description: "2-stage pond-to-pond transfer of 1.2g juveniles for shortened 10-week finishing phase."
     },
     PT2: {
         code: "PT2",
         category: "POND_TRANSFER",
+        name: "PT2 • Pond Transfer 2X",
         label: "Pond Transfer 2X (1.2g + 800kg Skim)",
         speciesDefault: SPECIES.VANNAMEI,
+        geneticLineDefault: GENETIC_LINES.SPT,
         initialWeightGrams: 1.2,
         transferSurvivalPct: 70.0,
         harvestPlanCount: 2,
         partialSkimKg: [800, 0],
         partialTriggerDoc: [52],
         targetFinalDoc: 76,
-        defaultDensityPlM2: 110
+        durationWeeks: 11,
+        restWeeks: 5,
+        defaultDensityPlM2: 110,
+        expectedYieldPondKg: 4950,
+        expectedAbwG: 20.2,
+        expectedSrPct: 74.0,
+        expectedFcr: 1.56,
+        expectedFeedPondMt: 7.7,
+        expectedEbitdaPondRm: 31200,
+        targetYieldPondKg: 5500,
+        targetAbwG: 22.0,
+        targetSrPct: 80.0,
+        targetFcr: 1.46,
+        targetEbitdaPondRm: 38900,
+        feedWk: 0.70,
+        plM: 0.55,
+        badgeClass: "bg-theme-pt2",
+        description: "Skims 800kg at DOC 52 after 1.2g pond transfer to unlock compensatory late-stage growth."
     },
     PT3: {
         code: "PT3",
         category: "POND_TRANSFER",
+        name: "PT3 • Multi-Skim 3X Max Yield",
         label: "Pond Transfer 3X (1.2g + 2x800kg Skim)",
         speciesDefault: SPECIES.VANNAMEI,
+        geneticLineDefault: GENETIC_LINES.SPR,
         initialWeightGrams: 1.2,
         transferSurvivalPct: 70.0,
         harvestPlanCount: 3,
         partialSkimKg: [800, 800],
         partialTriggerDoc: [50, 65],
         targetFinalDoc: 82,
-        defaultDensityPlM2: 120
+        durationWeeks: 12,
+        restWeeks: 6,
+        defaultDensityPlM2: 120,
+        expectedYieldPondKg: 6150,
+        expectedAbwG: 24.5,
+        expectedSrPct: 84.0,
+        expectedFcr: 1.48,
+        expectedFeedPondMt: 9.1,
+        expectedEbitdaPondRm: 50200,
+        targetYieldPondKg: 6800,
+        targetAbwG: 26.0,
+        targetSrPct: 88.0,
+        targetFcr: 1.40,
+        targetEbitdaPondRm: 59500,
+        feedWk: 0.76,
+        plM: 0.60,
+        badgeClass: "bg-theme-pt3",
+        description: "Two mid-cycle 800kg partial skims enabling maximum biomass yield per ha."
     }
-});
+};
+
+/**
+ * Registers or updates a custom culture strategy in the shared `CULTURE_STRATEGIES` registry
+ * so that `StockingThemesTab`, `ModulePlannerGrid`, `PondCycleModal`, and `simTickEngine`
+ * all share a single source of truth.
+ *
+ * @param {Object} customDef
+ * @returns {Object} The normalized strategy entry
+ */
+export function registerCustomStrategy(customDef = {}) {
+    const code = String(customDef.code || "DS5").trim().toUpperCase();
+    const durationWeeks = Number(customDef.durationWeeks) || 12;
+    const densityPlM2 = Number(customDef.defaultDensityPlM2 ?? customDef.densityPlM2) || 90;
+    const expectedYieldPondKg = Number(customDef.expectedYieldPondKg) || 3800;
+    const expectedFeedPondMt = Number(customDef.expectedFeedPondMt) || 5.8;
+
+    const entry = {
+        code,
+        category: customDef.category || "DIRECT",
+        name: customDef.name || `${code} • Custom Strategy`,
+        label: customDef.label || customDef.name || `${code} Custom Strategy`,
+        speciesDefault: customDef.speciesDefault || customDef.species || SPECIES.VANNAMEI,
+        geneticLineDefault: customDef.geneticLineDefault || customDef.geneticLine || GENETIC_LINES.SPT,
+        initialWeightGrams: Number(customDef.initialWeightGrams) || 0.01,
+        transferSurvivalPct: Number(customDef.transferSurvivalPct) || 100.0,
+        harvestPlanCount: Number(customDef.harvestPlanCount) || 1,
+        partialSkimKg: Array.isArray(customDef.partialSkimKg) ? customDef.partialSkimKg : [0, 0],
+        partialTriggerDoc: Array.isArray(customDef.partialTriggerDoc) ? customDef.partialTriggerDoc : [],
+        targetFinalDoc: Number(customDef.targetFinalDoc ?? customDef.targetDocDays) || (durationWeeks * 7),
+        durationWeeks,
+        restWeeks: Number(customDef.restWeeks) || 5,
+        defaultDensityPlM2: densityPlM2,
+        expectedYieldPondKg,
+        expectedAbwG: Number(customDef.expectedAbwG) || 18.5,
+        expectedSrPct: Number(customDef.expectedSrPct) || 72.0,
+        expectedFcr: Number(customDef.expectedFcr) || 1.56,
+        expectedFeedPondMt,
+        expectedEbitdaPondRm: Number(customDef.expectedEbitdaPondRm) || 21000,
+        targetYieldPondKg: Number(customDef.targetYieldPondKg) || Math.round(expectedYieldPondKg * 1.15),
+        targetAbwG: Number(customDef.targetAbwG) || 20.0,
+        targetSrPct: Number(customDef.targetSrPct) || 78.0,
+        targetFcr: Number(customDef.targetFcr) || 1.45,
+        targetEbitdaPondRm: Number(customDef.targetEbitdaPondRm) || 27500,
+        feedWk: Number((expectedFeedPondMt / Math.max(1, durationWeeks)).toFixed(2)),
+        plM: Number(((densityPlM2 * 5000) / 1000000).toFixed(2)),
+        badgeClass: customDef.badgeClass || "bg-theme-ds3",
+        description: customDef.description || "Custom user-configured stocking strategy."
+    };
+
+    CULTURE_STRATEGIES[code] = entry;
+    return entry;
+}
 
 /**
  * Deduplicates an array of database records by `pond_index`, keeping the record
- * with the highest `index_no` (resolving MS Access legacy re-import duplicates).
+ * with the highest `id` or `index_no`.
  *
  * @param {Array<Object>} rows
  * @returns {Array<Object>} Deduplicated records
@@ -215,10 +461,10 @@ export function deduplicateByPondIndex(rows) {
         if (!pIdx) continue;
 
         const existing = byPondIndex.get(pIdx);
-        const currIndexNo = Number(row.index_no) || 0;
-        const prevIndexNo = existing ? (Number(existing.index_no) || 0) : -Infinity;
+        const currRank = Number(row.id ?? row.index_no) || 0;
+        const prevRank = existing ? (Number(existing.id ?? existing.index_no) || 0) : -Infinity;
 
-        if (!existing || currIndexNo >= prevIndexNo) {
+        if (!existing || currRank >= prevRank) {
             byPondIndex.set(pIdx, row);
         }
     }
@@ -593,6 +839,14 @@ export const DEFAULT_EMPIRICAL_PRIORS = Object.freeze({
             ]
         },
 
+        // 3. Chemicals & Fertilizers Accounting Cost Driver (from growout_pond_finance.cons_of_chem_fert)
+        // Allocated 40% at pond preparation (stocking week) and 60% across active culture weeks.
+        chemFertBaseRmPerCycle: {
+            VANNAMEI: 1711.0,
+            MONODON: 2114.0
+        },
+        chemFertPrepShare: 0.40,
+
         // 4. Electricity Accounting Cost Driver (Strictly RM per active pond-day from growout_pond_finance)
         // Aeration is NOT modeled biologically because pond_aerator_inventory is unreliable.
         electricityRmPerActivePondDay: 95.40,
@@ -654,8 +908,8 @@ export function calibrateEmpiricalPriors({
     const batMap = new Map((batches || []).filter(b => b && b.pond_index).map(b => [String(b.pond_index).trim(), b]));
 
     const statsBySpecies = {
-        MONODON: { kgs: [], abws: [], srs: [], adgs: [], fcrs: [], ebitdas: [], elecPerDay: [] },
-        VANNAMEI: { kgs: [], abws: [], srs: [], adgs: [], fcrs: [], ebitdas: [], elecPerDay: [] }
+        MONODON: { kgs: [], abws: [], srs: [], adgs: [], fcrs: [], ebitdas: [], elecPerDay: [], chemFerts: [] },
+        VANNAMEI: { kgs: [], abws: [], srs: [], adgs: [], fcrs: [], ebitdas: [], elecPerDay: [], chemFerts: [] }
     };
 
     for (const r of cleanFinals) {
@@ -691,6 +945,9 @@ export function calibrateEmpiricalPriors({
         if (fin.ebitda !== undefined && fin.ebitda !== null && !isNaN(Number(fin.ebitda))) {
             bucket.ebitdas.push(Number(fin.ebitda));
         }
+        if (Number(fin.cons_of_chem_fert) > 0) {
+            bucket.chemFerts.push(Number(fin.cons_of_chem_fert));
+        }
         if (doc >= 20 && Number(fin.electricity) > 0) {
             const epd = Number(fin.electricity) / doc;
             if (epd >= 20 && epd <= 300) bucket.elecPerDay.push(epd);
@@ -708,6 +965,10 @@ export function calibrateEmpiricalPriors({
         base.baseAdgGramsPerDay = Math.round(mean(b.adgs, base.baseAdgGramsPerDay) * 1000) / 1000;
         base.baseFcr = Math.round(mean(b.fcrs, base.baseFcr) * 100) / 100;
         base.avgEbitdaRm = Math.round(mean(b.ebitdas, base.avgEbitdaRm));
+        if (b.chemFerts.length >= 10) {
+            priors.financialRates.chemFertBaseRmPerCycle[sp] =
+                Math.round(mean(b.chemFerts, priors.financialRates.chemFertBaseRmPerCycle[sp]));
+        }
     }
 
     const allElec = [...statsBySpecies.MONODON.elecPerDay, ...statsBySpecies.VANNAMEI.elecPerDay];

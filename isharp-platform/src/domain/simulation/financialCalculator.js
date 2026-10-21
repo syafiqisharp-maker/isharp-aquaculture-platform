@@ -14,38 +14,10 @@
 import { SPECIES, DEFAULT_EMPIRICAL_PRIORS } from "./baselineCalibrator.js";
 
 /**
- * Complete 28-Item Pond-Prep & Culture Chemicals / Fertilizers Catalog (matching `wek` & `mth` MRP).
+ * DEPRECATED: Replaced by Finance Table general category `cons_of_chem_fert` (calibrated from `growout_pond_finance`).
+ * Retained as empty frozen array for backward compatibility.
  */
-export const CHEMICAL_FERTILIZER_MRP_CATALOG = Object.freeze([
-    { code: "CH01", name: "Dolomite",                 unit: "kg", prepPerHaM01_10: 1200, prepPerHaM11: 400, weeklyPerHa: 80,  unitPriceRM: 0.42 },
-    { code: "CH02", name: "Ca(ClO)2 Gas (Chlorine)",  unit: "kg", prepPerHaM01_10: 50,   prepPerHaM11: 25,  weeklyPerHa: 0,   unitPriceRM: 6.80 },
-    { code: "CH03", name: "Ca(ClO)2 Powder (70%)",    unit: "kg", prepPerHaM01_10: 120,  prepPerHaM11: 60,  weeklyPerHa: 5,   unitPriceRM: 7.50 },
-    { code: "CH04", name: "CaCO3 (Agri Lime)",        unit: "kg", prepPerHaM01_10: 800,  prepPerHaM11: 300, weeklyPerHa: 60,  unitPriceRM: 0.38 },
-    { code: "CH05", name: "Ca(OH)2 (Hydrated Lime)",  unit: "kg", prepPerHaM01_10: 300,  prepPerHaM11: 100, weeklyPerHa: 25,  unitPriceRM: 0.65 },
-    { code: "CH06", name: "Grain Pellet (Ferment)",   unit: "kg", prepPerHaM01_10: 60,   prepPerHaM11: 20,  weeklyPerHa: 10,  unitPriceRM: 2.10 },
-    { code: "CH07", name: "Rice Bran",                unit: "kg", prepPerHaM01_10: 80,   prepPerHaM11: 30,  weeklyPerHa: 12,  unitPriceRM: 1.65 },
-    { code: "CH08", name: "Molasses",                 unit: "kg", prepPerHaM01_10: 100,  prepPerHaM11: 40,  weeklyPerHa: 35,  unitPriceRM: 1.45 },
-    { code: "CH09", name: "Tea Seed Cake (Saponin)",  unit: "kg", prepPerHaM01_10: 45,   prepPerHaM11: 15,  weeklyPerHa: 4,   unitPriceRM: 3.90 },
-    { code: "CH10", name: "Urea Fertilizer",          unit: "kg", prepPerHaM01_10: 25,   prepPerHaM11: 10,  weeklyPerHa: 2,   unitPriceRM: 2.80 },
-    { code: "CH11", name: "TSP (Triple Super Phos)",  unit: "kg", prepPerHaM01_10: 15,   prepPerHaM11: 5,   weeklyPerHa: 1,   unitPriceRM: 3.10 },
-    { code: "CH12", name: "PVP-I (Povidone Iodine)",  unit: "L",  prepPerHaM01_10: 4,    prepPerHaM11: 2,   weeklyPerHa: 0.8, unitPriceRM: 28.00 },
-    { code: "CH13", name: "CuSO4 (Copper Sulfate)",   unit: "kg", prepPerHaM01_10: 8,    prepPerHaM11: 2,   weeklyPerHa: 0.5, unitPriceRM: 12.50 },
-    { code: "CH14", name: "BKC (Benzalkonium 80%)",   unit: "L",  prepPerHaM01_10: 6,    prepPerHaM11: 3,   weeklyPerHa: 1.0, unitPriceRM: 22.00 },
-    { code: "CH15", name: "EM Activated Probiotic",   unit: "L",  prepPerHaM01_10: 40,   prepPerHaM11: 20,  weeklyPerHa: 25,  unitPriceRM: 3.20 },
-    { code: "CH16", name: "Super Biotic (Bacillus)",  unit: "kg", prepPerHaM01_10: 4,    prepPerHaM11: 2,   weeklyPerHa: 2.2, unitPriceRM: 48.00 },
-    { code: "CH17", name: "HCl (Hydrochloric Acid)",  unit: "L",  prepPerHaM01_10: 20,   prepPerHaM11: 10,  weeklyPerHa: 0,   unitPriceRM: 2.40 },
-    { code: "CH18", name: "KMnO4 (Pot. Permanganate)",unit: "kg", prepPerHaM01_10: 5,    prepPerHaM11: 2,   weeklyPerHa: 0.2, unitPriceRM: 19.50 },
-    { code: "CH19", name: "Zeolite Granular",         unit: "kg", prepPerHaM01_10: 200,  prepPerHaM11: 50,  weeklyPerHa: 40,  unitPriceRM: 0.85 },
-    { code: "CH20", name: "Sodium Bicarbonate",       unit: "kg", prepPerHaM01_10: 50,   prepPerHaM11: 20,  weeklyPerHa: 30,  unitPriceRM: 1.95 },
-    { code: "CH21", name: "Magnesium Chloride",       unit: "kg", prepPerHaM01_10: 80,   prepPerHaM11: 25,  weeklyPerHa: 20,  unitPriceRM: 1.35 },
-    { code: "CH22", name: "Potassium Chloride (KCl)", unit: "kg", prepPerHaM01_10: 40,   prepPerHaM11: 15,  weeklyPerHa: 12,  unitPriceRM: 2.60 },
-    { code: "CH23", name: "Calcium Chloride",         unit: "kg", prepPerHaM01_10: 40,   prepPerHaM11: 15,  weeklyPerHa: 10,  unitPriceRM: 1.80 },
-    { code: "CH24", name: "Vitamin C Feed Coat",      unit: "kg", prepPerHaM01_10: 0,    prepPerHaM11: 0,   weeklyPerHa: 1.2, unitPriceRM: 36.00 },
-    { code: "CH25", name: "Gut Probiotic Binder",     unit: "kg", prepPerHaM01_10: 0,    prepPerHaM11: 0,   weeklyPerHa: 1.5, unitPriceRM: 42.00 },
-    { code: "CH26", name: "Trace Mineral Premix",     unit: "kg", prepPerHaM01_10: 15,   prepPerHaM11: 5,   weeklyPerHa: 6.0, unitPriceRM: 6.50 },
-    { code: "CH27", name: "Hydrogen Peroxide (50%)",  unit: "L",  prepPerHaM01_10: 10,   prepPerHaM11: 5,   weeklyPerHa: 1.5, unitPriceRM: 4.80 },
-    { code: "CH28", name: "Formalin Disinfectant",    unit: "L",  prepPerHaM01_10: 12,   prepPerHaM11: 6,   weeklyPerHa: 0,   unitPriceRM: 5.20 }
-]);
+export const CHEMICAL_FERTILIZER_MRP_CATALOG = Object.freeze([]);
 
 /**
  * Partitions harvested shrimp biomass into the 4 commercial quality grades
@@ -192,65 +164,50 @@ export function calculateEffectiveSellingPrice({
 }
 
 /**
- * Calculates the 28 Pond-Prep & Culture Chemicals/Fertilizers MRP quantities & costs
- * for a pond cycle.
+ * Calculates the Pond-Prep & Active Culture Chemicals/Fertilizers cost (`cons_of_chem_fert`)
+ * for a pond cycle based on audited `growout_pond_finance` empirical priors.
  *
  * @param {Object} params
+ * @param {string} [params.species="VANNAMEI"]
  * @param {string} [params.moduleId="01"]
  * @param {number} [params.areaHa=0.5]
  * @param {number} [params.dopDays=45]
  * @param {boolean} [params.prevHadDisease=false]
  * @param {number} [params.activeDocDays=90]
  * @param {number} [params.mineralCostMultiplier=1.0]
+ * @param {Object} [priors=DEFAULT_EMPIRICAL_PRIORS]
  * @returns {Object} `{ items: Array, prepCostRM, cultureCostRM, totalChemFertCostRM }`
  */
 export function calculatePondChemicalMRP({
+    species = SPECIES.VANNAMEI,
     moduleId = "01",
     areaHa = 0.5,
     dopDays = 45,
     prevHadDisease = false,
     activeDocDays = 90,
     mineralCostMultiplier = 1.0
-} = {}) {
+} = {}, priors = DEFAULT_EMPIRICAL_PRIORS) {
+    const sp = species === SPECIES.MONODON ? SPECIES.MONODON : SPECIES.VANNAMEI;
     const isM11 = String(moduleId).includes("11");
-    const ha = Math.max(0.05, Number(areaHa) || 0.5);
-    const activeWeeks = Math.max(1, (Number(activeDocDays) || 90) / 7);
+    const haRatio = Math.max(0.1, (Number(areaHa) || 0.5) / 0.5);
+    const stdDoc = priors?.speciesBaselines?.[sp]?.standardDocDays || (sp === SPECIES.MONODON ? 112 : 92);
+    const docRatio = Math.max(0.25, (Number(activeDocDays) || stdDoc) / stdDoc);
     const costMult = Number(mineralCostMultiplier) || 1.0;
+
+    const baseCycleRM = priors?.financialRates?.chemFertBaseRmPerCycle?.[sp]
+        || (sp === SPECIES.MONODON ? 2114.0 : 1711.0);
+    const prepShare = priors?.financialRates?.chemFertPrepShare ?? 0.40;
+    const cultureShare = 1.0 - prepShare;
 
     // Extra disinfection surcharge if previous cycle had disease or rushed DOP
     const sanitationPrepMultiplier = prevHadDisease ? 1.25 : (Number(dopDays) <= 20 ? 1.15 : 1.0);
+    const m11Factor = isM11 ? 0.55 : 1.0;
 
-    let prepCostRM = 0;
-    let cultureCostRM = 0;
-    const items = [];
-
-    for (const item of CHEMICAL_FERTILIZER_MRP_CATALOG) {
-        const basePrepPerHa = isM11 ? item.prepPerHaM11 : item.prepPerHaM01_10;
-        const prepQty = basePrepPerHa * ha * sanitationPrepMultiplier;
-        const cultureQty = item.weeklyPerHa * ha * activeWeeks;
-        const totalQty = prepQty + cultureQty;
-
-        const itemPrepCost = prepQty * item.unitPriceRM * costMult;
-        const itemCultureCost = cultureQty * item.unitPriceRM * costMult;
-        const itemTotalCost = itemPrepCost + itemCultureCost;
-
-        prepCostRM += itemPrepCost;
-        cultureCostRM += itemCultureCost;
-
-        items.push({
-            code: item.code,
-            name: item.name,
-            unit: item.unit,
-            prepQty: Number(prepQty.toFixed(2)),
-            cultureQty: Number(cultureQty.toFixed(2)),
-            totalQty: Number(totalQty.toFixed(2)),
-            unitPriceRM: item.unitPriceRM,
-            totalCostRM: Number(itemTotalCost.toFixed(2))
-        });
-    }
+    const prepCostRM = baseCycleRM * prepShare * haRatio * m11Factor * sanitationPrepMultiplier * costMult;
+    const cultureCostRM = baseCycleRM * cultureShare * haRatio * m11Factor * docRatio * costMult;
 
     return {
-        items,
+        items: [],
         prepCostRM: Number(prepCostRM.toFixed(2)),
         cultureCostRM: Number(cultureCostRM.toFixed(2)),
         totalChemFertCostRM: Number((prepCostRM + cultureCostRM).toFixed(2))
@@ -348,15 +305,16 @@ export function calculatePondCyclePnL(
     );
     const cons_of_feed = baseFeedCostRM * feedCostMult;
 
-    // 3. 28 Chemicals & Fertilizers (`cons_of_chem_fert`)
+    // 3. Chemicals & Fertilizers (`cons_of_chem_fert` from growout_pond_finance)
     const chemMrp = calculatePondChemicalMRP({
+        species: cycleTrajectory.species,
         moduleId: cycleTrajectory.moduleId,
         areaHa: cycleTrajectory.areaHa,
         dopDays: cycleTrajectory.pillarMultipliers.pillar1Turnaround.dopDays,
         prevHadDisease: cycleTrajectory.pillarMultipliers.pillar1Turnaround.prevHadDisease,
         activeDocDays: outcomes.expectedActiveDocDays,
         mineralCostMultiplier: mineralCostMult
-    });
+    }, priors);
     const cons_of_chem_fert = chemMrp.totalChemFertCostRM;
 
     // 4. Electricity (`electricity`) - Strictly RM per active pond-day

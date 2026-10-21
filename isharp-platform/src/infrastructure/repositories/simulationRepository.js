@@ -11,6 +11,7 @@ import { supabase } from "../supabase.js";
 import { calculateDOC } from "../../domain/biometrics.js";
 import {
     SPECIES,
+    CULTURE_STRATEGIES,
     classifySpecies,
     resolveGeneticLine
 } from "../../domain/simulation/baselineCalibrator.js";
@@ -82,6 +83,124 @@ export class SimulationRepository {
     }
 
     /**
+     * Fetches all cycles (both CLOSED actuals and current PRODUCTION) for the target year
+     * from `view_growout_pond_cycles`, including carryover cycles from previous year.
+     *
+     * @param {number} [year=2026]
+     * @returns {Promise<Array<Object>>}
+     */
+    static async fetchYearCycles(year = 2026) {
+        try {
+            const endpoint =
+                `view_growout_pond_cycles?select=pond_index,pond,modl,row_no,cycle_no,crop_no,pond_status,pond_active,stck_date,date_close,area,stck_species,bs_line,stck_source,stck_size,stck_total,batch_count,final_status,disease_status&or=(stck_date.gte.${year}-01-01,date_close.gte.${year}-01-01)&order=stck_date.asc&limit=1500`;
+            const rows = (await supabase.request(endpoint)) || [];
+
+            const dateToW = (dateStr) => {
+                if (!dateStr) return 1;
+                const d = new Date(dateStr);
+                if (isNaN(d.getTime())) return 1;
+                const start = new Date(year, 0, 1);
+                const diffMs = d.getTime() - start.getTime();
+                const diffDays = Math.floor(diffMs / (24 * 3600 * 1000));
+                return Math.max(1, Math.min(156, Math.floor(diffDays / 7) + 1));
+            };
+
+            return rows.map((r) => {
+                const pondId = r.pond || r.pond_index?.split("-C")[0] || "P01";
+                const modKey = normalizeModuleKey(r.modl || pondId.slice(0, 3));
+                const areaHa = Number(r.area) || 0.5;
+                const stckPcs = Number(r.stck_total) || 0;
+                const densityPlM2 =
+                    stckPcs > 0 && areaHa > 0 ? Math.round(stckPcs / (areaHa * 10000)) : 0;
+
+                const species = classifySpecies({
+                    species: r.stck_species,
+                    bsLine: r.bs_line,
+                    stockDensity: densityPlM2
+                });
+                const geneticLine = resolveGeneticLine({
+                    species,
+                    bsLine: r.bs_line
+                });
+
+                const isProd = String(r.pond_status).toUpperCase().trim() === "PRODUCTION";
+                const isClose = String(r.pond_status).toUpperCase().trim() === "CLOSE";
+
+                // Carryover: stocked before baseYear and closed in baseYear
+                const stckYear = r.stck_date ? new Date(r.stck_date).getFullYear() : year;
+                const isCarryover = stckYear < year;
+
+                let strategyCode = "DS1";
+                if (species === SPECIES.MONODON) {
+                    strategyCode = "DS4";
+                } else {
+                    if (densityPlM2 >= 115) strategyCode = "DS3";
+                    else if (densityPlM2 >= 85) strategyCode = "DS2";
+                    else strategyCode = "DS1";
+                }
+
+                const stratDef = CULTURE_STRATEGIES[strategyCode] || CULTURE_STRATEGIES.DS1;
+                const defaultTargetDoc = stratDef.targetFinalDoc || (species === SPECIES.MONODON ? 112 : 92);
+
+                let docDays = 0;
+                let targetFinalDoc = defaultTargetDoc;
+
+                if (isProd) {
+                    docDays = calculateDOC(r.stck_date);
+                    targetFinalDoc = Math.max(docDays + 7, defaultTargetDoc);
+                } else if (r.date_close && r.stck_date) {
+                    const diffMs = new Date(r.date_close).getTime() - new Date(r.stck_date).getTime();
+                    docDays = Math.max(1, Math.round(diffMs / (24 * 3600 * 1000)));
+                    targetFinalDoc = docDays;
+                } else {
+                    docDays = defaultTargetDoc;
+                    targetFinalDoc = defaultTargetDoc;
+                }
+
+                const startW = isCarryover ? 1 : dateToW(r.stck_date);
+                let endW = 1;
+                if (r.date_close) {
+                    endW = Math.max(startW, dateToW(r.date_close));
+                } else {
+                    const durationWeeks = Math.max(1, Math.ceil(targetFinalDoc / 7));
+                    endW = Math.min(156, startW + durationWeeks - 1);
+                }
+
+                return {
+                    pondIndex: r.pond_index,
+                    pondId,
+                    moduleId: modKey,
+                    areaHa,
+                    pondStatus: (r.pond_status || "IDLE").toUpperCase().trim(),
+                    isProduction: isProd,
+                    isClosed: isClose,
+                    isCarryoverFromPrevYear: isCarryover,
+                    isStockedInBaseYear: !isCarryover,
+                    stckDate: r.stck_date,
+                    dateClose: r.date_close,
+                    docDays,
+                    targetFinalDoc,
+                    species,
+                    geneticLine,
+                    bsLine: r.bs_line || (species === SPECIES.MONODON ? "CP THAI" : "SYAQUA"),
+                    stckSource: r.stck_source || (species === SPECIES.MONODON ? "KSK" : "SHT"),
+                    strategyCode,
+                    stockedPlPcs: stckPcs,
+                    stockDensityPlM2: densityPlM2 > 0 ? densityPlM2 : (species === SPECIES.MONODON ? 45 : 95),
+                    startWeekIndex: startW,
+                    endWeekIndex: endW,
+                    finalStatus: r.final_status || null,
+                    diseaseStatus: r.disease_status || "NO ISSUES",
+                    hasActiveDisease: Boolean(r.disease_status && r.disease_status !== "NO ISSUES")
+                };
+            });
+        } catch (err) {
+            console.error("SimulationRepository.fetchYearCycles error:", err);
+            return [];
+        }
+    }
+
+    /**
      * Fetches the latest biometrics sampling records for active production ponds.
      *
      * @param {Array<string>} pondIndices
@@ -94,13 +213,13 @@ export class SimulationRepository {
         try {
             // Query latest samplings (ordered by smpl_doc descending)
             const endpoint =
-                "biometrics_sampling?select=pond_index,smpl_doc,smpl_date,smpl_abw,smpl_surv,smpl_srv&order=smpl_doc.desc,smpl_date.desc&limit=2500";
+                "biometrics_sampling?select=pond_index,smpl_doc,smpl_date,smpl_abw,smpl_surv&order=smpl_doc.desc,smpl_date.desc&limit=2500";
             const rows = (await supabase.request(endpoint)) || [];
 
             for (const r of rows) {
                 const pIdx = r.pond_index ? String(r.pond_index).trim() : "";
                 if (pIdx && !samplingMap.has(pIdx) && Number(r.smpl_doc) > 0) {
-                    let surv = Number(r.smpl_surv ?? r.smpl_srv);
+                    let surv = Number(r.smpl_surv);
                     if (surv > 0 && surv <= 1.5) surv *= 100;
 
                     samplingMap.set(pIdx, {
@@ -126,40 +245,54 @@ export class SimulationRepository {
     static async fetchMasterPondsList() {
         try {
             const endpoint =
-                "growout_pond_master?select=pond,modl,area,pond_type,pond_active&order=pond.asc&limit=1000";
+                "growout_pond_master?pond_active=eq.ACTIVE&select=pond,modl,area,pond_type,pond_active,pond_status&order=pond.asc&limit=1000";
             const rows = (await supabase.request(endpoint)) || [];
 
             const uniquePonds = new Map();
             for (const r of rows) {
                 const pondId = r.pond ? String(r.pond).trim() : "";
                 if (!pondId || uniquePonds.has(pondId)) continue;
+                if (r.pond_status === "RESERVOIR" || pondId.endsWith(".TA") || pondId.includes("RES")) continue;
 
                 const modKey = normalizeModuleKey(r.modl || pondId.slice(0, 3));
                 uniquePonds.set(pondId, {
                     pondId,
                     moduleId: modKey,
                     areaHa: Number(r.area) || 0.5,
-                    pondType: r.pond_type || "FULL LINING"
+                    pondType: r.pond_type || "FULL LINING",
+                    pondStatus: r.pond_status || "IDLE"
                 });
             }
 
             return Array.from(uniquePonds.values());
         } catch (err) {
             console.error("SimulationRepository.fetchMasterPondsList error:", err);
-            // Fallback: generate default 180 benchmark growout ponds (M01-M10, 18 ponds each)
+            // Fallback: generate authentic Setiu farm benchmark growout ponds across Modules M01-M11
+            const moduleTopology = [
+                { modKey: "01", count: 24, areaHa: 0.5 },
+                { modKey: "02", count: 24, areaHa: 0.5 },
+                { modKey: "03", count: 24, areaHa: 0.5 },
+                { modKey: "04", count: 24, areaHa: 0.5 },
+                { modKey: "05", count: 24, areaHa: 0.5 },
+                { modKey: "06", count: 24, areaHa: 0.5 },
+                { modKey: "07", count: 24, areaHa: 0.5 },
+                { modKey: "08", count: 24, areaHa: 0.5 },
+                { modKey: "09", count: 24, areaHa: 0.5 },
+                { modKey: "10", count: 26, areaHa: 0.5 },
+                { modKey: "11", count: 21, areaHa: 0.5 }
+            ];
             const fallback = [];
-            for (let m = 1; m <= 10; m++) {
-                const modKey = String(m).padStart(2, "0");
-                for (let p = 1; p <= 18; p++) {
+            moduleTopology.forEach(m => {
+                for (let p = 1; p <= m.count; p++) {
                     const pondNum = String(p).padStart(2, "0");
                     fallback.push({
-                        pondId: `M${modKey}-P${pondNum}`,
-                        moduleId: modKey,
-                        areaHa: 0.5,
+                        pondId: `M${m.modKey}-P${pondNum}`,
+                        moduleId: m.modKey,
+                        areaHa: m.modKey === "11" && p > 13 ? 1.0 : m.areaHa,
                         pondType: "FULL LINING"
                     });
                 }
-            }
+            });
             return fallback;
         }
     }
@@ -178,7 +311,7 @@ export class SimulationRepository {
         try {
             const startStr = `${year}-01-01`;
             const endStr = `${year}-12-31`;
-            const endpoint = `growout_pond_final_legacy?select=index_no,pond_index,final_date,date_close,final_kg,final_pieces&final_date=gte.${startStr}&final_date=lte.${endStr}&limit=1000`;
+            const endpoint = `growout_pond_final_legacy?select=index_no,pond_index,final_date,date_close,final_kg,final_pieces,final_abw,final_sr,final_fcr,final_adg,final_doc,total_feed,stock_total_fry,stock_density,area&final_date=gte.${startStr}&final_date=lte.${endStr}&limit=1000`;
             const rows = (await supabase.request(endpoint)) || [];
 
             // Deduplicate cycles by pond_index keeping highest index_no
@@ -187,8 +320,8 @@ export class SimulationRepository {
                 const pIdx = r.pond_index ? String(r.pond_index).trim() : "";
                 if (!pIdx) continue;
                 const existing = cleanFinals.get(pIdx);
-                const currNo = Number(r.index_no) || 0;
-                const prevNo = existing ? (Number(existing.index_no) || 0) : -Infinity;
+                const currNo = Number(r.id ?? r.index_no) || 0;
+                const prevNo = existing ? (Number(existing.id ?? existing.index_no) || 0) : -Infinity;
                 if (!existing || currNo >= prevNo) {
                     cleanFinals.set(pIdx, r);
                 }
@@ -222,9 +355,31 @@ export class SimulationRepository {
                     month: m,
                     pondsHarvested: 0,
                     harvested_ponds: 0,
+                    harvestedPondsCount: 0,
+                    stocked_ponds: 0,
+                    stockedPonds: 0,
+                    stockedPondsCount: 0,
+                    stocked_pl_m: 0,
+                    stockedPlPcs: 0,
                     yieldKg: 0,
                     yieldMt: 0,
                     harvest_mt: 0,
+                    harvestYieldMt: 0,
+                    feed_kg: 0,
+                    feedKg: 0,
+                    feed_mt: 0,
+                    final_abw: 0,
+                    averageHarvestAbwG: 0,
+                    final_sr: 0,
+                    averageSurvivalRatePct: 0,
+                    final_fcr: 0,
+                    fcr: 0,
+                    final_adg: 0,
+                    adg: 0,
+                    density: 0,
+                    averageDensityPlM2: 0,
+                    dop_days: 42,
+                    dopDays: 42,
                     revenueRM: 0,
                     revenueRm: 0,
                     revenue_rm: 0,
@@ -241,7 +396,15 @@ export class SimulationRepository {
                     directWagesRm: 0,
                     maintenanceRm: 0,
                     depreciationRm: 0,
-                    sagRm: 0
+                    sagRm: 0,
+                    averageRealizedPriceRmKg: 0,
+                    averageCashCostRmKg: 0,
+                    averageTotalCostRmKg: 0,
+                    _abwKgSum: 0,
+                    _srKgSum: 0,
+                    _adgKgSum: 0,
+                    _densitySum: 0,
+                    _kgForAvg: 0
                 });
             }
 
@@ -254,7 +417,50 @@ export class SimulationRepository {
                     const kg = Number(r.final_kg) || 0;
                     bucket.pondsHarvested += 1;
                     bucket.harvested_ponds += 1;
+                    bucket.harvestedPondsCount += 1;
                     bucket.yieldKg += kg;
+
+                    const feed = Number(r.total_feed) || 0;
+                    const fry = Number(r.stock_total_fry) || 0;
+                    bucket.feed_kg += feed;
+                    bucket.feedKg += feed;
+
+                    // Bucket stocking counts into the actual stocking month (harvest date minus DOC)
+                    const docDays = Math.max(30, Number(r.final_doc) || 90);
+                    const harvDate = new Date(dateStr);
+                    let stockMonth = m;
+                    if (!isNaN(harvDate.getTime())) {
+                        const stockDate = new Date(harvDate.getTime() - docDays * 24 * 3600 * 1000);
+                        if (stockDate.getFullYear() === Number(year)) {
+                            stockMonth = stockDate.getMonth() + 1;
+                        } else {
+                            stockMonth = 0; // Stocked in previous calendar year
+                        }
+                    }
+                    if (stockMonth >= 1 && stockMonth <= 12) {
+                        const sBucket = monthlyMap.get(stockMonth);
+                        sBucket.stocked_ponds += 1;
+                        sBucket.stockedPonds += 1;
+                        sBucket.stockedPondsCount += 1;
+                        sBucket.stockedPlPcs += fry;
+                        sBucket.stocked_pl_m += fry / 1000000;
+                    }
+
+                    let abw = Number(r.final_abw) || 0;
+                    if (abw <= 0 && Number(r.final_pieces) > 0) {
+                        abw = (kg * 1000) / Number(r.final_pieces);
+                    }
+                    const sr = Number(r.final_sr) || 0;
+                    const adg = Number(r.final_adg) || 0;
+                    const sd = Number(r.stock_density) || 0;
+
+                    if (kg > 0) {
+                        bucket._abwKgSum += kg * abw;
+                        bucket._srKgSum += kg * sr;
+                        bucket._adgKgSum += kg * adg;
+                        bucket._densitySum += sd;
+                        bucket._kgForAvg += kg;
+                    }
 
                     const fin = financeMap.get(r.pond_index);
                     if (fin) {
@@ -292,6 +498,8 @@ export class SimulationRepository {
             for (const b of monthlyMap.values()) {
                 b.yieldMt = Number((b.yieldKg / 1000).toFixed(2));
                 b.harvest_mt = b.yieldMt;
+                b.harvestYieldMt = b.yieldMt;
+                b.feed_mt = Number((b.feed_kg / 1000).toFixed(2));
                 b.revenueRM = Number(b.revenueRM.toFixed(2));
                 b.revenueRm = b.revenueRM;
                 b.revenue_rm = b.revenueRM;
@@ -301,6 +509,28 @@ export class SimulationRepository {
                 b.ebitdaRM = Number(b.ebitdaRM.toFixed(2));
                 b.ebitdaRm = b.ebitdaRM;
                 b.ebitda_rm = b.ebitdaRM;
+
+                if (b._kgForAvg > 0) {
+                    b.final_abw = Number((b._abwKgSum / b._kgForAvg).toFixed(1));
+                    b.averageHarvestAbwG = b.final_abw;
+                    b.final_sr = Number((b._srKgSum / b._kgForAvg).toFixed(1));
+                    b.averageSurvivalRatePct = b.final_sr;
+                    b.final_adg = Number((b._adgKgSum / b._kgForAvg).toFixed(3));
+                    b.adg = b.final_adg;
+                }
+                if (b.yieldKg > 0 && b.feed_kg > 0) {
+                    b.final_fcr = Number((b.feed_kg / b.yieldKg).toFixed(2));
+                    b.fcr = b.final_fcr;
+                }
+                if (b.pondsHarvested > 0) {
+                    b.density = Math.round(b._densitySum / b.pondsHarvested);
+                    b.averageDensityPlM2 = b.density;
+                }
+                if (b.yieldKg > 0) {
+                    b.averageRealizedPriceRmKg = Number((b.revenueRM / b.yieldKg).toFixed(2));
+                    b.averageCashCostRmKg = Number((b.cashCostRM / b.yieldKg).toFixed(2));
+                    b.averageTotalCostRmKg = Number((b.totalCostRM / b.yieldKg).toFixed(2));
+                }
             }
 
             return Array.from(monthlyMap.values());

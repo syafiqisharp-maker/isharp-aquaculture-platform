@@ -13,6 +13,7 @@ import {
     generateOptimal156WeekSchedule,
     weekIndexToCalendar
 } from "../domain/simulation/constraintScheduler.js";
+import { projectActivePondHarvestDoc } from "../domain/simulation/hazardAndGrowthModel.js";
 import { SimulationRepository } from "../infrastructure/repositories/simulationRepository.js";
 
 class SimulationStore {
@@ -32,6 +33,8 @@ class SimulationStore {
             priors: structuredClone(DEFAULT_EMPIRICAL_PRIORS),
             masterPonds: [],
             liveActivePonds: [],
+            yearCycles: [],
+            samplingMap: new Map(),
             scheduledCycles: [],
             shocks: [],
             simulationResult: null,
@@ -98,6 +101,8 @@ class SimulationStore {
     get priors() { return this._state.priors; }
     get masterPonds() { return this._state.masterPonds; }
     get liveActivePonds() { return this._state.liveActivePonds; }
+    get yearCycles() { return this._state.yearCycles; }
+    get samplingMap() { return this._state.samplingMap; }
     get scheduledCycles() { return this._state.scheduledCycles; }
     get shocks() { return this._state.shocks; }
     get simulationResult() { return this._state.simulationResult; }
@@ -133,25 +138,29 @@ class SimulationStore {
             this._state.scenarioMetadata.baseMonth = baseMonth;
             this._state.scenarioMetadata.horizonWeeks = horizonWeeks;
 
-            // Fetch physical ponds & live operational cycles
-            const [masterPonds, livePonds, actuals] = await Promise.all([
+            // Fetch physical ponds, live operational cycles & full year cycles (closed + prod)
+            const [masterPonds, livePonds, yearCycles, actuals] = await Promise.all([
                 SimulationRepository.fetchMasterPondsList(),
                 SimulationRepository.fetchActivePonds(),
+                SimulationRepository.fetchYearCycles(baseYear),
                 SimulationRepository.fetchActualMonthlyHarvests(baseYear)
             ]);
 
             this._state.masterPonds = masterPonds;
             this._state.liveActivePonds = livePonds;
             this._state.actualMonths = actuals;
+            this._state.yearCycles = yearCycles;
 
             // Fetch latest samplings for active production ponds
             const prodPondIndices = livePonds.filter(p => p.isProduction && p.pondIndex).map(p => p.pondIndex);
             const samplingMap = await SimulationRepository.fetchLatestSamplingsForPonds(prodPondIndices);
+            this._state.samplingMap = samplingMap;
 
             // Construct the Hybrid Schedule
             this._state.scheduledCycles = this._constructHybridSchedule(
                 masterPonds,
                 livePonds,
+                yearCycles,
                 samplingMap,
                 horizonWeeks,
                 baseYear,
@@ -174,64 +183,243 @@ class SimulationStore {
 
     /**
      * Internal helper to build the Hybrid Schedule:
+     * - Ingests all actual cycles for baseYear (closed actuals + active production + carryovers from prior year).
      * - Retains live active/production ponds with their exact real DOC and latest samplings.
      * - Uses `generateOptimal156WeekSchedule` to project optimal future cycles across all ponds.
      */
-    _constructHybridSchedule(masterPonds, livePonds, samplingMap, horizonWeeks, baseYear, baseMonth) {
-        // 1. Generate full benchmark 156-week optimal schedule
-        const optimalPlan = generateOptimal156WeekSchedule(masterPonds, {
-            horizonWeeks,
-            baseYear,
-            baseMonth,
-            restWeeks: 6
-        }, this._state.priors);
+    _constructHybridSchedule(
+        masterPonds,
+        livePonds,
+        yearCyclesOrSamplingMap = [],
+        samplingMap = new Map(),
+        horizonWeeks = 156,
+        baseYear = 2026,
+        baseMonth = 1,
+        options = {}
+    ) {
+        // Support backward-compatible 6-argument signature where 3rd arg was samplingMap
+        let yearCycles = [];
+        let actualSamplingMap = samplingMap;
+        let actualHorizonWeeks = horizonWeeks;
+        let actualBaseYear = baseYear;
+        let actualBaseMonth = baseMonth;
+        let actualOptions = options || {};
 
-        if (!livePonds || livePonds.length === 0) {
+        if (yearCyclesOrSamplingMap instanceof Map) {
+            actualSamplingMap = yearCyclesOrSamplingMap;
+            yearCycles = this._state?.yearCycles || [];
+            actualHorizonWeeks = arguments[3] || 156;
+            actualBaseYear = arguments[4] || 2026;
+            actualBaseMonth = arguments[5] || 1;
+            actualOptions = arguments[6] || {};
+        } else if (Array.isArray(yearCyclesOrSamplingMap)) {
+            yearCycles = yearCyclesOrSamplingMap;
+        } else if (this._state?.yearCycles?.length > 0) {
+            yearCycles = this._state.yearCycles;
+        }
+
+        if (!actualSamplingMap || !(actualSamplingMap instanceof Map) || actualSamplingMap.size === 0) {
+            actualSamplingMap = this._state?.samplingMap || new Map();
+        }
+
+        // 1. Generate full benchmark 156-week optimal schedule with forwarded user & business options
+        const schedulerOptions = {
+            horizonWeeks: actualHorizonWeeks,
+            baseYear: actualBaseYear,
+            baseMonth: actualBaseMonth,
+            restWeeks: actualOptions.restWeeks !== undefined ? Number(actualOptions.restWeeks) : 6,
+            maxPondsPerMonth: actualOptions.maxPondsPerMonth !== undefined ? Number(actualOptions.maxPondsPerMonth) : 50,
+            elevatedModules: actualOptions.elevatedModules || ["01", "02", "03"],
+            monodonModules: actualOptions.monodonModules || ["08", "09", "05"],
+            vannameiDefaultStrategy: actualOptions.vannameiDefaultStrategy || "DS2",
+            targetCyclesPerYear: actualOptions.targetCyclesPerYear !== undefined ? Number(actualOptions.targetCyclesPerYear) : 2,
+            monodonAnnualCapRatio: actualOptions.monodonAnnualCapRatio !== undefined ? Number(actualOptions.monodonAnnualCapRatio) : 0.30,
+            rotateMonodonToAllModules: actualOptions.rotateMonodonToAllModules !== false,
+            ...actualOptions
+        };
+
+        const optimalPlan = generateOptimal156WeekSchedule(masterPonds, schedulerOptions, this._state.priors);
+
+        const hasYearCycles = Array.isArray(yearCycles) && yearCycles.length > 0;
+        const hasLivePonds = Array.isArray(livePonds) && livePonds.length > 0;
+
+        if (!hasYearCycles && !hasLivePonds) {
             return optimalPlan;
         }
 
         const hybridList = [];
-        const livePondIds = new Set();
+        const pondHas2026Cycles = new Set();
+        const pondLastEndW = new Map();
+        const modLastEndW = new Map();
 
-        // 2. Add currently active/production ponds as Cycle 1
-        for (const live of livePonds) {
-            livePondIds.add(live.pondId);
-            const sampling = samplingMap.get(live.pondIndex);
-            const currentDoc = Math.max(1, live.docDays || 1);
-            const remainingDoc = Math.max(14, (live.species === SPECIES.MONODON ? 112 : 92) - currentDoc);
-            const durationWeeks = Math.ceil(remainingDoc / 7);
+        // 2. Ingest all actual year cycles (both historical closed and current production)
+        if (hasYearCycles) {
+            const byPond = new Map();
+            for (const c of yearCycles) {
+                if (!c.pondId || !c.stckDate) continue;
+                if (!byPond.has(c.pondId)) byPond.set(c.pondId, []);
+                byPond.get(c.pondId).push(c);
+            }
 
-            hybridList.push({
-                pondId: live.pondId,
-                moduleId: live.moduleId,
-                areaHa: live.areaHa,
-                species: live.species,
-                geneticLine: live.geneticLine,
-                bsLine: live.bsLine,
-                stckSource: live.stckSource,
-                strategyCode: live.species === SPECIES.MONODON ? "DS4" : "DS1",
-                harvestPlanCount: 1,
-                stockDensityPlM2: live.stockDensityPlM2,
-                startWeekIndex: 1, // Currently ongoing
-                endWeekIndex: Math.min(horizonWeeks, 1 + durationWeeks),
-                targetFinalDoc: currentDoc + remainingDoc,
-                stockMonth: baseMonth,
-                dopDays: 45,
-                prevHadDisease: live.hasActiveDisease,
-                olderActivePondsCount: 0,
-                diseasedNeighborsCount: 0,
-                latestSampling: sampling || null,
-                isLivePondCycle: true
-            });
+            for (const [pondId, cycles] of byPond) {
+                pondHas2026Cycles.add(pondId);
+                cycles.sort((a, b) => a.startWeekIndex - b.startWeekIndex);
+
+                let prevCloseDate = null;
+                for (const c of cycles) {
+                    const sampling = actualSamplingMap.get(c.pondIndex);
+                    const isProd = Boolean(c.isProduction);
+
+                    let dopDays = 45;
+                    if (prevCloseDate && c.stckDate) {
+                        const diffMs = new Date(c.stckDate).getTime() - new Date(prevCloseDate).getTime();
+                        dopDays = Math.max(14, Math.round(diffMs / (24 * 3600 * 1000)));
+                    } else if (c.isCarryoverFromPrevYear) {
+                        dopDays = 45;
+                    }
+
+                    if (c.dateClose) {
+                        prevCloseDate = c.dateClose;
+                    }
+
+                    const startW = c.startWeekIndex;
+                    let endW = c.endWeekIndex;
+                    let targetFinalDoc = c.targetFinalDoc || c.docDays || (endW - startW + 1) * 7;
+
+                    if (isProd) {
+                        const proj = projectActivePondHarvestDoc(c, sampling, this._state.priors);
+                        targetFinalDoc = proj.targetFinalDoc;
+                        const durationWeeks = Math.max(1, Math.ceil(targetFinalDoc / 7));
+                        endW = Math.min(actualHorizonWeeks, startW + durationWeeks - 1);
+                    }
+
+                    hybridList.push({
+                        pondId: c.pondId,
+                        pondIndex: c.pondIndex,
+                        moduleId: c.moduleId,
+                        areaHa: c.areaHa,
+                        species: c.species,
+                        geneticLine: c.geneticLine,
+                        bsLine: c.bsLine,
+                        stckSource: c.stckSource,
+                        strategyCode: c.strategyCode || (c.species === SPECIES.MONODON ? "DS4" : "DS1"),
+                        harvestPlanCount: 1,
+                        stockDensityPlM2: c.stockDensityPlM2,
+                        startWeekIndex: startW,
+                        endWeekIndex: endW,
+                        targetFinalDoc,
+                        docDays: c.docDays,
+                        stockMonth: c.isCarryoverFromPrevYear ? 0 : actualBaseMonth,
+                        dopDays,
+                        prevHadDisease: c.hasActiveDisease,
+                        olderActivePondsCount: 0,
+                        diseasedNeighborsCount: 0,
+                        latestSampling: sampling || null,
+                        isLivePondCycle: isProd,
+                        isHistoricalClosed: !isProd,
+                        isLocked: !isProd || (startW <= 42),
+                        isCarryoverFromPrevYear: Boolean(c.isCarryoverFromPrevYear),
+                        isStockedInBaseYear: Boolean(c.isStockedInBaseYear),
+                        finalStatus: c.finalStatus || null
+                    });
+
+                    const curMax = pondLastEndW.get(c.pondId) || 0;
+                    if (endW > curMax) pondLastEndW.set(c.pondId, endW);
+
+                    const modKey = String(c.moduleId || c.pondId || "").replace(/^[Mm]/, "").padStart(2, "0");
+                    const modCurMax = modLastEndW.get(modKey) || 0;
+                    if (endW > modCurMax) modLastEndW.set(modKey, endW);
+                }
+            }
+        } else if (hasLivePonds) {
+            for (const live of livePonds) {
+                if (!live.isProduction || live.pondStatus !== "PRODUCTION" || !live.stckDate) {
+                    continue;
+                }
+                pondHas2026Cycles.add(live.pondId);
+                const sampling = actualSamplingMap.get(live.pondIndex);
+                const proj = projectActivePondHarvestDoc(live, sampling, this._state.priors);
+                const targetFinalDoc = proj.targetFinalDoc;
+                const durationWeeks = proj.durationWeeks;
+
+                let liveStartW = 29;
+                if (live.stckDate) {
+                    const d = new Date(live.stckDate);
+                    if (!isNaN(d.getTime())) {
+                        const startYear = new Date(actualBaseYear, 0, 1);
+                        const diffDays = Math.floor((d.getTime() - startYear.getTime()) / (24 * 3600 * 1000));
+                        liveStartW = Math.max(1, Math.min(156, Math.floor(diffDays / 7) + 1));
+                    }
+                }
+                const liveEndW = Math.min(actualHorizonWeeks, liveStartW + durationWeeks - 1);
+
+                hybridList.push({
+                    pondId: live.pondId,
+                    moduleId: live.moduleId,
+                    areaHa: live.areaHa,
+                    species: live.species,
+                    geneticLine: live.geneticLine,
+                    bsLine: live.bsLine,
+                    stckSource: live.stckSource,
+                    strategyCode: live.strategyCode || (live.species === SPECIES.MONODON ? "DS4" : "DS1"),
+                    harvestPlanCount: 1,
+                    stockDensityPlM2: live.stockDensityPlM2,
+                    startWeekIndex: liveStartW,
+                    endWeekIndex: liveEndW,
+                    targetFinalDoc,
+                    docDays: live.docDays,
+                    stockMonth: actualBaseMonth,
+                    dopDays: 45,
+                    prevHadDisease: live.hasActiveDisease,
+                    olderActivePondsCount: 0,
+                    diseasedNeighborsCount: 0,
+                    latestSampling: sampling || null,
+                    isLivePondCycle: true,
+                    isLocked: true
+                });
+                pondLastEndW.set(live.pondId, liveEndW);
+                const modKey = String(live.moduleId || live.pondId || "").replace(/^[Mm]/, "").padStart(2, "0");
+                const modCurMax = modLastEndW.get(modKey) || 0;
+                if (liveEndW > modCurMax) modLastEndW.set(modKey, liveEndW);
+            }
         }
 
-        // 3. For all future cycles, append optimal cycles starting after current live cycle closes (+6 weeks Golden Rest)
+        // 3. Append future optimal planning cycles:
+        // - For ponds with 2026 cycles: future waves start after their last 2026 cycle closes + 4-6 wks rest.
+        // - For truly IDLE ponds with NO cycles in 2026: future planning waves start in FY 2027+ (week >= 53).
+        // - Ponds currently under MAINTENANCE are excluded from automated future stocking cycles.
+        const maintenancePonds = new Set(
+            (livePonds || [])
+                .filter(p => p.pondStatus === "MAINTENANCE" || p.status === "MAINTENANCE")
+                .map(p => p.pondId)
+        );
+
         for (const opt of optimalPlan) {
-            if (!livePondIds.has(opt.pondId)) {
-                hybridList.push(opt);
-            } else if (opt.startWeekIndex >= 18) {
-                // Future cycles on live ponds after initial crop finishes
-                hybridList.push(opt);
+            if (maintenancePonds.has(opt.pondId)) {
+                continue;
+            }
+
+            const has2026 = pondHas2026Cycles.has(opt.pondId);
+            const modKey = String(opt.moduleId || opt.pondId || "").replace(/^[Mm]/, "").padStart(2, "0");
+            const modEnd = modLastEndW.get(modKey) || 0;
+            const pondEnd = pondLastEndW.get(opt.pondId) || 0;
+            const lastEnd = Math.max(pondEnd, modEnd);
+
+            if (!has2026) {
+                if (opt.startWeekIndex >= 53) {
+                    hybridList.push({
+                        ...opt,
+                        isLocked: false
+                    });
+                }
+            } else {
+                const minFutureStart = Math.max(44, lastEnd + 4);
+                if (opt.startWeekIndex >= minFutureStart) {
+                    hybridList.push({
+                        ...opt,
+                        isLocked: false
+                    });
+                }
             }
         }
 
@@ -391,6 +579,23 @@ class SimulationStore {
     }
 
     /**
+     * Atomically replaces the entire schedule of cycles.
+     * Encapsulates state updates, emits change event, and optionally triggers debounced simulation.
+     *
+     * @param {Array<Object>} cycles
+     * @param {Object} [options={}]
+     * @param {boolean} [options.triggerSimulation=true]
+     * @param {number} [options.delayMs=250]
+     */
+    setScheduledCycles(cycles = [], options = {}) {
+        this._state.scheduledCycles = Array.isArray(cycles) ? cycles : [];
+        this.emit("scheduleChanged", { count: this._state.scheduledCycles.length });
+        if (options.triggerSimulation !== false) {
+            this.triggerDebouncedSimulation(options.delayMs || 250);
+        }
+    }
+
+    /**
      * 1-Click Auto-Optimizer: Re-generates all future cycles using `generateOptimal156WeekSchedule`,
      * keeping currently active ponds intact!
      *
@@ -402,19 +607,26 @@ class SimulationStore {
         const horizonWeeks = this._state.scenarioMetadata.horizonWeeks;
         const baseYear = this._state.scenarioMetadata.baseYear;
         const baseMonth = this._state.scenarioMetadata.baseMonth;
+        const yearCycles = this._state.yearCycles || [];
+        const samplingMap = this._state.samplingMap || new Map();
 
-        const emptySamplingMap = new Map();
         this._state.scheduledCycles = this._constructHybridSchedule(
             masterPonds,
             livePonds,
-            emptySamplingMap,
+            yearCycles,
+            samplingMap,
             horizonWeeks,
             baseYear,
-            baseMonth
+            baseMonth,
+            options
         );
 
         this.emit("scheduleChanged", { autoOptimized: true });
         this.runSimulationImmediate();
+    }
+
+    autoOptimizeSchedule(options = {}) {
+        return this.autoOptimizeAll(options);
     }
 
     // =========================================================================

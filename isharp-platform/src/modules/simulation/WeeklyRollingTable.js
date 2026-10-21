@@ -1,7 +1,7 @@
 /**
  * iSHARP DBMS 2.0 — Weekly Rolling Operational & MRP Table (Phase 5)
  * 156-Week & 36-Month Procurement & Operations Console.
- * Itemizes PLs by genetic line, SAP Feed SKUs, 28 Chemicals/Fertilizers, and TNB Power.
+ * Itemizes PLs by genetic line, SAP Feed SKUs, Direct Operational Costs (Chemicals, Fertilizers, Supplies, Maintenance), and TNB Power.
  */
 
 import { simulationStore } from "../../state/simulationStore.js";
@@ -113,28 +113,18 @@ export class WeeklyRollingTable {
             ${this._renderRow("Monodon High-Protein Feed", "MT", columns, c => (c.feedDemandMt || {}).monodonFeed || 0, 1)}
         `;
 
-        // 4. 28 Chemicals & Fertilizers MRP Breakdown
+        // 4. Pond Chemicals, Fertilizers & Direct Operating Costs (Finance Ground Truth: cons_of_chem_fert)
         html += `
             <tr class="sim-table-cat-row">
-                <td colspan="${columns.length + 2}">🧪 28-Chemical &amp; Fertilizer Pond Preparation &amp; Treatment MRP</td>
+                <td colspan="${columns.length + 2}">🧪 Direct Operations &amp; Chemical Ledger (Finance Table Ground Truth)</td>
             </tr>
-            ${this._renderRow("Agricultural Dolomite", "25kg bags", columns, c => (c.chemicalMrp || {}).dolomiteBags || 0, 0)}
-            ${this._renderRow("Calcium Hypochlorite Gas", "kg", columns, c => (c.chemicalMrp || {}).gasChlorineKg || 0, 0)}
-            ${this._renderRow("Calcium Hypochlorite Powder 70%", "kg", columns, c => (c.chemicalMrp || {}).powderChlorineKg || 0, 0)}
-            ${this._renderRow("Calcium Carbonate CaCO3", "25kg bags", columns, c => (c.chemicalMrp || {}).caco3Bags || 0, 0)}
-            ${this._renderRow("Hydrated Lime Ca(OH)2", "25kg bags", columns, c => (c.chemicalMrp || {}).caoh2Bags || 0, 0)}
-            ${this._renderRow("Grain Pellet Fertilizer", "50kg bags", columns, c => (c.chemicalMrp || {}).grainPelletBags || 0, 0)}
-            ${this._renderRow("Rice Bran", "50kg bags", columns, c => (c.chemicalMrp || {}).riceBranBags || 0, 0)}
-            ${this._renderRow("Molasses (Carbon Source)", "kg", columns, c => (c.chemicalMrp || {}).molassesKg || 0, 0)}
-            ${this._renderRow("Tea Seed Cake (Saponin)", "kg", columns, c => (c.chemicalMrp || {}).teaSeedCakeKg || 0, 0)}
-            ${this._renderRow("Urea (Nitrogen)", "50kg bags", columns, c => (c.chemicalMrp || {}).ureaBags || 0, 0)}
-            ${this._renderRow("Triple Superphosphate (TSP)", "50kg bags", columns, c => (c.chemicalMrp || {}).tspBags || 0, 0)}
-            ${this._renderRow("Povidone Iodine (PVP-I)", "Liters", columns, c => (c.chemicalMrp || {}).pvpiLiters || 0, 1)}
-            ${this._renderRow("Copper Sulfate (CuSO4)", "kg", columns, c => (c.chemicalMrp || {}).cuso4Kg || 0, 1)}
-            ${this._renderRow("Benzalkonium Chloride (BKC)", "Liters", columns, c => (c.chemicalMrp || {}).bkcLiters || 0, 1)}
-            ${this._renderRow("Effective Microorganisms (EM)", "Liters", columns, c => (c.chemicalMrp || {}).emProbioticLiters || 0, 0)}
-            ${this._renderRow("Super Biotic Probiotic", "kg", columns, c => (c.chemicalMrp || {}).superBioticKg || 0, 1)}
-            ${this._renderRow("Hydrochloric Acid (HCl)", "Liters", columns, c => (c.chemicalMrp || {}).hclLiters || 0, 0)}
+            ${this._renderRow("Chemicals &amp; Fertilizers — Pond Prep (40%)", "RM", columns, c => isMonthly ? (c.chemFertPrepCostRM || 0) : (c.chemFertPrepCostRM || 0), 2)}
+            ${this._renderRow("Chemicals &amp; Fertilizers — Active Culture (60%)", "RM", columns, c => isMonthly ? (c.chemFertCultureCostRM || 0) : (c.chemFertCultureCostRM || 0), 2)}
+            ${this._renderRow("Total Chemicals &amp; Fertilizers (cons_of_chem_fert)", "RM", columns, c => isMonthly ? (c.cons_of_chem_fert || 0) : (c.chemFertCostRM || 0), 2)}
+            ${this._renderRow("Farm Supplies (cons_of_supplies)", "RM", columns, c => isMonthly ? (c.cons_of_supplies || 0) : (c.suppliesCostRM || 0), 2)}
+            ${this._renderRow("Pond Repair &amp; Maintenance (repair_maintenance)", "RM", columns, c => isMonthly ? (c.repair_maintenance || 0) : (c.repairMaintenanceRM || 0), 2)}
+            ${this._renderRow("Harvest Expenses (harvest_expenses)", "RM", columns, c => isMonthly ? (c.harvest_expenses || 0) : (c.harvestExpensesRM || 0), 2)}
+            ${this._renderRow("Direct Wages (wages_direct)", "RM", columns, c => isMonthly ? (c.wages_direct || 0) : (c.directWagesRM || 0), 2)}
         `;
 
         // 5. Utilities & Electricity
@@ -142,9 +132,9 @@ export class WeeklyRollingTable {
             <tr class="sim-table-cat-row">
                 <td colspan="${columns.length + 2}">⚡ Utilities &amp; TNB Electricity Accounting Driver</td>
             </tr>
-            ${this._renderRow("Active Pond-Days", "days", columns, c => c.activePondDays || 0, 0)}
-            ${this._renderRow("Electricity Consumption", "kWh", columns, c => (c.activePondDays || 0) * 190.8, 0)}
-            ${this._renderRow("TNB Power Cost", "RM", columns, c => (c.activePondDays || 0) * 95.40, 0)}
+            ${this._renderRow("Active Pond-Days", "days", columns, c => isMonthly ? (c.activePondDays || 0) : ((c.activePondsCount || 0) * 7), 0)}
+            ${this._renderRow("Electricity Consumption", "kWh", columns, c => isMonthly ? ((c.activePondDays || 0) * 190.8) : (c.electricityKwh || 0), 0)}
+            ${this._renderRow("TNB Power Cost", "RM", columns, c => isMonthly ? (c.electricity || 0) : (c.electricityCostRM || 0), 2)}
         `;
 
         return html;

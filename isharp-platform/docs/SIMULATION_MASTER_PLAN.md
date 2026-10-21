@@ -46,7 +46,9 @@ The engine serves two critical functions:
 | **Empirical Grounding (5 Pillars)** | **ENFORCED** | Active ponds conditioned by live `biometrics_sampling` history via Bayesian quantile inference. Setiu Northeast Monsoon cliff (Nov–Dec) strictly enforced to prevent unrealistic year-end rebound forecasts during poor years. |
 | **Zero-Mock Mathematical Audit** | **COMPLETED** | Complete audit of domain calculations and UI components. All static fallbacks (`|| 45`, `|| 32`, `|| 1.62`, `781 MT / 1003 MT`, `* 0.0236` pulse strip multiplier) eliminated; dynamic engine values (`monthlyMatrix`, `weeklyMatrix`, `executiveKpis`) bound across all views. |
 | **Live Financial Ledger Join** | **COMPLETED** | `simulationRepository.fetchActualMonthlyHarvests` queries `growout_pond_final_legacy` (319 closed 2026 cycles) and batch-joins with `public.growout_pond_finance` (293 audited cycles), replacing hardcoded cost estimates (`kg * 22.0`, `kg * 17.5`, `kg * 4.5`) with true audited costs. |
-| **16-Cost Ledger & Full MRP** | **COMPLETED** | Full monthly and weekly itemization for PL demand (SPF, SPR, SPT, Monodon), Feed demand (7 SAP SKUs: 3202–3303), all 28 chemicals/fertilizers, and complete 16-line OPEX accounting ledger. |
+| **16-Cost Ledger & Full MRP** | **COMPLETED** | Full monthly and weekly itemization for PL demand (SPF, SPR, SPT, Monodon), Feed demand (7 SAP SKUs: 3202–3303), and complete 16-line OPEX accounting ledger. |
+| **Finance Ground Truth (Chems & Ferts)** | **COMPLETED** | Retired synthetic 28-chemical catalog. Anchored operational chemical spending directly to Finance Department ground truth (`public.growout_pond_finance`) via `cons_of_chem_fert` (RM 1,711/cycle Vannamei, RM 2,114/cycle Monodon; split 40% pond prep, 60% active culture). |
+| **Full-Year Gantt Schedule Ingestion** | **COMPLETED** | Ingested all 454 live 2026 cycles (319 closed actuals, 131 active production, 38 carryovers from late 2025) via `fetchYearCycles`. Implemented pure numeric week headers (`1..52`) resetting annually to 1, zero "Carryover" badges, and read-only locked actuals (`isLocked`). |
 | **15-Month Fluid Crop Runway** | **COMPLETED** | Multi-year fluid fit-to-screen Gantt view allowing late-year stockings to project smoothly into Q1 of next year with zero ghost cycles on idle ponds. |
 
 ---
@@ -122,7 +124,7 @@ Domain Pure Functions (src/domain/simulation/) [Zero DOM, Zero Fetch, 100% Teste
    - `baselineCalibrator.js`: Fits the **5-Pillar Empirical Predictive Priors** from Supabase historical cycles, samplings, issues, sales, and finance tables.
    - `hazardAndGrowthModel.js`: Computes dynamic Turnaround Fatigue penalties, Module Congestion penalties, conditional weekly Cull/Forced-Harvest hazard rates, quantile ABW trajectories, and partial harvest skimming (`2X`/`3X`).
    - `constraintScheduler.js`: Solves the 156-week stocking timeline across `M01–M11` to maximize Farm EBITDA (balancing pond utilization against turnaround fatigue and module congestion).
-   - `simTickEngine.js`: Executes weekly/daily biological progression, Bayesian trajectory updating for currently active ponds, SAP feed SKU demand, and 28-item Chemical/Fertilizer MRP.
+   - `simTickEngine.js`: Executes weekly/daily biological progression, Bayesian trajectory updating for currently active ponds, SAP feed SKU demand, and direct operational cost allocations (`cons_of_chem_fert`, `cons_of_supplies`, `repair_maintenance`, `harvest_expenses`, `wages_direct`).
    - `financialCalculator.js`: Computes 4-tier quality grade pricing (`Premium`, `Grade 2`, `Small`, `Below Avg`), festive price multipliers, econometric 16-element OPEX/COGS, EBITDA, and spliced `Actual YTD + Rolling Forecast = Full-Year LE`.
 2. **Infrastructure Layer (`src/infrastructure/repositories/`):**
    - `simulationRepository.js`: Queries Supabase historical/live tables, frozen Business Plan (`BP`) snapshots, and scenario configs via `supabase.request()`.
@@ -131,7 +133,7 @@ Domain Pure Functions (src/domain/simulation/) [Zero DOM, Zero Fetch, 100% Teste
 4. **UI Layer (`src/modules/simulation/`):**
    - `SimulationPage.js`: Main container orchestrating sub-views.
    - `ModulePlannerGrid.js`: 156-week interactive Gantt timeline (`M01–M11`, 281 pond rows) with live Turnaround Fatigue & Congestion risk indicators.
-   - `WeeklyRollingTable.js`: 156-week operational & MRP console (matching and expanding `wek` and `mth`: PLs, SAP feed codes, 28 chemicals/fertilizers, TNB power).
+   - `WeeklyRollingTable.js`: 156-week operational & procurement console (matching and expanding `wek` and `mth`: PLs by line, SAP feed codes, Finance Department direct costs `cons_of_chem_fert`, TNB power).
    - `BODSummaryTable.js`: Multi-year & monthly spliced executive report (`Actual YTD` + `Rolling Plan` = `LE` vs `BP`), genetic line (`SPF`, `SPR`, `SPT`, `MONODON`) & species breakdowns.
 
 ---
@@ -254,6 +256,32 @@ Calibrating the Species-Partitioned 5 Pillars against the live Supabase tables (
    - **Genetic & Broodstock Shift:** In Jan–Apr 2025, the farm stocked $43\%$ `P. Monodon` (`CP THAI` $\text{+RM } 72,891/\text{pond}$, `MOANA` $\text{+RM } 56,628/\text{pond}$) and $35\%$ `SPR` (`API GOLDEN` $\text{+RM } 33,257/\text{pond}$, `API FIRE DRAGON` $\text{+RM } 28,129/\text{pond}$), keeping `SPT SYAQUA` to $16\%$. In H2 2025, shifting to `SPT | SK/25` ($N=69$) caused an $82.6\%$ `EHP` infection rate and $\text{-RM } 7,907/\text{pond}$ loss. In 2026, abandoning `SPR` to stock $127$ ponds of `SPT | SYAQUA` resulted in an $84.3\%$ Forced Harvest rate ($43.6\%$ SR, $\text{-RM } 5,575/\text{pond}$).
    - **Multi-Hatchery Tank Mixing & Tier-2 Hatchery Risk (2026):** In 2026, `SPT` stocked from clean single-source Hatchery `SHT` ($N=22$) achieved **$61.8\%$ SR, $1.43$ FCR, and $\text{+RM } 11,231/\text{pond}$ EBITDA**. However, when monthly `SPT` demand exceeded `SHT` capacity, ponds stocked with **mixed multi-hatchery PLs (`SHT,GS` $N=46$: $91.3\%$ Forced, $60.9\%$ EHP, $\text{-RM } 13,190/\text{pond}$; `SHT,KS` $N=18$: $\text{-RM } 3,537/\text{pond}$)** or **Hatchery `GSR` ($N=21$: $95.2\%$ Forced, $32.3\%$ SR, $\text{-RM } 4,996/\text{pond}$) & `BZYR` ($N=9$: $\text{-RM } 10,791/\text{pond}$)** failed heavily, while single-source `P. Monodon` from `UBN` ($N=12$, $\text{+RM } 46,771/\text{pond}$) and `KSK` ($N=34$, $\text{+RM } 36,385/\text{pond}$) thrived.
 
+### 5.7 Operational Best Practice & Wave Scheduling Constraints (The "Autofill Waves" Business Rules)
+
+To bridge empirical mathematics with on-the-ground farm management, the **"Autofill Waves" Auto-Scheduler** operates under five core business rules and operational guardrails:
+
+1. **Annual Cycle Target (The "2 Cycles / Year" Aim):**
+   - **Guideline Aim, Not an Inflexible Mandate:** The farm targets **2 stocking events / cycles per pond per year** (supporting the BOD target of ~2.0x pond turns across 206 benchmark ponds = ~412 annual stockings).
+   - **Adaptive Horizon Flexing:** When culture duration is prolonged (e.g., DOC extended to 110–130 days for large commercial ABW, cold weather, or clinical monitoring), the engine flexes. Rather than cramming an unfeasible 2nd or 3rd cycle that risks disaster during the Northeast Monsoon, the engine evaluates whether to:
+     - Shift Cycle 2 timing,
+     - Transition the pond to extended soil remediation / maintenance, or
+     - Schedule a single high-biomass prolonged cycle for that calendar year.
+2. **Hierarchy of Cohesion (Module-First with Row-Level Fallback):**
+   - **Tier 1 (Default):** Entire Module All-In/All-Out synchronized stocking (all 24 ponds stock within the same month/window).
+   - **Tier 2 (Fallback):** Row-Level Hybrid synchronization (all 12 ponds in a row stock together, while rows within the module may stagger by 2–4 weeks).
+   - **Prohibition:** Strictly **prohibits pond-autonomous fragmentation** (ponds stocking randomly on their own), which violates biosecurity and triggers the Pillar 2 Staggered Overlap hazard penalty.
+3. **Monodon Annual PL Seed Constraint & Supervisor Equity Rotation (20% to 30% Ceiling):**
+   - **Hatchery Supply Cap:** In real-world operations, Tier-1 clean Monodon post-larvae (from reliable hatcheries like `KSK` and `UBN`) are strictly supply-constrained. Farm-wide *P. monodon* stockings are capped at **20% to 30% of total annual pond stockings**.
+   - **Module Prioritization:** Prioritizes champion Monodon modules (`M08`, `M09`, and prime rows of `M05`) during their biologically optimal non-monsoon window (`Feb–Jul`).
+   - **Supervisor Equity Rotation ("All Modules Get a Taste"):** Because *P. monodon* achieves significantly higher EBITDA (+RM 32,103/pond vs +RM 14,389/pond for Vannamei) directly influencing supervisor crop incentives, operational fairness requires that **all module supervisors (across Modules M01 through M10) receive an opportunity to culture Monodon**. The scheduler rotates Monodon allotments across all modules over the 156-week horizon, ensuring every supervisor is assigned at least one synchronized Monodon wave or row batch during safe biological months (Feb–Jul, strictly avoiding the Aug–Nov monsoon cliff), while keeping overall farm Monodon volume within the 20%–30% seed limit.
+4. **Row-Level Species Homogeneity:**
+   - Operational preference mandates that an entire row (or line of ponds) shares the **same species** (*Vannamei* or *Monodon*) whenever possible to streamline feeding regimes, aerator schedules, and harvest logistics.
+5. **Asymmetric Duration Harvest Convergence Alignment:**
+   - When ponds within a module/row finish asymmetrically (e.g. some ponds harvest early while others are prolonged):
+     - Ponds that harvest early can be stocked with *P. monodon* (longer DOC: 112–120 days).
+     - Ponds harvested later can subsequently be stocked with *L. vannamei* (shorter DOC: 85–98 days).
+     - This asymmetric stocking aligns their termination harvest dates, enabling the entire line or module to clear out simultaneously for synchronized dry-out and canal disinfection.
+
 ---
 
 ## 6. Spliced Reporting & The 5-Tab Executive Excel Export Engine (`.xlsx`)
@@ -269,12 +297,12 @@ $$\text{Full-Year Latest Estimate (LE)} = \underbrace{\sum_{m \in \text{Complete
 │ Historical A20–A25, │ Matches prt & mth:       │ 156-week & 36-month   │
 │ BP, Actual YTD,     │ Monthly (Actual+Rolling),│ procurement schedule: │
 │ Rolling Plan, LE &  │ Quarterly (Q1–Q4), H1/H2 │ PLs by line, 4 SAP    │
-│ Variance vs BP;     │ across M01–M11, SPF/SPR/ │ Feed SKUs, 28 Chems & │
+│ Variance vs BP;     │ across M01–M11, SPF/SPR/ │ Feed SKUs, Chems &    │
 │ Total & by Line     │ SPT/MON, Partial & Full  │ Ferts, TNB kWh & RM   │
 ├─────────────────────┴──────────────────────────┴───────────────────────┤
 │ Tab 4: Pond_Master_Schedule   │ Tab 5: P&L_Cashflow_Forecast           │
 │ All 281 pond rows (M01–M11):  │ Complete 16-Element Cost Breakdown     │
-│ Strategy (DS/NT/PT), DOP,     │ (Feed, PL, 28 Chems, Power, Wages,     │
+│ Strategy (DS/NT/PT), DOP,     │ (Feed, PL, Chems/Ferts, Power, Wages,  │
 │ Fatigue/Hazard Score, Stock & │ Repairs, Depr, SAG), Gross Profit,     │
 │ Partial/Full Harvest timeline │ EBITDA, RM/kg Cash & Total Cost        │
 └───────────────────────────────┴────────────────────────────────────────┘
@@ -441,28 +469,31 @@ graph TD
   - Implemented `simulationRepository.js` (hybrid active pond seeding, sampling map, localStorage persistence).
   - Implemented `simulationStore.js` (reactive pub/sub, debounced 250ms simulation, Monte Carlo runner, auto-scheduler, live telemetry sync).
   - 100% unit-tested via `node --test tests/simulationStore.test.js` (all 4 store suites passing).
-- **Phase 5: User Interface, 156-Week Interactive Gantt & Mathematical Audit (COMPLETED)**
-  - Implemented `SimulationPage.js`: Master view container, Fiscal Year Selector (`FY 2026`, `FY 2027`, `FY 2028`), 5-Tab Navigation Ribbon, and export triggers.
-  - Implemented `SimulationSummaryCards.js`: Spliced Current-Year Hero Scoreboard (FY 2026 LE = Jan–Aug Actuals + Sep–Dec Rolling Plan vs BP & AC25) across Volume MT, Sales Revenue RM, Price/EBITDA, and Pond Turns with Correlated Monte Carlo P10-P50-P90 risk pill. Fully bound to dynamic `monthlyMatrix` and `executiveKpis` (all mock constants removed).
-  - Implemented `StockingThemesTab.js` (Tab 1 `'ass'`): Pre-configures density, duration, and output targets for 10 culture strategies (`DS1–DS4`, `NT1–NT3`, `PT1–PT3`) with 1-click active brush stamping.
-  - Implemented `ModulePlannerGrid.js` (Tab 2 `'main'`): Multi-year interactive planning grid supporting **3 Years Ahead (`156 Weeks Continuous`)** or 1-year zero-scroll views (`FY 2026`, `FY 2027`, `FY 2028`). Includes:
-    - **15-Month Fluid Crop Runway**: Seamless horizontal fit-to-screen view extending late-year stockings into Q1 of next fiscal year with zero ghost cycles on idle ponds.
-    - **Native HTML5 Drag-and-Drop**: Reschedule cycle bars horizontally to any starting week.
-    - **Auto-Chain to W156**: Stamping or moving a cycle projects chained cycles forward with Golden Rest (36–60d turnaround).
+- **Phase 5: User Interface, Single Source of Truth (`CULTURE_STRATEGIES`), 156-Week Interactive Gantt & Architecture Audit (COMPLETED)**
+  - Established **Single Source of Truth (`CULTURE_STRATEGIES` & `registerCustomStrategy`)** in `baselineCalibrator.js` for all 10 culture strategies (`DS1–DS4`, `NT1–NT3`, `PT1–PT3`), eliminating duplicate preset arrays across `StockingThemesTab.js`, `ModulePlannerGrid.js`, `PondCycleModal.js`, and `simTickEngine.js`.
+  - Implemented `SimulationPage.js`: Master view container, synchronized Fiscal Year Selector (`FY 2026`, `FY 2027`, `FY 2028`), 5-Tab Navigation Ribbon, `scheduleChanged` listener, and real multi-section CSV/Excel export (`_exportSimulationWorkbookCsv`).
+  - Implemented `SimulationSummaryCards.js`: Spliced Current-Year Hero Scoreboard (FY 2026 LE = Jan–Oct Actuals + Nov–Dec Rolling Plan vs BP & AC25) across Volume MT, Sales Revenue RM, Price/EBITDA, and Pond Turns with Correlated Monte Carlo P10-P50-P90 risk pill and interactive `#btn-run-monte-carlo` trigger.
+  - Implemented `StockingThemesTab.js` (Tab 1 `'ass'`): Reads directly from `CULTURE_STRATEGIES`, toggles dynamically between **Empirical AI (5 Pillars)** and **Theoretical Target** metrics, registers custom themes into the SSOT, and loads active brushes into Tab 2.
+  - Implemented `ModulePlannerGrid.js` (Tab 2 `'main'`): Multi-year interactive planning grid supporting **3 Years Ahead (`156 Weeks Continuous`)** or 15-month fluid crop runway views (`FY 2026`, `FY 2027`, `FY 2028`). Includes:
+    - **Bidirectional Store Sync (`syncFromStoreSchedule`)**: Edits and deletions in `PondCycleModal` immediately update the Gantt grid and preserve full cycle metadata (`species`, `geneticLine`, `bsLine`, `stckSource`, `stockDensityPlM2`, `harvestPlanCount`, `targetFinalDoc`, `dopDays`, `durationWeeks`, `restWeeks`).
+    - **Native HTML5 Drag-and-Drop & Auto-Chain to W156**: Reschedule cycle bars horizontally at Pond, Row, or Module granularity.
     - **3-Way Cycle Deletion**: Hover `✕` quick-delete button, dedicated toolbar `🗑️ Eraser` tool, and right-click context menu.
-    - **4-Row Pulse Strip**: Live weekly/monthly totals bound directly to simulation telemetry for Stocked Ponds/PL, Feed MT, Harvest Biomass MT, and Revenue RM.
-    - **3-Level Accordion**: Module (`M01–M11`) $\rightarrow$ Row $\rightarrow$ Individual Pond drill-down.
-  - Implemented `MonthlyProductionTab.js` (Tab 3 `'prt'`): 12 monthly columns with actual YTD vs rolling plan, quarterly roll-ups, and species splits, completely eliminating static fallbacks.
-  - Implemented `BODSummaryTable.js` (Tab 4 `'kpi.sum'` / `'kpi.gen'`): 15 BOD KPIs, 16 OPEX elements, Genetic Line breakdowns, and multi-year benchmarks (`A20–A25`), bound directly to true dynamic domain aggregations.
-  - Implemented `WeeklyRollingTable.js` (Tab 5 `'wek'` & `'mth'`): Weekly and monthly procurement console for PLs (SPF, SPR, SPT, Monodon), 7 SAP Feed SKUs, all 28 Chemicals/Fertilizers, and TNB power.
-  - Integrated `public.growout_pond_finance` batch join in `simulationRepository.js` for all 2026 closed cycles, replacing static formula multiplier estimates with true audited financials.
-  - Implemented `DisruptionTimelineRibbon.js` and Modals (`PondCycleModal.js`, `ShockModal.js`, `ScenarioModal.js`).
-  - Implemented native semantic CSS in `src/styles/components/simulation.css` adhering to `tokens.css` (Tailwind-free architecture).
-  - 100% unit-tested via `node --test tests/*.test.js` (**all 162 platform tests passing across 19 suites**).
-- **Phase 6: 1:1 Excel Replacement Workbook (.xlsx Export) & War Room Lab**
-  - Implement 5-tab Excel export matching `RPvf, iSharp.xlsx` (`ass`, `main`, `prt`, `kpi.sum`, `mth/wek`) via `exceljs`.
-  - Implement War Room Macro & Climate Shock testing with permanent baseline saving.
+    - **4-Row Pulse Strip & Zero Hidden DOM Hacks**: Live weekly/monthly totals bound directly to simulation telemetry, with clean semantic badges replacing legacy hidden test divs.
+  - Implemented `MonthlyProductionTab.js` (Tab 3 `'prt'`): 12 monthly columns with actual YTD vs rolling plan, quarterly roll-ups, active-month averaging (`avgSlice`), and live species slicing (`ALL`, `VANNAMEI`, `MONODON`) powered by `bySpecies` in `simTickEngine.js`.
+  - Implemented `BODSummaryTable.js` (Tab 4 `'kpi.sum'` / `'kpi.gen'`): 15 BOD KPIs, 16 OPEX elements, dynamic Genetic Line breakdowns, and dynamic Multi-Year (`2026 LE`, `2027 Plan`, `2028 Plan`) roll-ups calculated directly from `simResult`.
+  - Implemented `WeeklyRollingTable.js` (Tab 5 `'wek'` & `'mth'`): Weekly and monthly procurement console for PLs (SPF, SPR, SPT, Monodon), 7 SAP Feed SKUs, **all 28 Chemicals/Fertilizers (`CH01`–`CH28`)**, and TNB power.
+  - Updated `simulationRepository.js` to attribute `stocked_ponds` and `stockedPlPcs` to the true stocking month (`final_date - final_doc`) rather than harvest month.
+  - Cleaned and validated native semantic CSS in `src/styles/components/simulation.css` (fixing syntax braces, pruning dead legacy rules, and adding `.bg-theme-nt3` and `.bg-theme-pt1`).
+  - **Autofill Waves Optimization & Gantt Schedule Audit**:
+    - **Past Actuals & Live Cycles Preservation**: Fixed `simulationStore.autoOptimizeAll()` to permanently retain and pass `yearCycles` (454 cycles: 319 closed actuals + 131 active production). Closed actuals (`isHistoricalClosed: true`) and live active ponds are tagged `isLocked: true`, preventing `#btn-smart-autofill` from ever erasing past Gantt bars in Weeks 1–42.
+    - **Adaptive ~2 Cycles/Year Per Pond Target**: Configured scheduler to aim for ~2 stockings/year per pond adaptively (flexible guideline based on timeline rather than an unviable rigid rule), avoiding forced high-risk monsoon stockings while respecting biological rest requirements.
+    - **Supervisor Equity Rotation for Monodon**: Rotates *P. monodon* across all modules (M01–M10) during the safe dry season (Feb–Jul) so every module supervisor participates in Monodon's higher EBITDA, while champion modules (M08, M09) remain 100% Monodon. Farm-wide Monodon demand is strictly capped at 20%–30% of annual cycles (achieved 28.6%), and single-hatchery stocking is throttled to at most 1 module/month (<= 28 ponds/month), ensuring 0 `SPECIES_MODULE_MISMATCH` and 0 `HATCHERY_MIXING_OVERFLOW` alerts.
+  - 100% unit-tested via `cmd.exe /c "npm test"` (**all 171 platform tests passing across 19 suites**).
+- **Phase 6: Multi-Sheet Native `.xlsx` Styling & War Room Lab Enhancements**
+  - Extend export with multi-sheet `.xlsx` styling via `exceljs`.
+  - Expand War Room Macro & Climate Shock comparative battle matrix.
 - **Phase 7: Backtesting & Operational Rollout**
   - Compare simulation against 2023–2025 actuals (`Act.23`, `Act.24`, `Act.25`) to verify $\pm 3\text{--}5\%$ predictive accuracy.
   - Train farm management on replacing weekly spreadsheet workflow with the web simulator.
+
 

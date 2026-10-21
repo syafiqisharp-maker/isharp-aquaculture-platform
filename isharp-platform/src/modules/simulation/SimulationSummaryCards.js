@@ -40,7 +40,7 @@ export class SimulationSummaryCards {
             ? simulationResult.monthlyMatrix.filter(m => m.year === yr)
             : [];
         const actualMonths = Array.isArray(simulationStore.actualMonths) ? simulationStore.actualMonths : [];
-        const cutoffMonth = simulationStore.cutoffMonth || 8;
+        const cutoffMonth = simulationStore.cutoffMonth || 10;
 
         // Compute YTD Actuals vs Rolling Forecast
         let ytdHarvestMt = 0;
@@ -153,21 +153,25 @@ export class SimulationSummaryCards {
         const stkTurns = (leStockedPonds / farmCapPonds).toFixed(2);
         const hrvTurns = (leHarvestedPonds / farmCapPonds).toFixed(2);
 
-        // Monte Carlo confidence badge
+        // Monte Carlo confidence badge (supports both .summary and .quantiles schemas)
+        const p10Raw = monteCarloResult?.summary?.ebitdaP10RM ?? monteCarloResult?.quantiles?.P10_Downside?.ebitdaRM;
+        const p50Raw = monteCarloResult?.summary?.ebitdaP50RM ?? monteCarloResult?.quantiles?.P50_Median?.ebitdaRM;
+        const p90Raw = monteCarloResult?.summary?.ebitdaP90RM ?? monteCarloResult?.quantiles?.P90_Upside?.ebitdaRM;
+
         let mcBadge = "";
-        if (monteCarloResult && monteCarloResult.summary) {
-            const p10 = Number(monteCarloResult.summary.ebitdaP10RM / 1000000).toFixed(2);
-            const p50 = Number(monteCarloResult.summary.ebitdaP50RM / 1000000).toFixed(2);
-            const p90 = Number(monteCarloResult.summary.ebitdaP90RM / 1000000).toFixed(2);
+        if (p10Raw !== undefined && p50Raw !== undefined && p90Raw !== undefined) {
+            const p10 = Number(p10Raw / 1000000).toFixed(2);
+            const p50 = Number(p50Raw / 1000000).toFixed(2);
+            const p90 = Number(p90Raw / 1000000).toFixed(2);
             mcBadge = `
-                <div class="sim-monte-carlo-pill" title="Correlated Monte Carlo Risk Confidence Bands">
+                <div class="sim-monte-carlo-pill" id="btn-run-monte-carlo" style="cursor: pointer;" title="Correlated Monte Carlo Risk Confidence Bands (Click to re-run)">
                     <span>🎲 P10: RM ${p10}M | P50: RM ${p50}M | P90: RM ${p90}M</span>
                 </div>
             `;
         } else {
             mcBadge = `
-                <div class="sim-monte-carlo-pill" title="Click 'Run Risk Analysis' to evaluate P10/P50/P90 correlated risk bands">
-                    <span>🎲 Monte Carlo: Ready</span>
+                <div class="sim-monte-carlo-pill" id="btn-run-monte-carlo" style="cursor: pointer;" title="Click to evaluate P10/P50/P90 correlated risk bands">
+                    <span>🎲 Monte Carlo: Ready (Click to Run)</span>
                 </div>
             `;
         }
@@ -244,5 +248,9 @@ export class SimulationSummaryCards {
                 </div>
             </div>
         `;
+
+        container.querySelector("#btn-run-monte-carlo")?.addEventListener("click", () => {
+            simulationStore.runMonteCarlo(100);
+        });
     }
 }

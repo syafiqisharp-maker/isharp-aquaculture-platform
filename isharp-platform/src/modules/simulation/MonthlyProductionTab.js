@@ -8,8 +8,9 @@ import { simulationStore } from "../../state/simulationStore.js";
 import { SPECIES } from "../../domain/simulation/baselineCalibrator.js";
 
 export class MonthlyProductionTab {
-    constructor(containerId = "sim-active-view-container") {
+    constructor(containerId = "sim-active-view-container", onYearChange = null) {
         this.containerId = containerId;
+        this.onYearChange = onYearChange;
         this.selectedYear = 2026;
         this.selectedSpecies = "ALL";
     }
@@ -25,22 +26,23 @@ export class MonthlyProductionTab {
 
         const simResult = simulationStore.simulationResult;
         const actualMonths = simulationStore.actualMonths || [];
-        const cutoffMonth = simulationStore.cutoffMonth || 8;
+        const cutoffMonth = simulationStore.cutoffMonth || 10;
         const yr = this.selectedYear;
 
         const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
-        const monthlyMatrix = Array.isArray(simResult?.monthlyMatrix)
-            ? simResult.monthlyMatrix.filter(m => m.year === yr)
+        const rawMonthly = simResult?.monthlyMatrix || simResult?.monthlySummary || [];
+        const monthlyMatrix = Array.isArray(rawMonthly)
+            ? rawMonthly.filter(m => m.year === yr)
             : [];
 
         container.innerHTML = `
-            <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+            <div class="sim-stack-layout">
                 
                 <!-- Toolbar -->
                 <div class="sim-command-bar">
-                    <div style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
-                        <h2 style="font-size: 0.9rem; font-weight: 800; color: #0c4a6e; margin: 0; display: flex; align-items: center; gap: 0.4rem;">
+                    <div class="sim-toolbar-group">
+                        <h2 class="sim-section-heading">
                             <span>📊</span> Monthly Production Roll-Up (Replaces Excel 'prt')
                         </h2>
                         <div class="sim-pill-group">
@@ -50,7 +52,7 @@ export class MonthlyProductionTab {
                         </div>
                     </div>
 
-                    <div style="display: flex; align-items: center; gap: 0.75rem; font-size: 0.75rem;">
+                    <div class="sim-toolbar-group" style="font-size: 0.75rem;">
                         <div style="display: flex; align-items: center; gap: 0.35rem; font-weight: 700;">
                             <span style="color: #64748b;">Species:</span>
                             <select id="select-prt-species" class="sim-select-control" style="padding: 0.25rem 0.5rem; font-size: 0.75rem;">
@@ -60,8 +62,8 @@ export class MonthlyProductionTab {
                             </select>
                         </div>
                         <div style="display: flex; align-items: center; gap: 0.35rem;">
-                            <span class="sim-badge-actual">● Actual YTD (Jan–Aug)</span>
-                            <span class="sim-badge-forecast">● Rolling Plan (Sep–Dec)</span>
+                            <span class="sim-badge-actual">● Actual YTD (Jan–Oct)</span>
+                            <span class="sim-badge-forecast">● Rolling Plan (Nov–Dec)</span>
                         </div>
                     </div>
                 </div>
@@ -103,29 +105,42 @@ export class MonthlyProductionTab {
         this._bindEvents(container);
     }
 
+    _resolveSpeciesSlice(monthItem) {
+        if (!monthItem) return null;
+        if (this.selectedSpecies === "ALL") return monthItem;
+        if (monthItem.bySpecies && monthItem.bySpecies[this.selectedSpecies]) {
+            return monthItem.bySpecies[this.selectedSpecies];
+        }
+        return monthItem;
+    }
+
     _renderTableRows(monthlyMatrix, actualMonths, cutoffMonth) {
         const yr = this.selectedYear;
 
         const renderRow = (label, unit, extractor, isAvg = false, decimals = 1, isBold = false) => {
             const vals = [];
             for (let m = 1; m <= 12; m++) {
-                const mData = monthlyMatrix.find(item => item.month === m);
-                const aData = actualMonths.find(item => item.month === m);
-                const isActual = yr === 2026 && m <= cutoffMonth && aData;
+                const rawMData = monthlyMatrix.find(item => item.month === m);
+                const rawAData = actualMonths.find(item => item.month === m);
+                const isActual = yr === 2026 && m <= cutoffMonth && Boolean(rawAData);
+
+                const mData = this._resolveSpeciesSlice(rawMData);
+                const aData = this._resolveSpeciesSlice(rawAData);
 
                 let val = 0;
                 if (isActual && aData) {
                     val = extractor(aData, true);
                 } else if (mData) {
                     val = extractor(mData, false);
-                } else {
-                    val = 0;
                 }
                 vals.push({ val: Number(val) || 0, isActual });
             }
 
             const sumSlice = (arr) => arr.reduce((acc, x) => acc + x.val, 0);
-            const avgSlice = (arr) => arr.length > 0 ? (sumSlice(arr) / arr.length) : 0;
+            const avgSlice = (arr) => {
+                const active = arr.filter(x => x.val !== 0);
+                return active.length > 0 ? (sumSlice(active) / active.length) : 0;
+            };
 
             const q1 = isAvg ? avgSlice(vals.slice(0, 3)) : sumSlice(vals.slice(0, 3));
             const q2 = isAvg ? avgSlice(vals.slice(3, 6)) : sumSlice(vals.slice(3, 6));
@@ -177,8 +192,8 @@ export class MonthlyProductionTab {
             ${renderRow("Partial Harvest Tonnage", "MT", (d) => d.partial_harvest_mt || 0, false, 1)}
             ${renderRow("Final Harvest Ponds", "ponds", (d) => d.harvested_ponds || d.pondsHarvested || d.harvestedPondsCount || 0, false, 0)}
             ${renderRow("Total Harvest Tonnage", "MT", (d) => d.harvest_mt || d.yieldMt || d.harvestYieldMt || 0, false, 1, true)}
-            ${renderRow("Average Body Weight (ABW)", "g/pc", (d) => d.final_abw || d.averageHarvestAbwG || 0, true, 1)}
-            ${renderRow("Average Daily Gain (ADG)", "g/day", (d) => d.adg || 0, true, 3)}
+            ${renderRow("Average Body Weight (ABW)", "g/pc", (d) => d.final_abw || d.averageHarvestAbwG || d.abw || 0, true, 1)}
+            ${renderRow("Average Daily Gain (ADG)", "g/day", (d) => d.adg || d.final_adg || 0, true, 3)}
             ${renderRow("Productivity per Pond", "MT/pond", (d) => {
                 const hPonds = d.harvested_ponds || d.pondsHarvested || d.harvestedPondsCount || 0;
                 const hMt = d.harvest_mt || d.yieldMt || d.harvestYieldMt || 0;
@@ -193,7 +208,7 @@ export class MonthlyProductionTab {
             <tr class="sim-category-header" style="background: #fef3c7; color: #92400e;">
                 <td colspan="18">3. Biological Efficiency, Feed &amp; Farm EBITDA</td>
             </tr>
-            ${renderRow("Survival Rate (SR)", "%", (d) => d.final_sr || d.averageSurvivalRatePct || 0, true, 1)}
+            ${renderRow("Survival Rate (SR)", "%", (d) => d.final_sr || d.averageSurvivalRatePct || d.sr || 0, true, 1)}
             ${renderRow("Feed Conversion Ratio (FCR)", "ratio", (d) => d.final_fcr || d.fcr || 0, true, 2)}
             ${renderRow("Feed Consumed", "MT", (d) => (d.feed_kg || d.feedKg || 0) / 1000, false, 1)}
             ${renderRow("Sales Revenue", "RM '000", (d) => (d.revenue_rm || d.revenueRM || d.revenueRm || 0) / 1000, false, 0, true)}
@@ -205,7 +220,11 @@ export class MonthlyProductionTab {
         [2026, 2027, 2028].forEach(yr => {
             container.querySelector(`#btn-prt-yr-${yr}`)?.addEventListener("click", () => {
                 this.selectedYear = yr;
-                this.render();
+                if (typeof this.onYearChange === "function") {
+                    this.onYearChange(yr);
+                } else {
+                    this.render();
+                }
             });
         });
 

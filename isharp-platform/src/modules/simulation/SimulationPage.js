@@ -42,8 +42,8 @@ export class SimulationPage {
             this.cycleModal.open(pId, idx, data);
         });
 
-        this.monthlyTab = new MonthlyProductionTab("sim-active-view-container");
-        this.bodTable = new BODSummaryTable("sim-active-view-container");
+        this.monthlyTab = new MonthlyProductionTab("sim-active-view-container", (yr) => this.setYear(yr));
+        this.bodTable = new BODSummaryTable("sim-active-view-container", (yr) => this.setYear(yr));
         this.mrpTable = new WeeklyRollingTable("sim-active-view-container");
 
         // Modals
@@ -124,10 +124,10 @@ export class SimulationPage {
                         </div>
 
                         <div class="sim-status-badge">
-                            <span style="color: #059669;">● Cut-Off: W34 (Aug '26)</span>
+                            <span style="color: #059669;">● Cut-Off: W42 (Oct '26)</span>
                             <span style="color: #cbd5e1;">|</span>
-                            <span style="color: #0284c7;">Sep '26 LE</span>
-                            <span style="color: #64748b;">vs Aug '26 • BP '26 • AC '25</span>
+                            <span style="color: #0284c7;">Nov '26 LE</span>
+                            <span style="color: #64748b;">vs BP '26 • AC '25</span>
                         </div>
                     </div>
 
@@ -145,8 +145,8 @@ export class SimulationPage {
                         <button type="button" class="btn-sim-action btn-sim-secondary" id="btn-open-shock-modal" title="Inject War Room Macro or Climate Shock">
                             <span>🧪 What-If / Shocks</span>
                         </button>
-                        <button type="button" class="btn-sim-action btn-sim-primary" id="btn-export-excel-file" title="Export 1:1 Replacement Excel Workbook (.xlsx)">
-                            <span>📥 Export Excel (.xlsx)</span>
+                        <button type="button" class="btn-sim-action btn-sim-primary" id="btn-export-excel-file" title="Export 1:1 Replacement Excel/CSV Workbook">
+                            <span>📥 Export Excel (.csv)</span>
                         </button>
                         <button type="button" class="btn-sim-action btn-sim-secondary" data-nav-view="executive" title="Return to Executive Dashboard">
                             <span>Dashboard →</span>
@@ -225,6 +225,13 @@ export class SimulationPage {
             this.renderActiveSubView();
         });
 
+        simulationStore.subscribe("scheduleChanged", () => {
+            this.ganttGrid.syncFromStoreSchedule(simulationStore);
+            if (this.currentTab === "GANTT") {
+                this.ganttGrid.render();
+            }
+        });
+
         simulationStore.subscribe("monteCarloCompleted", (mcResult) => {
             this.summaryCards.render(simulationStore.simulationResult, mcResult);
             Toast.success("Monte Carlo risk simulation complete!");
@@ -278,10 +285,7 @@ export class SimulationPage {
         });
 
         container.querySelector("#btn-export-excel-file")?.addEventListener("click", () => {
-            Toast.info("Generating 1:1 Excel export with BOD KPI, PRT Monthly, Weekly MRP & Pond Schedule...");
-            setTimeout(() => {
-                Toast.success("Excel workbook exported successfully: iSHARP_Simulation_2026_LE.xlsx");
-            }, 800);
+            this._exportSimulationWorkbookCsv();
         });
 
         container.querySelectorAll("[data-nav-view]").forEach(btn => {
@@ -292,6 +296,58 @@ export class SimulationPage {
                 }
             });
         });
+    }
+
+    _exportSimulationWorkbookCsv() {
+        const res = simulationStore.simulationResult;
+        const yr = this.selectedYear || 2026;
+        const lines = [];
+        lines.push(`"iSHARP DBMS 2.0 — Production Planning & Rolling Forecast Export (FY ${yr})"`);
+        lines.push(`"Generated At","${new Date().toISOString()}"`);
+        lines.push("");
+
+        // Section 1: Annual Summary
+        const ann = res?.annualSummary?.[yr] || {};
+        lines.push(`"SECTION 1: EXECUTIVE SUMMARY (FY ${yr})"`);
+        lines.push(`"Metric","Value"`);
+        lines.push(`"Total Yield (MT)","${Number(ann.totalYieldMt || 0).toFixed(2)}"`);
+        lines.push(`"Total Revenue (RM)","${Math.round(ann.totalRevenueRM || 0)}"`);
+        lines.push(`"Total Direct Cost (RM)","${Math.round(ann.totalCostRM || 0)}"`);
+        lines.push(`"Total EBITDA (RM)","${Math.round(ann.totalEbitdaRM || 0)}"`);
+        lines.push(`"Total Feed Consumed (MT)","${Number((ann.totalFeedKg || 0) / 1000).toFixed(2)}"`);
+        lines.push(`"Blended FCR","${Number(ann.blendedFcr || 0).toFixed(2)}"`);
+        lines.push("");
+
+        // Section 2: Monthly Production Matrix
+        lines.push(`"SECTION 2: MONTHLY PRODUCTION ROLL-UP (FY ${yr})"`);
+        lines.push(`"Month","Stocked Ponds","Stocked PL (M)","Harvest Ponds","Yield (MT)","Feed (MT)","Revenue (RM)","EBITDA (RM)"`);
+        const mths = (res?.monthlySummary || res?.monthlyMatrix || []).filter(m => m.year === yr);
+        mths.forEach(m => {
+            lines.push([
+                `"${m.label || `M${m.month}`}"`,
+                m.stocked_ponds || m.stockedPondsCount || 0,
+                Number(m.stocked_pl_m || (m.stockedPlPcs ? m.stockedPlPcs / 1e6 : 0)).toFixed(2),
+                m.harvested_ponds || m.harvestedPondsCount || 0,
+                Number(m.harvest_mt || m.harvestYieldMt || 0).toFixed(2),
+                Number((m.feed_kg || m.feedConsumedKg || 0) / 1000).toFixed(2),
+                Math.round(m.revenue_rm || m.revenueRM || 0),
+                Math.round(m.ebitda_rm || m.ebitdaRM || 0)
+            ].join(","));
+        });
+
+        const csvContent = lines.join("\n");
+        if (typeof document !== "undefined" && typeof Blob !== "undefined" && typeof URL !== "undefined" && URL.createObjectURL) {
+            const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = `iSHARP_Simulation_${yr}_LE.csv`;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            URL.revokeObjectURL(url);
+        }
+        Toast.success(`Exported simulation report: iSHARP_Simulation_${yr}_LE.csv`);
     }
 
     async ensureInitialized() {

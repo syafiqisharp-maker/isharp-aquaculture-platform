@@ -12,8 +12,9 @@ import { simulationStore } from "../../state/simulationStore.js";
 import { GENETIC_LINES } from "../../domain/simulation/baselineCalibrator.js";
 
 export class BODSummaryTable {
-    constructor(containerId = "sim-bod-table-container") {
+    constructor(containerId = "sim-bod-table-container", onYearChange = null) {
         this.containerId = containerId;
+        this.onYearChange = onYearChange;
         this.selectedYear = 2026;
         this.bodSubView = "KPISUM"; // "KPISUM", "KPIGEN", "MULTI_YEAR"
     }
@@ -32,16 +33,16 @@ export class BODSummaryTable {
             ? simResult.monthlyMatrix.filter(m => m.year === this.selectedYear)
             : [];
         const actualMonths = simulationStore.actualMonths || [];
-        const cutoffMonth = simulationStore.cutoffMonth || 8;
+        const cutoffMonth = simulationStore.cutoffMonth || 10;
 
         const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
         container.innerHTML = `
-            <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+            <div class="sim-stack-layout">
                 <!-- BOD Toolbar -->
                 <div class="sim-command-bar">
-                    <div style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
-                        <h2 style="font-size: 0.9rem; font-weight: 800; color: #0c4a6e; margin: 0; display: flex; align-items: center; gap: 0.4rem;">
+                    <div class="sim-toolbar-group">
+                        <h2 class="sim-section-heading">
                             <span>🏆</span> BOD Executive KPI &amp; Genetic Lines (Replaces Excel 'kpi.sum' &amp; 'kpi.gen')
                         </h2>
                         <div class="sim-pill-group">
@@ -51,7 +52,7 @@ export class BODSummaryTable {
                         </div>
                     </div>
 
-                    <div style="display: flex; align-items: center; gap: 0.75rem; font-size: 0.75rem;">
+                    <div class="sim-toolbar-group" style="font-size: 0.75rem;">
                         <div class="sim-pill-group">
                             <button type="button" id="btn-bod-sub-kpisum" class="btn-pill-item ${this.bodSubView === "KPISUM" ? "active" : ""}">
                                 📊 15-KPI &amp; P&amp;L ('kpi.sum')
@@ -77,7 +78,7 @@ export class BODSummaryTable {
                         ? this._renderKpiSumTable(monthlyMatrix, actualMonths, cutoffMonth, monthNames)
                         : (this.bodSubView === "KPIGEN"
                             ? this._renderKpiGenTable(simResult)
-                            : this._renderMultiYearTable(simResult))}
+                            : this._renderMultiYearTable(simResult, actualMonths, cutoffMonth))}
                 </div>
             </div>
         `;
@@ -116,8 +117,10 @@ export class BODSummaryTable {
     }
 
     _renderKpiGenTable(simResult) {
-        const grandTotals = simResult?.grandTotals || {};
-        const byGen = grandTotals.byGeneticLine || {};
+        const annualEntry = Array.isArray(simResult?.annualSummary)
+            ? simResult.annualSummary.find(a => a.year === this.selectedYear)
+            : null;
+        const byGen = annualEntry?.byGeneticLine || simResult?.grandTotals?.byGeneticLine || {};
 
         const lines = [
             { key: GENETIC_LINES.SPF, label: "SPF Line (Standard Vannamei)", badgeClass: "bg-theme-ds1", bpMt: 650.0, bpPrc: 21.50 },
@@ -130,7 +133,7 @@ export class BODSummaryTable {
             <table class="sim-data-table-styled">
                 <thead>
                     <tr>
-                        <th class="sim-sticky-cell" style="text-align: left;">Genetic Line (Excel 'kpi.gen')</th>
+                        <th class="sim-sticky-cell" style="text-align: left;">Genetic Line (Excel 'kpi.gen' • FY ${this.selectedYear})</th>
                         <th>Simulated Cycles</th>
                         <th>PL Demand (M)</th>
                         <th>Harvest Yield (MT)</th>
@@ -143,11 +146,13 @@ export class BODSummaryTable {
                 <tbody>
                     ${lines.map(line => {
                         const data = byGen[line.key] || {};
-                        const mt = (data.yieldKg || 0) / 1000;
-                        const rev = (data.revenueRM || 0) / 1000;
-                        const ebitda = (data.ebitdaRM || 0) / 1000;
-                        const plM = (data.stockedPlPcs || 0) / 1000000;
-                        const feedMt = (data.feedKg || 0) / 1000;
+                        const hasCycles = (data.cyclesCount || 0) > 0;
+                        const cyclesCount = hasCycles ? data.cyclesCount : 0;
+                        const mt = hasCycles ? (Number(data.yieldKg || 0) / 1000) : 0;
+                        const rev = hasCycles ? (Number(data.revenueRM || 0) / 1000) : 0;
+                        const ebitda = hasCycles ? (Number(data.ebitdaRM || 0) / 1000) : 0;
+                        const plM = hasCycles ? (Number(data.stockedPlPcs || 0) / 1000000) : 0;
+                        const feedMt = hasCycles ? (Number(data.feedKg || 0) / 1000) : 0;
 
                         return `
                             <tr>
@@ -155,14 +160,14 @@ export class BODSummaryTable {
                                     <span class="sim-theme-badge ${line.badgeClass}">${line.key}</span>
                                     <span>${line.label}</span>
                                 </td>
-                                <td style="text-align: center; font-family: monospace;">${data.cyclesCount || 36}</td>
-                                <td style="text-align: right; font-family: monospace;">${plM > 0 ? plM.toFixed(1) : "12.0"}M</td>
-                                <td style="text-align: right; font-family: monospace; font-weight: 800; color: #0284c7;">${mt > 0 ? mt.toFixed(1) : line.bpMt * 0.8} MT</td>
+                                <td style="text-align: center; font-family: monospace;">${cyclesCount}</td>
+                                <td style="text-align: right; font-family: monospace;">${plM.toFixed(1)}M</td>
+                                <td style="text-align: right; font-family: monospace; font-weight: 800; color: #0284c7;">${mt.toFixed(1)} MT</td>
                                 <td style="text-align: right; font-family: monospace; color: #64748b;">${line.bpMt.toFixed(1)} MT</td>
-                                <td style="text-align: right; font-family: monospace;">${feedMt > 0 ? feedMt.toFixed(1) : "750.0"} MT</td>
-                                <td style="text-align: right; font-family: monospace; font-weight: 700;">RM ${Math.round(rev > 0 ? rev : line.bpMt * line.bpPrc * 0.8).toLocaleString()}k</td>
+                                <td style="text-align: right; font-family: monospace;">${feedMt.toFixed(1)} MT</td>
+                                <td style="text-align: right; font-family: monospace; font-weight: 700;">RM ${Math.round(rev).toLocaleString()}k</td>
                                 <td style="text-align: right; font-family: monospace; font-weight: 800; color: ${ebitda >= 0 ? "#059669" : "#dc2626"};">
-                                    ${ebitda >= 0 ? "+RM " : "-RM "}${Math.abs(Math.round(ebitda > 0 ? ebitda : 2500)).toLocaleString()}k
+                                    ${ebitda >= 0 ? "+RM " : "-RM "}${Math.abs(Math.round(ebitda)).toLocaleString()}k
                                 </td>
                             </tr>
                         `;
@@ -172,7 +177,36 @@ export class BODSummaryTable {
         `;
     }
 
-    _renderMultiYearTable(simResult) {
+    _renderMultiYearTable(simResult, actualMonths = [], cutoffMonth = 10) {
+        const getYearTotals = (yr) => {
+            const months = Array.isArray(simResult?.monthlyMatrix)
+                ? simResult.monthlyMatrix.filter(m => m.month >= 1 && m.month <= 12 && m.year === yr)
+                : [];
+            let mt = 0, revK = 0, ebitdaK = 0;
+
+            for (let m = 1; m <= 12; m++) {
+                const aData = actualMonths.find(a => a.month === m);
+                const mData = months.find(item => item.month === m);
+                const isActual = yr === 2026 && m <= cutoffMonth && Boolean(aData);
+                if (isActual && aData) {
+                    mt += Number(aData.harvest_mt || aData.yieldMt || 0);
+                    revK += Number(aData.revenue_rm || aData.revenueRM || 0) / 1000;
+                    ebitdaK += Number(aData.ebitda_rm || aData.ebitdaRM || 0) / 1000;
+                } else if (mData) {
+                    mt += Number(mData.harvestYieldMt || mData.yieldMt || 0);
+                    revK += Number(mData.revenueRM || 0) / 1000;
+                    ebitdaK += Number(mData.ebitdaRM || 0) / 1000;
+                }
+            }
+            return { mt, revK, ebitdaK };
+        };
+
+        const y26 = getYearTotals(2026);
+        const y27 = getYearTotals(2027);
+        const y28 = getYearTotals(2028);
+
+        const fmtEbitda = (valK) => `${valK >= 0 ? "+" : "-"}RM ${Math.abs(Math.round(valK)).toLocaleString()}`;
+
         return `
             <table class="sim-data-table-styled">
                 <thead>
@@ -196,9 +230,9 @@ export class BODSummaryTable {
                         <td style="text-align: right; font-family: monospace;">1,720</td>
                         <td style="text-align: right; font-family: monospace; font-weight: 700;">1,873</td>
                         <td style="text-align: right; font-family: monospace; font-weight: 800; background: #e0f2fe; color: #0369a1;">2,229</td>
-                        <td style="text-align: right; font-family: monospace; font-weight: 900; background: #dbeafe; color: #1e40af;">1,784</td>
-                        <td style="text-align: right; font-family: monospace;">2,350</td>
-                        <td style="text-align: right; font-family: monospace;">2,500</td>
+                        <td style="text-align: right; font-family: monospace; font-weight: 900; background: #dbeafe; color: #1e40af;">${Math.round(y26.mt).toLocaleString()}</td>
+                        <td style="text-align: right; font-family: monospace;">${Math.round(y27.mt).toLocaleString()}</td>
+                        <td style="text-align: right; font-family: monospace;">${Math.round(y28.mt).toLocaleString()}</td>
                     </tr>
                     <tr>
                         <td class="sim-sticky-cell" style="text-align: left;">Gross Sales Revenue</td>
@@ -207,20 +241,20 @@ export class BODSummaryTable {
                         <td style="text-align: right; font-family: monospace;">38,200</td>
                         <td style="text-align: right; font-family: monospace; font-weight: 700;">42,300</td>
                         <td style="text-align: right; font-family: monospace; font-weight: 800; background: #e0f2fe; color: #0369a1;">48,400</td>
-                        <td style="text-align: right; font-family: monospace; font-weight: 900; background: #dbeafe; color: #1e40af;">42,100</td>
-                        <td style="text-align: right; font-family: monospace;">51,000</td>
-                        <td style="text-align: right; font-family: monospace;">54,500</td>
+                        <td style="text-align: right; font-family: monospace; font-weight: 900; background: #dbeafe; color: #1e40af;">${Math.round(y26.revK).toLocaleString()}</td>
+                        <td style="text-align: right; font-family: monospace;">${Math.round(y27.revK).toLocaleString()}</td>
+                        <td style="text-align: right; font-family: monospace;">${Math.round(y28.revK).toLocaleString()}</td>
                     </tr>
                     <tr>
                         <td class="sim-sticky-cell" style="text-align: left;">Farm EBITDA</td>
                         <td style="text-align: center; color: #64748b; font-family: monospace;">RM '000</td>
-                        <td style="text-align: right; font-family: monospace;">+5,200</td>
-                        <td style="text-align: right; font-family: monospace;">+5,800</td>
-                        <td style="text-align: right; font-family: monospace; font-weight: 700;">+6,900</td>
-                        <td style="text-align: right; font-family: monospace; font-weight: 800; background: #e0f2fe; color: #0369a1;">+9,500</td>
-                        <td style="text-align: right; font-family: monospace; font-weight: 900; background: #dbeafe; color: #059669;">+7,120</td>
-                        <td style="text-align: right; font-family: monospace; color: #059669;">+10,200</td>
-                        <td style="text-align: right; font-family: monospace; color: #059669;">+11,400</td>
+                        <td style="text-align: right; font-family: monospace;">+RM 5,200</td>
+                        <td style="text-align: right; font-family: monospace;">+RM 5,800</td>
+                        <td style="text-align: right; font-family: monospace; font-weight: 700;">+RM 6,900</td>
+                        <td style="text-align: right; font-family: monospace; font-weight: 800; background: #e0f2fe; color: #0369a1;">+RM 9,500</td>
+                        <td style="text-align: right; font-family: monospace; font-weight: 900; background: #dbeafe; color: ${y26.ebitdaK >= 0 ? "#059669" : "#dc2626"};">${fmtEbitda(y26.ebitdaK)}</td>
+                        <td style="text-align: right; font-family: monospace; color: ${y27.ebitdaK >= 0 ? "#059669" : "#dc2626"};">${fmtEbitda(y27.ebitdaK)}</td>
+                        <td style="text-align: right; font-family: monospace; color: ${y28.ebitdaK >= 0 ? "#059669" : "#dc2626"};">${fmtEbitda(y28.ebitdaK)}</td>
                     </tr>
                 </tbody>
             </table>
@@ -230,9 +264,10 @@ export class BODSummaryTable {
     _renderPnlRows(monthlyMatrix, actualMonths, cutoffMonth) {
         let html = "";
 
-        const renderMetric = (label, unit, extractor, isCurrency = false, decimals = 1, bpTarget = null) => {
+        const renderMetric = (label, unit, extractor, isCurrency = false, decimals = 1, bpTarget = null, isAverage = false) => {
             const vals = [];
             let total = 0;
+            let countNonZero = 0;
 
             for (let m = 1; m <= 12; m++) {
                 const monthData = monthlyMatrix.find(item => item.month === m);
@@ -248,9 +283,10 @@ export class BODSummaryTable {
 
                 vals.push({ val, isActual });
                 total += val;
+                if (val > 0) countNonZero++;
             }
 
-            const leTotal = total;
+            const leTotal = isAverage ? (countNonZero > 0 ? total / countNonZero : 0) : total;
             const bpVal = bpTarget !== null ? bpTarget : (leTotal * 0.95);
             const variance = leTotal - bpVal;
             const varPct = bpVal !== 0 ? ((variance / bpVal) * 100).toFixed(1) : "0.0";
@@ -288,23 +324,23 @@ export class BODSummaryTable {
             <tr class="sim-category-header">
                 <td colspan="17">🎯 Top 15 BOD Operational &amp; Financial KPIs</td>
             </tr>
-            ${renderMetric("Harvest Volume", "MT", m => m.harvestYieldMt || m.harvest_mt || m.yieldMt || 0, false, 1, 1850.0)}
-            ${renderMetric("Average Harvest ABW", "g/pc", m => m.averageHarvestAbwG || m.final_abw || 0, false, 1, 18.0)}
-            ${renderMetric("Average Survival Rate", "%", m => m.averageSurvivalRatePct || m.final_sr || 0, false, 1, 75.0)}
-            ${renderMetric("Feed Conversion Ratio (FCR)", "ratio", m => m.fcr || m.final_fcr || 0, false, 2, 1.65)}
-            ${renderMetric("Realized Selling Price", "RM/kg", m => m.averageRealizedPriceRmKg || 0, false, 2, 22.00)}
-            ${renderMetric("Cash Cost / kg", "RM/kg", m => m.averageCashCostRmKg || 0, false, 2, 18.00)}
-            ${renderMetric("Full Total Cost / kg", "RM/kg", m => m.averageTotalCostRmKg || 0, false, 2, 21.00)}
-            ${renderMetric("Total Sales Revenue", "RM '000", m => (((m.revenueRM || m.revenueRm || m.revenue_rm || 0) / 1000)), true, 0, 40000)}
-            ${renderMetric("Gross Profit", "RM '000", m => (((m.grossProfitRM || m.grossProfitRm || 0) / 1000)), true, 0, 8000)}
-            ${renderMetric("Farm EBITDA", "RM '000", m => (((m.ebitdaRM || m.ebitdaRm || m.ebitda_rm || 0) / 1000)), true, 0, 7500)}
+            ${renderMetric("Harvest Volume", "MT", m => m.harvestYieldMt || m.harvest_mt || m.yieldMt || 0, false, 1, 1850.0, false)}
+            ${renderMetric("Average Harvest ABW", "g/pc", m => m.averageHarvestAbwG || m.final_abw || 0, false, 1, 18.0, true)}
+            ${renderMetric("Average Survival Rate", "%", m => m.averageSurvivalRatePct || m.final_sr || 0, false, 1, 75.0, true)}
+            ${renderMetric("Feed Conversion Ratio (FCR)", "ratio", m => m.fcr || m.final_fcr || 0, false, 2, 1.65, true)}
+            ${renderMetric("Realized Selling Price", "RM/kg", m => m.averageRealizedPriceRmKg || 0, false, 2, 22.00, true)}
+            ${renderMetric("Cash Cost / kg", "RM/kg", m => m.averageCashCostRmKg || 0, false, 2, 18.00, true)}
+            ${renderMetric("Full Total Cost / kg", "RM/kg", m => m.averageTotalCostRmKg || 0, false, 2, 21.00, true)}
+            ${renderMetric("Total Sales Revenue", "RM '000", m => (((m.revenueRM || m.revenueRm || m.revenue_rm || 0) / 1000)), true, 0, 40000, false)}
+            ${renderMetric("Gross Profit", "RM '000", m => (((m.grossProfitRM || m.grossProfitRm || 0) / 1000)), true, 0, 8000, false)}
+            ${renderMetric("Farm EBITDA", "RM '000", m => (((m.ebitdaRM || m.ebitdaRm || m.ebitda_rm || 0) / 1000)), true, 0, 7500, false)}
 
             <tr class="sim-category-header" style="background: #fef3c7; color: #92400e;">
                 <td colspan="17">📊 Complete 16-Element OPEX &amp; Cost Breakdown (RM '000)</td>
             </tr>
             ${renderMetric("Feed Consumption (cons_of_feed)", "RM '000", m => (((m.feedCostRm || m.cons_of_feed || 0) / 1000)), true, 0)}
             ${renderMetric("Fries / PL Cost (cons_of_fries)", "RM '000", m => (((m.plCostRm || m.cons_of_fries || 0) / 1000)), true, 0)}
-            ${renderMetric("28 Chems & Ferts (cons_of_chem_fert)", "RM '000", m => (((m.chemicalCostRm || m.cons_of_chem_fert || 0) / 1000)), true, 0)}
+            ${renderMetric("Chemicals & Fertilizers (cons_of_chem_fert)", "RM '000", m => (((m.chemicalCostRm || m.cons_of_chem_fert || 0) / 1000)), true, 0)}
             ${renderMetric("TNB Electricity (electricity)", "RM '000", m => (((m.electricityCostRm || m.electricity || 0) / 1000)), true, 0)}
             ${renderMetric("Direct Wages (wages_direct)", "RM '000", m => (((m.directWagesRm || m.wages_direct || 0) / 1000)), true, 0)}
             ${renderMetric("Repairs & Maintenance", "RM '000", m => (((m.maintenanceRm || m.repair_maintenance || 0) / 1000)), true, 0)}
@@ -318,8 +354,13 @@ export class BODSummaryTable {
     _bindEvents(container) {
         container.querySelectorAll("[data-year]").forEach((btn) => {
             btn.onclick = () => {
-                this.selectedYear = Number(btn.getAttribute("data-year"));
-                this.render();
+                const yr = Number(btn.getAttribute("data-year"));
+                this.selectedYear = yr;
+                if (typeof this.onYearChange === "function") {
+                    this.onYearChange(yr);
+                } else {
+                    this.render();
+                }
             };
         });
 

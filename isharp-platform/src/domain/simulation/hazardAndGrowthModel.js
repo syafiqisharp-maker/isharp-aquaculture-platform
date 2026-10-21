@@ -348,6 +348,89 @@ export function inferActivePondGrowthQuantile(
 }
 
 /**
+ * PILLAR 4 (Bayesian Harvest Timing Projection):
+ * Determines the expected harvest DOC and week duration for an active production pond.
+ *
+ * Mathematical Logic:
+ * 1. Base Target DOC from Strategy (e.g. DS1 = 92d, DS2 = 98d, DS3 = 105d, DS4 = 112d).
+ * 2. If recent biometrics sampling exists (smplDoc >= 15, smplAbw > 0), conditions the remaining
+ *    growth rate via Bayesian quantile inference towards the strategy's target harvest ABW (targetAbwG):
+ *    remainingDaysNeeded = Math.round((targetAbw - smplAbw) / (baseAdg * bayesianAdgMultiplier))
+ *    projectedDoc = smplDoc + remainingDaysNeeded
+ * 3. Enforces biological clamp [baseTargetDoc - 14 .. baseTargetDoc + 14] and ensures projectedDoc
+ *    never places harvest in the past (at least currentDoc + 7).
+ *
+ * @param {Object} pond
+ * @param {Object|null} sampling Latest sampling record `{ smplDoc, smplAbw, smplSurv }`
+ * @param {Object} [priors=DEFAULT_EMPIRICAL_PRIORS]
+ * @returns {Object} `{ targetFinalDoc, durationWeeks, isConditioned, estimatedPercentile, bayesianAdgMultiplier }`
+ */
+export function projectActivePondHarvestDoc(
+    pond = {},
+    sampling = null,
+    priors = DEFAULT_EMPIRICAL_PRIORS
+) {
+    const stratCode = String(pond.strategyCode || (pond.species === SPECIES.MONODON ? "DS4" : "DS1")).toUpperCase().trim();
+    const strat = CULTURE_STRATEGIES[stratCode] || CULTURE_STRATEGIES.DS1;
+    const species = pond.species || strat.speciesDefault || SPECIES.VANNAMEI;
+    const baseTargetDoc = Number(strat.targetFinalDoc) || (species === SPECIES.MONODON ? 112 : 92);
+    const targetAbw = Number(strat.targetAbwG) || (species === SPECIES.MONODON ? 32.5 : 18.0);
+    const currentDoc = Math.max(0, Number(pond.docDays) || 0);
+
+    const docSmpl = sampling ? Number(sampling.smplDoc) : 0;
+    const abwSmpl = sampling ? Number(sampling.smplAbw) : 0;
+
+    if (!sampling || docSmpl < 15 || abwSmpl <= 0) {
+        // No valid sampling yet: harvest is projected at standard strategy target DOC
+        const finalDoc = Math.max(currentDoc + 7, baseTargetDoc);
+        return {
+            targetFinalDoc: finalDoc,
+            durationWeeks: Math.max(1, Math.ceil(finalDoc / 7)),
+            isConditioned: false,
+            estimatedPercentile: 50,
+            bayesianAdgMultiplier: 1.0
+        };
+    }
+
+    // Bayesian ADG conditioning from sampling
+    const bayes = inferActivePondGrowthQuantile(
+        species,
+        docSmpl,
+        abwSmpl,
+        strat.initialWeightGrams || 0.01,
+        priors
+    );
+
+    const baseSpecies = priors?.speciesBaselines?.[species] || DEFAULT_EMPIRICAL_PRIORS.speciesBaselines[species];
+    const effectiveAdg = baseSpecies.baseAdgGramsPerDay * bayes.bayesianAdgMultiplier;
+
+    // Remaining weight gap to reach targetAbw
+    const weightGap = targetAbw - bayes.smplAbw;
+    let projectedDoc = baseTargetDoc;
+
+    if (weightGap > 0 && effectiveAdg > 0.05) {
+        const remainingDaysNeeded = Math.round(weightGap / effectiveAdg);
+        projectedDoc = bayes.smplDoc + remainingDaysNeeded;
+    } else if (weightGap <= 0) {
+        // Target ABW already achieved! Ready for harvest in current/next week
+        projectedDoc = Math.max(bayes.smplDoc, currentDoc + 7);
+    }
+
+    // Clamp within realistic window: strategy target ± 14 days, and at least currentDoc + 7
+    const minDoc = Math.max(35, baseTargetDoc - 14);
+    const maxDoc = baseTargetDoc + 14;
+    const clampedDoc = Math.max(currentDoc + 7, Math.min(maxDoc, Math.max(minDoc, projectedDoc)));
+
+    return {
+        targetFinalDoc: clampedDoc,
+        durationWeeks: Math.max(1, Math.ceil(clampedDoc / 7)),
+        isConditioned: true,
+        estimatedPercentile: bayes.estimatedPercentile,
+        bayesianAdgMultiplier: bayes.bayesianAdgMultiplier
+    };
+}
+
+/**
  * Allocates a weekly feed amount (kg) to the appropriate SAP Feed SKU based on current shrimp ABW.
  *
  * @param {"MONODON"|"VANNAMEI"} species

@@ -320,210 +320,7 @@
     overflow: hidden;
 }
 
-/* 156-Week Interactive Gantt Planner */
-.sim-gantt-wrapper {
-    display: flex;
-    flex-direction: column;
-    background: #ffffff;
-    border: 1px solid #bae6fd;
-    border-radius: 12px;
-    box-shadow: 0 6px 20px rgba(2, 132, 199, 0.08);
-    overflow: hidden;
-    height: 720px;
-    position: relative;
-}
-
-.sim-gantt-scroll-area {
-    display: flex;
-    flex: 1;
-    overflow: auto;
-    position: relative;
-}
-
-/* Left Frozen Pond List Column */
-.sim-gantt-frozen-col {
-    width: 220px;
-    min-width: 220px;
-    background: #f8fafc;
-    border-right: 2px solid #bae6fd;
-    position: sticky;
-    left: 0;
-    z-index: 30;
-    display: flex;
-    flex-direction: column;
-}
-
-.sim-gantt-frozen-header {
-    height: 64px;
-    min-height: 64px;
-    padding: 0.5rem 0.75rem;
-    background: #e0f2fe;
-    border-bottom: 2px solid #bae6fd;
-    font-size: 0.78rem;
-    font-weight: 800;
-    color: #0369a1;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-}
-
-.sim-gantt-pond-row-header {
-    height: 48px;
-    min-height: 48px;
-    padding: 0 0.75rem;
-    border-bottom: 1px solid #e2e8f0;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    background: #ffffff;
-    font-size: 0.76rem;
-    font-weight: 700;
-    color: #071e33;
-}
-
-.sim-gantt-pond-row-header:nth-child(even) {
-    background: #f8fafc;
-}
-
-.sim-pond-badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.3rem;
-}
-
-.sim-pond-type-tag {
-    font-size: 0.65rem;
-    padding: 0.15rem 0.35rem;
-    border-radius: 4px;
-    background: #e0f2fe;
-    color: #0369a1;
-    font-weight: 700;
-}
-
-/* Right Scrollable Timeline */
-.sim-gantt-timeline {
-    display: flex;
-    flex-direction: column;
-    min-width: fit-content;
-}
-
-.sim-gantt-time-headers {
-    height: 64px;
-    min-height: 64px;
-    display: flex;
-    flex-direction: column;
-    position: sticky;
-    top: 0;
-    background: #ffffff;
-    z-index: 20;
-    border-bottom: 2px solid #bae6fd;
-}
-
-.sim-gantt-months-row {
-    display: flex;
-    height: 34px;
-    background: #e0f2fe;
-    border-bottom: 1px solid #bae6fd;
-}
-
-.sim-gantt-month-cell {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 0.72rem;
-    font-weight: 800;
-    color: #0369a1;
-    border-right: 1px solid #bae6fd;
-    text-align: center;
-    padding: 0 4px;
-    white-space: nowrap;
-    position: relative;
-}
-
-.sim-monsoon-highlight {
-    background: rgba(14, 165, 233, 0.22);
-    color: #075985;
-}
-
-.sim-monsoon-highlight::after {
-    content: "🌧️ Monsoon";
-    position: absolute;
-    bottom: 2px;
-    font-size: 0.6rem;
-    font-weight: 700;
-    color: #0284c7;
-    opacity: 0.85;
-}
-
-.sim-gantt-weeks-row {
-    display: flex;
-    height: 30px;
-    background: #f0f9ff;
-}
-
-.sim-gantt-week-cell {
-    width: 32px;
-    min-width: 32px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 0.64rem;
-    font-weight: 700;
-    color: #0369a1;
-    border-right: 1px solid rgba(186, 230, 253, 0.6);
-}
-
-.sim-gantt-rows-container {
-    display: flex;
-    flex-direction: column;
-}
-
-.sim-gantt-row {
-    height: 48px;
-    min-height: 48px;
-    display: flex;
-    align-items: center;
-    position: relative;
-    border-bottom: 1px solid #e2e8f0;
-    background-image: repeating-linear-gradient(
-        90deg,
-        transparent,
-        transparent 31px,
-        rgba(186, 230, 253, 0.4) 31px,
-        rgba(186, 230, 253, 0.4) 32px
-    );
-}
-
-.sim-gantt-row:nth-child(even) {
-    background-color: #fbfcfe;
-}
-
-/* Cycle Capsule Bar */
-.sim-cycle-capsule {
-    position: absolute;
-    height: 34px;
-    border-radius: 8px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 0 0.55rem;
-    font-size: 0.7rem;
-    font-weight: 700;
-    cursor: pointer;
-    transition: all 0.16s ease;
-    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.12);
-    overflow: hidden;
-    user-select: none;
-    z-index: 10;
-}
-
-.sim-cycle-capsule:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
-    z-index: 15;
-}
-
-/* Vannamei Emerald Cyan */
+/* Species Badge Highlights */
 .sim-species-van {
     background: linear-gradient(135deg, #10b981 0%, #059669 40%, #0284c7 100%);
     color: #ffffff;
@@ -531,66 +328,11 @@
     box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.6), 0 3px 8px rgba(5, 150, 105, 0.25);
 }
 
-/* Monodon Indigo Purple */
 .sim-species-mon {
     background: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 45%, #4f46e5 100%);
     color: #ffffff;
     border: 1px solid #6d28d9;
     box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.6), 0 3px 8px rgba(109, 40, 217, 0.25);
-}
-
-.sim-cycle-info {
-    display: flex;
-    align-items: center;
-    gap: 0.35rem;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-.sim-strategy-badge {
-    background: rgba(255, 255, 255, 0.28);
-    padding: 0.1rem 0.35rem;
-    border-radius: 4px;
-    font-size: 0.65rem;
-    font-weight: 800;
-}
-
-.sim-cycle-flags {
-    display: flex;
-    align-items: center;
-    gap: 0.2rem;
-}
-
-.sim-flag-icon {
-    font-size: 0.8rem;
-    filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.3));
-}
-
-/* Rest Period Between Cycles */
-.sim-rest-bar {
-    position: absolute;
-    height: 20px;
-    border-radius: 4px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 0.62rem;
-    font-weight: 700;
-    pointer-events: none;
-    z-index: 5;
-}
-
-.sim-rest-golden {
-    background: rgba(16, 185, 129, 0.12);
-    border: 1px dashed #10b981;
-    color: #065f46;
-}
-
-.sim-rest-rushed {
-    background: rgba(239, 68, 68, 0.15);
-    border: 1px dashed #ef4444;
-    color: #991b1b;
 }
 
 /* Tooltip Popup */
@@ -609,7 +351,7 @@
     max-width: 280px;
 }
 
-/* 156-Week Operational & MRP Table */
+/* Operational & MRP Table */
 .sim-table-wrapper {
     background: #ffffff;
     border: 1px solid #bae6fd;
@@ -680,16 +422,6 @@
 
 .sim-forecast-col {
     background: #eff6ff !important;
-}
-
-.sim-variance-positive {
-    color: #059669;
-    font-weight: 800;
-}
-
-.sim-variance-negative {
-    color: #dc2626;
-    font-weight: 800;
 }
 
 /* Modal Windows */
@@ -807,16 +539,18 @@
 /* 52-Week, 65-Week Crop Runway & 156-Week CSS Grids */
 .sim-52-grid {
     display: grid;
-    grid-template-columns: 195px repeat(52, minmax(0, 1fr));
+    grid-template-columns: 165px repeat(52, minmax(0, 1fr));
     width: 100%;
     align-items: center;
+    box-sizing: border-box;
 }
 
 .sim-runway-grid {
     display: grid;
-    grid-template-columns: 195px repeat(65, minmax(0, 1fr));
+    grid-template-columns: 165px repeat(65, minmax(0, 1fr));
     width: 100%;
     align-items: center;
+    box-sizing: border-box;
 }
 
 .sim-156-grid {
@@ -824,6 +558,7 @@
     grid-template-columns: 210px repeat(156, minmax(28px, 1fr));
     min-width: 4600px;
     align-items: center;
+    box-sizing: border-box;
 }
 
 .sim-52-grid > div:first-child,
@@ -834,11 +569,103 @@
     z-index: 15;
     background: inherit;
     box-shadow: 2px 0 6px rgba(0, 0, 0, 0.04);
+    box-sizing: border-box;
+}
+
+/* Master Planning Schedule Scrollable Box */
+.sim-planner-grid-box {
+    background: #ffffff;
+    border: 1px solid #bae6fd;
+    border-radius: 12px;
+    box-shadow: 0 4px 16px rgba(2, 132, 199, 0.08);
+    overflow-y: auto;
+    overflow-x: hidden; /* strictly vertical scroll only */
+    width: 100%;
+    box-sizing: border-box;
+    max-height: calc(100vh - 270px);
+    min-height: 480px;
+    position: relative;
+    scroll-behavior: smooth;
+}
+
+.sim-planner-grid-box.sim-planner-expanded {
+    max-height: calc(100vh - 130px);
+}
+
+.sim-planner-grid-box.sim-planner-3year {
+    overflow-x: auto; /* Allow horizontal scroll strictly for 156-week 3-year timeline */
+}
+
+/* Frutiger Aero Sleek Scrollbars */
+.sim-planner-grid-box::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+.sim-planner-grid-box::-webkit-scrollbar-track {
+    background: #f0f9ff;
+    border-radius: 4px;
+}
+.sim-planner-grid-box::-webkit-scrollbar-thumb {
+    background: #bae6fd;
+    border-radius: 4px;
+}
+.sim-planner-grid-box::-webkit-scrollbar-thumb:hover {
+    background: #0284c7;
+}
+
+/* Unified Sticky Header Group for Month & Week Numbers */
+.sim-grid-sticky-header-group {
+    position: sticky;
+    top: 0;
+    z-index: 30;
+    background: #ffffff;
+    box-shadow: 0 4px 12px rgba(2, 132, 199, 0.12);
+    border-bottom: 2px solid #0284c7;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.sim-planner-grid-box.sim-planner-3year .sim-grid-sticky-header-group,
+.sim-planner-grid-box.sim-planner-3year #sim-pulse-strip-container,
+.sim-planner-grid-box.sim-planner-3year #sim-modules-matrix-container {
+    width: max-content;
+    min-width: 4600px;
+}
+
+.sim-grid-header-row {
+    position: relative;
+}
+
+.sim-grid-header-month {
+    background: #f8fafc;
+    border-bottom: 1px solid #cbd5e1;
+    font-size: 0.72rem;
+    font-weight: 800;
+    text-align: center;
+}
+
+.sim-grid-header-week {
+    background: #f8fafc;
+    font-size: 0.62rem;
+    text-align: center;
+}
+
+/* Bi-directional Sticky Top-Left Corner Cells */
+.sim-grid-sticky-header-group .sim-grid-corner-cell {
+    position: sticky;
+    left: 0;
+    z-index: 35;
+    background: #e0f2fe !important;
+    color: #0369a1;
+    border-right: 2px solid #bae6fd;
+    box-shadow: 2px 0 6px rgba(0, 0, 0, 0.05);
+    box-sizing: border-box;
 }
 
 .sim-52-grid > div,
 .sim-runway-grid > div {
-    min-width: 0;
+    min-width: 0 !important;
+    box-sizing: border-box;
 }
 
 .sim-runway-grid .sim-today-prefix {
@@ -847,23 +674,19 @@
 
 @media (max-width: 1400px) {
     .sim-runway-grid {
-        grid-template-columns: 175px repeat(65, minmax(0, 1fr));
+        grid-template-columns: 150px repeat(65, minmax(0, 1fr));
     }
     .sim-52-grid {
-        grid-template-columns: 175px repeat(52, minmax(0, 1fr));
+        grid-template-columns: 150px repeat(52, minmax(0, 1fr));
     }
 }
 
 @media (max-width: 1100px) {
     .sim-runway-grid {
-        grid-template-columns: 160px repeat(65, minmax(16px, 1fr));
-        min-width: 1200px;
-        overflow-x: auto;
+        grid-template-columns: 135px repeat(65, minmax(0, 1fr));
     }
     .sim-52-grid {
-        grid-template-columns: 160px repeat(52, minmax(16px, 1fr));
-        min-width: 992px;
-        overflow-x: auto;
+        grid-template-columns: 135px repeat(52, minmax(0, 1fr));
     }
 }
 
@@ -1354,15 +1177,67 @@
     border-right: 2px solid #10b981;
 }
 
-/* Strategy Colors */
+/* Strategy Colors (Single Source of Truth DS1-PT3) */
 .bg-theme-ds1 { background: #0891b2; color: #ffffff; }
 .bg-theme-ds2 { background: #0284c7; color: #ffffff; }
 .bg-theme-ds3 { background: #2563eb; color: #ffffff; }
 .bg-theme-ds4 { background: #d97706; color: #ffffff; }
 .bg-theme-nt1 { background: #0d9488; color: #ffffff; }
 .bg-theme-nt2 { background: #7c3aed; color: #ffffff; }
+.bg-theme-nt3 { background: #6d28d9; color: #ffffff; }
+.bg-theme-pt1 { background: #6366f1; color: #ffffff; }
 .bg-theme-pt2 { background: #4f46e5; color: #ffffff; }
 .bg-theme-pt3 { background: #059669; color: #ffffff; }
+
+/* Reusable Layout & Toolbar Utilities */
+.sim-stack-layout {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.sim-toolbar-group {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+}
+
+.sim-toolbar-item {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    flex-wrap: wrap;
+}
+
+.sim-toolbar-label {
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: #64748b;
+}
+
+.sim-toolbar-label-strong {
+    font-size: 0.75rem;
+    font-weight: 800;
+    color: #0c4a6e;
+}
+
+.sim-section-heading {
+    margin: 0;
+    font-size: 0.95rem;
+    font-weight: 900;
+    color: #0c4a6e;
+}
+
+.sim-section-sub {
+    font-size: 0.72rem;
+    color: #64748b;
+}
+
+.sim-btn-compact {
+    font-size: 0.75rem;
+    padding: 0.35rem 0.75rem;
+}
 
 /* Theme Cards Grid (Tab 1) */
 .sim-theme-grid {
@@ -1481,5 +1356,18 @@
     padding: 0.4rem 0.75rem;
     letter-spacing: 0.03em;
 }
+
+/* Perspective: Pond View Module Filter Bar */
+.sim-pond-filter-bar {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.35rem 0.75rem;
+    background: #e0f2fe;
+    border-bottom: 1px solid #bae6fd;
+    font-size: 0.72rem;
+    flex-wrap: wrap;
+}
+
 
 

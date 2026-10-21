@@ -14,7 +14,7 @@ export class SamplingRepository {
      */
     static async getSamplingByPond(pondIndex, order = 'asc') {
         if (!pondIndex) return [];
-        const endpoint = `biometrics_sampling?pond_index=eq.${encodeURIComponent(pondIndex)}&order=smpl_doc.${order},smpl_date.${order},index_no.${order}`;
+        const endpoint = `biometrics_sampling?pond_index=eq.${encodeURIComponent(pondIndex)}&order=smpl_doc.${order},smpl_date.${order}`;
         return await supabase.request(endpoint) || [];
     }
 
@@ -25,7 +25,7 @@ export class SamplingRepository {
      */
     static async getLatestSampling(pondIndex) {
         if (!pondIndex) return null;
-        const endpoint = `biometrics_sampling?pond_index=eq.${encodeURIComponent(pondIndex)}&order=smpl_doc.desc,smpl_date.desc,index_no.desc&limit=1`;
+        const endpoint = `biometrics_sampling?pond_index=eq.${encodeURIComponent(pondIndex)}&order=smpl_doc.desc,smpl_date.desc&limit=1`;
         const res = await supabase.request(endpoint);
         return (res && res.length > 0) ? res[0] : null;
     }

@@ -397,36 +397,25 @@ ORDER BY hour_bucket DESC;
 
 ---
 
-## 6. Weekly Operations: Access-to-Supabase Smart Delta Sync Engine
+## 6. Weekly Operations: Access-to-Supabase Authoritative Cycle-Reconciliation Engine
 
-During the transitional phase while iSHARP DBMS 2.0 is being completed, the farm team updates the operational Microsoft Access database (`.accdb`) and emails it out every Friday.
+During the transitional phase while iSHARP DBMS 2.0 is operational, the farm team can update operational ponds **daily via the DBMS 2.0 UI** (stocking, harvests, pond statuses, and sampling), while the legacy Microsoft Access database (.accdb) continues to be maintained by the Planner and synced every Friday.
 
-### Architecture & Pipeline
-```
-[Friday Access DB (.accdb)]
-          │ Save to: Legacy Access DB/
-          ▼
-   Run_Friday_Sync.bat
-          │
-          ▼
-   sync_weekly_access.ps1
-          │ 1. Auto-detects newest .accdb
-          │ 2. Queries Supabase for current checkpoints (MAX index_no)
-          │ 3. Delta-extracts only new/modified rows:
-          │    - stocking_records (upserts all active & recently closed cycles)
-          │    - active_operational_ponds (reconciles gatekeeper: adds newly stocked, drops harvested)
-          │    - biometrics_sampling (WHERE indexNo > max_sampling)
-          │    - pond_harvest_daily & sales (WHERE indexNo > max_harvest)
-          │    - pond_stocking_batches (WHERE indexNo > max_stocking)
-          │    - pond_issues & pond_notes (WHERE indexNo > max_issues/notes)
-          │    - growout_pond_feed_sap (Stage 11: 180-day delta window, deterministic sync_key)
-          │    - pond_harvest_plan (Stage 12: 180-day delta window, deterministic sync_key)
-          ▼
-   Supabase Cloud (Sync completed in ~35-45 seconds)
-```
+### Architecture & Pipeline (Zero index_no Dependency)
+- **Daily Updates via DBMS 2.0 UI:** Saved directly to Supabase with native auto-incrementing id keys, keeping mobile and executive dashboards live in real-time.
+- **Weekly Official Reconciliation via Access:** Every Friday, Run_Friday_Sync.bat executes sync_weekly_access.ps1.
+- **Cycle-Level Master Authority:** For all active and recent cycles (pond_index) tracked in Access:
+  1. **Master Cycles & Gatekeeper:** Reconciles growout_pond_master and ctive_operational_ponds. Cleans up accidental premature next-cycle rollovers.
+  2. **Authoritative Stocking (pond_stocking_batches):** Replaces existing window records for reconciled pond_index cycles with official hatchery batches from Access.
+  3. **Authoritative Harvest (pond_harvest_daily & pond_harvest_sales):** Replaces existing window records for reconciled pond_index cycles with official scale weights and sales invoices.
+  4. **Authoritative Biometrics & Lab (iometrics_sampling & pond_issues):** Replaces existing window records for reconciled pond_index cycles with official sampling and PCR pathology reports.
+  5. **Deterministic ERP Ledgers:** Synchronizes growout_pond_feed_sap and pond_harvest_plan by deterministic sync_key, and growout_pond_finance by pond_index.
+
+### Error Recovery & Clean Overwrites:
+* **Mistake Protection:** If a user accidentally enters the wrong harvest weight, wrong stocking count, or an erroneous partial harvest in the UI during the week, Friday's sync cleanly wipes the mistake for that cycle and replaces it with Access's audited records.
+* **Fresh Log Preservation:** If a pond is stocked or harvested on Friday afternoon in the UI before the Planner receives the paper slip, the sync leaves that UI record intact until the Planner inputs it the following week.
 
 ### Standard Friday Routine:
-1. Save the new email attachment into `Legacy Access DB\`.
-2. Double-click `Run_Friday_Sync.bat`.
-3. The console will display real-time progress and output a verification report of all new rows synchronized.
-
+1. Save the new email attachment into Legacy Access DB\.
+2. Double-click Run_Friday_Sync.bat.
+3. The console will display real-time progress and output a verification report of all cycles synchronized.
