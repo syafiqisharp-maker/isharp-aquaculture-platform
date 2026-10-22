@@ -1,5 +1,5 @@
 /**
- * iSHARP QA/QC Inspection Module Controller
+ * iSHARP QA/QC Inspection Module Controller (Mobile-First)
  * Manages the 6-Section Hub, Cascading Pond Selection, Live WhatsApp Formatting, and Cloud Persistence
  */
 
@@ -61,18 +61,18 @@ export class QaqcView {
 
         // Placeholders 2 to 6
         const placeholders = [
-            { id: "btn-qaqc-sec-readiness", name: "Pond Stocking Readiness" },
-            { id: "btn-qaqc-sec-stocking", name: "Stocking Event Inspection" },
+            { id: "btn-qaqc-sec-readiness", name: "Stocking Readiness" },
+            { id: "btn-qaqc-sec-stocking", name: "Stocking Event" },
             { id: "btn-qaqc-sec-mortality", name: "Mortality Report" },
-            { id: "btn-qaqc-sec-preharvest", name: "Pre-Harvest Inspection" },
-            { id: "btn-qaqc-sec-postharvest", name: "Post-Harvest Audit" }
+            { id: "btn-qaqc-sec-preharvest", name: "Pre-Harvest" },
+            { id: "btn-qaqc-sec-postharvest", name: "Post-Harvest" }
         ];
 
         placeholders.forEach(sec => {
             const el = document.getElementById(sec.id);
             if (el) {
                 el.addEventListener("click", () => {
-                    Toast.info(`📋 ${sec.name} module is currently under development for next phase.`);
+                    Toast.info(`📋 ${sec.name} module is upcoming in next phase.`);
                 });
             }
         });
@@ -124,7 +124,7 @@ export class QaqcView {
         const modSelect = document.getElementById("select-qaqc-module");
         if (!modSelect) return;
 
-        modSelect.innerHTML = `<option value="">Loading non-production ponds...</option>`;
+        modSelect.innerHTML = `<option value="">Loading...</option>`;
 
         try {
             this.candidatePonds = await QaqcRepository.getCandidateCleaningPonds();
@@ -132,17 +132,13 @@ export class QaqcView {
             
             const modules = Object.keys(this.tree).sort();
             if (modules.length === 0) {
-                modSelect.innerHTML = `<option value="">No non-production ponds available</option>`;
+                modSelect.innerHTML = `<option value="">No ponds</option>`;
                 return;
             }
 
+            // Clean short dropdown labels without long counts or explanations
             modSelect.innerHTML = modules
-                .map(m => {
-                    // Count total available non-production ponds in module
-                    let count = 0;
-                    Object.keys(this.tree[m]).forEach(r => { count += this.tree[m][r].length; });
-                    return `<option value="${m}">Module ${m} (${count} ponds idle/cleaning)</option>`;
-                })
+                .map(m => `<option value="${m}">Module ${m}</option>`)
                 .join("");
 
             // Select first module by default
@@ -151,7 +147,7 @@ export class QaqcView {
             this.handleModuleChange(this.selectedModule);
         } catch (err) {
             console.error("Error loading candidate cleaning ponds:", err);
-            modSelect.innerHTML = `<option value="">Error loading ponds</option>`;
+            modSelect.innerHTML = `<option value="">Error</option>`;
         }
     }
 
@@ -163,25 +159,23 @@ export class QaqcView {
 
         if (!modl || !this.tree[modl]) {
             rowSelect.disabled = true;
-            rowSelect.innerHTML = `<option value="">Select Module first</option>`;
+            rowSelect.innerHTML = `<option value="">Row</option>`;
             pondSelect.disabled = true;
-            pondSelect.innerHTML = `<option value="">Select Row first</option>`;
+            pondSelect.innerHTML = `<option value="">Pond</option>`;
             return;
         }
 
         const rows = Object.keys(this.tree[modl]).sort();
         if (rows.length === 0) {
             rowSelect.disabled = true;
-            rowSelect.innerHTML = `<option value="">No rows available</option>`;
+            rowSelect.innerHTML = `<option value="">No rows</option>`;
             return;
         }
 
         rowSelect.disabled = false;
+        // Clean short label: "Row 01"
         rowSelect.innerHTML = rows
-            .map(r => {
-                const count = this.tree[modl][r].length;
-                return `<option value="${r}">Row ${r} (${count} ponds)</option>`;
-            })
+            .map(r => `<option value="${r}">Row ${r}</option>`)
             .join("");
 
         this.selectedRow = rows[0];
@@ -197,23 +191,21 @@ export class QaqcView {
         const modl = this.selectedModule;
         if (!modl || !rowNo || !this.tree[modl] || !this.tree[modl][rowNo]) {
             pondSelect.disabled = true;
-            pondSelect.innerHTML = `<option value="">Select Row first</option>`;
+            pondSelect.innerHTML = `<option value="">Pond</option>`;
             return;
         }
 
         const ponds = this.tree[modl][rowNo];
         if (ponds.length === 0) {
             pondSelect.disabled = true;
-            pondSelect.innerHTML = `<option value="">No candidate ponds</option>`;
+            pondSelect.innerHTML = `<option value="">None</option>`;
             return;
         }
 
         pondSelect.disabled = false;
+        // Clean short label: "01.01.07"
         pondSelect.innerHTML = ponds
-            .map(p => {
-                const idleInfo = p.idle_days ? ` (${p.idle_days}d idle)` : "";
-                return `<option value="${p.pond}">${p.pond} &bull; ${p.pond_status}${idleInfo}</option>`;
-            })
+            .map(p => `<option value="${p.pond}">${p.pond}</option>`)
             .join("");
 
         this.selectedPond = ponds[0];
@@ -234,10 +226,9 @@ export class QaqcView {
             ctxBar.classList.remove("hidden");
             const rawPond = formatRawPondCode(this.selectedPond.pond);
             document.getElementById("ctx-pond-code").textContent = `${this.selectedPond.pond} (${rawPond})`;
-            document.getElementById("ctx-cycle-no").textContent = this.selectedPond.cycle_no || "--";
+            document.getElementById("ctx-cycle-no").textContent = `C${this.selectedPond.cycle_no || "--"}`;
             document.getElementById("ctx-pond-index").textContent = this.selectedPond.pond_index || "--";
             document.getElementById("ctx-pond-status").textContent = this.selectedPond.pond_status || "IDLE";
-            document.getElementById("ctx-idle-days").textContent = this.selectedPond.idle_days ? `${this.selectedPond.idle_days} days` : "Just drained";
         }
 
         this.updateWhatsAppPreview();
@@ -302,14 +293,14 @@ export class QaqcView {
         });
 
         // 4 Checklist Item Toggles
-        document.querySelectorAll(".qaqc-toggle-btn").forEach(btn => {
+        document.querySelectorAll(".qaqc-toggle-touch").forEach(btn => {
             btn.addEventListener("click", () => {
                 const item = btn.getAttribute("data-toggle");
                 const val = btn.getAttribute("data-val") === "true";
                 
                 // Update button styles in pair
                 const parent = btn.parentElement;
-                parent.querySelectorAll(".qaqc-toggle-btn").forEach(b => b.classList.remove("active"));
+                parent.querySelectorAll(".qaqc-toggle-touch").forEach(b => b.classList.remove("active"));
                 btn.classList.add("active");
 
                 // Update checklist state
@@ -319,11 +310,11 @@ export class QaqcView {
                 const badge = document.getElementById(`badge-chk-${item}`);
                 if (badge) {
                     if (val) {
-                        badge.className = "qaqc-item-state-badge pass";
-                        badge.textContent = "Passed ✅";
+                        badge.className = "qaqc-state-pill pass";
+                        badge.textContent = "✅ Pass";
                     } else {
-                        badge.className = "qaqc-item-state-badge fail";
-                        badge.textContent = "Failed ❌";
+                        badge.className = "qaqc-state-pill fail";
+                        badge.textContent = "❌ Fail";
                     }
                 }
 
@@ -339,24 +330,24 @@ export class QaqcView {
                     this.checklist[item] = true;
                     const badge = document.getElementById(`badge-chk-${item}`);
                     if (badge) {
-                        badge.className = "qaqc-item-state-badge pass";
-                        badge.textContent = "Passed ✅";
+                        badge.className = "qaqc-state-pill pass";
+                        badge.textContent = "✅ Pass";
                     }
-                    const row = document.querySelector(`.qaqc-chk-item[data-item="${item}"]`);
+                    const row = document.querySelector(`.qaqc-chk-touch-card[data-item="${item}"]`);
                     if (row) {
-                        row.querySelectorAll(".qaqc-toggle-btn").forEach(b => {
+                        row.querySelectorAll(".qaqc-toggle-touch").forEach(b => {
                             if (b.getAttribute("data-val") === "true") b.classList.add("active");
                             else b.classList.remove("active");
                         });
                     }
                 });
-                Toast.success("All 4 checklist items set to Passed ✅");
+                Toast.success("All 4 items set to Pass ✅");
                 this.updateWhatsAppPreview();
             });
         }
 
         // Defect Remark Preset Chips
-        document.querySelectorAll(".qaqc-remark-chip").forEach(btn => {
+        document.querySelectorAll(".qaqc-chip-mini[data-remark]").forEach(btn => {
             btn.addEventListener("click", () => {
                 const remarkText = btn.getAttribute("data-remark");
                 const textarea = document.getElementById("input-qaqc-remarks");
@@ -377,16 +368,42 @@ export class QaqcView {
             inputRemarks.addEventListener("input", () => this.updateWhatsAppPreview());
         }
 
-        // Action: Save to Database
+        // Desktop Action: Save to Database
         const btnSave = document.getElementById("btn-qaqc-save");
         if (btnSave) {
             btnSave.addEventListener("click", () => this.handleSaveInspection());
         }
 
-        // Action: Copy WhatsApp Message
+        // Desktop Action: Copy WhatsApp Message
         const btnCopyWa = document.getElementById("btn-qaqc-copy-wa");
         if (btnCopyWa) {
             btnCopyWa.addEventListener("click", () => this.handleCopyWhatsAppText());
+        }
+
+        // Mobile Sticky Dock Buttons
+        const btnDockSave = document.getElementById("btn-dock-save");
+        if (btnDockSave) {
+            btnDockSave.addEventListener("click", () => this.handleSaveInspection());
+        }
+
+        const btnDockCopy = document.getElementById("btn-dock-copy");
+        if (btnDockCopy) {
+            btnDockCopy.addEventListener("click", () => this.handleCopyWhatsAppText());
+        }
+
+        // Toggle WhatsApp Preview Box (Collapse/Expand)
+        const btnToggleWa = document.getElementById("btn-toggle-wa-preview");
+        const bubbleBox = document.getElementById("qaqc-wa-bubble-box");
+        if (btnToggleWa && bubbleBox) {
+            btnToggleWa.addEventListener("click", () => {
+                if (bubbleBox.classList.contains("collapsed")) {
+                    bubbleBox.classList.remove("collapsed");
+                    btnToggleWa.innerHTML = "Hide &and;";
+                } else {
+                    bubbleBox.classList.add("collapsed");
+                    btnToggleWa.innerHTML = "Show &or;";
+                }
+            });
         }
     }
 
@@ -437,10 +454,15 @@ export class QaqcView {
             subPreview.textContent = formatDateWithDay(vals.date);
         }
 
-        // Update WhatsApp web link
+        // Update WhatsApp web links (Desktop & Mobile Dock)
         const shareLink = document.getElementById("btn-qaqc-share-wa");
         if (shareLink) {
             shareLink.href = `https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`;
+        }
+
+        const dockShareLink = document.getElementById("btn-dock-share-wa");
+        if (dockShareLink) {
+            dockShareLink.href = `https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`;
         }
     }
 
@@ -451,9 +473,14 @@ export class QaqcView {
         }
 
         const btnSave = document.getElementById("btn-qaqc-save");
+        const btnDockSave = document.getElementById("btn-dock-save");
         if (btnSave) {
             btnSave.disabled = true;
-            btnSave.textContent = "💾 Saving to Database...";
+            btnSave.textContent = "💾 Saving...";
+        }
+        if (btnDockSave) {
+            btnDockSave.disabled = true;
+            btnDockSave.textContent = "Saving...";
         }
 
         try {
@@ -475,7 +502,7 @@ export class QaqcView {
 
             const result = await QaqcRepository.saveCleaningInspection(record);
             if (result.success) {
-                Toast.success(`✅ Inspection saved successfully (${result.source === "cloud" ? "Cloud DB" : "Local Sync"})!`);
+                Toast.success(`✅ Saved to ${result.source === "cloud" ? "Cloud DB" : "Local Sync"}!`);
                 await this.loadPondHistory();
             } else {
                 Toast.error("Could not save inspection record.");
@@ -486,7 +513,11 @@ export class QaqcView {
         } finally {
             if (btnSave) {
                 btnSave.disabled = false;
-                btnSave.textContent = "💾 Save Inspection to Database";
+                btnSave.textContent = "💾 Save Inspection";
+            }
+            if (btnDockSave) {
+                btnDockSave.disabled = false;
+                btnDockSave.textContent = "💾 Save";
             }
         }
     }
@@ -496,14 +527,19 @@ export class QaqcView {
         const text = generateCleaningWhatsAppText(vals);
 
         const btnCopy = document.getElementById("btn-qaqc-copy-wa");
+        const btnDockCopy = document.getElementById("btn-dock-copy");
+
         navigator.clipboard.writeText(text).then(() => {
-            Toast.success("📋 WhatsApp broadcast text copied to clipboard!");
+            Toast.success("📋 WhatsApp text copied!");
             if (btnCopy) {
                 const originalText = btnCopy.textContent;
-                btnCopy.textContent = "✅ Copied to Clipboard!";
-                setTimeout(() => {
-                    btnCopy.textContent = originalText;
-                }, 2000);
+                btnCopy.textContent = "✅ Copied!";
+                setTimeout(() => { btnCopy.textContent = originalText; }, 2000);
+            }
+            if (btnDockCopy) {
+                const originalDock = btnDockCopy.textContent;
+                btnDockCopy.textContent = "✅ Copied!";
+                setTimeout(() => { btnDockCopy.textContent = originalDock; }, 2000);
             }
         }).catch(err => {
             console.error("Clipboard copy failed:", err);
@@ -515,16 +551,16 @@ export class QaqcView {
         const container = document.getElementById("qaqc-history-container");
         if (!container || !this.selectedPond) return;
 
-        container.innerHTML = `<span style="font-size: 0.85rem; color: #64748b;">Loading inspection logbook...</span>`;
+        container.innerHTML = `<span style="font-size: 0.8rem; color: #64748b;">Loading history...</span>`;
 
         try {
             const history = await QaqcRepository.getCleaningHistory(this.selectedPond.pond_index);
             if (!Array.isArray(history) || history.length === 0) {
-                container.innerHTML = `<p class="qaqc-empty-hint">No previous cleaning inspections recorded for ${this.selectedPond.pond}.</p>`;
+                container.innerHTML = `<p class="qaqc-empty-hint">No past cleaning records for ${this.selectedPond.pond}.</p>`;
                 return;
             }
 
-            container.innerHTML = history.map(h => {
+            container.innerHTML = history.slice(0, 5).map(h => {
                 const isPass = h.status === "PASSED";
                 const badgeClass = isPass ? "qaqc-hist-pass" : "qaqc-hist-fail";
                 const badgeText = isPass ? "Passed ✅" : "Failed ❌";
@@ -535,8 +571,9 @@ export class QaqcView {
                             <span class="qaqc-hist-badge ${badgeClass}">${badgeText}</span>
                         </div>
                         <div class="qaqc-hist-details">
-                            <span><strong>Inspector:</strong> ${h.inspector_name || "-"}</span>
-                            <span><strong>Team:</strong> ${h.team || "-"}</span>
+                            <span>${h.inspector_name || "-"}</span>
+                            <span>&bull;</span>
+                            <span>${h.team || "-"}</span>
                         </div>
                         ${h.remarks ? `<div class="qaqc-hist-remarks"><em>"${h.remarks}"</em></div>` : ""}
                     </div>

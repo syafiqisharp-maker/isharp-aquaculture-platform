@@ -1,130 +1,103 @@
 /**
- * iSHARP QA/QC Inspection Portal — Pond Cleaning Inspection Form Template
+ * iSHARP QA/QC Inspection Portal — Mobile-First Pond Cleaning Form Template
  */
 
 export function renderPondCleaningForm() {
     return `
-        <div class="qaqc-form-wrapper">
+        <div class="qaqc-form-wrapper mobile-optimized">
             
-            <!-- Top Navigation & Return Bar -->
+            <!-- Compact Navigation Bar -->
             <div class="qaqc-nav-bar">
                 <button type="button" class="btn-qaqc-back" id="btn-qaqc-back-to-hub">
-                    &larr; Back to QA/QC Hub
+                    &larr; Hub
                 </button>
-                <div class="qaqc-nav-right">
-                    <button type="button" class="btn-qaqc-portal-return" data-nav-view="portal">
-                        &larr; Back to Portal
-                    </button>
+                <div class="qaqc-nav-center-title">
+                    <span class="qaqc-title-mini">🧹 Pond Cleaning</span>
                 </div>
+                <button type="button" class="btn-qaqc-portal-return" data-nav-view="portal">
+                    &larr; Portal
+                </button>
             </div>
 
-            <!-- Page Title Header -->
-            <div class="qaqc-form-header">
-                <div class="qaqc-form-title-group">
-                    <span class="qaqc-pill-badge">SECTION 1 &bull; POND TURNAROUND & BIOSECURITY</span>
-                    <h1 class="qaqc-page-title">Pond Cleaning Inspection</h1>
-                    <p class="qaqc-page-subtitle">
-                        Standardized sign-off for pond dry-out, liner washing, sump desludging, and equipment sanitation.
-                    </p>
-                </div>
-            </div>
-
-            <!-- 2-Column Responsive Layout -->
+            <!-- Main Form Column -->
             <div class="qaqc-form-layout">
                 
-                <!-- LEFT COLUMN: Data Entry & Checklist -->
+                <!-- PRIMARY ENTRY COLUMN -->
                 <div class="qaqc-col-entry">
                     
-                    <!-- 1. Cascading 3-Step Drill-down Pond Selector -->
-                    <div class="qaqc-card-panel">
-                        <div class="qaqc-panel-header">
-                            <span class="qaqc-step-badge">STEP 1</span>
-                            <h3 class="qaqc-panel-title">Select Non-Production Pond</h3>
-                            <span class="qaqc-hint-text">(Only IDLE, MAINTENANCE & PREPARATION ponds)</span>
+                    <!-- 1. Cascading 3-Step Pond Selector (Compact Mobile Row) -->
+                    <div class="qaqc-card-panel compact-panel">
+                        <div class="qaqc-panel-header-mini">
+                            <span class="qaqc-badge-step">1</span>
+                            <span class="qaqc-panel-label">SELECT POND (NON-PRODUCTION)</span>
                         </div>
                         
-                        <div class="qaqc-cascading-grid">
-                            <!-- 1.1 Module Picker -->
-                            <div class="qaqc-field-group">
-                                <label for="select-qaqc-module" class="qaqc-field-label">1. Module</label>
-                                <select id="select-qaqc-module" class="qaqc-select-input">
-                                    <option value="">Loading modules...</option>
+                        <div class="qaqc-cascading-row">
+                            <!-- Module Picker -->
+                            <div class="qaqc-field-cell">
+                                <label for="select-qaqc-module" class="qaqc-label-micro">Module</label>
+                                <select id="select-qaqc-module" class="qaqc-select-touch">
+                                    <option value="">Loading...</option>
                                 </select>
                             </div>
 
-                            <!-- 1.2 Row Picker -->
-                            <div class="qaqc-field-group">
-                                <label for="select-qaqc-row" class="qaqc-field-label">2. Row</label>
-                                <select id="select-qaqc-row" class="qaqc-select-input" disabled>
-                                    <option value="">Select Module first</option>
+                            <!-- Row Picker -->
+                            <div class="qaqc-field-cell">
+                                <label for="select-qaqc-row" class="qaqc-label-micro">Row</label>
+                                <select id="select-qaqc-row" class="qaqc-select-touch" disabled>
+                                    <option value="">Row</option>
                                 </select>
                             </div>
 
-                            <!-- 1.3 Pond Picker -->
-                            <div class="qaqc-field-group">
-                                <label for="select-qaqc-pond" class="qaqc-field-label">3. Pond (Non-Production)</label>
-                                <select id="select-qaqc-pond" class="qaqc-select-input" disabled>
-                                    <option value="">Select Row first</option>
+                            <!-- Pond Picker -->
+                            <div class="qaqc-field-cell">
+                                <label for="select-qaqc-pond" class="qaqc-label-micro">Pond</label>
+                                <select id="select-qaqc-pond" class="qaqc-select-touch" disabled>
+                                    <option value="">Pond</option>
                                 </select>
                             </div>
                         </div>
 
-                        <!-- Resolved Pond Attribution Banner -->
-                        <div id="qaqc-pond-context-bar" class="qaqc-context-bar hidden">
-                            <div class="qaqc-ctx-item">
-                                <span class="qaqc-ctx-label">Pond:</span>
-                                <span class="qaqc-ctx-val highlight" id="ctx-pond-code">--</span>
-                            </div>
-                            <div class="qaqc-ctx-item">
-                                <span class="qaqc-ctx-label">Cycle:</span>
-                                <span class="qaqc-ctx-val" id="ctx-cycle-no">--</span>
-                            </div>
-                            <div class="qaqc-ctx-item">
-                                <span class="qaqc-ctx-label">Pond Index:</span>
-                                <span class="qaqc-ctx-val font-mono" id="ctx-pond-index">--</span>
-                            </div>
-                            <div class="qaqc-ctx-item">
-                                <span class="qaqc-ctx-label">Current Status:</span>
-                                <span class="qaqc-status-chip" id="ctx-pond-status">--</span>
-                            </div>
-                            <div class="qaqc-ctx-item">
-                                <span class="qaqc-ctx-label">Dry Time:</span>
-                                <span class="qaqc-ctx-val" id="ctx-idle-days">--</span>
-                            </div>
+                        <!-- Compact Context Tag Strip -->
+                        <div id="qaqc-pond-context-bar" class="qaqc-context-strip hidden">
+                            <span class="qaqc-strip-badge code" id="ctx-pond-code">--</span>
+                            <span class="qaqc-strip-badge cycle" id="ctx-cycle-no">C--</span>
+                            <span class="qaqc-strip-badge status" id="ctx-pond-status">IDLE</span>
+                            <span class="qaqc-strip-badge index font-mono" id="ctx-pond-index">--</span>
                         </div>
                     </div>
 
-                    <!-- 2. Inspection Metadata (Date, Inspector, Team) -->
-                    <div class="qaqc-card-panel">
-                        <div class="qaqc-panel-header">
-                            <span class="qaqc-step-badge">STEP 2</span>
-                            <h3 class="qaqc-panel-title">Inspection Parameters</h3>
+                    <!-- 2. Inspection Parameters (Date, Inspector, Team) -->
+                    <div class="qaqc-card-panel compact-panel">
+                        <div class="qaqc-panel-header-mini">
+                            <span class="qaqc-badge-step">2</span>
+                            <span class="qaqc-panel-label">INSPECTOR &amp; TEAM</span>
                         </div>
 
-                        <div class="qaqc-meta-grid">
+                        <div class="qaqc-meta-flex">
                             <!-- Date Input -->
-                            <div class="qaqc-field-group">
-                                <label for="input-qaqc-date" class="qaqc-field-label">Inspection Date</label>
-                                <input type="date" id="input-qaqc-date" class="qaqc-text-input" />
-                                <span class="qaqc-sub-preview" id="preview-formatted-date">--</span>
+                            <div class="qaqc-field-group flex-1">
+                                <label for="input-qaqc-date" class="qaqc-label-micro">Date</label>
+                                <input type="date" id="input-qaqc-date" class="qaqc-input-touch" />
+                                <span class="qaqc-preview-day" id="preview-formatted-date">--</span>
                             </div>
 
                             <!-- Requestor / Inspector -->
-                            <div class="qaqc-field-group">
-                                <label for="input-qaqc-inspector" class="qaqc-field-label">Requestor / Inspector</label>
-                                <input type="text" id="input-qaqc-inspector" class="qaqc-text-input" list="qaqc-staff-list" placeholder="e.g. Rosdi" value="Rosdi" />
+                            <div class="qaqc-field-group flex-1">
+                                <label for="input-qaqc-inspector" class="qaqc-label-micro">Inspector</label>
+                                <input type="text" id="input-qaqc-inspector" class="qaqc-input-touch" list="qaqc-staff-list" placeholder="Name" value="Rosdi" />
                                 <datalist id="qaqc-staff-list"></datalist>
                                 <div class="qaqc-quick-chips">
-                                    <button type="button" class="qaqc-chip-btn" data-set-inspector="Rosdi">Rosdi</button>
-                                    <button type="button" class="qaqc-chip-btn" data-set-inspector="Mohd Azlie">Mohd Azlie</button>
-                                    <button type="button" class="qaqc-chip-btn" data-set-inspector="Hairi Azha">Hairi Azha</button>
+                                    <button type="button" class="qaqc-chip-mini" data-set-inspector="Rosdi">Rosdi</button>
+                                    <button type="button" class="qaqc-chip-mini" data-set-inspector="Mohd Azlie">Azlie</button>
+                                    <button type="button" class="qaqc-chip-mini" data-set-inspector="Hairi Azha">Hairi</button>
                                 </div>
                             </div>
                         </div>
 
-                        <!-- Cleaning Team Selection -->
-                        <div class="qaqc-team-section">
-                            <label class="qaqc-field-label">Cleaning Team</label>
+                        <!-- Team Chips -->
+                        <div class="qaqc-team-row">
+                            <label class="qaqc-label-micro">Cleaning Team</label>
                             <div class="qaqc-team-chips-group" id="qaqc-team-chips">
                                 <button type="button" class="qaqc-team-chip" data-team="Int 1">Int 1</button>
                                 <button type="button" class="qaqc-team-chip active" data-team="Int 2">Int 2</button>
@@ -137,134 +110,109 @@ export function renderPondCleaningForm() {
                         </div>
                     </div>
 
-                    <!-- 3. The 4 Standard Checklist Items -->
-                    <div class="qaqc-card-panel">
-                        <div class="qaqc-panel-header" style="justify-content: space-between;">
-                            <div>
-                                <span class="qaqc-step-badge">STEP 3</span>
-                                <h3 class="qaqc-panel-title">Inspection Checklist</h3>
+                    <!-- 3. The 4 Checklist Items (Touch Toggles) -->
+                    <div class="qaqc-card-panel compact-panel">
+                        <div class="qaqc-panel-header-mini flex-between">
+                            <div class="flex-align-center gap-2">
+                                <span class="qaqc-badge-step">3</span>
+                                <span class="qaqc-panel-label">CHECKLIST</span>
                             </div>
-                            <!-- 1-Tap Quick Action -->
-                            <button type="button" class="btn-all-pass" id="btn-qaqc-all-pass">
+                            <!-- 1-Tap Quick Pass Button -->
+                            <button type="button" class="btn-all-pass-touch" id="btn-qaqc-all-pass">
                                 ⚡ All Pass ✅
                             </button>
                         </div>
 
-                        <div class="qaqc-checklist-list">
+                        <div class="qaqc-chk-mobile-list">
                             
                             <!-- 1. Lining -->
-                            <div class="qaqc-chk-item" data-item="lining">
-                                <div class="qaqc-chk-info">
-                                    <div class="qaqc-chk-title-row">
-                                        <h4 class="qaqc-chk-title">1. Lining</h4>
-                                        <span class="qaqc-item-state-badge pass" id="badge-chk-lining">Passed ✅</span>
-                                    </div>
-                                    <p class="qaqc-chk-desc">
-                                        Brushed off sludge, algae, dead shrimp/fish/snail/barnacle (bottom, connector, side & bund lining).
-                                    </p>
+                            <div class="qaqc-chk-touch-card" data-item="lining">
+                                <div class="qaqc-chk-name-row">
+                                    <span class="qaqc-chk-title">1. Lining</span>
+                                    <span class="qaqc-state-pill pass" id="badge-chk-lining">✅ Pass</span>
                                 </div>
-                                <div class="qaqc-chk-toggle-group">
-                                    <button type="button" class="qaqc-toggle-btn pass active" data-toggle="lining" data-val="true">✅ Pass</button>
-                                    <button type="button" class="qaqc-toggle-btn fail" data-toggle="lining" data-val="false">❌ Fail</button>
+                                <div class="qaqc-btn-pair">
+                                    <button type="button" class="qaqc-toggle-touch pass active" data-toggle="lining" data-val="true">✅ Pass</button>
+                                    <button type="button" class="qaqc-toggle-touch fail" data-toggle="lining" data-val="false">❌ Fail</button>
                                 </div>
                             </div>
 
                             <!-- 2. Sump -->
-                            <div class="qaqc-chk-item" data-item="sump">
-                                <div class="qaqc-chk-info">
-                                    <div class="qaqc-chk-title-row">
-                                        <h4 class="qaqc-chk-title">2. Sump</h4>
-                                        <span class="qaqc-item-state-badge pass" id="badge-chk-sump">Passed ✅</span>
-                                    </div>
-                                    <p class="qaqc-chk-desc">
-                                        Clear from collected sludge, algae, dead shrimp/fish/snail, and all other rubbish/debris.
-                                    </p>
+                            <div class="qaqc-chk-touch-card" data-item="sump">
+                                <div class="qaqc-chk-name-row">
+                                    <span class="qaqc-chk-title">2. Sump</span>
+                                    <span class="qaqc-state-pill pass" id="badge-chk-sump">✅ Pass</span>
                                 </div>
-                                <div class="qaqc-chk-toggle-group">
-                                    <button type="button" class="qaqc-toggle-btn pass active" data-toggle="sump" data-val="true">✅ Pass</button>
-                                    <button type="button" class="qaqc-toggle-btn fail" data-toggle="sump" data-val="false">❌ Fail</button>
+                                <div class="qaqc-btn-pair">
+                                    <button type="button" class="qaqc-toggle-touch pass active" data-toggle="sump" data-val="true">✅ Pass</button>
+                                    <button type="button" class="qaqc-toggle-touch fail" data-toggle="sump" data-val="false">❌ Fail</button>
                                 </div>
                             </div>
 
                             <!-- 3. PWA & autofeeder -->
-                            <div class="qaqc-chk-item" data-item="pwa">
-                                <div class="qaqc-chk-info">
-                                    <div class="qaqc-chk-title-row">
-                                        <h4 class="qaqc-chk-title">3. PWA & autofeeder</h4>
-                                        <span class="qaqc-item-state-badge pass" id="badge-chk-pwa">Passed ✅</span>
-                                    </div>
-                                    <p class="qaqc-chk-desc">
-                                        Brushed off algae/barnacles on floaters & propellers, dead shrimp underneath cleared.
-                                    </p>
+                            <div class="qaqc-chk-touch-card" data-item="pwa">
+                                <div class="qaqc-chk-name-row">
+                                    <span class="qaqc-chk-title">3. PWA &amp; Autofeeder</span>
+                                    <span class="qaqc-state-pill pass" id="badge-chk-pwa">✅ Pass</span>
                                 </div>
-                                <div class="qaqc-chk-toggle-group">
-                                    <button type="button" class="qaqc-toggle-btn pass active" data-toggle="pwa" data-val="true">✅ Pass</button>
-                                    <button type="button" class="qaqc-toggle-btn fail" data-toggle="pwa" data-val="false">❌ Fail</button>
+                                <div class="qaqc-btn-pair">
+                                    <button type="button" class="qaqc-toggle-touch pass active" data-toggle="pwa" data-val="true">✅ Pass</button>
+                                    <button type="button" class="qaqc-toggle-touch fail" data-toggle="pwa" data-val="false">❌ Fail</button>
                                 </div>
                             </div>
 
                             <!-- 4. Jetty -->
-                            <div class="qaqc-chk-item" data-item="jetty">
-                                <div class="qaqc-chk-info">
-                                    <div class="qaqc-chk-title-row">
-                                        <h4 class="qaqc-chk-title">4. Jetty</h4>
-                                        <span class="qaqc-item-state-badge pass" id="badge-chk-jetty">Passed ✅</span>
-                                    </div>
-                                    <p class="qaqc-chk-desc">
-                                        Brushed off algae, dead shrimp/fish/snail/barnacle on walkways and supporting posts.
-                                    </p>
+                            <div class="qaqc-chk-touch-card" data-item="jetty">
+                                <div class="qaqc-chk-name-row">
+                                    <span class="qaqc-chk-title">4. Jetty</span>
+                                    <span class="qaqc-state-pill pass" id="badge-chk-jetty">✅ Pass</span>
                                 </div>
-                                <div class="qaqc-chk-toggle-group">
-                                    <button type="button" class="qaqc-toggle-btn pass active" data-toggle="jetty" data-val="true">✅ Pass</button>
-                                    <button type="button" class="qaqc-toggle-btn fail" data-toggle="jetty" data-val="false">❌ Fail</button>
+                                <div class="qaqc-btn-pair">
+                                    <button type="button" class="qaqc-toggle-touch pass active" data-toggle="jetty" data-val="true">✅ Pass</button>
+                                    <button type="button" class="qaqc-toggle-touch fail" data-toggle="jetty" data-val="false">❌ Fail</button>
                                 </div>
                             </div>
 
                         </div>
                     </div>
 
-                    <!-- 4. Defect / Rework Remarks (Optional / Promoted on Fail) -->
-                    <div class="qaqc-card-panel" id="qaqc-defect-panel">
-                        <div class="qaqc-panel-header">
-                            <span class="qaqc-step-badge">STEP 4</span>
-                            <h3 class="qaqc-panel-title">Defect Notes & Rework Instructions</h3>
+                    <!-- 4. Defect Remarks -->
+                    <div class="qaqc-card-panel compact-panel" id="qaqc-defect-panel">
+                        <div class="qaqc-panel-header-mini">
+                            <span class="qaqc-badge-step">4</span>
+                            <span class="qaqc-panel-label">DEFECT NOTES / REWORK</span>
                         </div>
 
                         <div class="qaqc-preset-remarks">
-                            <button type="button" class="qaqc-remark-chip" data-remark="Sludge remnant at central sump">Sludge at sump</button>
-                            <button type="button" class="qaqc-remark-chip" data-remark="Torn bund liner patch required">Liner patch needed</button>
-                            <button type="button" class="qaqc-remark-chip" data-remark="Barnacles remain on paddlewheel floater">Barnacles on PWA</button>
-                            <button type="button" class="qaqc-remark-chip" data-remark="Algae growth along jetty post">Algae on jetty</button>
+                            <button type="button" class="qaqc-chip-mini" data-remark="Sludge remnant at sump">Sludge at sump</button>
+                            <button type="button" class="qaqc-chip-mini" data-remark="Liner patch required">Liner patch</button>
+                            <button type="button" class="qaqc-chip-mini" data-remark="Barnacles on floater">Barnacles on PWA</button>
+                            <button type="button" class="qaqc-chip-mini" data-remark="Algae on jetty">Algae on jetty</button>
                         </div>
 
-                        <textarea id="input-qaqc-remarks" class="qaqc-textarea" rows="3" placeholder="Enter specific defect notes or leave empty if pristine..."></textarea>
+                        <textarea id="input-qaqc-remarks" class="qaqc-textarea-touch" rows="2" placeholder="Defect notes (optional)..."></textarea>
                     </div>
 
                 </div>
 
-                <!-- RIGHT COLUMN: Real-Time WhatsApp Broadcast Engine & Logbook -->
+                <!-- SECONDARY COLUMN: WhatsApp Preview & History -->
                 <div class="qaqc-col-output">
                     
-                    <!-- Live WhatsApp Output Card -->
-                    <div class="qaqc-card-panel qaqc-panel-sticky">
-                        <div class="qaqc-panel-header">
-                            <span class="qaqc-badge-wa">WHATSAPP LIVE PREVIEW</span>
-                            <h3 class="qaqc-panel-title">Broadcast Output</h3>
+                    <!-- WhatsApp Preview Card -->
+                    <div class="qaqc-card-panel compact-panel">
+                        <div class="qaqc-panel-header-mini flex-between">
+                            <span class="qaqc-badge-wa">WHATSAPP PREVIEW</span>
+                            <button type="button" class="qaqc-btn-toggle-wa" id="btn-toggle-wa-preview">Hide &and;</button>
                         </div>
 
-                        <p class="qaqc-output-caption">
-                            This message is auto-generated as you fill up the form. Click Save to commit to the database, then copy directly into your WhatsApp group.
-                        </p>
-
-                        <!-- Monospace WhatsApp Bubble Container -->
-                        <div class="qaqc-wa-bubble-preview">
+                        <div class="qaqc-wa-bubble-preview" id="qaqc-wa-bubble-box">
                             <pre id="qaqc-wa-message-text" class="qaqc-wa-pre">Loading preview...</pre>
                         </div>
 
-                        <!-- Primary Action Buttons -->
-                        <div class="qaqc-actions-stack">
+                        <!-- Action Buttons in Desktop & Tablet View -->
+                        <div class="qaqc-desktop-actions">
                             <button type="button" class="btn-qaqc-primary" id="btn-qaqc-save">
-                                💾 Save Inspection to Database
+                                💾 Save Inspection
                             </button>
                             <button type="button" class="btn-qaqc-copy" id="btn-qaqc-copy-wa">
                                 📋 Copy WhatsApp Message
@@ -275,19 +223,33 @@ export function renderPondCleaningForm() {
                         </div>
                     </div>
 
-                    <!-- Recent Cleaning Logbook for Selected Pond -->
-                    <div class="qaqc-card-panel" style="margin-top: 1.25rem;">
-                        <div class="qaqc-panel-header">
-                            <h3 class="qaqc-panel-title">Inspection History Logbook</h3>
+                    <!-- History Logbook -->
+                    <div class="qaqc-card-panel compact-panel">
+                        <div class="qaqc-panel-header-mini">
+                            <span class="qaqc-panel-label">RECENT INSPECTIONS</span>
                         </div>
                         <div id="qaqc-history-container" class="qaqc-history-box">
-                            <p class="qaqc-empty-hint">Select a pond above to review historical cleaning sign-offs.</p>
+                            <p class="qaqc-empty-hint">Select a pond to view history.</p>
                         </div>
                     </div>
 
                 </div>
 
             </div>
+
+            <!-- STICKY MOBILE BOTTOM SAVE BAR (Ensures 1-Tap Thumb Access) -->
+            <div class="qaqc-mobile-bottom-dock">
+                <button type="button" class="btn-dock-save" id="btn-dock-save">
+                    💾 Save
+                </button>
+                <button type="button" class="btn-dock-copy" id="btn-dock-copy">
+                    📋 Copy WA
+                </button>
+                <a id="btn-dock-share-wa" class="btn-dock-wa" target="_blank" rel="noopener noreferrer" title="Open WhatsApp">
+                    📲 WA
+                </a>
+            </div>
+
         </div>
     `;
 }
