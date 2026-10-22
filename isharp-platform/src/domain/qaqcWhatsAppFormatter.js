@@ -49,6 +49,44 @@ export function formatRawPondCode(pondStr) {
 }
 
 /**
+ * Extracts 2-digit pond number for short mobile display (e.g. '01.01.03' -> '03', '09.18.12' -> '12')
+ * @param {string} pondStr 
+ * @returns {string}
+ */
+export function extractShortPondNumber(pondStr) {
+    if (!pondStr) return "--";
+    const str = String(pondStr).trim();
+    if (str.includes(".")) {
+        return str.split(".").pop();
+    }
+    if (str.length >= 2) {
+        return str.slice(-2);
+    }
+    return str;
+}
+
+/**
+ * Calculates how many days a pond has been idle from the start of its cycle (date_cycle from pond_event_date)
+ * @param {string|null} dateCycle - YYYY-MM-DD from pond_event_date (event_name = 'cycle')
+ * @param {Date} [referenceDate] - Comparison date, defaults to now
+ * @returns {number}
+ */
+export function calculatePondIdleDays(dateCycle, referenceDate = new Date()) {
+    if (!dateCycle) return 0;
+    const parts = String(dateCycle).slice(0, 10).split("-").map(Number);
+    if (parts.length !== 3 || parts.some(isNaN)) return 0;
+
+    const [y, m, d] = parts;
+    const startMidnight = new Date(y, m - 1, d).getTime();
+
+    const ref = new Date(referenceDate);
+    const refMidnight = new Date(ref.getFullYear(), ref.getMonth(), ref.getDate()).getTime();
+
+    const diffDays = Math.floor((refMidnight - startMidnight) / (1000 * 60 * 60 * 24));
+    return Math.max(0, diffDays);
+}
+
+/**
  * Builds a 3-level hierarchical tree of non-production candidate ponds
  * Structure: { [modl]: { [row_no]: [ { pond, pond_index, status, cycle_no, ... } ] } }
  * @param {Array<Object>} cycles 
@@ -77,7 +115,8 @@ export function buildHierarchicalPondTree(cycles = []) {
             cycle_no: cycle.cycle_no || null,
             crop_no: cycle.crop_no || null,
             area: cycle.area || 0.5,
-            idle_days: cycle.idle_days || 0
+            idle_days: cycle.idle_days || 0,
+            date_cycle: cycle.date_cycle || null
         });
     });
 

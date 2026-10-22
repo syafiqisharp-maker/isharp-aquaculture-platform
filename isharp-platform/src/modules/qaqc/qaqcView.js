@@ -11,7 +11,9 @@ import {
     buildHierarchicalPondTree,
     formatDateWithDay,
     formatRawPondCode,
-    generateCleaningWhatsAppText
+    generateCleaningWhatsAppText,
+    calculatePondIdleDays,
+    extractShortPondNumber
 } from "../../domain/qaqcWhatsAppFormatter.js";
 import { Toast } from "../../components/Toast.js";
 import { appState } from "../../state/appState.js";
@@ -136,9 +138,9 @@ export class QaqcView {
                 return;
             }
 
-            // Clean short dropdown labels without long counts or explanations
+            // Module numbers only: "01", "02", "03", etc.
             modSelect.innerHTML = modules
-                .map(m => `<option value="${m}">Module ${m}</option>`)
+                .map(m => `<option value="${m}">${m}</option>`)
                 .join("");
 
             // Select first module by default
@@ -159,23 +161,23 @@ export class QaqcView {
 
         if (!modl || !this.tree[modl]) {
             rowSelect.disabled = true;
-            rowSelect.innerHTML = `<option value="">Row</option>`;
+            rowSelect.innerHTML = `<option value="">--</option>`;
             pondSelect.disabled = true;
-            pondSelect.innerHTML = `<option value="">Pond</option>`;
+            pondSelect.innerHTML = `<option value="">--</option>`;
             return;
         }
 
         const rows = Object.keys(this.tree[modl]).sort();
         if (rows.length === 0) {
             rowSelect.disabled = true;
-            rowSelect.innerHTML = `<option value="">No rows</option>`;
+            rowSelect.innerHTML = `<option value="">--</option>`;
             return;
         }
 
         rowSelect.disabled = false;
-        // Clean short label: "Row 01"
+        // Row numbers only: "01", "02", "03", etc.
         rowSelect.innerHTML = rows
-            .map(r => `<option value="${r}">Row ${r}</option>`)
+            .map(r => `<option value="${r}">${r}</option>`)
             .join("");
 
         this.selectedRow = rows[0];
@@ -191,21 +193,24 @@ export class QaqcView {
         const modl = this.selectedModule;
         if (!modl || !rowNo || !this.tree[modl] || !this.tree[modl][rowNo]) {
             pondSelect.disabled = true;
-            pondSelect.innerHTML = `<option value="">Pond</option>`;
+            pondSelect.innerHTML = `<option value="">--</option>`;
             return;
         }
 
         const ponds = this.tree[modl][rowNo];
         if (ponds.length === 0) {
             pondSelect.disabled = true;
-            pondSelect.innerHTML = `<option value="">None</option>`;
+            pondSelect.innerHTML = `<option value="">--</option>`;
             return;
         }
 
         pondSelect.disabled = false;
-        // Clean short label: "01.01.07"
+        // Pond numbers only: "01", "03", "12", etc.
         pondSelect.innerHTML = ponds
-            .map(p => `<option value="${p.pond}">${p.pond}</option>`)
+            .map(p => {
+                const shortNum = extractShortPondNumber(p.pond);
+                return `<option value="${p.pond}">${shortNum}</option>`;
+            })
             .join("");
 
         this.selectedPond = ponds[0];
@@ -220,15 +225,18 @@ export class QaqcView {
             this.selectedPond = this.tree[modl][rowNo].find(p => p.pond === pondStr) || null;
         }
 
-        // Update context bar
+        // Update idle days display from start cycle date (from pond_event_date)
         const ctxBar = document.getElementById("qaqc-pond-context-bar");
+        const idleDaysEl = document.getElementById("ctx-idle-days");
         if (ctxBar && this.selectedPond) {
             ctxBar.classList.remove("hidden");
-            const rawPond = formatRawPondCode(this.selectedPond.pond);
-            document.getElementById("ctx-pond-code").textContent = `${this.selectedPond.pond} (${rawPond})`;
-            document.getElementById("ctx-cycle-no").textContent = `C${this.selectedPond.cycle_no || "--"}`;
-            document.getElementById("ctx-pond-index").textContent = this.selectedPond.pond_index || "--";
-            document.getElementById("ctx-pond-status").textContent = this.selectedPond.pond_status || "IDLE";
+            const idleDays = calculatePondIdleDays(this.selectedPond.date_cycle);
+            if (idleDaysEl) {
+                idleDaysEl.textContent = idleDays;
+            }
+            if (this.selectedPond.date_cycle) {
+                ctxBar.title = `Cycle start date: ${this.selectedPond.date_cycle} (from pond_event_date)`;
+            }
         }
 
         this.updateWhatsAppPreview();

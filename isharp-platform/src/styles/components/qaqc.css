@@ -321,7 +321,41 @@
     color: #94a3b8;
 }
 
-/* Compact Context Strip */
+/* ── Idle Days Strip (Mobile-Optimized) ─────────────────────────────────── */
+.qaqc-idle-strip {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    padding: 0.35rem 0.65rem;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    margin-top: 0.45rem;
+}
+
+.qaqc-idle-badge {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 0.35rem;
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: #475569;
+}
+
+.qaqc-idle-num {
+    font-size: 1.15rem;
+    font-weight: 900;
+    color: #0284c7;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+.qaqc-idle-unit {
+    font-size: 0.8rem;
+    color: #64748b;
+    font-weight: 600;
+}
+
+/* Compact Context Strip (Legacy Fallback) */
 .qaqc-context-strip {
     display: flex;
     flex-wrap: wrap;

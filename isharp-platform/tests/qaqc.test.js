@@ -4,7 +4,9 @@ import {
     formatDateWithDay,
     formatRawPondCode,
     buildHierarchicalPondTree,
-    generateCleaningWhatsAppText
+    generateCleaningWhatsAppText,
+    calculatePondIdleDays,
+    extractShortPondNumber
 } from "../src/domain/qaqcWhatsAppFormatter.js";
 
 test("QA/QC Domain: formatDateWithDay", () => {
@@ -19,6 +21,28 @@ test("QA/QC Domain: formatRawPondCode", () => {
     assert.equal(formatRawPondCode("09.18.03"), "091803");
     assert.equal(formatRawPondCode("010107"), "010107");
     assert.equal(formatRawPondCode(""), "");
+});
+
+test("QA/QC Domain: extractShortPondNumber", () => {
+    assert.equal(extractShortPondNumber("01.01.03"), "03");
+    assert.equal(extractShortPondNumber("01.01.12"), "12");
+    assert.equal(extractShortPondNumber("09.18.01"), "01");
+    assert.equal(extractShortPondNumber("010107"), "07");
+    assert.equal(extractShortPondNumber(""), "--");
+    assert.equal(extractShortPondNumber(null), "--");
+});
+
+test("QA/QC Domain: calculatePondIdleDays calculates days from date_cycle in pond_event_date", () => {
+    // 2026-09-24 to 2026-10-22 = 28 days
+    const ref = new Date(2026, 9, 22); // Month is 0-indexed (9 = Oct)
+    assert.equal(calculatePondIdleDays("2026-09-24", ref), 28);
+    // Same day = 0
+    assert.equal(calculatePondIdleDays("2026-10-22", ref), 0);
+    // Future date = 0
+    assert.equal(calculatePondIdleDays("2026-10-25", ref), 0);
+    // Missing or invalid date = 0
+    assert.equal(calculatePondIdleDays(null, ref), 0);
+    assert.equal(calculatePondIdleDays("", ref), 0);
 });
 
 test("QA/QC Domain: buildHierarchicalPondTree strictly filters out PRODUCTION ponds", () => {

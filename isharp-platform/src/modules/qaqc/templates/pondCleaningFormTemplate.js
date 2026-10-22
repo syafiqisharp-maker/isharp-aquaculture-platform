@@ -29,41 +29,41 @@ export function renderPondCleaningForm() {
                     <div class="qaqc-card-panel compact-panel">
                         <div class="qaqc-panel-header-mini">
                             <span class="qaqc-badge-step">1</span>
-                            <span class="qaqc-panel-label">SELECT POND (NON-PRODUCTION)</span>
+                            <span class="qaqc-panel-label">SELECT POND</span>
                         </div>
                         
                         <div class="qaqc-cascading-row">
                             <!-- Module Picker -->
                             <div class="qaqc-field-cell">
-                                <label for="select-qaqc-module" class="qaqc-label-micro">Module</label>
+                                <label for="select-qaqc-module" class="qaqc-label-micro">MODULE</label>
                                 <select id="select-qaqc-module" class="qaqc-select-touch">
-                                    <option value="">Loading...</option>
+                                    <option value="">--</option>
                                 </select>
                             </div>
 
                             <!-- Row Picker -->
                             <div class="qaqc-field-cell">
-                                <label for="select-qaqc-row" class="qaqc-label-micro">Row</label>
+                                <label for="select-qaqc-row" class="qaqc-label-micro">ROW</label>
                                 <select id="select-qaqc-row" class="qaqc-select-touch" disabled>
-                                    <option value="">Row</option>
+                                    <option value="">--</option>
                                 </select>
                             </div>
 
                             <!-- Pond Picker -->
                             <div class="qaqc-field-cell">
-                                <label for="select-qaqc-pond" class="qaqc-label-micro">Pond</label>
+                                <label for="select-qaqc-pond" class="qaqc-label-micro">POND</label>
                                 <select id="select-qaqc-pond" class="qaqc-select-touch" disabled>
-                                    <option value="">Pond</option>
+                                    <option value="">--</option>
                                 </select>
                             </div>
                         </div>
 
-                        <!-- Compact Context Tag Strip -->
-                        <div id="qaqc-pond-context-bar" class="qaqc-context-strip hidden">
-                            <span class="qaqc-strip-badge code" id="ctx-pond-code">--</span>
-                            <span class="qaqc-strip-badge cycle" id="ctx-cycle-no">C--</span>
-                            <span class="qaqc-strip-badge status" id="ctx-pond-status">IDLE</span>
-                            <span class="qaqc-strip-badge index font-mono" id="ctx-pond-index">--</span>
+                        <!-- Idle Days from Start of Cycle (from pond_event_date) -->
+                        <div id="qaqc-pond-context-bar" class="qaqc-idle-strip hidden">
+                            <span class="qaqc-idle-badge">
+                                <span id="ctx-idle-days" class="qaqc-idle-num">0</span>
+                                <span class="qaqc-idle-unit">days idle</span>
+                            </span>
                         </div>
                     </div>
 
