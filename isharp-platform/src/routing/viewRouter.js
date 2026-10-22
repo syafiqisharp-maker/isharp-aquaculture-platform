@@ -1,6 +1,6 @@
 /**
  * iSHARP DBMS 2.0 — View Router
- * Coordinates top-level view switching between Portal Landing, Executive Dashboard, and Operations DBMS.
+ * Coordinates top-level view switching between Portal Landing, Executive Dashboard, Operations DBMS, and Lab & QA/QC.
  */
 
 import { appState } from "../state/appState.js";
@@ -15,7 +15,8 @@ export class ViewRouter {
             executive: document.getElementById("view-executive"),
             "field-ops": document.getElementById("view-field-ops"),
             dbms: document.getElementById("view-dbms"),
-            simulation: document.getElementById("view-simulation")
+            simulation: document.getElementById("view-simulation"),
+            "lab-qaqc": document.getElementById("view-lab-qaqc")
         };
 
         this.currentView = null;
@@ -24,7 +25,8 @@ export class ViewRouter {
             executive: 0,
             "field-ops": 0,
             dbms: 0,
-            simulation: 0
+            simulation: 0,
+            "lab-qaqc": 0
         };
         this.isNavigatingBack = false;
         this.viewHistory = [];
@@ -189,6 +191,8 @@ export class ViewRouter {
             targetView = "dbms";
         } else if (hash === "#/simulation" || hash === "#simulation") {
             targetView = "simulation";
+        } else if (hash === "#/qaqc" || hash === "#qaqc" || hash === "#/lab-qaqc" || hash === "#lab-qaqc") {
+            targetView = "lab-qaqc";
         } else {
             targetView = "portal";
         }
@@ -230,10 +234,16 @@ export class ViewRouter {
         if (targetView === "simulation" && simPage) {
             simPage.ensureInitialized();
         }
+
+        const qaqcView = window.app?.qaqcView || window.__isharpApp?.qaqcView;
+        if (targetView === "lab-qaqc" && qaqcView) {
+            qaqcView.ensureInitialized?.();
+        }
     }
 
     navigate(viewName) {
-        if (!["portal", "executive", "field-ops", "dbms", "simulation"].includes(viewName)) {
+        if (viewName === "qaqc") viewName = "lab-qaqc";
+        if (!["portal", "executive", "field-ops", "dbms", "simulation", "lab-qaqc"].includes(viewName)) {
             viewName = "portal";
         }
         window.location.hash = `#/${viewName}`;

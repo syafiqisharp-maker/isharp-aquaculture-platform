@@ -499,3 +499,60 @@ This file serves as a persistent record of key milestones, architecture decision
   * Relaxed `auditScheduleRisks` Rule 3 to eliminate false violations on commercial Vannamei in M08/M09 while strictly flagging intensive densities (>120 PL/m²).
 * **Verification:**
   * All 171 automated unit tests across 19 suites passed cleanly with 100% green status (`npm test`).
+
+
+---
+
+## 2026-10-22: Field Lab & QA/QC Portal — Pond Cleaning Inspection & Dual-Action WhatsApp Bridge
+* **Context & Objective:**
+  * Farm QA/QC team currently reports daily pond inspections via WhatsApp and later manually transcribes into unindexed Excel sheets lacking cycle attribution (`pond_index`).
+  * Built the **Lab & QA/QC Portal** with a 6-Section Hub, fully implementing Section 1 (**Pond Cleaning Inspection**) as an operational bridge that preserves the WhatsApp communication channel while securing 100% cycle-accurate cloud persistence.
+* **Architecture & Features Delivered:**
+  * **Portal Satellite Activation:**
+    * Activated Satellite 4 (`btn-portal-lab`) on the Frutiger Aero Orbital Landing Gateway with `ACTIVE` badge (`#view-lab-qaqc` / `#/qaqc`).
+    * Registered `#view-lab-qaqc` in `index.html` and `viewRouter.js`.
+  * **Cascading 3-Step Non-Production Pond Selector:**
+    * Filters candidate ponds strictly where `pond_status !== 'PRODUCTION'` (160 turnaround/idle ponds).
+    * Step 1: Module Selector (`Module 01..09`).
+    * Step 2: Row Selector (dynamically filtered to rows in selected module).
+    * Step 3: Pond Selector (displays non-production pond number and idle days, e.g. `01.01.07 (IDLE, 14d)`).
+    * Automatically resolves `pond_index` (`2010107.43`), cycle number, raw 6-digit code (`010107`), and sets location context.
+  * **Field-Standard 4-Item Checklist:**
+    1. **Lining:** Brushed off sludge, algae, dead organisms (bottom, connector, side/bund lining).
+    2. **Sump:** Clear from collected sludge, algae, dead shrimp/fish/snail, and other debris.
+    3. **PWA & Autofeeder:** Floaters & propellers brushed, dead shrimp underneath cleared.
+    4. **Jetty:** Brushed off algae, dead organisms, barnacles.
+    * 1-Tap `[ ⚡ All Pass ✅ ]` quick-fill button for fast approval of clean ponds.
+  * **Real-Time Live WhatsApp Broadcast Engine (`qaqcWhatsAppFormatter.js`):**
+    * Generates the exact message matching the QA/QC team's live broadcast format:
+      ```text
+      *Pond cleaning Inspection*
+
+      Date: DD/MM/YYYY (Day)
+      Requestor: Name
+      Team: Int 2
+      Location: Module XX
+
+      ▶️ 010107 - Passed ✅
+      * Lining ✅
+      * Sump ✅
+      * PWA & autofeeder ✅ 
+      * Jetty ✅
+
+      Please proceed repair if required prior to disinfection after minimum of 3 days sundrying. 
+      For failed inspection continue cleaning especially for failed item(s) & request for re-inspection. Escalate any related issue for problematic pond.
+
+      Cleaning standard;
+      ...
+      ```
+    * Real-time interactive monospace preview on-screen with **`[ 📋 Copy WhatsApp Message ]`** (clipboard sync) and **`[ 📲 Open in WhatsApp ]`** web intent.
+  * **Cloud Persistence & Turnaround Integration (`QaqcRepository` & `10_create_qaqc_inspections.sql`):**
+    * Inserts record into `public.qaqc_inspections`.
+    * If `status === 'PASSED'`, automatically upserts `public.pond_event_date` (`pond_index`, `event_name = 'cleaning'`, `event_date`) to inform the entire platform.
+    * Offline/local fallback via `localStorage` for uninterrupted pond-side logging.
+    * Interactive inspection history logbook below the form for the selected pond.
+  * **6-Section Inspection Hub (`qaqcHubTemplate.js`):**
+    * Renders all 6 cards on the portal home: 1. Pond Cleaning (Active), 2. Stocking Readiness, 3. Stocking Event, 4. Mortality Report, 5. Pre-Harvest, 6. Post-Harvest (Upcoming placeholders).
+* **Verification & Test Results:**
+  * **Automated Unit Tests:** 177/177 passing across 19 suites (`node --test tests/*.test.js`).
+  * **Production Build:** Vite production bundle generated cleanly in 7.66s with 0 errors (`npm run build`).

@@ -18,6 +18,7 @@ import { ExecutiveView } from "./modules/executive/executiveTab.js";
 import { FieldOpsView } from "./modules/fieldOps/fieldOpsView.js";
 import { DbmsView } from "./modules/dbms/dbmsView.js";
 import { SimulationPage } from "./modules/simulation/SimulationPage.js";
+import { QaqcView } from "./modules/qaqc/qaqcView.js";
 
 // Tab Modules (System 2: iSHARP DBMS)
 import { MasterTab } from "./modules/dbms/masterTab.js";
@@ -42,17 +43,21 @@ class App {
         try {
             console.log("🦐 Bootstrapping iSHARP DBMS 2.0 (Frutiger Aero Edition)...");
 
-            // 0. Initialize View Router, Landing Page, Executive Dashboard, Field Operations, DBMS View, and Simulation View
+            // 0. Initialize View Router, Landing Page, Executive Dashboard, Field Operations, DBMS View, Simulation View, and Lab & QA/QC View
             this.landingPage = new LandingPage("view-portal");
             this.executiveView = new ExecutiveView("view-executive");
             this.fieldOpsView = new FieldOpsView("view-field-ops");
             this.dbmsView = new DbmsView("view-dbms");
             this.simulationPage = new SimulationPage("view-simulation");
+            this.qaqcView = new QaqcView("view-lab-qaqc");
             this.router = new ViewRouter();
             this.landingPage.setRouter(this.router);
 
             if (window.location.hash.toLowerCase().includes("simulation")) {
                 this.simulationPage.ensureInitialized();
+            }
+            if (window.location.hash.toLowerCase().includes("qaqc") || window.location.hash.toLowerCase().includes("lab")) {
+                this.qaqcView.ensureInitialized();
             }
 
             // 1. Initialize Subsystems & Components
@@ -104,8 +109,9 @@ class App {
 
             // 4. Initial Cloud Sync
             const isFieldOpsRoute = window.location.hash.toLowerCase().includes("field-ops");
-            if (isFieldOpsRoute) {
-                // Background non-blocking sync for Field Ops on mobile devices
+            const isQaqcRoute = window.location.hash.toLowerCase().includes("qaqc") || window.location.hash.toLowerCase().includes("lab");
+            if (isFieldOpsRoute || isQaqcRoute) {
+                // Background non-blocking sync for Field Ops / QAQC on mobile devices
                 this.loadInitialData().catch(err => console.warn("Background DBMS sync deferred:", err));
             } else {
                 Toast.info("Connecting to Supabase Cloud PostgreSQL...");
@@ -223,7 +229,7 @@ document.addEventListener("DOMContentLoaded", () => {
         promptRevivePond: () => window.__isharpApp.lifecycleTab?.openReviveModal(),
         exportCycleCsv: () => window.__isharpApp.tabs["tab-utilities"]?.exportCycleCsv(),
         verifySyncStatus: () => window.__isharpApp.tabs["tab-utilities"]?.verifySyncStatus(),
-        get simulationPage() { return window.__isharpApp?.simulationPage; }
+        get simulationPage() { return window.__isharpApp?.simulationPage; },
+        get qaqcView() { return window.__isharpApp?.qaqcView; }
     };
 });
-

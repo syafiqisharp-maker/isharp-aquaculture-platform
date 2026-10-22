@@ -50,3 +50,6 @@
 
 /* 16. Frontier Predictive Simulation & MRP Engine */
 @import "./components/simulation.css";
+
+/* 17. Field Lab & QA/QC Portal & Inspection Forms */
+@import "./components/qaqc.css";
