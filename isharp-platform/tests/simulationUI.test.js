@@ -641,7 +641,7 @@ describe("Phase 5 Simulation UI — 156-Week Interactive Gantt Planner Grid", ()
         grid.modules[0].expanded = true;
         grid.modules[0].rows[0].expanded = true;
         grid.modules[0].rows[0].pondList[0].cycles = [
-            { w: 51, t: "DS3" } // 13-week culture ending at W63
+            { w: 51, t: "DS3", durationWeeks: 13 } // 13-week culture ending at W63
         ];
 
         grid.render();

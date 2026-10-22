@@ -37,7 +37,7 @@ export class ModulePlannerGrid {
         this.viewPerspective = "MODULE"; // "MODULE", "ROW", or "POND"
         this.pondModuleFilter = "ALL"; // "ALL" or module ID like "M01"
         this.pulseMode = "MONTHLY"; // "MONTHLY" or "WEEKLY"
-        this.activeBrush = "DS3";
+        this.activeBrush = "DS1";
         this.autoChain = true;
         this.cutoffWeek = 42; // Mid-October 2026 (W42)
         this.isGridExpanded = false;
@@ -96,17 +96,17 @@ export class ModulePlannerGrid {
 
     _initDefaultModulesAndPonds() {
         const moduleDefs = [
-            { id: "M01", name: "Module 01", ponds: 24, species: SPECIES.VANNAMEI, theme: "DS3", rPonds: [12, 12], rNums: ["01", "02"] },
-            { id: "M02", name: "Module 02", ponds: 24, species: SPECIES.VANNAMEI, theme: "DS3", rPonds: [12, 12], rNums: ["03", "04"] },
-            { id: "M03", name: "Module 03", ponds: 24, species: SPECIES.VANNAMEI, theme: "DS2", rPonds: [12, 12], rNums: ["05", "06"] },
-            { id: "M04", name: "Module 04 ★", ponds: 24, species: SPECIES.VANNAMEI, theme: "NT2", rPonds: [12, 12], rNums: ["07", "08"] },
-            { id: "M05", name: "Module 05 ★", ponds: 24, species: SPECIES.VANNAMEI, theme: "DS3", rPonds: [12, 12], rNums: ["09", "10"] },
+            { id: "M01", name: "Module 01", ponds: 24, species: SPECIES.VANNAMEI, theme: "DS1", rPonds: [12, 12], rNums: ["01", "02"] },
+            { id: "M02", name: "Module 02", ponds: 24, species: SPECIES.VANNAMEI, theme: "DS1", rPonds: [12, 12], rNums: ["03", "04"] },
+            { id: "M03", name: "Module 03", ponds: 24, species: SPECIES.VANNAMEI, theme: "DS1", rPonds: [12, 12], rNums: ["05", "06"] },
+            { id: "M04", name: "Module 04 ★", ponds: 24, species: SPECIES.VANNAMEI, theme: "DS1", rPonds: [12, 12], rNums: ["07", "08"] },
+            { id: "M05", name: "Module 05 ★", ponds: 24, species: SPECIES.VANNAMEI, theme: "DS1", rPonds: [12, 12], rNums: ["09", "10"] },
             { id: "M06", name: "Module 06", ponds: 24, species: SPECIES.VANNAMEI, theme: "DS1", rPonds: [12, 12], rNums: ["11", "12"] },
             { id: "M07", name: "Module 07", ponds: 24, species: SPECIES.MONODON, theme: "DS4", rPonds: [12, 12], rNums: ["13", "14"] },
             { id: "M08", name: "Module 08", ponds: 24, species: SPECIES.MONODON, theme: "DS4", rPonds: [12, 12], rNums: ["15", "16"] },
             { id: "M09", name: "Module 09", ponds: 24, species: SPECIES.MONODON, theme: "DS4", rPonds: [12, 12], rNums: ["17", "18"] },
-            { id: "M10", name: "Module 10", ponds: 26, species: SPECIES.VANNAMEI, theme: "DS3", rPonds: [13, 13], rNums: ["19", "20"] },
-            { id: "M11", name: "Module 11", ponds: 21, species: SPECIES.VANNAMEI, theme: "DS3", rPonds: [10, 11], rNums: ["21", "22"] }
+            { id: "M10", name: "Module 10", ponds: 26, species: SPECIES.VANNAMEI, theme: "DS1", rPonds: [13, 13], rNums: ["19", "20"] },
+            { id: "M11", name: "Module 11", ponds: 21, species: SPECIES.VANNAMEI, theme: "DS1", rPonds: [10, 11], rNums: ["21", "22"] }
         ];
 
         this.modules = moduleDefs.map((def, mIdx) => {
@@ -316,7 +316,7 @@ export class ModulePlannerGrid {
         });
 
         this.modules.forEach((m, mIdx) => {
-            const fallbackStrat = m.species === SPECIES.MONODON ? "DS4" : "DS3";
+            const fallbackStrat = m.species === SPECIES.MONODON ? "DS4" : "DS1";
             m.rows.forEach(r => {
                 r.pondList.forEach(pond => {
                     const list = schedByPond.get(pond.pondId) || schedByPond.get(pond.label);
@@ -361,7 +361,7 @@ export class ModulePlannerGrid {
         }
 
         this.modules.forEach((m, mIdx) => {
-            const strat = m.species === SPECIES.MONODON ? "DS4" : "DS3";
+            const strat = m.species === SPECIES.MONODON ? "DS4" : "DS1";
             const sp = this._getSpec(strat);
             const cycleLen = sp.wks + sp.rest;
 
@@ -1379,20 +1379,19 @@ export class ModulePlannerGrid {
         const btnFill = container.querySelector("#btn-smart-autofill");
         if (btnFill) {
             btnFill.addEventListener("click", () => {
-                const brushToUse = this.activeBrush === "ERASE" ? "DS2" : this.activeBrush;
+                const brushToUse = (this.activeBrush === "ERASE" || !this.activeBrush) ? "DS1" : this.activeBrush;
                 if (typeof simulationStore.autoOptimizeSchedule === "function") {
                     simulationStore.autoOptimizeSchedule({
                         vannameiDefaultStrategy: brushToUse,
-                        maxPondsPerMonth: 50,
                         elevatedModules: ["01", "02", "03"],
-                        monodonModules: ["08", "09", "05"],
                         targetCyclesPerYear: 2,
-                        monodonAnnualCapRatio: 0.30,
+                        monodonAnnualCapRatio: 0.28,
                         rotateMonodonToAllModules: true
                     });
-                    this.syncWithLiveStore(simulationStore);
+                    this.syncFromStoreSchedule(simulationStore);
+                    this.render();
                 }
-                Toast.success("Smart Auto-Fill: Optimized 3-Year waves generated! (2.0 cycles/yr aim, supervisor fairness, <=30% Monodon & monsoon elevation)");
+                Toast.success("Smart Auto-Fill: Optimized 3-Year waves generated! (Conveyor-belt pipeline, row-level stamping, supervisor fairness & dynamic capacity)");
             });
         }
 
@@ -1404,7 +1403,8 @@ export class ModulePlannerGrid {
                 btnSync.textContent = "🔄 Syncing...";
                 try {
                     await simulationStore.init({ baseYear: Number(this.viewHorizon) || 2026 });
-                    this.syncWithLiveStore(simulationStore);
+                    this.syncFromStoreSchedule(simulationStore);
+                    this.render();
                     Toast.success("Successfully synchronized all ponds with Supabase live records!");
                 } catch (err) {
                     console.error("Manual DB sync error:", err);

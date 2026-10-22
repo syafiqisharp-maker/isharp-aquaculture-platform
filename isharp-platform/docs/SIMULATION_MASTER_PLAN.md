@@ -282,6 +282,68 @@ To bridge empirical mathematics with on-the-ground farm management, the **"Autof
      - Ponds harvested later can subsequently be stocked with *L. vannamei* (shorter DOC: 85–98 days).
      - This asymmetric stocking aligns their termination harvest dates, enabling the entire line or module to clear out simultaneously for synchronized dry-out and canal disinfection.
 
+### 5.8 Hierarchical Conveyor-Belt Optimization Engine & Empirical Setiu Ground Truth (2015–2026)
+
+> [!NOTE]
+> For the complete mathematical formulation and empirical calibration of the upgraded AI Stocking Planner (including empirical idle-time DOP distribution, monthly Monodon supply smoothing, and elevated monsoon continuous culture for M01–M03), see [AI_PLANNER_MATHEMATICAL_MODEL_V2.md](file:///c:/Users/syafiq/My%20Drive/Syafiq%20Water%20Quality%20Station%20Project/isharp-platform/docs/AI_PLANNER_MATHEMATICAL_MODEL_V2.md).
+
+An exhaustive audit of Setiu Farm's production database (`Bab SGo (r41) 26.10.16.accdb`, covering 7,655 closed cycles, 139 active production ponds, and 7,475 audited financial ledgers) established the empirical and mathematical rules governing the **Hierarchical Conveyor-Belt Auto-Scheduler**:
+
+#### 1. Physical Farm Geometry & Active Modules
+- **Strictly 9 Commercial Modules (`M01` through `M09`):** Module 10 has been decommissioned (`NOT IN USED`) since 2017, and Module 11 since 2022. The active commercial farm spine consists strictly of M01–M09.
+- **Row Geometry:** Every module consists of **2 parallel rows of 12 growout ponds** ($12 \times 2 = 24\text{ growout ponds}$, $0.5\text{ ha}$ each) plus **4 treatment ponds** (2 per row: `TA` and `TB`, $0.7\text{ ha}$ each).
+- **Active Farm Capacity:** $9 \times 24 = \mathbf{216\text{ physical growout ponds}}$, supporting the farm's benchmark operating target of **$\approx 206$ active ponds** (allowing ~10 ponds for ongoing HDPE relining and civil works).
+
+#### 2. Annual Turn Cadence (2.0 to 2.5 Cycles/Pond/Year)
+Historical analysis from 2020 through 2025 demonstrates that Setiu consistently operates at an annual turn rate of **$2.0\text{ to } 2.5\text{ cycles/pond/year}$** ($410\text{ to } 563\text{ total closed cycles/year}$):
+- **2020:** 467 cycles (61 Monodon, 406 Vannamei, avg DOC 89.4d, idle 80.8d)
+- **2021:** 482 cycles (87 Monodon, 395 Vannamei, avg DOC 89.8d, idle 70.8d)
+- **2022:** 563 cycles (93 Monodon, 470 Vannamei, avg DOC 72.4d, idle 53.6d)
+- **2023:** 531 cycles (151 Monodon, 380 Vannamei, avg DOC 82.3d, idle 46.6d)
+- **2024:** 507 cycles (65 Monodon, 442 Vannamei, avg DOC 67.6d, idle 71.7d)
+- **2025:** 410 cycles (103 Monodon, 307 Vannamei, avg DOC 90.1d, idle 95.4d). In 2025, **every single module (M01 to M09) completed 2 full waves** (42 to 48 cycles per module, total 412 cycles).
+
+#### 3. Dynamic Monthly Stocking Envelope Function ($C_{\max}$)
+The farm does not operate under an inflexible flat 50-pond ceiling. Peak months (Feb–Apr, Jun–Aug) regularly stock **60 to 72 ponds/month** ($2.5\text{ to } 3.0\text{ modules}$), shoulder months handle **40 to 50 ponds/month**, and monsoon months handle **15 to 35 ponds/month**:
+$$C_{\max}(\text{month}) = \begin{cases}
+36 \text{ ponds (1.5 modules)} & \text{month } = 1 \text{ (Jan: post-monsoon restart)} \\
+72 \text{ ponds (3.0 modules)} & \text{months } \in \{2, 3, 4\} \text{ (Peak Wave 1)} \\
+48 \text{ ponds (2.0 modules)} & \text{month } = 5 \text{ (May: harvest transition)} \\
+72 \text{ ponds (3.0 modules)} & \text{months } \in \{6, 7, 8\} \text{ (Peak Wave 2)} \\
+60 \text{ ponds (2.5 modules)} & \text{month } = 9 \text{ (Sep: safe Vannamei stocking, 266 historical cycles, avg 73d DOC)} \\
+48 \text{ ponds (2.0 modules)} & \text{month } = 10 \text{ (Oct)} \\
+36 \text{ ponds (1.5 modules)} & \text{month } = 11 \text{ (Nov: M01–M03 only)} \\
+24 \text{ ponds (1.0 module)} & \text{month } = 12 \text{ (Dec: M01–M03 only)}
+\end{cases}$$
+
+#### 4. Lowland-First Conveyor-Belt Order ($\Pi_{\text{pipeline}}$)
+Tracing 2024 and 2025 actual stocking dates shows that farm management sequences modules according to elevation and drainage vulnerability:
+1. **Lowland Modules Start Early (Jan–Mar):**
+   $$\Pi_{\text{lowland}} = [\text{M04, M05, M07, M06, M08, M09}]$$
+   Starting early allows Wave 1 to harvest by May/June. Following a 6-week Golden Rest, Wave 2 stocks in **June–August**, harvesting safely by October/November before peak monsoon rainfall.
+2. **Elevated Modules Start Later (Apr–May):**
+   $$\Pi_{\text{elevated}} = [\text{M01, M02, M03}]$$
+   Sitting on elevated sandy ground with superior drainage, M01–M03 can stock Wave 2 in **September–November**, growing safely through the monsoon to harvest during Chinese New Year high-price windows (+RM 18,938/pond EBITDA in December vs -RM 3,690/pond for lowland modules).
+
+#### 5. Row-Level Atomic Batch Stamping & Split-Row Realities
+- **Row-Level Atomic Stamping:** Ponds within a single row (12 ponds) are stocked in a tight 3–7 day window (occupying 1 week on the weekly Gantt). All 12 ponds share the same species and a single clean hatchery source.
+- **Split-Row Modules ($31.8\%$ of All Historical Waves):**
+  - Out of 85 module waves analyzed from 2022 to 2026: Pure Vannamei = $61.2\%$ ($52\text{ waves}$), **Split-Row (Row A Monodon, Row B Vannamei) = $\mathbf{31.8\%}$ ($27\text{ waves}$)**, Pure Monodon = $7.1\%$ ($6\text{ waves}$).
+  - In 2026 Wave 1, **6 out of 9 modules were split-row** (M01, M02, M05, M06, M07, M08).
+  - *Hatchery Delivery Quotas:* 12 ponds of Monodon at $45\text{ PL/m}^2$ equals $\approx 2.7\text{M PLs}$, exactly matching a single clean hatchery delivery tank from Tier-1 suppliers (`KSK`, `UBN`), avoiding multi-tank mixing risks while providing all supervisors an equitable rotation of Monodon crops.
+
+#### 6. Complete 5-Pillar Harmonization Proof
+The Hierarchical Conveyor-Belt Optimization Engine is **100% harmonized and symbiotic** with the 5-Pillar Empirical Predictive Model:
+
+| Pillar | Predictive Law & Penalty Function | How the Hierarchical Scheduler Enforces & Optimizes |
+| :--- | :--- | :--- |
+| **Pillar 0 (Species Bifurcation)** | Strict biological partitioning: Monodon ($744$ cycles, $45\text{ PL/m}^2$, $112\text{--}126\text{d}$ DOC, RM 27.58/kg) vs Vannamei ($3,339$ cycles, $90\text{--}120\text{ PL/m}^2$, $84\text{--}98\text{d}$ DOC, RM 20.34/kg). | Schedules species down to the **row level**, assigning Monodon to champion modules (M08, M09) and Row 1 of split-row modules (M05, M06, M07), keeping farm Monodon volume $\le 28\%$ of annual cycles. |
+| **Pillar 1 (Turnaround Fatigue $\Phi_{\text{turnaround}}$)** | $\text{DOP} < 21\text{d}$ causes $-30\%$ ADG penalty and spikes disease relapse ($62.5\%$ fail, -RM 4,118 EBITDA). Golden Rest ($36\text{--}60\text{d}$) delivers $+74\%$ higher EBITDA. | Strictly guarantees $\tau_{\text{ready}} \ge w_{\text{end}} + 6\text{ weeks}$ ($42\text{ days}$ Golden Rest) for every row before scheduling the next cycle. |
+| **Pillar 2 (Module Spatial Effects $\Psi_{\text{module}}$)** | M08/M09 favor Monodon (+RM 33k) over Vannamei (+RM 199). Staggered overlap ($1\text{--}5$ older ponds in module) slashes EBITDA by $78\%$. | Enforces Row-Level / Module-Level All-In/All-Out cohesion ($N_{\text{older}} = 0$ within row), avoiding the staggered overlap penalty while prioritizing Monodon in M08/M09. |
+| **Pillar 3 (Monsoon Cliff & Hatchery Hazard $h_p(d)$)** | Late-season lowland stocking triggers $61\text{--}77\%$ failure. Multi-hatchery tank mixing (`SHT,GS`) causes $91.3\%$ forced harvest and EHP bloom. | Lowland modules finish stocking by Sep 30. Elevated modules M01–M03 assigned hardy SPR (DS2) for Oct–Dec. Stamping in 12-pond row blocks ensures single clean hatchery sourcing (`KSK`, `UBN`, `SHT`, `CPD`). |
+| **Pillar 4 (Carrying Capacity Skimming `2X`/`3X`)** | Standing biomass ceiling $B_{\text{crit}} \approx 3,800\text{ kg}$. `2X` partial skimming cuts failures from $47\%$ to $15.8\%$ and boosts EBITDA to +RM 33.3k. | In split-row modules, Row 2 (Vannamei) utilizes `2X` partial skimming and staggers by 2 weeks to align harvest convergence with Row 1 Monodon. |
+| **Pillar 5 (16-Element Econometric Cost Ledger)** | Spliced YTD Actuals + Forecast = Full-Year LE. Direct costs anchored to Finance ground truth (`cons_of_chem_fert` RM 1,711/RM 2,114, electricity RM 95.40/pond-day). | Outputs an uninterrupted 156-week schedule across all 18 rows, perfectly feeding `simTickEngine.js` and `financialCalculator.js` without disconnected week-44 truncation. |
+
 ---
 
 ## 6. Spliced Reporting & The 5-Tab Executive Excel Export Engine (`.xlsx`)

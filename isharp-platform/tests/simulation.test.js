@@ -451,14 +451,16 @@ describe("Phase 3 Frontier Simulation Engine — 156-Week Scheduler, Risk Audito
             assert.ok(["01", "02", "03"].includes(mod), `Non-elevated module ${mod} was stocked during monsoon!`);
         }
         for (const c of monsoonCycles) {
-            assert.equal(c.strategyCode, "DS2", "Monsoon stocking in elevated modules must use hardy SPR DS2");
+            assert.equal(c.strategyCode, "DS1", "Monsoon stocking in elevated modules must use hardy SPR DS1");
             assert.equal(c.plType, "SPR");
         }
 
-        // 3. Verify 4-week spread: within any 24-pond module wave, ponds are spread across 4 weeks (~6 ponds/wk)
-        const m01Wave1 = schedule.filter(c => c.moduleId === "01" && c.startWeekIndex <= 6);
-        const startWeeks = new Set(m01Wave1.map(c => c.startWeekIndex));
-        assert.ok(startWeeks.size >= 4, `Module 01 should be spread across 4 distinct weeks, got: ${Array.from(startWeeks)}`);
+        // 3. Verify Row-Level Atomic Batch Stamping: all 12 ponds in a row share identical start week
+        const m01Wave1 = schedule.filter(c => c.moduleId === "01");
+        const row1 = m01Wave1.filter(c => c.rowNo === "01" && c.startWeekIndex <= 20);
+        assert.ok(row1.length >= 12, "Row 1 must be stamped as a full 12-pond atomic batch");
+        const startWeeksRow1 = new Set(row1.map(c => c.startWeekIndex));
+        assert.equal(startWeeksRow1.size, 1, `All ponds in Row 1 must share the exact same start week, got: ${Array.from(startWeeksRow1)}`);
     });
 
     it("Evaluates time-scoped TemporalShockEvent and Correlated Monte Carlo P10/P50/P90 risk bands", () => {
@@ -540,4 +542,87 @@ describe("Phase 3 Frontier Simulation Engine — 156-Week Scheduler, Risk Audito
             assert.ok(ratio <= 0.35, `Year ${yr} Monodon ratio ${ratio.toFixed(2)} exceeded cap!`);
         }
     });
+
+    it("generateOptimal156WeekSchedule strictly fulfills the 6 Wave Planner Empirical Requirements", () => {
+        const fullFarmPonds = [];
+        for (let m = 1; m <= 9; m++) {
+            const mStr = String(m).padStart(2, "0");
+            for (let p = 1; p <= 24; p++) {
+                fullFarmPonds.push({
+                    pondId: `${mStr}.${p <= 12 ? "01" : "02"}.${String(p).padStart(2, "0")}`,
+                    moduleId: mStr,
+                    areaHa: 0.5
+                });
+            }
+        }
+
+        const schedule = generateOptimal156WeekSchedule(fullFarmPonds, {
+            horizonWeeks: 156,
+            baseYear: 2026,
+            baseMonth: 1
+        });
+
+        // 1. Zero audit violations
+        const audit = auditScheduleRisks(schedule);
+        assert.equal(audit.totalAlerts, 0, `Expected 0 violations, got: ${JSON.stringify(audit.alerts)}`);
+
+        // 2. Requirement 1: Eliminate extreme idle gaps (>75 days, specifically M01 252d gap)
+        const m01Ponds = schedule.filter(c => c.moduleId === "01" && c.pondId === "01.01.01").sort((a, b) => a.startWeekIndex - b.startWeekIndex);
+        for (let i = 1; i < m01Ponds.length; i++) {
+            const gapDays = (m01Ponds[i].startWeekIndex - m01Ponds[i - 1].endWeekIndex - 1) * 7;
+            assert.ok(gapDays <= 75, `Module 01 idle gap between cycle ${i} and ${i + 1} was ${gapDays} days (>75d)!`);
+            assert.ok(gapDays >= 35, `Module 01 idle gap was ${gapDays} days (<35d rushed turnaround)!`);
+        }
+
+        // 3. Requirement 2: Nov/Dec continuous elevated micro-batches; lowland modules observe flood avoidance
+        const novDecCycles = schedule.filter(c => c.stockMonth === 11 || c.stockMonth === 12);
+        assert.ok(novDecCycles.length > 0, "Expected non-zero stocking in Nov and Dec (no Q4 farm-wide 0-pond freeze)");
+        for (const c of novDecCycles) {
+            assert.ok(["01", "02", "03"].includes(c.moduleId), `Lowland module ${c.moduleId} was stocked in peak flood Nov/Dec!`);
+        }
+
+        // 4. Requirement 3: Supervisor Monodon equity: every commercial module M01-M09 receives exactly 1 Monodon row batch (12 ponds) per year
+        for (const yr of [2026, 2027, 2028]) {
+            const yrCycles = schedule.filter(c => weekIndexToCalendar(c.startWeekIndex, 2026, 1).year === yr && c.species === SPECIES.MONODON);
+            assert.equal(yrCycles.length, 108, `Year ${yr} total Monodon ponds must be exactly 108 (9 batches x 12 ponds), got ${yrCycles.length}`);
+            for (let m = 1; m <= 9; m++) {
+                const mStr = String(m).padStart(2, "0");
+                const modMonodonCount = yrCycles.filter(c => c.moduleId === mStr).length;
+                assert.equal(modMonodonCount, 12, `Module ${mStr} in ${yr} must receive exactly 12 Monodon ponds (1 row batch), got ${modMonodonCount}`);
+            }
+        }
+
+        // 5. Requirement 4: Smooth monthly stocking curve (max <= 50 ponds/month)
+        const monthCounts = {};
+        for (const c of schedule) {
+            const cal = weekIndexToCalendar(c.startWeekIndex, 2026, 1);
+            const k = `${cal.year}-${String(cal.month).padStart(2, "0")}`;
+            monthCounts[k] = (monthCounts[k] || 0) + 1;
+        }
+        for (const [mKey, cnt] of Object.entries(monthCounts)) {
+            assert.ok(cnt <= 50, `Month ${mKey} had ${cnt} ponds stocked (>50 limit)!`);
+        }
+
+        // 6. Requirement 5: Default strictly to Single Terminal Harvest (DS1 for Vannamei, DS4 for Monodon); no DS2
+        const strategies = new Set(schedule.map(c => c.strategyCode));
+        for (const strat of strategies) {
+            assert.ok(["DS1", "DS4"].includes(strat), `Unexpected strategy ${strat} found; must be Single Terminal Harvest DS1/DS4 only!`);
+        }
+
+        // 7. Requirement 6: 3-week stagger harvest convergence
+        for (let m = 1; m <= 9; m++) {
+            const mStr = String(m).padStart(2, "0");
+            const mCycles = schedule.filter(c => c.moduleId === mStr);
+            const r1Cycles = mCycles.filter(c => c.rowNo === "01");
+            const r2Cycles = mCycles.filter(c => c.rowNo === "02");
+            for (const c1 of r1Cycles) {
+                if (c1.species === SPECIES.MONODON) {
+                    const c2Match = r2Cycles.find(c2 => Math.abs(c2.startWeekIndex - (c1.startWeekIndex + 3)) <= 1);
+                    assert.ok(c2Match, `Module ${mStr} Row 1 Monodon at week ${c1.startWeekIndex} must have Row 2 Vannamei at week ${c1.startWeekIndex + 3}`);
+                    assert.equal(c1.endWeekIndex, c2Match.endWeekIndex, `Module ${mStr} Row 1 & Row 2 must converge to harvest at week ${c1.endWeekIndex}`);
+                }
+            }
+        }
+    });
 });
+

@@ -458,3 +458,44 @@ This file serves as a persistent record of key milestones, architecture decision
 * **Verification:**
   * 114/114 unit and contract tests passed cleanly (`npm test`).
   * Full production build succeeded with zero errors (`npm run build`).
+
+---
+
+## 2026-10-21: Historical Data Audit & Hierarchical Conveyor-Belt Optimization Engine
+* **Empirical Access DB Audit (`Bab SGo (r41) 26.10.02.accdb`):**
+  * Analyzed 7,655 closed cycles, 139 active production ponds, and 7,475 financial P&Ls across Setiu farm history (2015–2026).
+  * Confirmed commercial spine is strictly **Modules 01 to 09** (216 growout ponds, ~206 active benchmark capacity; M10 inactive since 2017, M11 inactive since 2022).
+  * Discovered annual turn cadence consistently achieves **2.0 to 2.5 cycles/pond/year** (410 to 563 annual cycles).
+  * Discovered **31.8% of historical waves are Split-Row** (Row 1 Monodon, Row 2 Vannamei) to match hatchery delivery batch quotas (~1.5–2.7M PLs) and achieve harvest convergence.
+* **Root Causes of Invalid "Autofill Wave" Identified:**
+  * Disconnected week-44 truncation in `simulationStore.js` dropping valid future waves.
+  * Inverted alphabetical conveyor belt initializing elevated modules (M01–M03) in Jan/Feb instead of flood-vulnerable lowland modules (M04–M09).
+  * 50-pond/month pigeonhole bottleneck mathematically starving 4–5 modules from receiving Cycle 2.
+  * Artificial 4-week staircase (6 ponds/week) instead of row-level atomic stamping (12 ponds/row).
+* **Hierarchical Conveyor-Belt Optimization Model Authored:**
+  * Designed Lowland-First Conveyor-Belt Order: $[\text{M04, M05, M07, M06, M08, M09}] \rightarrow [\text{M01, M02, M03}]$.
+  * Established Dynamic Monthly Capacity Curve $C_{\max}(\text{month})$ (36 in Jan, 72 in Feb–Apr, 48 in May, 72 in Jun–Aug, 60 in Sep, 48 in Oct, 36 in Nov, 24 in Dec).
+  * Established Row-Level Atomic Batch Stamping (12 ponds/row in 1 week).
+  * Designed Split-Row Wave Formulation with 2-week staggering for harvest convergence.
+  * Proved 100% harmonization with the 5-Pillar Empirical Predictive Model.
+  * Updated `SIMULATION_MASTER_PLAN.md` and `SIMULATION_UI_VISION_AND_SYNC.md`.
+
+---
+
+## 2026-10-21: Frontier AI Planner SSOT Refactor & Empirical Monodon Calibration
+* **Empirical Monodon Ground Truth Audit (`Bab SGo (r41) 26.10.16.accdb`):**
+  * Disproved legacy myth that Monodon was restricted to M08/M09.
+  * Audit revealed all 9 commercial modules (M01–M09) stock Monodon.
+  * **Module 02 is #1** (95 Monodon ponds) and **Module 01 is #2** (91 Monodon ponds) farm-wide (2021–2026).
+  * M08 stocks 73.2% Vannamei (221 cycles) and M09 stocks 81.3% Vannamei (139 cycles).
+  * Annual Monodon proportion calibrated to empirical 15%–30% seed cap (target 28%, ~100 ponds/year).
+  * Monodon batching unit confirmed as 12-pond row blocks with 2-week harvest convergence against companion Vannamei rows.
+* **Single Source of Truth (SSOT) Architecture:**
+  * Exported operational constants: `COMMERCIAL_MODULES`, `DECOMMISSIONED_MODULES`, `ELEVATED_MODULES`, `LOWLAND_MODULES`, `PIPELINE_CONVEYOR_ORDER`, `GOLDEN_REST_WEEKS`, `MAX_MONTHLY_HATCHERY_PONDS`, `MAX_ANNUAL_MONODON_RATIO`, `MONTHLY_CAPACITY_ENVELOPE`.
+  * Purged ~100 lines of duplicated stamping boilerplate by extracting `stampRowBatch()`.
+  * Implemented pure functional `allocateTier1Hatchery()` load balancer to enforce the 28 ponds/month single-hatchery bio-limit across `SHT`, `UBN`, `KSK`, `CPD`, `CPM`, and `OIS`.
+* **Legacy Code Purged:**
+  * Purged arbitrary week-44 truncation in `simulationStore.js` and wired live `moduleInitialReadyWeeks`.
+  * Relaxed `auditScheduleRisks` Rule 3 to eliminate false violations on commercial Vannamei in M08/M09 while strictly flagging intensive densities (>120 PL/m²).
+* **Verification:**
+  * All 171 automated unit tests across 19 suites passed cleanly with 100% green status (`npm test`).

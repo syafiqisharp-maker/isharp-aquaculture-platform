@@ -142,12 +142,16 @@ During bad performance years, the engine strictly prevents unrealistically optim
 ---
 
 ### I. Smart "Auto-Fill Waves" Engine & Operational Business Rules
-When clicking **⚡ Auto-Fill Waves** or using brush auto-chaining, the scheduler enforces five operational business rules:
-1. **Target 2.0 Cycles / Year Aim (Adaptive Horizon):** Aim for 2 stocking events per pond per year. If culture is prolonged (>105d DOC), the engine dynamically adjusts rather than squeezing an unfeasible crop into the cold Northeast Monsoon (Nov–Dec).
-2. **Hierarchy of Cohesion (Module-First with Row-Level Fallback):** Whole Module All-In/All-Out synchronized stocking is always priority #1. If staggered finishes occur, falls back to Row-Level Hybrid synchronization (12 ponds in a row sync together). Pond-autonomous fragmentation is strictly prohibited.
-3. **Monodon Seed Ceiling & Supervisor Equity Rotation (20% to 30% Annual Total):** Constrained by commercial hatchery supply limits, Monodon stocking is capped at 20%–30% of total farm stockings. While Modules M08, M09, and M05 are prioritized, all module supervisors across M01–M10 receive an equitable rotation of Monodon culture ("a taste") over the planning horizon to ensure fair supervisor incentive distribution, scheduled during biologically safe non-monsoon months (Feb–Jul).
-4. **Row-Level Species Homogeneity:** Ponds within the same row are planned with the same species whenever possible for operational efficiency.
-5. **Asymmetric Duration Harvest Convergence:** When a module finishes asymmetrically, early-harvested ponds can be stocked with *P. monodon* (112–120d DOC) while prolonged ponds can subsequently take *L. vannamei* (85–98d DOC) to align their termination harvest windows simultaneously.
+When clicking **⚡ Auto-Fill Waves** or using brush auto-chaining, the scheduler enforces the **Hierarchical Conveyor-Belt Optimization Model** calibrated from 7,655 historical cycles:
+1. **Target 2.0 to 2.5 Cycles / Year Aim (Adaptive Horizon):** Aim for 2 to 2.5 stocking events per pond per year (matching 2020–2025 actual performance of 410–563 annual cycles). If culture is prolonged (>105d DOC), the engine dynamically adjusts rather than squeezing an unfeasible crop into the cold Northeast Monsoon (Nov–Dec).
+2. **Strict 9-Module Commercial Spine (M01–M09):** Pertains strictly to the 216 growout ponds across Modules 01 to 09 (~206 active benchmark capacity). Decommissioned Modules 10 (idle since 2017) and 11 (idle since 2022) are excluded from the commercial growout plan.
+3. **Lowland-First Conveyor-Belt Pipeline Order ($\Pi_{\text{pipeline}}$):**
+   - Flood-vulnerable lowland modules start first in Jan–Mar: $[\text{M04, M05, M07, M06, M08, M09}]$. They harvest Wave 1 by May/June, rest 6 weeks, and stock Wave 2 in June–August, finishing before the Northeast Monsoon.
+   - High-elevation sandy modules start later in Apr–May: $[\text{M01, M02, M03}]$. Their Wave 2 stocks in September–November with hardy SPR (DS2), safely culturing through the monsoon to harvest during Chinese New Year high-price windows (+RM 18,938/pond EBITDA).
+4. **Row-Level Atomic Batch Stamping:** Ponds within a single row (12 ponds) are stamped in a tight 1-week batch sharing the same species and a single clean hatchery source (`KSK`, `UBN` for Monodon; `SHT`, `CPD` for Vannamei), matching commercial lorry batch quotas (~1.5–2.7M PLs) and avoiding multi-hatchery tank mixing.
+5. **Split-Row Wave Formulation & Harvest Convergence ($31.8\%$ of Setiu Waves):** Supports split-row modules (Row 1 Monodon, Row 2 Vannamei) in modules M05, M06, and M07. Row 2 staggers by 2 weeks and utilizes 2X partial harvesting so both rows terminate within the same 10-day window, clearing the module canal for synchronized Golden Rest.
+6. **Empirical Dynamic Monthly Capacity Envelope ($C_{\max}$):** Replaces the rigid 50-pond cap with Setiu's empirical monthly capacity (36 in Jan, 72 in Feb–Apr, 48 in May, 72 in Jun–Aug, 60 in Sep, 48 in Oct, 36 in Nov, 24 in Dec), allowing high-volume safe September Vannamei stockings.
+7. **Live Splicing & State Readiness (Zero Magic Truncation):** Connects `autoOptimizeAll()` directly to live 2026 actuals by passing each module's computed `moduleInitialReadyWeeks` into the scheduler, eliminating the naive `Math.max(44, lastEnd + 4)` filter that previously dropped valid future waves.
 
 ---
 

@@ -222,35 +222,33 @@ class SimulationStore {
             actualSamplingMap = this._state?.samplingMap || new Map();
         }
 
-        // 1. Generate full benchmark 156-week optimal schedule with forwarded user & business options
+        // 1. Configure scheduler options
+        const restWeeks = actualOptions.restWeeks !== undefined ? Number(actualOptions.restWeeks) : 6;
         const schedulerOptions = {
             horizonWeeks: actualHorizonWeeks,
             baseYear: actualBaseYear,
             baseMonth: actualBaseMonth,
-            restWeeks: actualOptions.restWeeks !== undefined ? Number(actualOptions.restWeeks) : 6,
-            maxPondsPerMonth: actualOptions.maxPondsPerMonth !== undefined ? Number(actualOptions.maxPondsPerMonth) : 50,
+            restWeeks,
             elevatedModules: actualOptions.elevatedModules || ["01", "02", "03"],
-            monodonModules: actualOptions.monodonModules || ["08", "09", "05"],
-            vannameiDefaultStrategy: actualOptions.vannameiDefaultStrategy || "DS2",
+            vannameiDefaultStrategy: actualOptions.vannameiDefaultStrategy || "DS1",
             targetCyclesPerYear: actualOptions.targetCyclesPerYear !== undefined ? Number(actualOptions.targetCyclesPerYear) : 2,
-            monodonAnnualCapRatio: actualOptions.monodonAnnualCapRatio !== undefined ? Number(actualOptions.monodonAnnualCapRatio) : 0.30,
+            monodonAnnualCapRatio: actualOptions.monodonAnnualCapRatio !== undefined ? Number(actualOptions.monodonAnnualCapRatio) : 0.28,
             rotateMonodonToAllModules: actualOptions.rotateMonodonToAllModules !== false,
             ...actualOptions
         };
-
-        const optimalPlan = generateOptimal156WeekSchedule(masterPonds, schedulerOptions, this._state.priors);
 
         const hasYearCycles = Array.isArray(yearCycles) && yearCycles.length > 0;
         const hasLivePonds = Array.isArray(livePonds) && livePonds.length > 0;
 
         if (!hasYearCycles && !hasLivePonds) {
-            return optimalPlan;
+            return generateOptimal156WeekSchedule(masterPonds, schedulerOptions, this._state.priors);
         }
 
         const hybridList = [];
         const pondHas2026Cycles = new Set();
         const pondLastEndW = new Map();
         const modLastEndW = new Map();
+        const rowLastEndW = new Map();
 
         // 2. Ingest all actual year cycles (both historical closed and current production)
         if (hasYearCycles) {
@@ -326,9 +324,15 @@ class SimulationStore {
                     const curMax = pondLastEndW.get(c.pondId) || 0;
                     if (endW > curMax) pondLastEndW.set(c.pondId, endW);
 
-                    const modKey = String(c.moduleId || c.pondId || "").replace(/^[Mm]/, "").padStart(2, "0");
+                    const parts = String(c.pondId || "").split(".");
+                    const modKey = String(c.moduleId || parts[0] || "").replace(/^[Mm]/, "").padStart(2, "0");
                     const modCurMax = modLastEndW.get(modKey) || 0;
                     if (endW > modCurMax) modLastEndW.set(modKey, endW);
+
+                    const rowNo = parts[1] || "01";
+                    const rowKey = `${modKey}::${rowNo}`;
+                    const rowCurMax = rowLastEndW.get(rowKey) || 0;
+                    if (endW > rowCurMax) rowLastEndW.set(rowKey, endW);
                 }
             }
         } else if (hasLivePonds) {
@@ -378,16 +382,37 @@ class SimulationStore {
                     isLocked: true
                 });
                 pondLastEndW.set(live.pondId, liveEndW);
-                const modKey = String(live.moduleId || live.pondId || "").replace(/^[Mm]/, "").padStart(2, "0");
+                const parts = String(live.pondId || "").split(".");
+                const modKey = String(live.moduleId || parts[0] || "").replace(/^[Mm]/, "").padStart(2, "0");
                 const modCurMax = modLastEndW.get(modKey) || 0;
                 if (liveEndW > modCurMax) modLastEndW.set(modKey, liveEndW);
+
+                const rowNo = parts[1] || "01";
+                const rowKey = `${modKey}::${rowNo}`;
+                const rowCurMax = rowLastEndW.get(rowKey) || 0;
+                if (liveEndW > rowCurMax) rowLastEndW.set(rowKey, liveEndW);
             }
         }
 
+        // Calculate each module and row's actual readiness week based on live 2026 cycles + 42-day Golden Rest
+        const moduleInitialReadyWeeks = new Map();
+        for (const [modKey, endW] of modLastEndW.entries()) {
+            moduleInitialReadyWeeks.set(modKey, endW + 1 + restWeeks);
+        }
+        schedulerOptions.moduleInitialReadyWeeks = moduleInitialReadyWeeks;
+
+        const rowInitialReadyWeeks = new Map();
+        for (const [rowKey, endW] of rowLastEndW.entries()) {
+            rowInitialReadyWeeks.set(rowKey, endW + 1 + restWeeks);
+        }
+        schedulerOptions.rowInitialReadyWeeks = rowInitialReadyWeeks;
+
+        // Generate forward optimal plan conditioned on actual row and module readiness
+        const optimalPlan = generateOptimal156WeekSchedule(masterPonds, schedulerOptions, this._state.priors);
+
         // 3. Append future optimal planning cycles:
-        // - For ponds with 2026 cycles: future waves start after their last 2026 cycle closes + 4-6 wks rest.
-        // - For truly IDLE ponds with NO cycles in 2026: future planning waves start in FY 2027+ (week >= 53).
-        // - Ponds currently under MAINTENANCE are excluded from automated future stocking cycles.
+        // - Future waves start after their last active/closed cycle + restWeeks
+        // - Ponds currently under MAINTENANCE are excluded
         const maintenancePonds = new Set(
             (livePonds || [])
                 .filter(p => p.pondStatus === "MAINTENANCE" || p.status === "MAINTENANCE")
@@ -399,22 +424,27 @@ class SimulationStore {
                 continue;
             }
 
-            const has2026 = pondHas2026Cycles.has(opt.pondId);
-            const modKey = String(opt.moduleId || opt.pondId || "").replace(/^[Mm]/, "").padStart(2, "0");
-            const modEnd = modLastEndW.get(modKey) || 0;
+            const parts = String(opt.pondId || "").split(".");
+            const modKey = String(opt.moduleId || parts[0] || "").replace(/^[Mm]/, "").padStart(2, "0");
+            const rowNo = parts[1] || "01";
+            const rowKey = `${modKey}::${rowNo}`;
+            const rowEnd = rowLastEndW.get(rowKey) || 0;
             const pondEnd = pondLastEndW.get(opt.pondId) || 0;
-            const lastEnd = Math.max(pondEnd, modEnd);
+            const has2026 = pondHas2026Cycles.has(opt.pondId);
+            const lastEnd = Math.max(pondEnd, rowEnd);
 
             if (!has2026) {
-                if (opt.startWeekIndex >= 53) {
+                // If the row has live/closed cycles, future waves start after row readiness (rowEnd + 1 + restWeeks).
+                // If the row had no live cycles at all in 2026, future waves must not be scheduled retroactively in the past.
+                const minAllowedStart = rowEnd > 0 ? (rowEnd + 1 + restWeeks) : (Number(schedulerOptions.cutoffWeek) || 42);
+                if (opt.startWeekIndex >= minAllowedStart) {
                     hybridList.push({
                         ...opt,
                         isLocked: false
                     });
                 }
             } else {
-                const minFutureStart = Math.max(44, lastEnd + 4);
-                if (opt.startWeekIndex >= minFutureStart) {
+                if (opt.startWeekIndex > lastEnd) {
                     hybridList.push({
                         ...opt,
                         isLocked: false
