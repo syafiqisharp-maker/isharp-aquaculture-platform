@@ -8,6 +8,7 @@ import { LabRepository } from "../../infrastructure/repositories/labRepository.j
 import { hasPermission, PERMISSIONS } from "../../config/permissions.js";
 import { DOM_IDS, validateContract } from "../../config/domContracts.js";
 import { evaluateParameterStatus, getWaterQualityColorClass } from "../../domain/waterQualityLimit.js";
+import { escapeHtml } from "../../utils/formatters.js";
 
 export class LaboratoryTab {
     constructor(onOpenExcel) {
@@ -146,22 +147,22 @@ export class LaboratoryTab {
 
                 return `
                     <tr>
-                        <td class="font-mono">${r.log_date || '—'}</td>
-                        <td><strong>${r.doc !== null && r.doc !== undefined ? r.doc : '—'}</strong></td>
-                        <td class="${salClass}">${r.salinity_ppt !== null ? r.salinity_ppt : '—'}</td>
-                        <td class="${alkClass}">${r.alkalinity !== null ? r.alkalinity : '—'}</td>
-                        <td class="${nh3Class}">${r.ammonia !== null ? r.ammonia : '—'}</td>
-                        <td class="${no2Class}">${r.nitrite !== null ? r.nitrite : '—'}</td>
+                        <td class="font-mono">${escapeHtml(r.log_date || '—')}</td>
+                        <td><strong>${r.doc !== null && r.doc !== undefined ? escapeHtml(r.doc) : '—'}</strong></td>
+                        <td class="${salClass}">${r.salinity_ppt !== null ? escapeHtml(r.salinity_ppt) : '—'}</td>
+                        <td class="${alkClass}">${r.alkalinity !== null ? escapeHtml(r.alkalinity) : '—'}</td>
+                        <td class="${nh3Class}">${r.ammonia !== null ? escapeHtml(r.ammonia) : '—'}</td>
+                        <td class="${no2Class}">${r.nitrite !== null ? escapeHtml(r.nitrite) : '—'}</td>
                         <td class="${caClass}">${r.calcium !== null ? Math.round(r.calcium) : '—'}</td>
                         <td class="${mgClass}">${r.magnesium !== null ? Math.round(r.magnesium) : '—'}</td>
                         <td class="${ratioClass}"><span class="font-mono">${ratioText}</span></td>
-                        <td class="${turbClass}">${r.turbidity !== null ? r.turbidity : '—'}</td>
+                        <td class="${turbClass}">${r.turbidity !== null ? escapeHtml(r.turbidity) : '—'}</td>
                     </tr>
                 `;
             }).join("");
         } catch (err) {
             console.error("Failed to load laboratory water quality:", err);
-            this.dom.tbodyWq.innerHTML = `<tr><td colspan="10" class="text-center text-danger">Error loading water quality: ${err.message}</td></tr>`;
+            this.dom.tbodyWq.innerHTML = `<tr><td colspan="10" class="text-center text-danger">Error loading water quality: ${escapeHtml(err.message)}</td></tr>`;
         }
     }
 
@@ -224,20 +225,20 @@ export class LaboratoryTab {
 
                 return `
                     <tr>
-                        <td class="font-mono">${r.issue_date || '—'}</td>
-                        <td>${r.issue_category || 'PATHOLOGY'}</td>
-                        <td><strong>${r.issue_status || '—'}</strong></td>
-                        <td>${r.issue_test || '—'}</td>
-                        <td><span class="status-badge ${flagClass}">${r.issue_flag || 'OK'}</span></td>
-                        <td>${r.issue_grade || 'G0'}</td>
-                        <td class="${isRed ? 'text-danger font-bold' : ''}">${r.issue_note || 'NEGATIVE'}</td>
-                        <td>${r.remarks || '—'}</td>
+                        <td class="font-mono">${escapeHtml(r.issue_date || '—')}</td>
+                        <td>${escapeHtml(r.issue_category || 'PATHOLOGY')}</td>
+                        <td><strong>${escapeHtml(r.issue_status || '—')}</strong></td>
+                        <td>${escapeHtml(r.issue_test || '—')}</td>
+                        <td><span class="status-badge ${flagClass}">${escapeHtml(r.issue_flag || 'OK')}</span></td>
+                        <td>${escapeHtml(r.issue_grade || 'G0')}</td>
+                        <td class="${isRed ? 'text-danger font-bold' : ''}">${escapeHtml(r.issue_note || 'NEGATIVE')}</td>
+                        <td>${escapeHtml(r.remarks || '—')}</td>
                     </tr>
                 `;
             }).join("");
         } catch (err) {
             console.error("Failed to load laboratory issues:", err);
-            this.dom.tbodyIssues.innerHTML = `<tr><td colspan="8" class="text-center text-danger">Error loading issues: ${err.message}</td></tr>`;
+            this.dom.tbodyIssues.innerHTML = `<tr><td colspan="8" class="text-center text-danger">Error loading issues: ${escapeHtml(err.message)}</td></tr>`;
         }
     }
 

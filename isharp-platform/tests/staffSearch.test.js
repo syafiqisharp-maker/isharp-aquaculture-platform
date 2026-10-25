@@ -22,6 +22,7 @@ test('StaffRepository: findStaff multi-mode search', async (t) => {
     await t.test('finds staff by 4-digit padded ID (0042)', () => {
         const staff = StaffRepository.findStaff('0042');
         assert.ok(staff);
+        assert.equal(staff.staff_no, '0042');
         assert.equal(staff.staff_name, 'Bujang Slamat');
     });
 
@@ -58,6 +59,15 @@ test('StaffRepository: findStaff multi-mode search', async (t) => {
     await t.test('returns null for unknown ID or name', () => {
         assert.equal(StaffRepository.findStaff('9999'), null);
         assert.equal(StaffRepository.findStaff('Nonexistent Worker'), null);
-        assert.equal(StaffRepository.findStaff(''), null);
+    });
+
+    await t.test('normalizeStaffNo zero-pads unpadded numeric IDs and handles datalist strings', () => {
+        assert.equal(StaffRepository.normalizeStaffNo('42'), '0042');
+        assert.equal(StaffRepository.normalizeStaffNo('415'), '0415');
+        assert.equal(StaffRepository.normalizeStaffNo('1638'), '1638');
+        assert.equal(StaffRepository.normalizeStaffNo('0042 - Bujang Slamat (Deputy Farm Manager)'), '0042');
+        assert.equal(StaffRepository.normalizeStaffNo('Hairi Azha'), '1638');
+        assert.equal(StaffRepository.normalizeStaffNo(null), null);
+        assert.equal(StaffRepository.normalizeStaffNo(''), null);
     });
 });

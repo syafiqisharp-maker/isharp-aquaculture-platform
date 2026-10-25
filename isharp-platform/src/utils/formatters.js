@@ -1,10 +1,26 @@
 /**
  * iSHARP DBMS 2.0 — Centralized Data & Display Formatters
  * Pure functions for timezone-safe date transformations, numeric formatting,
- * aquaculture weight metrics, and financial currency presentation.
+ * aquaculture weight metrics, financial currency presentation, and HTML XSS sanitization.
  * 
  * Clean Coding Standard: Zero DOM manipulation, 100% pure & testable.
  */
+
+/**
+ * Escapes HTML special characters to prevent Stored/DOM Cross-Site Scripting (XSS)
+ * when interpolating untrusted or user-supplied database strings into innerHTML.
+ * @param {any} val
+ * @returns {string}
+ */
+export function escapeHtml(val) {
+    if (val === null || val === undefined) return "";
+    return String(val)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+}
 
 /**
  * Returns YYYY-MM-DD in local time without UTC offset skew.

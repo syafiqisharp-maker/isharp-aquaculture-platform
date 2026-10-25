@@ -1,94 +1,87 @@
 /**
  * iSHARP DBMS 2.0 — Security & Access Control Service
- * Manages passwords fetched dynamically from Supabase (with offline local fallback),
+ * Manages cryptographic passcode verification (salted SHA-256 + server-side Postgres pgcrypto RPC),
  * role verification (DBMS Editor vs Viewer), and Field Ops Module/Manager authentication.
+ * Zero plaintext passwords are stored in client source or fetched over public SELECT queries.
  */
 
 import { supabase } from "../infrastructure/supabase.js";
-import { ROLES } from "./permissions.js";
 
 const DBMS_SESSION_KEY = "isharp_dbms_session";
 const FIELD_OPS_SESSION_KEY = "isharp_field_ops_module";
 const FIELD_OPS_ROLE_KEY = "isharp_field_ops_role";
+const HASH_SALT_PREFIX = "isharp_v2_salt";
 
-// Offline default passwords matching database setup
-const OFFLINE_PASSWORDS = {
+// One-way salted SHA-256 digests (SHA-256("isharp_v2_salt:<scope>:<normalized_passcode>"))
+const OFFLINE_HASHES = {
     app: {
-        dbms_editor: "mantaray",
-        dbms_viewer: "isharp",
-        manager_master: "todak"
+        dbms_editor: "c95decea77a41544d2540af492d1aac58a6dbcb9afaafa44b735f659b19acd46",
+        dbms_viewer: "f84b5ac90177360325e4fcce08cd504df369aae8f26a2206a1fb568b97aee406",
+        legacy_viewer: "970c0c69445e2b92c0d6683801472f6b399beddca66c5fe7cfcde323f6a90b21",
+        manager_master: "7eee103ebdc4b85037db7a69696ad6bc9c442aab05343a59ee9d6cac45544e2f"
     },
     modules: {
-        1: "siakap",
-        2: "kerapu",
-        3: "jenahak",
-        4: "haruan",
-        5: "bawal",
-        6: "patin",
-        7: "keli",
-        8: "tilapia",
-        9: "tongsan"
+        1: "880767e981de1d93691daf53c26b9d033212ae6b2adbab8c329248f1e2962953",
+        2: "3a404ea596916667688f0bfe54537bd818d3cc808d02c2b6d546cbd4603511af",
+        3: "bcce0769402e4096682124d464afae7cefefc2651f1c98ed340a3d91d2079799",
+        4: "6a84bfafb2f36aaaa170e4e5894846231e675f104ab0e86a8469c3cb68926805",
+        5: "c134cd563a3ed58abc8313b0677423d94f53d31cb1362f8d692faf8fe0a531e1",
+        6: "24d5d4f494c5990de4a228b2ab64f798d3fb645cb97e7951aac30f0d536f2a4e",
+        7: "3dad7efd1e14997a7651530876a5434870adc21e9002f2c3cf8a8c142f85b7f8",
+        8: "9e706323d653b1b63758eda28ceaf76efedf8883c1b7dae8f73b91c36517ec1e",
+        9: "8fc3cddf9909155ea9bb04e400b83f2c8a22e58de74558afbf9113241e951d12"
     }
 };
 
+/**
+ * Computes a salted SHA-256 hex digest using standard Web Crypto API.
+ * Works identically in modern browsers and Node.js.
+ * @param {string} scope e.g. "app:dbms_editor" or "mod:1"
+ * @param {string} normalizedPasscode lowercase trimmed passcode
+ * @returns {Promise<string>} 64-char hex digest
+ */
+async function computeSaltedDigest(scope, normalizedPasscode) {
+    const payload = `${HASH_SALT_PREFIX}:${scope}:${normalizedPasscode}`;
+    const bytes = new TextEncoder().encode(payload);
+    const hashBuffer = await globalThis.crypto.subtle.digest("SHA-256", bytes);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    return hashArray.map(b => b.toString(16).padStart(2, "0")).join("");
+}
+
 class SecurityService {
     constructor() {
-        this.cache = {
-            appPasswords: { ...OFFLINE_PASSWORDS.app },
-            modulePasswords: { ...OFFLINE_PASSWORDS.modules },
-            lastFetched: 0
-        };
-        this._syncPromise = null;
         this._inMemorySessions = {
             dbms: null,
             fieldOpsModule: null,
-            fieldOpsRole: null
+            fieldOpsRole: null,
+            passcode: null
         };
-
-        // Eager background sync
-        this.syncPasswords().catch(() => {});
     }
 
     /**
-     * Fetch active passwords from Supabase (deduplicated in-flight)
+     * Retained as a safe no-op for backward compatibility.
+     * Passwords are never downloaded in plaintext from Supabase tables.
      */
     async syncPasswords() {
-        if (this._syncPromise) {
-            return this._syncPromise;
-        }
+        return;
+    }
 
-        this._syncPromise = (async () => {
-            try {
-                const [appRes, modRes] = await Promise.all([
-                    supabase.request("app_passwords?select=key,password"),
-                    supabase.request("module_passwords?select=module_no,access_password")
-                ]);
+    /**
+     * Stores the authenticated passcode for server-side RLS header verification.
+     * @param {string|null} passcode
+     */
+    setActivePasscode(passcode) {
+        const clean = passcode ? String(passcode).trim().toLowerCase() : null;
+        this._inMemorySessions.passcode = clean;
+        supabase.setAuthPasscode(clean);
+    }
 
-                if (Array.isArray(appRes)) {
-                    appRes.forEach(item => {
-                        if (item.key && item.password) {
-                            this.cache.appPasswords[item.key] = item.password.trim();
-                        }
-                    });
-                }
-
-                if (Array.isArray(modRes)) {
-                    modRes.forEach(item => {
-                        if (item.module_no != null && item.access_password) {
-                            this.cache.modulePasswords[Number(item.module_no)] = item.access_password.trim();
-                        }
-                    });
-                }
-
-                this.cache.lastFetched = Date.now();
-            } catch (err) {
-                console.warn("[Security] Could not sync latest passwords from Supabase, using cached/offline values:", err.message);
-            } finally {
-                this._syncPromise = null;
-            }
-        })();
-
-        return this._syncPromise;
+    /**
+     * Returns the currently active authenticated passcode.
+     * @returns {string|null}
+     */
+    getActivePasscode() {
+        return this._inMemorySessions.passcode || supabase.getAuthPasscode();
     }
 
     /**
@@ -126,6 +119,9 @@ class SecurityService {
         if (typeof sessionStorage !== "undefined") {
             sessionStorage.removeItem(DBMS_SESSION_KEY);
         }
+        if (!this._inMemorySessions.fieldOpsModule) {
+            this.setActivePasscode(null);
+        }
     }
 
     /**
@@ -159,7 +155,6 @@ class SecurityService {
         if (this._inMemorySessions.fieldOpsRole) {
             return this._inMemorySessions.fieldOpsRole;
         }
-        // Default to SUPERVISOR if unauthenticated or backward-compatible
         return "SUPERVISOR";
     }
 
@@ -182,12 +177,15 @@ class SecurityService {
             sessionStorage.removeItem(FIELD_OPS_SESSION_KEY);
             sessionStorage.removeItem(FIELD_OPS_ROLE_KEY);
         }
+        if (!this._inMemorySessions.dbms) {
+            this.setActivePasscode(null);
+        }
     }
 
     /**
      * Verify entered password against DBMS Editor, Viewer, or Manager Master credentials.
-     * Evaluates cached/offline credentials immediately (0ms latency), falling back to
-     * a network sync only if unmatched and cache is stale.
+     * Evaluates salted SHA-256 digests first (<1ms latency), falling back to
+     * server-side PostgreSQL pgcrypto RPC verification (`fn_verify_dbms_passcode`) if rotated in DB.
      * @param {string} inputPassword
      * @returns {Promise<"EDITOR"|"VIEWER"|null>}
      */
@@ -195,39 +193,53 @@ class SecurityService {
         const normalized = (inputPassword || "").trim().toLowerCase();
         if (!normalized) return null;
 
-        const checkMatch = () => {
-            const editorPass = (this.cache.appPasswords.dbms_editor || OFFLINE_PASSWORDS.app.dbms_editor).toLowerCase();
-            const viewerPass = (this.cache.appPasswords.dbms_viewer || OFFLINE_PASSWORDS.app.dbms_viewer).toLowerCase();
-            const managerPass = (this.cache.appPasswords.manager_master || OFFLINE_PASSWORDS.app.manager_master).toLowerCase();
+        // 1. Check Editor digest
+        const editorDigest = await computeSaltedDigest("app:dbms_editor", normalized);
+        if (editorDigest === OFFLINE_HASHES.app.dbms_editor) {
+            this.setActivePasscode(normalized);
+            this.setDbmsSession("EDITOR");
+            return "EDITOR";
+        }
 
-            // 1. Strict Editor: Only mantaray
-            if (normalized === editorPass) {
-                this.setDbmsSession("EDITOR");
-                return "EDITOR";
+        // 2. Check Viewer, Legacy Viewer, and Manager Master digests
+        const [viewerDigest, legacyDigest, managerDigest] = await Promise.all([
+            computeSaltedDigest("app:dbms_viewer", normalized),
+            computeSaltedDigest("app:legacy_viewer", normalized),
+            computeSaltedDigest("app:manager_master", normalized)
+        ]);
+
+        if (
+            viewerDigest === OFFLINE_HASHES.app.dbms_viewer ||
+            legacyDigest === OFFLINE_HASHES.app.legacy_viewer ||
+            managerDigest === OFFLINE_HASHES.app.manager_master
+        ) {
+            this.setActivePasscode(normalized);
+            this.setDbmsSession("VIEWER");
+            return "VIEWER";
+        }
+
+        // 3. Check if entered password matches any of the 9 module supervisor digests
+        const moduleNums = Object.keys(OFFLINE_HASHES.modules);
+        const modDigests = await Promise.all(
+            moduleNums.map(m => computeSaltedDigest(`mod:${m}`, normalized))
+        );
+        const matchedModule = moduleNums.some((m, idx) => modDigests[idx] === OFFLINE_HASHES.modules[m]);
+        if (matchedModule) {
+            this.setActivePasscode(normalized);
+            this.setDbmsSession("VIEWER");
+            return "VIEWER";
+        }
+
+        // 4. Server-side PostgreSQL pgcrypto RPC fallback (supports live password rotation in Supabase)
+        try {
+            const rpcRole = await supabase.rpc("fn_verify_dbms_passcode", { p_passcode: normalized });
+            if (rpcRole === "EDITOR" || rpcRole === "VIEWER") {
+                this.setActivePasscode(normalized);
+                this.setDbmsSession(rpcRole);
+                return rpcRole;
             }
-
-            // 2. Check if entered password matches any of the 9 module/supervisor fish passwords
-            const allModulePasses = Object.values({ ...OFFLINE_PASSWORDS.modules, ...this.cache.modulePasswords })
-                .map(p => String(p).trim().toLowerCase());
-            const isModulePass = allModulePasses.includes(normalized);
-
-            // Viewer: isharp, monodon (legacy fallback), todak (manager master), or any of the 9 supervisor passcodes
-            if (normalized === viewerPass || normalized === "isharp" || normalized === "monodon" || normalized === managerPass || isModulePass) {
-                this.setDbmsSession("VIEWER");
-                return "VIEWER";
-            }
-
-            return null;
-        };
-
-        // 1. Instant check against cache/offline defaults (0ms latency, prevents freezing on slow mobile connection)
-        const instantMatch = checkMatch();
-        if (instantMatch) return instantMatch;
-
-        // 2. If unmatched and cache is older than 30s, fetch latest from Supabase and retry
-        if (Date.now() - this.cache.lastFetched > 30000) {
-            await this.syncPasswords();
-            return checkMatch();
+        } catch {
+            // Offline or RPC not yet applied
         }
 
         return null;
@@ -237,7 +249,6 @@ class SecurityService {
      * Verify entered password for a Field Ops module (or manager master / editor / viewer).
      * Supports module numbers as integers (1), strings ("1"), or padded strings ("01").
      * Returns "SUPERVISOR", "VIEWER", or null.
-     * Also supports boolean check if caller expects truthy.
      * @param {number|string} moduleNo
      * @param {string} inputPassword
      * @returns {Promise<"SUPERVISOR"|"VIEWER"|null>}
@@ -248,35 +259,49 @@ class SecurityService {
 
         const modKey = Number(moduleNo);
 
-        const checkMatch = () => {
-            const managerPass = (this.cache.appPasswords.manager_master || OFFLINE_PASSWORDS.app.manager_master).toLowerCase();
-            const editorPass = (this.cache.appPasswords.dbms_editor || OFFLINE_PASSWORDS.app.dbms_editor).toLowerCase();
-            const viewerPass = (this.cache.appPasswords.dbms_viewer || OFFLINE_PASSWORDS.app.dbms_viewer).toLowerCase();
-            const modulePass = (this.cache.modulePasswords[modKey] || OFFLINE_PASSWORDS.modules[modKey] || "").toLowerCase();
+        const [managerDigest, editorDigest, modDigest, viewerDigest, legacyDigest] = await Promise.all([
+            computeSaltedDigest("app:manager_master", normalized),
+            computeSaltedDigest("app:dbms_editor", normalized),
+            computeSaltedDigest(`mod:${modKey}`, normalized),
+            computeSaltedDigest("app:dbms_viewer", normalized),
+            computeSaltedDigest("app:legacy_viewer", normalized)
+        ]);
 
-            // 1. Supervisor / Editor Full Access: Module fish password, manager master ("todak"), or DBMS editor ("mantaray")
-            if (normalized === managerPass || normalized === editorPass || (Boolean(modulePass) && normalized === modulePass)) {
-                this.setFieldOpsSession(modKey, "SUPERVISOR");
-                return "SUPERVISOR";
+        // 1. Supervisor / Editor Full Access: Module passcode, manager master, or DBMS editor
+        const expectedModHash = OFFLINE_HASHES.modules[modKey];
+        if (
+            managerDigest === OFFLINE_HASHES.app.manager_master ||
+            editorDigest === OFFLINE_HASHES.app.dbms_editor ||
+            (Boolean(expectedModHash) && modDigest === expectedModHash)
+        ) {
+            this.setActivePasscode(normalized);
+            this.setFieldOpsSession(modKey, "SUPERVISOR");
+            return "SUPERVISOR";
+        }
+
+        // 2. Read-Only Viewer Access: Universal viewer
+        if (
+            viewerDigest === OFFLINE_HASHES.app.dbms_viewer ||
+            legacyDigest === OFFLINE_HASHES.app.legacy_viewer
+        ) {
+            this.setActivePasscode(normalized);
+            this.setFieldOpsSession(modKey, "VIEWER");
+            return "VIEWER";
+        }
+
+        // 3. Server-side PostgreSQL pgcrypto RPC fallback (supports live password rotation in Supabase)
+        try {
+            const rpcRole = await supabase.rpc("fn_verify_field_ops_passcode", {
+                p_module_no: modKey,
+                p_passcode: normalized
+            });
+            if (rpcRole === "SUPERVISOR" || rpcRole === "VIEWER") {
+                this.setActivePasscode(normalized);
+                this.setFieldOpsSession(modKey, rpcRole);
+                return rpcRole;
             }
-
-            // 2. Read-Only Viewer Access: Universal viewer ("isharp" / legacy "monodon")
-            if (normalized === viewerPass || normalized === "isharp" || normalized === "monodon") {
-                this.setFieldOpsSession(modKey, "VIEWER");
-                return "VIEWER";
-            }
-
-            return null;
-        };
-
-        // 1. Instant check against cache/offline defaults (0ms latency)
-        const instantMatch = checkMatch();
-        if (instantMatch) return instantMatch;
-
-        // 2. If unmatched and cache is older than 30s, fetch latest from Supabase and retry
-        if (Date.now() - this.cache.lastFetched > 30000) {
-            await this.syncPasswords();
-            return checkMatch();
+        } catch {
+            // Offline or RPC not yet applied
         }
 
         return null;

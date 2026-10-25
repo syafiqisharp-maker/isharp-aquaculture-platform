@@ -9,6 +9,7 @@ import { PondRepository } from "../infrastructure/repositories/pondRepository.js
 import { calculateDOC } from "../domain/biometrics.js";
 import { Toast } from "./Toast.js";
 import { DOM_IDS } from "../config/domContracts.js";
+import { ManagementCalloutModal } from "./ManagementCalloutModal.js";
 
 export class Navbar {
     constructor(onOpenExcel) {
@@ -114,6 +115,14 @@ export class Navbar {
         // Header Action buttons
         if (this.dom.btnExcel && this.onOpenExcel) {
             this.dom.btnExcel.addEventListener("click", () => this.onOpenExcel());
+        }
+
+        // Weekly Management Callout button in DBMS command bar
+        const btnCallout = document.getElementById("btn-dbms-mgmt-callout");
+        if (btnCallout) {
+            btnCallout.addEventListener("click", () => {
+                ManagementCalloutModal.open({ initialModule: "ALL" });
+            });
         }
 
         // Lock Session button

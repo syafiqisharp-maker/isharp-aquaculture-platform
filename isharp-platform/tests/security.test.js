@@ -1,11 +1,33 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import fs from "node:fs";
+import path from "node:path";
 import { security } from "../src/config/security.js";
+import { supabase } from "../src/infrastructure/supabase.js";
+import { escapeHtml } from "../src/utils/formatters.js";
 
-test("Security: DBMS Password Verification", async (t) => {
+test("Security: Zero plaintext passwords in security.js source bundle", () => {
+    const securityFilePath = path.resolve(process.cwd(), "src/config/security.js");
+    const content = fs.readFileSync(securityFilePath, "utf-8").toLowerCase();
+
+    const forbiddenPlaintexts = [
+        "mantaray", "todak", "siakap", "kerapu", "jenahak",
+        "haruan", "bawal", "patin", "keli", "tilapia", "tongsan"
+    ];
+
+    for (const secret of forbiddenPlaintexts) {
+        assert.ok(
+            !content.includes(`"${secret}"`) && !content.includes(`'${secret}'`),
+            `security.js must NOT contain plaintext password '${secret}'`
+        );
+    }
+});
+
+test("Security: DBMS Password Verification & RLS Header Attachment", async () => {
     // 1. Exclusive Editor password: Only 'mantaray'
     const editorResult = await security.verifyDbmsPassword("mantaray");
     assert.equal(editorResult, "EDITOR", "mantaray should grant EDITOR access");
+    assert.equal(supabase.getAuthPasscode(), "mantaray", "supabase client should store active passcode for RLS headers");
 
     // 2. Case-insensitivity & whitespace trimming
     const uppercaseResult = await security.verifyDbmsPassword("  MANTARAY  ");
@@ -41,7 +63,7 @@ test("Security: DBMS Password Verification", async (t) => {
     assert.equal(emptyResult, null, "empty password should return null");
 });
 
-test("Security: Field Ops Password Verification", async (t) => {
+test("Security: Field Ops Password Verification", async () => {
     // 1. Module 01 specific fish password ("siakap") -> SUPERVISOR
     const mod1Result = await security.verifyFieldOpsPassword(1, "siakap");
     assert.equal(mod1Result, "SUPERVISOR", "siakap should unlock Module 1 as SUPERVISOR");
@@ -87,4 +109,12 @@ test("Security: Field Ops Password Verification", async (t) => {
     // 8. Wrong module for fish password (e.g. kerapu on module 1)
     const wrongModuleFish = await security.verifyFieldOpsPassword(1, "kerapu");
     assert.equal(wrongModuleFish, null, "kerapu should not unlock module 1");
+});
+
+test("Security: escapeHtml neutralizes XSS vectors", () => {
+    const malicious = `<img src=x onerror="alert('xss')">&"'`;
+    const escaped = escapeHtml(malicious);
+    assert.equal(escaped, "&lt;img src=x onerror=&quot;alert(&#39;xss&#39;)&quot;&gt;&amp;&quot;&#39;");
+    assert.equal(escapeHtml(null), "");
+    assert.equal(escapeHtml(undefined), "");
 });

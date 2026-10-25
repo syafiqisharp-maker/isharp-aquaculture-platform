@@ -38,15 +38,18 @@ export class InventoryRepository {
             aerators = Array.isArray(maybeAerators) ? maybeAerators : [];
         }
 
-        const records = aerators.map(a => ({
-            pond_index: pondIndex,
-            pond: pondName,
-            aerator_model: a.aerator_model || `${a.hp || a.hp_rating || 1} HP Paddlewheel`,
-            hp: parseFloat(a.hp || a.hp_rating || 1),
-            total_units: parseInt(a.total_units || 0, 10),
-            active_units: parseInt(a.total_units || 0, 10),
-            updated_at: new Date().toISOString()
-        }));
+        const records = aerators.map(a => {
+            const hpVal = parseFloat(a.hp || a.hp_rating || 1);
+            return {
+                pond_index: pondIndex,
+                pond: pondName,
+                aerator_model: `${hpVal.toFixed(1)} HP Paddlewheel`,
+                hp: hpVal,
+                total_units: parseInt(a.total_units || 0, 10),
+                active_units: parseInt(a.total_units || 0, 10),
+                updated_at: new Date().toISOString()
+            };
+        });
 
         let aeratorSyncRes = null;
         if (records.length > 0) {

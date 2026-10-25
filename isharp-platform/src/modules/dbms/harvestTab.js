@@ -7,6 +7,7 @@ import { appState } from "../../state/appState.js";
 import { HarvestRepository } from "../../infrastructure/repositories/harvestRepository.js";
 import { Toast } from "../../components/Toast.js";
 import { DOM_IDS, validateContract } from "../../config/domContracts.js";
+import { escapeHtml } from "../../utils/formatters.js";
 
 export class HarvestTab {
     constructor(onOpenExcel) {
@@ -88,13 +89,13 @@ export class HarvestTab {
 
                         return `
                             <tr>
-                                <td class="font-mono">${p.plan_harv_date || '—'}</td>
-                                <td><span class="status-badge ${statusClass}">${p.plan_harv_status || 'PLAN'}</span></td>
+                                <td class="font-mono">${escapeHtml(p.plan_harv_date || '—')}</td>
+                                <td><span class="status-badge ${statusClass}">${escapeHtml(p.plan_harv_status || 'PLAN')}</span></td>
                                 <td class="font-mono font-bold text-success">${wgt > 0 ? wgt.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + ' kg' : '—'}</td>
                                 <td class="font-mono font-bold">${abw > 0 ? abw.toFixed(2) + ' g' : '—'}</td>
-                                <td class="font-mono">${p.time_harvest || '—'}</td>
-                                <td class="font-mono">${p.time_delivery || '—'}</td>
-                                <td><span class="badge-brand font-bold" style="background: rgba(2, 132, 199, 0.08); color: #0284c7; padding: 2px 8px; border-radius: 4px; border: 1px solid rgba(2, 132, 199, 0.2);">${p.team || '—'}</span></td>
+                                <td class="font-mono">${escapeHtml(p.time_harvest || '—')}</td>
+                                <td class="font-mono">${escapeHtml(p.time_delivery || '—')}</td>
+                                <td><span class="badge-brand font-bold" style="background: rgba(2, 132, 199, 0.08); color: #0284c7; padding: 2px 8px; border-radius: 4px; border: 1px solid rgba(2, 132, 199, 0.2);">${escapeHtml(p.team || '—')}</span></td>
                             </tr>
                         `;
                     }).join("");
@@ -102,7 +103,7 @@ export class HarvestTab {
                     this.dom.tbodyPlan.innerHTML = `
                         <tr>
                             <td colspan="7" class="text-center text-muted" style="padding: 2.2rem 1rem;">
-                                📋 No harvest plan scheduled yet for cycle <strong>[${pond.pond_index}]</strong>.
+                                📋 No harvest plan scheduled yet for cycle <strong>[${escapeHtml(pond.pond_index)}]</strong>.
                             </td>
                         </tr>
                     `;
@@ -128,12 +129,12 @@ export class HarvestTab {
 
                         return `
                             <tr>
-                                <td class="font-mono">${r.harv_date || '—'}</td>
-                                <td><span class="status-badge ${statusClass}">${r.harv_status || 'HARVEST'}</span></td>
+                                <td class="font-mono">${escapeHtml(r.harv_date || '—')}</td>
+                                <td><span class="status-badge ${statusClass}">${escapeHtml(r.harv_status || 'HARVEST')}</span></td>
                                 <td class="font-mono font-bold text-success">${weight > 0 ? weight.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + ' kg' : '—'}</td>
                                 <td class="font-mono font-bold">${abw > 0 ? abw.toFixed(2) + ' g' : '—'}</td>
                                 <td class="font-mono">${pcs > 0 ? pcs.toLocaleString() : '—'}</td>
-                                <td>${r.harv_method === 'M' ? 'Mechanical (Pump/Net)' : (r.harv_method || 'Standard Netting')}</td>
+                                <td>${r.harv_method === 'M' ? 'Mechanical (Pump/Net)' : escapeHtml(r.harv_method || 'Standard Netting')}</td>
                                 <td class="font-mono font-bold text-success">${revenue > 0 ? 'RM ' + revenue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '—'}</td>
                             </tr>
                         `;
@@ -142,7 +143,7 @@ export class HarvestTab {
                     this.dom.tbodyHarvest.innerHTML = `
                         <tr>
                             <td colspan="7" class="text-center text-muted" style="padding: 2.2rem 1rem;">
-                                🦐 No harvest runs logged yet for cycle <strong>[${pond.pond_index}]</strong> (Current Status: <strong>${pond.pond_status || 'PRODUCTION'}</strong>).
+                                🦐 No harvest runs logged yet for cycle <strong>[${escapeHtml(pond.pond_index)}]</strong> (Current Status: <strong>${escapeHtml(pond.pond_status || 'PRODUCTION')}</strong>).
                             </td>
                         </tr>
                     `;
@@ -164,8 +165,8 @@ export class HarvestTab {
 
                         return `
                             <tr>
-                                <td class="font-mono">${s.hvt_date || '—'}</td>
-                                <td class="font-bold">${s.hvt_buyer || 'Commercial Buyer'}</td>
+                                <td class="font-mono">${escapeHtml(s.hvt_date || '—')}</td>
+                                <td class="font-bold">${escapeHtml(s.hvt_buyer || 'Commercial Buyer')}</td>
                                 <td class="font-mono">${abw > 0 ? abw.toFixed(2) + ' g' : '—'}</td>
                                 <td class="font-mono font-bold">${goodWgt > 0 ? goodWgt.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' kg' : '—'}</td>
                                 <td class="font-mono">${goodPrc > 0 ? 'RM ' + goodPrc.toFixed(2) + ' / kg' : '—'}</td>
@@ -181,7 +182,7 @@ export class HarvestTab {
                     this.dom.tbodySales.innerHTML = `
                         <tr>
                             <td colspan="10" class="text-center text-muted" style="padding: 2.2rem 1rem;">
-                                📦 No commercial buyer packout transactions recorded yet for cycle <strong>[${pond.pond_index}]</strong>.
+                                📦 No commercial buyer packout transactions recorded yet for cycle <strong>[${escapeHtml(pond.pond_index)}]</strong>.
                             </td>
                         </tr>
                     `;

@@ -49,7 +49,7 @@ The platform provides a unified Frutiger Aero gateway connecting three distinct 
 │   │   ├── infrastructure/       # Supabase Cloud Client & Repositories
 │   │   ├── domain/               # Aeration, Biometrics & Feeding Action Models
 │   │   └── state/                # Reactive Pub/Sub State Stores
-│   ├── tests/                    # 🧪 Node.js Native Unit Test Suite (20 domain tests)
+│   ├── tests/                    # 🧪 Node.js Native Unit Test Suite (190 unit tests across 19 suites)
 │   ├── public/                   # Static assets, logos & Netlify _redirects
 │   └── package.json              # isharp-aquaculture-platform (npm test, build, dev)
 │
@@ -58,7 +58,9 @@ The platform provides a unified Frutiger Aero gateway connecting three distinct 
 │
 ├── database_migration/           # 🔄 Data Ingestion & Supabase Migration Tools
 │   ├── sync_weekly_access.ps1    # Friday Smart Delta Sync Engine (Access -> Supabase)
-│   ├── migrate_staff_to_supabase.ps1 # 121-personnel 3NF Staff Directory Migrator
+│   ├── 11_migrate_feed_legacy_pk.sql # Feed ledger surrogate PK & natural deduplication
+│   ├── 12_normalize_staff_and_aerators.sql # Master staff directory & aerator inventory view
+│   ├── 13_security_hardening_rls_and_rpc.sql # pgcrypto bcrypt RPCs & header-based RLS
 │   └── SUPABASE_MIGRATION_GUIDE.md # Supabase Cloud Architecture Specification
 │
 ├── netlify.toml                  # 🌐 Netlify Edge Deployment Configuration
@@ -98,6 +100,11 @@ The cloud database (`keappoukeagyzpoxkrru.supabase.co`) operates under an enterp
    * Added covering indexes to high-frequency query paths (`active_operational_ponds(pond_index)`).
    * Eliminated redundant unique indexes saving write I/O.
    * Consolidated duplicate permissive RLS policies (clearing 105 Supabase advisor findings down to 0).
+4. **Phase 5: Security Hardening & Zero-Plaintext Defense**
+   * Migrated password storage to PostgreSQL `pgcrypto` bcrypt hashes with `SECURITY DEFINER` RPCs.
+   * Enforced header-based Row Level Security (`x-isharp-passcode`) protecting writes across 20+ tables.
+   * Stripped all plaintext secrets from frontend client assets in favor of salted SHA-256 offline digests.
+   * Integrated DOM XSS escaping, CSV formula injection neutralization, and edge CSP/HSTS headers.
 3. **Phase 3: Schema Hardening & Normalization**
    * Reconnected 23,384 SAP ERP feed entries by zero-padding cycle notations (`.3` $\rightarrow$ `.03`).
    * Enforced `FOREIGN KEY ... ON DELETE CASCADE` on `growout_pond_feed_sap` and `pond_harvest_plan`.

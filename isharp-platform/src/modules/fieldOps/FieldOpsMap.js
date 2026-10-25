@@ -15,6 +15,8 @@ import {
 import { supabase } from "../../infrastructure/supabase.js";
 import { StaffRepository } from "../../infrastructure/repositories/staffRepository.js";
 import { LabRepository } from "../../infrastructure/repositories/labRepository.js";
+import { ManagementCalloutModal } from "../../components/ManagementCalloutModal.js";
+import { evaluatePondManagementCompliance } from "../../domain/managementCompliance.js";
 
 import { getLocalDateStr } from "../../utils/formatters.js";
 import { security } from "../../config/security.js";
@@ -144,6 +146,9 @@ export class FieldOpsMap {
                         <button type="button" class="btn-filter-action" data-action-filter="IDLE" style="font-size: 0.74rem; font-weight: 700; padding: 0.35rem 0.8rem; border-radius: 999px; cursor: pointer;">
                             <span>Idle</span>
                         </button>
+                        <button type="button" class="btn-filter-action" data-action-filter="MGMT_PENDING" style="font-size: 0.74rem; font-weight: 700; padding: 0.35rem 0.8rem; border-radius: 999px; cursor: pointer; color: #b45309;">
+                            <span>⚠️ Mgmt Pending</span>
+                        </button>
 
                         <!-- Feeding Action Plan Legend -->
                         <div class="feeding-action-legend" style="display: inline-flex; align-items: center; gap: 0.55rem; font-size: 0.7rem; font-weight: 700; color: #475569; margin-left: 0.35rem; padding-left: 0.5rem; border-left: 1px solid #cbd5e1;">
@@ -157,6 +162,9 @@ export class FieldOpsMap {
                     <!-- Center/Right: Daily Progress & Rapid Log + Search and Refresh -->
                     <div class="field-ops-search-box" style="display: flex; align-items: center; gap: 0.6rem; margin-left: auto; flex-wrap: wrap;">
                         <div id="field-ops-daily-progress-mount" style="display: flex; align-items: center; gap: 0.5rem;"></div>
+                        <button type="button" id="btn-field-ops-mgmt-callout" class="btn-action btn-secondary" title="Open Management Audit &amp; WhatsApp Callout" style="font-size: 0.76rem; font-weight: 700; padding: 0.4rem 0.85rem; border-color: #38bdf8; color: #0284c7; display: inline-flex; align-items: center; gap: 0.35rem;">
+                            <span>📋 Callout</span>
+                        </button>
                         <input type="text" id="input-field-ops-search" placeholder="Search pond..." style="font-size: 0.82rem; padding: 0.4rem 0.75rem; border-radius: 8px; border: 1px solid #cbd5e1; outline: none; width: 155px; background: rgba(255, 255, 255, 0.9);" />
                         <button type="button" id="btn-refresh-field-ops" class="btn-action btn-secondary" title="Refresh Module Status" style="font-size: 0.76rem; font-weight: 700; padding: 0.4rem 0.8rem;">
                             <span>🔄</span>
@@ -233,6 +241,20 @@ export class FieldOpsMap {
         if (btnRefresh) {
             btnRefresh.addEventListener("click", () => this.loadModulePonds({ forceRefresh: true }));
         }
+
+        const btnCallout = this.container.querySelector("#btn-field-ops-mgmt-callout");
+        if (btnCallout) {
+            btnCallout.addEventListener("click", () => {
+                ManagementCalloutModal.open({
+                    initialModule: this.moduleNo,
+                    onNavigateToPond: (pond) => {
+                        if (typeof this.onSelectPond === "function") {
+                            this.onSelectPond(pond);
+                        }
+                    }
+                });
+            });
+        }
     }
 
     async loadModulePonds({ forceRefresh = false } = {}) {
@@ -261,13 +283,14 @@ export class FieldOpsMap {
             const todayStr = getLocalDateStr();
 
             // Fetch cycles, staff directory, today's records, weather, IoT telemetry, and lab water quality concurrently
-            const [cyclesRes, staffRes, todayRowsRes, weatherRes, wqRes, labMap] = await Promise.all([
+            const [cyclesRes, staffRes, todayRowsRes, weatherRes, wqRes, labMap, invRes] = await Promise.all([
                 supabase.request(`view_growout_pond_cycles?modl=eq.${modStr}&pond_status=neq.CLOSE&order=pond_index.desc&select=pond_index,pond,modl,row_no,cycle_no,crop_no,pond_status,stck_date,date_close,area,aerator_1hp,aerator_2hp,stck_species,bs_line,pm_staff_no,sv_staff_no,rl_staff_no,po_staff_no,support_staff_no`).catch(() => []),
                 StaffRepository.getStaffDirectory().catch(() => []),
                 supabase.request(`daily_pond_records?log_date=eq.${todayStr}&pond=like.${modStr}.%25&select=id,pond_index,pond,log_date,feed_kg,feed_tray_remnant_pct,water_level_cm,water_colour,mortality_kg`).catch(() => []),
                 supabase.request(`weather_logs?order=recorded_at.desc&limit=1`).catch(() => []),
                 supabase.request(`water_quality_logs?order=recorded_at.desc&limit=100`).catch(() => []),
-                LabRepository.getLatestWaterQualityForModule(modStr).catch(() => new Map())
+                LabRepository.getLatestWaterQualityForModule(modStr).catch(() => new Map()),
+                supabase.request(`pond_inventories?select=pond_index,feeding_tray_count,autofeeder_count,hut_condition,notes`).catch(() => [])
             ]);
 
             const cycles = Array.isArray(cyclesRes) ? cyclesRes : [];
@@ -301,6 +324,13 @@ export class FieldOpsMap {
                             water_temp_c: row.water_temp_c !== null && row.water_temp_c !== undefined ? parseFloat(row.water_temp_c) : null
                         });
                     }
+                });
+            }
+
+            const inventoryMap = new Map();
+            if (Array.isArray(invRes)) {
+                invRes.forEach(inv => {
+                    if (inv && inv.pond_index) inventoryMap.set(inv.pond_index, inv);
                 });
             }
 
@@ -367,7 +397,13 @@ export class FieldOpsMap {
                         else orbClass = "orb-emerald";
                     }
 
+                    const invRecord = cycleRecord?.pond_index ? (inventoryMap.get(cycleRecord.pond_index) || null) : null;
+                    const compliance = (!isIdle && cycleRecord)
+                        ? evaluatePondManagementCompliance(cycleRecord, invRecord, staffRes)
+                        : null;
+
                     this.pondsData.set(pondLabel, {
+                        compliance,
                         pondLabel,
                         rowNo: r,
                         pondNo: pStr,
@@ -426,12 +462,22 @@ export class FieldOpsMap {
         const allLogged = totalActive > 0 && loggedCount === totalActive;
 
         const progressMount = this.container.querySelector("#field-ops-daily-progress-mount");
+        const mgmtIncompleteCount = activePonds.filter(p => p.compliance && !p.compliance.isCompliant).length;
         if (progressMount) {
             if (totalActive > 0) {
                 progressMount.innerHTML = `
                     <span style="font-size: 0.74rem; font-weight: 800; padding: 0.35rem 0.7rem; border-radius: 999px; background: ${allLogged ? '#dcfce7' : '#fffbeb'}; color: ${allLogged ? '#166534' : '#b45309'}; border: 1px solid ${allLogged ? '#86efac' : '#fde68a'}; white-space: nowrap;">
                         ${allLogged ? '✅' : '📊'} Today: ${loggedCount}/${totalActive} Logged
                     </span>
+                    ${mgmtIncompleteCount > 0 ? `
+                        <span style="font-size: 0.74rem; font-weight: 800; padding: 0.35rem 0.7rem; border-radius: 999px; background: #fef3c7; color: #92400e; border: 1px solid #fde68a; white-space: nowrap;" title="${mgmtIncompleteCount} active ponds missing management info">
+                            ⚠️ ${mgmtIncompleteCount} Mgmt Pending
+                        </span>
+                    ` : `
+                        <span style="font-size: 0.74rem; font-weight: 800; padding: 0.35rem 0.7rem; border-radius: 999px; background: #dcfce7; color: #166534; border: 1px solid #86efac; white-space: nowrap;">
+                            ✅ Mgmt Updated
+                        </span>
+                    `}
                     <button type="button" id="btn-rapid-log-module" class="btn-action btn-primary" style="font-size: 0.76rem; font-weight: 800; padding: 0.4rem 0.85rem; border-radius: 999px; display: inline-flex; align-items: center; gap: 0.3rem; box-shadow: 0 3px 10px rgba(2, 132, 199, 0.25); white-space: nowrap;">
                         <span>⚡ Rapid Log</span>
                     </button>
@@ -455,6 +501,7 @@ export class FieldOpsMap {
             if (this.filter === "PRODUCTION" && p.isIdle) return false;
             if (this.filter === "UNLOGGED" && (p.isIdle || Boolean(p.todayRecord))) return false;
             if (this.filter === "IDLE" && !p.isIdle) return false;
+            if (this.filter === "MGMT_PENDING" && (p.isIdle || (p.compliance && p.compliance.isCompliant))) return false;
 
             if (this.searchTerm) {
                 if (!p.pondLabel.toLowerCase().includes(this.searchTerm) && !p.pondNo.includes(this.searchTerm)) {
@@ -643,6 +690,14 @@ export class FieldOpsMap {
                             <span>${todayRecord ? '✅ Logged Today' : '⏳ Pending Today'}</span>
                             <span>${todayRecord ? `${todayFeedKg} kg` : '— kg'}</span>
                         </div>
+
+                        ${(!isIdle && data.compliance && !data.compliance.isCompliant) ? `
+                            <div style="margin-top: 0.3rem;">
+                                <span style="font-size: 0.65rem; font-weight: 800; background: #fffbeb; color: #b45309; border: 1px solid #fde68a; padding: 0.15rem 0.45rem; border-radius: 4px; display: inline-flex; align-items: center; gap: 3px;" title="${(data.compliance.missingItems || []).join(', ')}">
+                                    ⚠️ ${(data.compliance.missingItems || ['Mgmt Incomplete']).slice(0, 2).join(' • ')}
+                                </span>
+                            </div>
+                        ` : ''}
                     </div>
                 </div>
 

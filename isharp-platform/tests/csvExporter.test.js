@@ -11,6 +11,8 @@ describe('CSV Exporter: escapeCsvCell', () => {
     it('returns regular strings and numbers unquoted', () => {
         assert.equal(escapeCsvCell('Pond01'), 'Pond01');
         assert.equal(escapeCsvCell(123.45), '123.45');
+        assert.equal(escapeCsvCell(-12.5), '-12.5');
+        assert.equal(escapeCsvCell('-12.5'), '-12.5');
     });
 
     it('escapes cells containing commas', () => {
@@ -23,6 +25,13 @@ describe('CSV Exporter: escapeCsvCell', () => {
 
     it('escapes newlines within cells', () => {
         assert.equal(escapeCsvCell("Line1\nLine2"), '"Line1\nLine2"');
+    });
+
+    it('neutralizes OWASP CSV formula injection payloads', () => {
+        assert.equal(escapeCsvCell('=CMD|\' /C calc\'!A0'), '\'=CMD|\' /C calc\'!A0');
+        assert.equal(escapeCsvCell('+SUM(A1:A10)'), '\'+SUM(A1:A10)');
+        assert.equal(escapeCsvCell('@SUM(A1:A10)'), '\'@SUM(A1:A10)');
+        assert.equal(escapeCsvCell('-2+3'), '\'-2+3');
     });
 });
 

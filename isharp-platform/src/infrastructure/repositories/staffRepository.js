@@ -88,6 +88,36 @@ export class StaffRepository {
     }
 
     /**
+     * Normalizes a staff number input to a 4-digit zero-padded string or matched staff_no.
+     * @param {string|number|null|undefined} rawVal
+     * @returns {string|null}
+     */
+    static normalizeStaffNo(rawVal) {
+        if (!rawVal) return null;
+        const s = String(rawVal).trim();
+        if (!s) return null;
+
+        // Try directory lookup first if cache is populated
+        const found = this.findStaff(s);
+        if (found && found.staff_no) {
+            return found.staff_no;
+        }
+
+        // Check if starts with digits before dash (datalist item: "0042 - Name")
+        const prefixIdMatch = s.match(/^(\d{1,6})\s*[-–:]/);
+        if (prefixIdMatch) {
+            return prefixIdMatch[1].padStart(4, "0");
+        }
+
+        // Pure digits: pad to 4 digits
+        if (/^\d+$/.test(s)) {
+            return s.padStart(4, "0");
+        }
+
+        return s;
+    }
+
+    /**
      * Fetches current personnel assignments for a specific culture cycle (pond_index)
      * from growout_pond_master.
      * @param {string} pondIndex 
@@ -114,11 +144,11 @@ export class StaffRepository {
         if (!pondIndex) throw new Error("Missing pond index for staff assignment.");
 
         const payload = {
-            pm_staff_no: assignments.pm_staff_no ? String(assignments.pm_staff_no).trim() : null,
-            sv_staff_no: assignments.sv_staff_no ? String(assignments.sv_staff_no).trim() : null,
-            rl_staff_no: assignments.rl_staff_no ? String(assignments.rl_staff_no).trim() : null,
-            po_staff_no: assignments.po_staff_no ? String(assignments.po_staff_no).trim() : null,
-            support_staff_no: assignments.support_staff_no ? String(assignments.support_staff_no).trim() : null
+            pm_staff_no: this.normalizeStaffNo(assignments.pm_staff_no),
+            sv_staff_no: this.normalizeStaffNo(assignments.sv_staff_no),
+            rl_staff_no: this.normalizeStaffNo(assignments.rl_staff_no),
+            po_staff_no: this.normalizeStaffNo(assignments.po_staff_no),
+            support_staff_no: this.normalizeStaffNo(assignments.support_staff_no)
         };
 
         return await supabase.request(`growout_pond_master?pond_index=eq.${encodeURIComponent(pondIndex)}`, {

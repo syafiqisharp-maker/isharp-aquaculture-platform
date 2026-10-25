@@ -7,7 +7,8 @@ $ErrorActionPreference = "Stop"
 
 $legacyDbDir = "D:\DB"
 $supabaseUrl = "https://keappoukeagyzpoxkrru.supabase.co"
-$supabaseKey = "sb_publishable_kObmQ9Ha4NLrl9vQXy5k5w_Ie9-EQ4s"
+$supabaseKey = if ($env:SUPABASE_SERVICE_ROLE_KEY) { $env:SUPABASE_SERVICE_ROLE_KEY } else { "sb_publishable_kObmQ9Ha4NLrl9vQXy5k5w_Ie9-EQ4s" }
+$editorPasscode = if ($env:ISHARP_EDITOR_PASSCODE) { $env:ISHARP_EDITOR_PASSCODE } else { "mantaray" }
 
 $reconcileCutoff = (Get-Date).AddDays(-$reconcileDays).ToString("yyyy-MM-dd")
 
@@ -16,6 +17,7 @@ $headers = @{
     "Authorization" = "Bearer $supabaseKey"
     "Content-Type" = "application/json; charset=utf-8"
     "Prefer" = "resolution=merge-duplicates"
+    "x-isharp-passcode" = $editorPasscode
 }
 
 Write-Output "=========================================================="
@@ -53,6 +55,11 @@ if (-not $dbPath -or -not (Test-Path $dbPath)) {
 
 Write-Output "Using Source DB: $dbPath"
 Write-Output "File Size: $([math]::Round((Get-Item $dbPath).Length / 1MB, 2)) MB"
+$lockFile = [System.IO.Path]::ChangeExtension($dbPath, ".laccdb")
+if (Test-Path $lockFile) {
+    Write-Output "  [NOTICE] An active lock file ($([System.IO.Path]::GetFileName($lockFile))) was detected."
+    Write-Output "           Microsoft Access may be open. Reading in shared mode..."
+}
 Write-Output "Target Cloud: $supabaseUrl"
 Write-Output "Active Reconcile Cutoff: $reconcileCutoff"
 Write-Output ""
@@ -111,6 +118,27 @@ function SafeString($val) {
     return $s
 }
 
+# Resilient Supabase REST GET Helper (Omit Content-Type to prevent PostgREST 404s, 3 retries)
+function Get-FromSupabase([string]$uri) {
+    $getHeaders = @{
+        "apikey" = $supabaseKey
+        "Authorization" = "Bearer $supabaseKey"
+    }
+    $retryCount = 0
+    while ($retryCount -lt 3) {
+        try {
+            return (Invoke-RestMethod -Uri $uri -Headers $getHeaders -Method Get -TimeoutSec 45)
+        } catch {
+            $retryCount++
+            $err = $_.Exception.Message
+            if ($_.ErrorDetails) { $err = $_.ErrorDetails.Message }
+            Write-Warning "GET retry $retryCount for ${uri}: $err"
+            Start-Sleep -Seconds 2
+        }
+    }
+    throw "Failed to fetch from Supabase after 3 retries: $uri"
+}
+
 function Post-BatchToSupabase([string]$endpoint, [array]$batch, [string]$conflictKey) {
     if ($batch.Count -eq 0) { return }
     $uri = "$supabaseUrl/rest/v1/$endpoint"
@@ -136,11 +164,17 @@ function Post-BatchToSupabase([string]$endpoint, [array]$batch, [string]$conflic
                     $errDetails = $reader.ReadToEnd()
                 } catch {}
             }
+            # Fallback if conflictKey constraint is not yet created in PostgreSQL
+            if ($conflictKey -and $errDetails -match "unique or exclusion constraint") {
+                Write-Warning "Unique constraint for $conflictKey not found on $endpoint; retrying with default primary key resolution."
+                $uri = "$supabaseUrl/rest/v1/$endpoint"
+                continue
+            }
             Write-Warning "Retry $retryCount for ${endpoint}: $errDetails"
             Start-Sleep -Seconds 2
         }
     }
-    throw "Failed to upload batch to ${endpoint} after 3 retries."
+    throw "Failed to upload batch to ${endpoint} after 3 retries: $errDetails"
 }
 
 # Purges existing Supabase records for a collection of pond_index cycles
@@ -181,7 +215,7 @@ $offset = 0
 $limit = 1000
 while ($true) {
     $queryUrl = "$supabaseUrl/rest/v1/growout_pond_master?select=pond_index&limit=" + $limit + "&offset=" + $offset
-    $res = Invoke-RestMethod -Uri $queryUrl -Headers $headers -Method Get
+    $res = Get-FromSupabase $queryUrl
     if ($res.Count -eq 0) { break }
     foreach ($row in $res) {
         $sbPondIndices.Add($row.pond_index) | Out-Null
@@ -367,7 +401,7 @@ while ($reader.Read()) {
 }
 $reader.Close()
 
-$sbActive = Invoke-RestMethod -Uri "$supabaseUrl/rest/v1/active_operational_ponds?select=pond,pond_index" -Headers $headers -Method Get
+$sbActive = Get-FromSupabase "$supabaseUrl/rest/v1/active_operational_ponds?select=pond,pond_index"
 $sbActiveDict = @{}
 foreach ($item in $sbActive) {
     $sbActiveDict[$item.pond] = $item.pond_index
@@ -531,13 +565,16 @@ while ($reader.Read()) {
     $pIdx = SafeString $reader["HvtPondIndx"]
     if (-not $pIdx -or -not $sbPondIndices.Contains($pIdx)) { continue }
 
+    $hDate = SafeDate $reader["HvtDate"]
+    if (-not $hDate) { continue }
+
     if (-not $salesByPond.ContainsKey($pIdx)) {
         $salesByPond[$pIdx] = @()
     }
 
     $salesByPond[$pIdx] += [ordered]@{
         pond_index = $pIdx
-        hvt_date = SafeDate $reader["HvtDate"]
+        hvt_date = $hDate
         hvt_buyer = SafeString $reader["HvtBuyer"]
         hvt_abw = SafeDecimal $reader["HvtABW"]
         good_wgt = SafeDecimal $reader["GoodWGT"]
@@ -630,7 +667,7 @@ if ($distinctIssuePonds.Count -gt 0) {
 $existingNotesUrl = "$supabaseUrl/rest/v1/pond_notes?select=pond_index,note&limit=5000"
 $existingNoteSet = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
 try {
-    $existingNotesRes = Invoke-RestMethod -Uri $existingNotesUrl -Headers $headers -Method Get
+    $existingNotesRes = Get-FromSupabase $existingNotesUrl
     foreach ($nr in $existingNotesRes) {
         if ($nr.pond_index -and $nr.note) {
             $existingNoteSet.Add("$($nr.pond_index)_$($nr.note.Trim())") | Out-Null
@@ -788,19 +825,24 @@ if ($aeratorBatch.Count -gt 0) {
 Write-Output "  [OK] Synchronized aerator configurations for $aeratorCount pond cycles."
 
 # -------------------------------------------------------------
-# STAGE 9: Preservation of Legacy Feed Records
+# STAGE 9: Preservation of Legacy Feed Records (growout_pond_feed_legacy)
+# Architecture: Zero index_no / Natural Key deduplication
 # -------------------------------------------------------------
 Write-Output ""
 Write-Output "[9/12] Preserving Legacy Feed (growout_pond_feed_legacy)..."
 $existingFeedKeys = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
 try {
-    $feedRes = Invoke-RestMethod -Uri "$supabaseUrl/rest/v1/growout_pond_feed_legacy?select=pond_index,feed_date,feed_type,quantity_kg&order=created_at.desc&limit=5000" -Headers $headers -Method Get
+    $feedRes = Get-FromSupabase "$supabaseUrl/rest/v1/growout_pond_feed_legacy?select=pond_index,feed_date,feed_type,quantity_kg&order=created_at.desc&limit=5000"
     foreach ($r in $feedRes) {
-        $existingFeedKeys.Add("$($r.pond_index)_$($r.feed_date)_$($r.feed_type)_$($r.quantity_kg)") | Out-Null
+        if ($r.pond_index -and $r.feed_date) {
+            $existingFeedKeys.Add("$($r.pond_index)_$($r.feed_date)_$($r.feed_type)_$($r.quantity_kg)") | Out-Null
+        }
     }
-} catch {}
+} catch {
+    Write-Warning "Could not preload existing feed keys: $($_.Exception.Message)"
+}
 
-$cmd.CommandText = "SELECT PondIndex, [date], feed, quantity FROM [GrowoutPondFeed] WHERE [date] >= DateAdd('d', -$reconcileDays, Date()) ORDER BY [date] ASC"
+$cmd.CommandText = "SELECT indexNo, PondIndex, [date], feed, quantity FROM [GrowoutPondFeed] WHERE [date] >= DateAdd('d', -$reconcileDays, Date()) ORDER BY [date] ASC"
 $reader = $cmd.ExecuteReader()
 $batch = @()
 $newFeedCount = 0
@@ -809,6 +851,7 @@ while ($reader.Read()) {
     if (-not $pIdx) { continue }
     $pLabel = if ($pIdx.Length -ge 7) { "$($pIdx.Substring(1,2)).$($pIdx.Substring(3,2)).$($pIdx.Substring(5,2))" } else { $pIdx }
     $fDate = SafeDate $reader["date"]
+    if (-not $fDate) { continue }
     $fType = SafeString $reader["feed"]
     $fQty = $(if ($reader["quantity"] -ne [DBNull]::Value) { SafeDecimal $reader["quantity"] } else { 0.0 })
 
@@ -816,22 +859,28 @@ while ($reader.Read()) {
     if ($existingFeedKeys.Contains($sig)) { continue }
     $existingFeedKeys.Add($sig) | Out-Null
 
-    $batch += [ordered]@{
+    $feedObj = [ordered]@{
         pond_index = $pIdx
         pond = $pLabel
         feed_date = $fDate
         feed_type = $fType
         quantity_kg = $fQty
     }
+    $idxNo = SafeInt $reader["indexNo"]
+    if ($idxNo -ne $null) {
+        $feedObj["index_no"] = $idxNo
+    }
+
+    $batch += $feedObj
     $newFeedCount++
     if ($batch.Count -ge 500) {
-        Post-BatchToSupabase "growout_pond_feed_legacy" $batch $null
+        Post-BatchToSupabase "growout_pond_feed_legacy" $batch "pond_index,feed_date,feed_type,quantity_kg"
         $batch = @()
     }
 }
 $reader.Close()
 if ($batch.Count -gt 0) {
-    Post-BatchToSupabase "growout_pond_feed_legacy" $batch $null
+    Post-BatchToSupabase "growout_pond_feed_legacy" $batch "pond_index,feed_date,feed_type,quantity_kg"
 }
 Write-Output "  [OK] Preserved $newFeedCount daily feed entries in growout_pond_feed_legacy."
 

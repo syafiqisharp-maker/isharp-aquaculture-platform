@@ -166,12 +166,36 @@ To maintain high code quality and make future modifications seamless for any hum
 
 ---
 
+
+---
+
+## 🔒 Security Architecture & Access Control
+
+The platform enforces defense-in-depth across frontend and cloud database layers:
+
+1. **Zero-Plaintext Frontend Bundle:**
+   - Client passwords are never bundled in source code or production JS distributions.
+   - Offline authentication uses one-way salted SHA-256 digests (`OFFLINE_HASHES`) evaluated via the browser's native Web Crypto API.
+2. **Server-Side RPC Authentication (`pgcrypto`):**
+   - Cloud passwords in `public.app_passwords` and `public.module_passwords` are stored as bcrypt hashes using PostgreSQL's `pgcrypto` extension.
+   - Verified via `SECURITY DEFINER` stored procedures `fn_verify_dbms_passcode` and `fn_verify_field_ops_passcode`.
+3. **Header-Based Row Level Security (RLS):**
+   - All REST requests from authenticated sessions attach the verified passcode via the `x-isharp-passcode` HTTP header.
+   - PostgreSQL RLS helper functions `fn_can_write_dbms()` and `fn_can_write_field_ops()` inspect request headers to authorize `INSERT`, `UPDATE`, and `DELETE` operations across 20+ operational tables.
+   - Public `SELECT` is preserved across telemetry tables to enable instant, friction-free dashboard rendering.
+   - Sensitive financial tables (`growout_pond_finance`) strictly restrict both `SELECT` and write operations to authenticated DBMS sessions.
+4. **DOM XSS Sanitization & CSV Formula Defense:**
+   - All user-entered remarks and dynamic strings are HTML-escaped via `escapeHtml()` prior to DOM rendering.
+   - CSV export operations neutralize formula injection characters (`=`, `+`, `-`, `@`, `\t`, `\r`) by prefixing cell values with a single quote (`'`).
+5. **Modern HTTP Security Headers:**
+   - Production edge deploys enforce HSTS, strict CSP, and restrictive Permissions-Policy via Netlify headers.
+
 ## 🧪 Testing & Verification
 
 The project includes an automated test suite utilizing Node.js native test runner and live Supabase REST probes:
 
 ```bash
-# Run domain calculation, UI contract, and simulation unit tests (162 tests across 19 suites)
+# Run domain calculation, UI contract, and simulation unit tests (190 tests across 19 suites)
 npm test
 
 # Run comprehensive data entry schema audit probe (18 form buttons & automatic rollback)

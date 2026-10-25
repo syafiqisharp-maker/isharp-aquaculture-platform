@@ -6,6 +6,7 @@
 import { appState } from "../../state/appState.js";
 import { PondGridMap } from "./PondGridMap.js";
 import { ExecutiveBiomassView } from "./ExecutiveBiomassView.js";
+import { ManagementCalloutModal } from "../../components/ManagementCalloutModal.js";
 
 export class ExecutiveView {
     constructor(containerId = "view-executive") {
@@ -48,6 +49,9 @@ export class ExecutiveView {
                     </div>
 
                     <div class="exec-header-right" style="display: flex; gap: 0.6rem;">
+                        <button class="btn-action btn-secondary" id="btn-exec-mgmt-callout" type="button" style="font-weight: 700; font-size: 0.82rem; padding: 0.45rem 1rem; border-color: #38bdf8; color: #0284c7;" title="Open Weekly Management Info Audit & WhatsApp Callout">
+                            <span>📋 Weekly Mgmt Callout</span>
+                        </button>
                         <button class="btn-action btn-secondary" type="button" data-nav-view="field-ops" style="font-weight: 700; font-size: 0.82rem; padding: 0.45rem 1rem;">
                             <span>Field Operations ➔</span>
                         </button>
@@ -84,6 +88,15 @@ export class ExecutiveView {
                             <div class="exec-kpi-title">Pathogen Biosecurity</div>
                             <div class="exec-kpi-num" id="exec-kpi-health" style="color: #d97706;">Live Monitoring</div>
                             <div class="exec-kpi-sub">Supabase Lab Telemetry Active</div>
+                        </div>
+
+                        <div class="exec-kpi-card" id="card-exec-kpi-mgmt" style="cursor: pointer;" title="Click to view weekly management info compliance">
+                            <div class="exec-kpi-title" style="display: flex; justify-content: space-between; align-items: center;">
+                                <span>Management Info</span>
+                                <span style="font-size: 0.68rem; background: #e0f2fe; color: #0369a1; padding: 0.1rem 0.4rem; border-radius: 4px; font-weight: 700;">Audit</span>
+                            </div>
+                            <div class="exec-kpi-num" id="exec-kpi-mgmt" style="color: #0284c7; font-size: 1.35rem;">Audit Callout</div>
+                            <div class="exec-kpi-sub">Staff, Aerators &amp; Inventory</div>
                         </div>
                     </section>
 
@@ -150,6 +163,19 @@ export class ExecutiveView {
 
     bindEvents() {
         // [data-nav-view] is handled globally by ViewRouter
+        const btnCallout = this.container.querySelector("#btn-exec-mgmt-callout");
+        if (btnCallout) {
+            btnCallout.addEventListener("click", () => {
+                ManagementCalloutModal.open({ initialModule: "ALL" });
+            });
+        }
+
+        const cardMgmt = this.container.querySelector("#card-exec-kpi-mgmt");
+        if (cardMgmt) {
+            cardMgmt.addEventListener("click", () => {
+                ManagementCalloutModal.open({ initialModule: "ALL" });
+            });
+        }
     }
 
     updateKPIs(cycles) {

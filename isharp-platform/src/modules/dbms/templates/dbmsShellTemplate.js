@@ -226,6 +226,9 @@ export function getDbmsShellHtml() {
 
                 <!-- Right: Quick Telemetry Chips & Actions -->
                 <div class="command-bar-right" style="display:flex; align-items:center; gap:0.5rem;">
+                    <button id="btn-dbms-mgmt-callout" class="btn-action btn-secondary" style="padding:0.3rem 0.75rem; font-size:0.75rem; font-weight:700; border-color:#38bdf8; color:#0284c7; display:inline-flex; align-items:center; gap:0.35rem;" title="Weekly Management Info Audit & WhatsApp Callout">
+                        <span>📋 Mgmt Callout</span>
+                    </button>
                     <button id="btn-open-excel-modal" class="btn-action btn-excel" style="padding:0.3rem 0.75rem; font-size:0.75rem;" title="Paste Excel Data">
                         <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2">
                             <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>

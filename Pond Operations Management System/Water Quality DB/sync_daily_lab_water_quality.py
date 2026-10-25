@@ -35,8 +35,9 @@ import openpyxl
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 LOG_FILE = os.path.join(SCRIPT_DIR, "sync_lab_water_quality.log")
 
-# Primary source: Office Server Drive Y:
-PRIMARY_EXCEL_PATH = r"Y:\9. Database\DATABASE COMBINE MONITORING 2024 - 2026 new.xlsx"
+# Primary sources: Direct SMB UNC path (independent of user drive mappings) or Drive Y:
+UNC_EXCEL_PATH = r"\\192.168.5.7\laboratory\9. Database\DATABASE COMBINE MONITORING 2024 - 2026 new.xlsx"
+PRIMARY_DRIVE_EXCEL_PATH = r"Y:\9. Database\DATABASE COMBINE MONITORING 2024 - 2026 new.xlsx"
 # Fallback source: Local copy
 FALLBACK_EXCEL_PATH = os.path.join(SCRIPT_DIR, "DATABASE COMBINE MONITORING 2024 - 2026 new.xlsx")
 
@@ -193,14 +194,17 @@ def post_batch(batch, max_retries=3):
     return False
 
 def resolve_excel_path():
-    if os.path.exists(PRIMARY_EXCEL_PATH):
-        log(f"Targeting Primary Server Excel: {PRIMARY_EXCEL_PATH}")
-        return PRIMARY_EXCEL_PATH
+    if os.path.exists(UNC_EXCEL_PATH):
+        log(f"Targeting Primary Server Excel via Direct UNC: {UNC_EXCEL_PATH}")
+        return UNC_EXCEL_PATH
+    elif os.path.exists(PRIMARY_DRIVE_EXCEL_PATH):
+        log(f"Targeting Primary Server Excel via Drive Y: {PRIMARY_DRIVE_EXCEL_PATH}")
+        return PRIMARY_DRIVE_EXCEL_PATH
     elif os.path.exists(FALLBACK_EXCEL_PATH):
-        log(f"Server drive Y: not reachable. Using fallback local copy: {FALLBACK_EXCEL_PATH}")
+        log(f"Server network path not reachable. Using fallback local copy: {FALLBACK_EXCEL_PATH}")
         return FALLBACK_EXCEL_PATH
     else:
-        log(f"ERROR: Neither primary '{PRIMARY_EXCEL_PATH}' nor fallback '{FALLBACK_EXCEL_PATH}' could be found.")
+        log(f"ERROR: Neither UNC '{UNC_EXCEL_PATH}', Drive '{PRIMARY_DRIVE_EXCEL_PATH}', nor fallback '{FALLBACK_EXCEL_PATH}' could be found.")
         sys.exit(1)
 
 def run_sync(is_full_sync=False, lookback_days=30):
@@ -225,6 +229,14 @@ def run_sync(is_full_sync=False, lookback_days=30):
     temp_excel = os.path.join(temp_dir, f"temp_lab_sync_{int(time.time())}.xlsx")
     log(f"Creating non-blocking temp file copy: {temp_excel} ...")
     shutil.copy2(excel_path, temp_excel)
+
+    # Automatically refresh local fallback cache whenever server is reachable
+    if os.path.abspath(excel_path) != os.path.abspath(FALLBACK_EXCEL_PATH):
+        try:
+            shutil.copy2(temp_excel, FALLBACK_EXCEL_PATH)
+            log(f"Refreshed local fallback cache: {FALLBACK_EXCEL_PATH}")
+        except Exception as e:
+            log(f"Notice: Could not update local fallback copy: {e}")
 
     records_map = {}
     row_count = 0
@@ -291,8 +303,10 @@ def run_sync(is_full_sync=False, lookback_days=30):
                 pass
 
     total_records = list(records_map.values())
+    earliest_date = min((r["log_date"] for r in total_records), default="N/A")
+    latest_date = max((r["log_date"] for r in total_records), default="N/A")
     log(f"Excel read complete. Total scanned: {row_count}, Outside lookback: {filtered_out_count}, Invalid/skipped: {skipped_count}")
-    log(f"Records to upsert into Supabase: {len(total_records)}")
+    log(f"Records to upsert into Supabase: {len(total_records)} (Date span: {earliest_date} to {latest_date})")
 
     if not total_records:
         log("No new/updated records to sync in the lookback window. All up to date.")

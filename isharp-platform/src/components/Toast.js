@@ -3,6 +3,8 @@
  * Frutiger Aero floating glass toast stack.
  */
 
+import { escapeHtml } from "../utils/formatters.js";
+
 class ToastService {
     constructor() {
         this.container = null;
@@ -42,7 +44,7 @@ class ToastService {
 
         toast.innerHTML = `
             <span>${icons[type] || "ℹ️"}</span>
-            <span>${message}</span>
+            <span>${escapeHtml(message)}</span>
         `;
 
         this.container.appendChild(toast);

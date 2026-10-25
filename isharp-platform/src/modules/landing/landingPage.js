@@ -14,6 +14,7 @@
 
 import { appState } from "../../state/appState.js";
 import { Toast } from "../../components/Toast.js";
+import { ManagementCalloutModal } from "../../components/ManagementCalloutModal.js";
 
 export class LandingPage {
     constructor(containerId = "view-portal", router = null) {
@@ -48,6 +49,10 @@ export class LandingPage {
                         />
                     </div>
                     <span class="portal-subtag">BAB Aquaculture Platform</span>
+                    
+                    <button type="button" id="btn-portal-mgmt-callout" class="portal-callout-pill" style="margin-top: 0.65rem; background: rgba(255, 255, 255, 0.95); border: 1.5px solid #0284c7; color: #0284c7; padding: 0.4rem 1.15rem; border-radius: 999px; font-weight: 800; font-size: 0.82rem; cursor: pointer; display: inline-flex; align-items: center; gap: 0.45rem; box-shadow: 0 4px 15px rgba(2, 132, 199, 0.22); transition: all 0.2s ease; z-index: 10;">
+                        <span>📋 Weekly Mgmt Callout &amp; Audit</span>
+                    </button>
                 </header>
 
                 <!-- Orbital Constellation Stage (Hub & Spoke) -->
@@ -247,6 +252,14 @@ export class LandingPage {
         }
         if (btnSimulator) {
             btnSimulator.addEventListener("click", () => this.handleSelection("simulation", btnSimulator, [btnExec, btnFieldOps, btnDbms, btnLab]));
+        }
+
+        // Weekly Management Callout Quick Access
+        const btnPortalCallout = this.container.querySelector("#btn-portal-mgmt-callout");
+        if (btnPortalCallout) {
+            btnPortalCallout.addEventListener("click", () => {
+                ManagementCalloutModal.open({ initialModule: "ALL" });
+            });
         }
 
         // Informative toasts for upcoming modules

@@ -282,6 +282,18 @@ export const DOM_IDS = Object.freeze({
         BANNER_INSTALL_PWA: "field-ops-install-banner",
         BTN_DISMISS_INSTALL: "btn-dismiss-install-banner",
         BADGE_SYNC_STATUS: "badge-field-ops-sync-status"
+    },
+
+    // Weekly Management Info Audit & Callout Modal
+    MANAGEMENT_CALLOUT: {
+        MODAL: "modal-mgmt-callout",
+        BTN_CLOSE: "btn-close-mgmt-callout",
+        SELECT_MODULE: "select-mgmt-callout-module",
+        FILTER_PENDING_ONLY: "check-mgmt-callout-pending",
+        BTN_COPY_WHATSAPP: "btn-mgmt-copy-whatsapp",
+        BTN_OPEN_WHATSAPP: "btn-mgmt-open-whatsapp",
+        TABLE_BODY: "tbody-mgmt-callout",
+        WHATSAPP_PREVIEW: "mgmt-callout-whatsapp-preview"
     }
 });
 

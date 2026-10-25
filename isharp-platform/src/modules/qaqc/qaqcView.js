@@ -17,6 +17,7 @@ import {
 } from "../../domain/qaqcWhatsAppFormatter.js";
 import { Toast } from "../../components/Toast.js";
 import { appState } from "../../state/appState.js";
+import { escapeHtml } from "../../utils/formatters.js";
 
 export class QaqcView {
     constructor(containerId = "view-lab-qaqc") {
@@ -115,7 +116,7 @@ export class QaqcView {
         try {
             const staffMembers = StaffRepository.getAllStaff() || [];
             datalist.innerHTML = staffMembers
-                .map(s => `<option value="${s.staff_name}">${s.staff_no ? `[${s.staff_no}] ` : ""}${s.staff_position || ""}</option>`)
+                .map(s => `<option value="${escapeHtml(s.staff_name)}">${s.staff_no ? `[${escapeHtml(s.staff_no)}] ` : ""}${escapeHtml(s.staff_position || "")}</option>`)
                 .join("");
         } catch (e) {
             console.warn("Could not populate staff datalist:", e);
@@ -575,15 +576,15 @@ export class QaqcView {
                 return `
                     <div class="qaqc-hist-card">
                         <div class="qaqc-hist-header">
-                            <span class="qaqc-hist-date">${h.inspection_date || "--"}</span>
+                            <span class="qaqc-hist-date">${escapeHtml(h.inspection_date || "--")}</span>
                             <span class="qaqc-hist-badge ${badgeClass}">${badgeText}</span>
                         </div>
                         <div class="qaqc-hist-details">
-                            <span>${h.inspector_name || "-"}</span>
+                            <span>${escapeHtml(h.inspector_name || "-")}</span>
                             <span>&bull;</span>
-                            <span>${h.team || "-"}</span>
+                            <span>${escapeHtml(h.team || "-")}</span>
                         </div>
-                        ${h.remarks ? `<div class="qaqc-hist-remarks"><em>"${h.remarks}"</em></div>` : ""}
+                        ${h.remarks ? `<div class="qaqc-hist-remarks"><em>"${escapeHtml(h.remarks)}"</em></div>` : ""}
                     </div>
                 `;
             }).join("");

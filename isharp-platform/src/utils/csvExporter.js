@@ -1,10 +1,13 @@
 /**
  * iSHARP DBMS 2.0 — CSV Exporter Utility
  * Generates RFC-4180 compliant CSV files with UTF-8 BOM for seamless Microsoft Excel compatibility.
+ * Includes OWASP spreadsheet formula injection neutralization.
  */
 
 /**
- * Escapes a single CSV value according to RFC-4180 specifications.
+ * Escapes a single CSV value according to RFC-4180 specifications and OWASP CSV Injection rules.
+ * Strings starting with formula triggers (=, +, -, @) that are not valid negative numbers
+ * are prefixed with a single quote (') to prevent Excel/Spreadsheet macro execution.
  * Strings with commas, double quotes, or newlines are enclosed in double quotes.
  * Null and undefined values are rendered as empty strings.
  * @param {any} val 
@@ -12,7 +15,18 @@
  */
 export function escapeCsvCell(val) {
     if (val === null || val === undefined) return '';
-    const str = String(val);
+    if (typeof val === 'number') return String(val);
+
+    let str = String(val);
+    const trimmed = str.trimStart();
+    if (
+        trimmed.length > 0 &&
+        ['=', '+', '-', '@'].includes(trimmed[0]) &&
+        !/^-[0-9]+(\.[0-9]+)?$/.test(trimmed)
+    ) {
+        str = `'${str}`;
+    }
+
     if (str.includes('"') || str.includes(',') || str.includes('\n') || str.includes('\r')) {
         return `"${str.replace(/"/g, '""')}"`;
     }

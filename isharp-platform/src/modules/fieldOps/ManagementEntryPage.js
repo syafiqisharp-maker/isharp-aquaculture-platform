@@ -122,21 +122,31 @@ export class ManagementEntryPage {
             const idInput = this.container.querySelector(`#mgmt-${role}-id`);
             const nameInput = this.container.querySelector(`#mgmt-${role}-name`);
             if (idInput && nameInput) {
-                idInput.addEventListener("input", (e) => {
-                    const enteredId = e.target.value.trim();
+                const resolveStaff = () => {
+                    const enteredId = idInput.value.trim();
                     if (!enteredId) {
                         nameInput.value = "";
+                        idInput.style.borderColor = "";
+                        idInput.style.background = "";
                         return;
                     }
                     const found = StaffRepository.findStaffByNo(enteredId);
                     if (found) {
+                        idInput.value = found.staff_no;
                         nameInput.value = `${found.staff_name} (${found.staff_position || 'Staff'})`;
                         nameInput.style.color = "#047857";
+                        idInput.style.borderColor = "";
+                        idInput.style.background = "";
                     } else {
-                        nameInput.value = "Unknown Staff ID";
+                        nameInput.value = "⚠️ Unknown / Inactive Staff ID";
                         nameInput.style.color = "#b91c1c";
+                        idInput.style.borderColor = "#ef4444";
+                        idInput.style.background = "#fef2f2";
                     }
-                });
+                };
+                idInput.addEventListener("input", resolveStaff);
+                idInput.addEventListener("change", resolveStaff);
+                idInput.addEventListener("blur", resolveStaff);
             }
         });
 
@@ -264,12 +274,25 @@ export class ManagementEntryPage {
             // Populate current cycle personnel
             staffRoles.forEach(role => {
                 const idVal = pond[`${role}_staff_no`];
+                const idInput = this.container.querySelector(`#mgmt-${role}-id`);
                 const nameInput = this.container.querySelector(`#mgmt-${role}-name`);
                 if (idVal && nameInput) {
                     const found = StaffRepository.findStaffByNo(idVal);
                     if (found) {
+                        if (idInput) idInput.value = found.staff_no;
                         nameInput.value = `${found.staff_name} (${found.staff_position || 'Staff'})`;
                         nameInput.style.color = "#047857";
+                        if (idInput) {
+                            idInput.style.borderColor = "";
+                            idInput.style.background = "";
+                        }
+                    } else {
+                        nameInput.value = "⚠️ Unknown / Inactive Staff ID";
+                        nameInput.style.color = "#b91c1c";
+                        if (idInput) {
+                            idInput.style.borderColor = "#ef4444";
+                            idInput.style.background = "#fef2f2";
+                        }
                     }
                 }
             });
@@ -373,6 +396,23 @@ export class ManagementEntryPage {
         try {
             const pondIndex = pond.pond_index;
             const pondLabel = pond.pond || pondIndex;
+
+            // Validate that all entered staff IDs exist in directory
+            const staffRoles = ["pm", "sv", "rl", "po", "support"];
+            for (const role of staffRoles) {
+                const raw = this.container.querySelector(`#mgmt-${role}-id`)?.value.trim();
+                if (raw) {
+                    const found = StaffRepository.findStaffByNo(raw);
+                    if (!found) {
+                        Toast.error(`Cannot save: Staff ID "${raw}" is not recognized or inactive. Please correct or clear.`);
+                        this.isSaving = false;
+                        if (btnSave) btnSave.disabled = false;
+                        if (btnSaveNext) btnSaveNext.disabled = false;
+                        if (activeBtn) activeBtn.innerHTML = advanceToNextPond ? "<span>💾 Save &amp; Next Pond ➔</span>" : "<span>💾 Save Management Info</span>";
+                        return;
+                    }
+                }
+            }
 
             // 1. Staff Assignments (Saved to growout_pond_master)
             const staffAssignments = {

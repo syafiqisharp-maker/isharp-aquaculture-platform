@@ -14,7 +14,12 @@ export function getStaffTabHtml() {
                         <h3>Assigned Pond Personnel</h3>
                         <span class="card-sub">Cycle crew allocation &amp; harvest target incentive tracking</span>
                     </div>
-                    <span class="badge" id="staff-cycle-badge" style="background: rgba(2, 132, 199, 0.1); color: #0284c7; border: 1px solid #bae6fd; font-size: 0.72rem; padding: 0.25rem 0.6rem; border-radius: 999px; font-weight: 700;">No Cycle Selected</span>
+                    <div style="display: flex; align-items: center; gap: 0.5rem;">
+                        <button type="button" id="btn-staff-tab-mgmt-callout" class="btn-action btn-secondary" style="font-size: 0.74rem; font-weight: 700; border-color: #38bdf8; color: #0284c7; padding: 0.3rem 0.75rem;">
+                            <span>📋 Weekly Mgmt Callout</span>
+                        </button>
+                        <span class="badge" id="staff-cycle-badge" style="background: rgba(2, 132, 199, 0.1); color: #0284c7; border: 1px solid #bae6fd; font-size: 0.72rem; padding: 0.25rem 0.6rem; border-radius: 999px; font-weight: 700;">No Cycle Selected</span>
+                    </div>
                 </div>
 
                 <div class="alert-info-glass" style="font-size: 0.75rem; color: #475569; background: rgba(240, 249, 255, 0.85); border: 1px solid #bae6fd; border-radius: 8px; padding: 0.5rem 0.75rem; margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.4rem;">

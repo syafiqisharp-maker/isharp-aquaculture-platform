@@ -7,6 +7,7 @@ import { appState } from "../../state/appState.js";
 import { FeedRepository } from "../../infrastructure/repositories/feedRepository.js";
 import { Toast } from "../../components/Toast.js";
 import { DOM_IDS } from "../../config/domContracts.js";
+import { escapeHtml } from "../../utils/formatters.js";
 
 export class FeedingTab {
     constructor(onOpenExcel) {
@@ -96,16 +97,16 @@ export class FeedingTab {
 
                     this.dom.tbodyDaily.innerHTML = dailyData.map(r => `
                         <tr>
-                            <td class="font-mono">${r.log_date || '—'}</td>
-                            <td>${r.shift || 'Full Day'}</td>
+                            <td class="font-mono">${escapeHtml(r.log_date || '—')}</td>
+                            <td>${escapeHtml(r.shift || 'Full Day')}</td>
                             <td class="font-mono font-bold text-success">${parseFloat(r.feed_kg || 0).toFixed(1)} kg</td>
-                            <td class="font-mono">${r.feed_tray_remnant_pct || 0}%</td>
-                            <td class="font-mono">${r.water_level_cm ? r.water_level_cm + ' cm' : '—'}</td>
-                            <td><span class="status-badge status-production">${r.water_colour || 'Healthy Green'}</span></td>
+                            <td class="font-mono">${escapeHtml(r.feed_tray_remnant_pct || 0)}%</td>
+                            <td class="font-mono">${r.water_level_cm ? escapeHtml(r.water_level_cm) + ' cm' : '—'}</td>
+                            <td><span class="status-badge status-production">${escapeHtml(r.water_colour || 'Healthy Green')}</span></td>
                             <td class="font-mono ${((r.mortality_kg || r.mortality_count) > 0) ? 'text-danger font-bold' : ''}">
-                                ${(r.mortality_kg !== undefined && r.mortality_kg !== null) ? parseFloat(r.mortality_kg).toFixed(1) + ' kg' : (r.mortality_count ? r.mortality_count + ' kg' : '0 kg')}
+                                ${(r.mortality_kg !== undefined && r.mortality_kg !== null) ? parseFloat(r.mortality_kg).toFixed(1) + ' kg' : (r.mortality_count ? escapeHtml(r.mortality_count) + ' kg' : '0 kg')}
                             </td>
-                            <td>${r.remarks || '—'}</td>
+                            <td>${escapeHtml(r.remarks || '—')}</td>
                         </tr>
                     `).join("");
                 }
@@ -135,10 +136,10 @@ export class FeedingTab {
 
                         return `
                             <tr>
-                                <td class="font-mono">${r.sap_post_date || '—'}</td>
+                                <td class="font-mono">${escapeHtml(r.sap_post_date || '—')}</td>
                                 <td>
                                     <span class="badge-brand font-bold" style="background: rgba(2, 132, 199, 0.08); color: #0284c7; padding: 2px 8px; border-radius: 4px; border: 1px solid rgba(2, 132, 199, 0.2);">
-                                        ${r.sap_feed_name || '—'}
+                                        ${escapeHtml(r.sap_feed_name || '—')}
                                     </span>
                                 </td>
                                 <td class="font-mono font-bold ${isReversal ? 'text-danger' : 'text-success'}">
@@ -147,7 +148,7 @@ export class FeedingTab {
                                 <td class="font-mono font-bold" style="color: var(--text-primary);">
                                     ${cumKgFormatted} kg
                                 </td>
-                                <td class="font-mono text-muted">${r.order_no || '—'}</td>
+                                <td class="font-mono text-muted">${escapeHtml(r.order_no || '—')}</td>
                                 <td>
                                     ${isReversal
                                         ? '<span class="status-badge" style="background: #fef2f2; color: #dc2626; border: 1px solid #fecaca;">262 Reversal</span>'

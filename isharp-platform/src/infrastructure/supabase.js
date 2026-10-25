@@ -5,10 +5,41 @@
 
 import { ENV } from "../config/env.js";
 
+const AUTH_PASSCODE_STORAGE_KEY = "isharp_auth_passcode";
+
 class SupabaseClient {
     constructor() {
         this.baseUrl = ENV.SUPABASE_URL;
         this.apiKey = ENV.SUPABASE_KEY;
+        this.authPasscode = null;
+    }
+
+    /**
+     * Sets or clears the active passcode used for server-side RLS verification.
+     * @param {string|null} passcode
+     */
+    setAuthPasscode(passcode) {
+        this.authPasscode = passcode ? String(passcode).trim().toLowerCase() : null;
+        if (typeof sessionStorage !== "undefined") {
+            if (this.authPasscode) {
+                sessionStorage.setItem(AUTH_PASSCODE_STORAGE_KEY, this.authPasscode);
+            } else {
+                sessionStorage.removeItem(AUTH_PASSCODE_STORAGE_KEY);
+            }
+        }
+    }
+
+    /**
+     * Retrieves the currently active passcode from memory or sessionStorage.
+     * @returns {string|null}
+     */
+    getAuthPasscode() {
+        if (this.authPasscode) return this.authPasscode;
+        if (typeof sessionStorage !== "undefined") {
+            const stored = sessionStorage.getItem(AUTH_PASSCODE_STORAGE_KEY);
+            if (stored) return stored;
+        }
+        return null;
     }
 
     /**
@@ -22,11 +53,13 @@ class SupabaseClient {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), ENV.API_TIMEOUT_MS);
 
+        const activePasscode = this.getAuthPasscode();
         const headers = {
             "apikey": this.apiKey,
             "Authorization": `Bearer ${this.apiKey}`,
             "Content-Type": "application/json",
             "Prefer": "return=representation",
+            ...(activePasscode ? { "x-isharp-passcode": activePasscode } : {}),
             ...(options.headers || {})
         };
 

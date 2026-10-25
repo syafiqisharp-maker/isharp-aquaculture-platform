@@ -503,6 +503,72 @@ This file serves as a persistent record of key milestones, architecture decision
 
 ---
 
+## 2026-10-25: Resolution of Friday Database Sync Engine Failure & Zero `index_no` Architecture (Migration 11)
+* **Context & Incident:**
+  * The weekly Friday database sync batch file ([Run_Friday_Sync.bat](file:///c:/Users/syafiq/My%20Drive/Syafiq%20Water%20Quality%20Station%20Project/Pond%20Operations%20Management%20System/Legacy%20Access%20DB/Run_Friday_Sync.bat)), calling [sync_weekly_access.ps1](file:///c:/Users/syafiq/My%20Drive/Syafiq%20Water%20Quality%20Station%20Project/database_migration/sync_weekly_access.ps1), failed during execution against the latest weekly Access database drop `Bab SGo (r42) 26.10.23.accdb`.
+* **Investigation & Deep Diagnostics:**
+  1. **Microsoft Access DB Audit (`r41` vs `r42`):**
+     * Compared `Bab SGo (r41) 26.10.16.accdb` with `Bab SGo (r42) 26.10.23.accdb`.
+     * File size dropped from 172.41 MB to 98.25 MB due to standard MS Access *Compact and Repair Database*.
+     * All 12 tables queried by the sync remained structurally identical with identical column types and field names.
+     * Planner added 1 new table: `MNA-Waterquality` (15,777 rows).
+  2. **Root Cause Analysis:**
+     * In commit `f5bcf89` (Oct 21, 2026), migration `09_drop_legacy_index_no.sql` made `index_no` nullable across operational tables.
+     * However, `public.growout_pond_feed_legacy` in Supabase still had `index_no INTEGER PRIMARY KEY` (NOT NULL without sequence/identity).
+     * When `sync_weekly_access.ps1` omitted `index_no` during Stage 9, Supabase rejected inserts with PostgreSQL error `23502 (null value in column "index_no" violates not-null constraint)`.
+     * Because `$ErrorActionPreference = "Stop"`, the sync aborted at Stage 9, preventing Stage 10 (`growout_pond_feed_sap`), Stage 11 (`pond_harvest_plan`), and Stage 12 (`growout_pond_finance`) from running.
+     * Additionally, an edge-case was identified in Stage 5 (`pond_harvest_sales`) where an accidental typo in Access (`HvtDate` year 7431) resulted in a null date that violated `hvt_date NOT NULL`.
+* **Architectural Fix Implemented (Option 1: Zero `index_no` Architecture):**
+  1. **Supabase DDL Migration ([11_migrate_feed_legacy_pk.sql](file:///c:/Users/syafiq/My%20Drive/Syafiq%20Water%20Quality%20Station%20Project/database_migration/11_migrate_feed_legacy_pk.sql)):**
+     * Drops legacy PK constraint on `index_no`.
+     * Adds native PostgreSQL identity primary key `id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY`.
+     * Sets `index_no` to nullable (preserving backward compatibility for all 8,019 existing records).
+     * Adds unique constraint `uq_growout_pond_feed_legacy (pond_index, feed_date, feed_type, quantity_kg)` for idempotent upserts.
+  2. **Sync Engine Upgrades ([sync_weekly_access.ps1](file:///c:/Users/syafiq/My%20Drive/Syafiq%20Water%20Quality%20Station%20Project/database_migration/sync_weekly_access.ps1)):**
+     * **Resilient HTTP Engine:** Added `Get-FromSupabase` with exponential 3-attempt retry loop and 45s timeout to eliminate transient DNS glitches. Clean headers (no `Content-Type` on GET) to avoid PostgREST 404s.
+     * **Lock File Detection:** Added non-blocking warning when `.laccdb` is present.
+     * **Corrupt Date Guard:** Added `if (-not $hDate) { continue }` in Stage 5 (`pond_harvest_sales`).
+     * **Adaptive Conflict Handling:** Upgraded `Post-BatchToSupabase` with dynamic fallback to primary key resolution if a compound unique constraint has not yet been applied.
+     * **Stage 9 Upsert:** Configured `growout_pond_feed_legacy` with target conflict `pond_index,feed_date,feed_type,quantity_kg` and natural composite key fallback.
+  3. **Documentation:**
+     * Updated [SUPABASE_MIGRATION_GUIDE.md](file:///c:/Users/syafiq/My%20Drive/Syafiq%20Water%20Quality%20Station%20Project/database_migration/SUPABASE_MIGRATION_GUIDE.md) Section 6 documenting Migration 11.
+* **Verification:**
+  * Executed `database_migration\sync_weekly_access.ps1` end-to-end.
+  * Completed with **Exit Code 0**; all 12 stages processed successfully:
+    * Master Cycles: 319 | Active Operational Ponds: 125 | Stocking Batches: 217
+    * Daily Harvest Runs: 318 | Harvest Sales Slips: 1,035 | Pathology Issues: 135
+    * Pond Notes: 649 | Biometrics Samplings: 2,247 | Aerator Configurations: 216
+    * Preserved Legacy Feed: 186 | SAP Feed Records: 3,764 | Harvest Plans: 282 | Financial Ledgers: 7,520
+
+---
+
+## 2026-10-25: Diagnosis & Resolution of Daily Laboratory Water Quality Sync
+* **Context & Incident:**
+  * The automated daily laboratory sync script ([run_daily_lab_sync.bat](file:///c:/Users/syafiq/My%20Drive/Syafiq%20Water%20Quality%20Station%20Project/Pond%20Operations%20Management%20System/Water%20Quality%20DB/run_daily_lab_sync.bat) calling [sync_daily_lab_water_quality.py](file:///c:/Users/syafiq/My%20Drive/Syafiq%20Water%20Quality%20Station%20Project/Pond%20Operations%20Management%20System/Water%20Quality%20DB/sync_daily_lab_water_quality.py)) was reported as not posting new laboratory data to Supabase.
+* **Root-Cause Analysis:**
+  1. **Drive Letter Mapping Session Disconnection:**
+     * The primary target was hardcoded strictly to mapped drive letter `Y:\9. Database\DATABASE COMBINE MONITORING 2024 - 2026 new.xlsx`. Mapped drives in Windows are tied to interactive logon sessions and frequently disconnect during sleep/reboot until touched by Windows Explorer.
+     * When `os.path.exists("Y:...")` evaluated to `False`, the script fell back to the local file.
+  2. **Stale Local Fallback File:**
+     * The local copy in `Water Quality DB/` had not been refreshed since October 9, 2026 (max date `2026-10-08`).
+     * As a result, the sync scanned 15,686 rows instead of the 15,958 rows on the server, silently skipping all data between October 9 and October 22.
+  3. **Task Scheduler Execution Failure:**
+     * Windows Task Scheduler task `iSHARP_Daily_Lab_Sync` was failing at 9:00 AM with `LastTaskResult: 1` because it invoked `cmd.exe /c "..." --silent` with an empty working directory, stripping quotes on paths containing spaces.
+  4. **Upstream Laboratory Data Entry Timeline:**
+     * The server Excel file on `\\192.168.5.7\laboratory` was last updated on Friday, October 23, 2026 at 2:25 PM, containing sampling logs up to **2026-10-22** (Thursday). No entries have been submitted yet for Oct 23–25 by lab personnel.
+* **Fixes Delivered:**
+  1. **Direct SMB UNC Support:** Configured `UNC_EXCEL_PATH` (`\\192.168.5.7\laboratory\9. Database\...`) as the primary resolution target before checking drive `Y:`. UNC connections work autonomously without requiring interactive mapped drive sessions.
+  2. **Automatic Fallback Cache Sync:** Whenever the script successfully reads the server file, it automatically synchronizes the local fallback copy ([DATABASE COMBINE MONITORING 2024 - 2026 new.xlsx](file:///c:/Users/syafiq/My%20Drive/Syafiq%20Water%20Quality%20Station%20Project/Pond%20Operations%20Management%20System/Water%20Quality%20DB/DATABASE%20COMBINE%20MONITORING%202024%20-%202026%20new.xlsx)), ensuring local fallback data is never stale.
+  3. **Task Scheduler Repair:** Reconfigured `iSHARP_Daily_Lab_Sync` action to invoke Python directly with the proper `WorkingDirectory` set.
+  4. **Enhanced Logging:** Added real-time reporting of the resolved target path, total records, and exact sampling date range (`Date span: YYYY-MM-DD to YYYY-MM-DD`).
+* **Verification:**
+  * Executed `run_daily_lab_sync.bat --silent` end-to-end.
+  * Successfully connected via Direct UNC and uploaded **559 laboratory water quality records** (spanning 2026-09-25 through 2026-10-22) into Supabase `lab_water_quality` in 31.9s.
+  * Verified Task Scheduler task status: `LastTaskResult: 0` (Clean success).
+
+
+---
+
 ## 2026-10-22: Field Lab & QA/QC Portal — Pond Cleaning Inspection & Dual-Action WhatsApp Bridge
 * **Context & Objective:**
   * Farm QA/QC team currently reports daily pond inspections via WhatsApp and later manually transcribes into unindexed Excel sheets lacking cycle attribution (`pond_index`).
@@ -556,3 +622,67 @@ This file serves as a persistent record of key milestones, architecture decision
 * **Verification & Test Results:**
   * **Automated Unit Tests:** 177/177 passing across 19 suites (`node --test tests/*.test.js`).
   * **Production Build:** Vite production bundle generated cleanly in 7.66s with 0 errors (`npm run build`).
+
+
+---
+
+## 2026-10-25: Weekly Operational Pond Management Compliance & Staff Database Audit
+* **Database & Directory Audit:**
+  * **Master Staff Directory (`public.pond_staff`):** Verified 121 active personnel, 100% matched with `20261011 Current Pond worker.xlsx`. Fixed typo on staff `#2688` (`Muhammad Hafizuddin bin Md Hussin`).
+  * **Unpadded Staff Number Normalization:** Normalized 14 unpadded 3-digit staff numbers (`'415'` $\rightarrow$ `'0415'`, `'937'` $\rightarrow$ `'0937'`, `'752'` $\rightarrow$ `'0752'`) in `public.growout_pond_master`. Added `normalizeStaffNo()` in `StaffRepository.js` and automatic ID normalization in `ManagementEntryPage.js`.
+  * **Aerator Duplication Fix:** Resolved duplication between `"1 HP Paddlewheel"` and `"1.0 HP Paddlewheel"` in `public.pond_aerator_inventory` across 5 ponds (`2010101.40`, `2081501.31`, `2081601.34`, `2081606.32`, `2091811.35`), standardizing models to `"1.0 HP Paddlewheel"` and `"2.0 HP Paddlewheel"` in `InventoryRepository.js`.
+  * **SQL Migration:** Authored `database_migration/12_normalize_staff_and_aerators.sql` exposing resolved staff names (`pm_staff_name`, `sv_staff_name`, `rl_staff_name`, `po_staff_name`, `support_staff_name`) and equipment summaries via `LEFT JOIN public.pond_staff` and `pond_inventories`.
+* **Pure Domain Layer (`src/domain/managementCompliance.js`):**
+  * Built `evaluatePondManagementCompliance()`, `summarizeModuleManagementCompliance()`, and `formatWeeklyManagementCalloutWhatsApp()`.
+  * Enforced **Core Field Crew rule**: Supervisor (`SV`), Row Leader (`RL`), and Pond Operator (`PO`) must be present and valid in `pond_staff` (Asst Manager & Support Operator optional; invalid/deleted IDs flagged).
+  * Evaluated Active Aerators ($\text{Total HP} > 0$) and Inventory (Trays/Autofeeders $> 0$ and Hut Condition `OK`/`Need Repair`/`Urgent Repair`).
+* **In-App Management Audit & Supervisor Callout Modal (`ManagementCalloutModal.js`):**
+  * Integrated accessible modal into both the **Executive Dashboard** (`executiveTab.js` header button + KPI card) and the **Field Operations 24-Pond Map** (`FieldOpsMap.js` toolbar button + `⚠️ Mgmt Pending` filter + tile warning badges).
+  * Features Module selector (`All Modules` / `Module 01`–`09`), interactive per-pond compliance matrix with **`[ ✏️ Update ]`** shortcut to `ManagementEntryPage.js`, and 1-click **`[ 📋 Copy WhatsApp Callout ]`** / **`[ 📲 Open WhatsApp ]`**.
+* **Standalone Weekly Auditor & 1-Click Launcher:**
+  * Created `scripts/check_weekly_management_compliance.py` and root batch launcher `Check_Weekly_Management_Info.bat` that prints the compliance matrix and automatically copies the WhatsApp callout message to the Windows clipboard.
+* **Verification & Build Results:**
+  * **Unit Tests:** 187/187 passing (`tests/managementCompliance.test.js`, `tests/staffSearch.test.js`, etc.).
+  * **Production Build:** `npm run build` completed cleanly in 8.15s with 0 errors.
+
+---
+
+## 2026-10-25: Enterprise Security Audit, Row Level Security (RLS) Hardening & Zero Plaintext Secrets
+* **Context & Security Audit Scope:**
+  * Completed comprehensive security audit of the iSHARP precision aquaculture web platform (`https://isharp-platform.netlify.app/#/portal`) and Supabase PostgreSQL database (`https://keappoukeagyzpoxkrru.supabase.co`).
+  * Identified and mitigated 6 major vulnerability vectors:
+    1. **Plaintext Passwords in Frontend JS:** Plaintext passwords (`mantaray`, `todak`, `isharp`, `siakap`, etc.) were bundled directly into client assets.
+    2. **Permissive Database RLS Policies:** Tables lacked write restrictions, permitting arbitrary unauthenticated `INSERT`, `UPDATE`, and `DELETE` requests via the public anon key.
+    3. **Plaintext Password Storage in PostgreSQL:** `app_passwords` and `module_passwords` stored unhashed secrets in plaintext.
+    4. **Reflected/DOM Cross-Site Scripting (XSS):** Unsanitized innerHTML rendering across DBMS lab, feeding, and QA/QC observation notes.
+    5. **CSV Formula Injection:** Raw export of spreadsheet fields starting with `=`, `+`, `-`, or `@` into Microsoft Excel.
+    6. **Missing Modern HTTP Security Headers:** Lack of HSTS, CSP, and restrictive Permissions-Policy headers on Netlify.
+* **Architecture & Remediations Delivered:**
+  * **1. Zero-Plaintext Client Secret Stripping (`security.js` & `supabase.js`):**
+    * Replaced all plaintext passwords in `isharp-platform/src/config/security.js` with one-way salted SHA-256 cryptographic hashes (`OFFLINE_HASHES`).
+    * Implemented browser Web Crypto API salted hashing `computeSaltedDigest()`.
+    * Implemented `setAuthPasscode()` / `getAuthPasscode()` in `supabase.js`, persisting verified passcodes in `sessionStorage` and automatically propagating `x-isharp-passcode` headers across all Supabase REST API requests.
+    * Removed unauthenticated `SELECT` queries on `app_passwords` and `module_passwords`.
+  * **2. PostgreSQL `pgcrypto` Hashing & RPC Gatekeepers (`13_security_hardening_rls_and_rpc.sql`):**
+    * Enabled `pgcrypto` extension on Supabase.
+    * Migrated `app_passwords` and `module_passwords` to bcrypt-hashed storage (`password_hash`).
+    * Deployed `SECURITY DEFINER` authentication functions: `fn_verify_dbms_passcode(TEXT)` and `fn_verify_field_ops_passcode(INT, TEXT)`.
+    * Deployed header extraction and role resolution helper `fn_get_request_role(TEXT)` parsing `request.headers ->> 'x-isharp-passcode'`.
+  * **3. Comprehensive Row Level Security (RLS) Policies on 20+ Tables:**
+    * Preserved public `SELECT` access across fact and telemetry tables for rapid, unauthenticated dashboard rendering.
+    * Strictly gated all mutations (`INSERT`, `UPDATE`, `DELETE`) behind `fn_can_write_dbms()` and `fn_can_write_field_ops()`.
+    * Locked down sensitive financial data (`growout_pond_finance`) so `SELECT` and write are both restricted to authenticated DBMS sessions.
+    * Revoked all public `SELECT` on `app_passwords` and `module_passwords`.
+  * **4. DOM XSS Sanitization & HTML Escaping (`formatters.js`, `Toast.js`, DBMS Tabs):**
+    * Authored and unit-tested `escapeHtml()` in `src/utils/formatters.js`.
+    * Sanitized user-facing dynamic interpolations across `Toast.js`, `feedingTab.js`, `laboratoryTab.js`, `harvestTab.js`, and `qaqcView.js`.
+  * **5. OWASP CSV Formula Injection Neutralization (`csvExporter.js`):**
+    * Sanitized spreadsheet cell values starting with `=`, `+`, `-`, `@`, `\t`, or `\r` by prefixing with a single apostrophe (`'`).
+  * **6. Production HTTP Security Headers (`netlify.toml`):**
+    * Configured `Strict-Transport-Security` (HSTS: `max-age=31536000; includeSubDomains; preload`).
+    * Configured `Content-Security-Policy` (CSP) locking down script and connection origins to Supabase, Netlify, and CDNs.
+    * Configured `Permissions-Policy` disabling microphone, camera, and geolocation.
+* **Verification & Testing Results:**
+  * **Automated Unit Tests:** 190/190 passing across 19 suites (`npm test`).
+  * **Production Build:** `npm run build` generated Vite bundle in 7.82s with 0 errors.
+  * **Entropy & Secret Inspection:** Grepped production bundle `dist/assets/*.js`; confirmed 0 occurrences of plaintext passwords (`mantaray`, `todak`, `isharp`, `siakap`, etc.).

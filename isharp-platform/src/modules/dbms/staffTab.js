@@ -8,6 +8,7 @@ import { appState } from "../../state/appState.js";
 import { InventoryRepository } from "../../infrastructure/repositories/inventoryRepository.js";
 import { StaffRepository } from "../../infrastructure/repositories/staffRepository.js";
 import { Toast } from "../../components/Toast.js";
+import { ManagementCalloutModal } from "../../components/ManagementCalloutModal.js";
 import { DOM_IDS } from "../../config/domContracts.js";
 import { supabase } from "../../infrastructure/supabase.js";
 
@@ -72,6 +73,13 @@ export class StaffTab {
 
         if (this.dom.btnAddInitiative) {
             this.dom.btnAddInitiative.addEventListener("click", () => this.addInitiativeRow());
+        }
+
+        const btnCallout = document.getElementById("btn-staff-tab-mgmt-callout");
+        if (btnCallout) {
+            btnCallout.addEventListener("click", () => {
+                ManagementCalloutModal.open({ initialModule: "ALL" });
+            });
         }
 
         if (this.dom.btnReset) {

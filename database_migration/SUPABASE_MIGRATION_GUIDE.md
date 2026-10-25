@@ -1,8 +1,8 @@
 # Supabase Database Migration & Integration Guide
 **Project:** Aquaculture Water Quality Station (WQS) & Environmental Telemetry  
 **Supabase Project URL:** `https://keappoukeagyzpoxkrru.supabase.co`  
-**Last Updated:** 23 September 2026  
-**Status:** Live Database Deployed, Seeded, and Operational with Active GAS Bridge  
+**Last Updated:** 25 October 2026  
+**Status:** Live Database Deployed, Seeded, and Hardened with RLS & Server-Side RPC Authentication  
 
 ---
 
@@ -244,33 +244,30 @@ CREATE TABLE IF NOT EXISTS pond_harvest_plan (
 );
 CREATE INDEX IF NOT EXISTS idx_harvest_plan_pond_date ON pond_harvest_plan(pond_index, harv_plan_date DESC);
 
--- 9. ROW LEVEL SECURITY (RLS) POLICIES
-ALTER TABLE stocking_records ENABLE ROW LEVEL SECURITY;
-ALTER TABLE active_operational_ponds ENABLE ROW LEVEL SECURITY;
-ALTER TABLE biometrics_sampling ENABLE ROW LEVEL SECURITY;
-ALTER TABLE water_quality_logs ENABLE ROW LEVEL SECURITY;
-ALTER TABLE feed_barrel_logs ENABLE ROW LEVEL SECURITY;
-ALTER TABLE weather_logs ENABLE ROW LEVEL SECURITY;
-ALTER TABLE growout_pond_feed_sap ENABLE ROW LEVEL SECURITY;
-ALTER TABLE pond_harvest_plan ENABLE ROW LEVEL SECURITY;
+-- 9. ROW LEVEL SECURITY (RLS) POLICIES (Hardened in Migration 13)
+-- Production DDL: database_migration/13_security_hardening_rls_and_rpc.sql
+-- RLS Strategy: Fast Public SELECT for operational dashboards; strictly authenticated writes.
+-- Mutations (INSERT, UPDATE, DELETE) require a valid 'x-isharp-passcode' HTTP header.
+-- Passwords are authenticated server-side against pgcrypto bcrypt hashes via SECURITY DEFINER functions.
 
-CREATE POLICY "Allow read all" ON stocking_records FOR SELECT USING (true);
-CREATE POLICY "Allow read active gate" ON active_operational_ponds FOR SELECT USING (true);
-CREATE POLICY "Allow read sampling" ON biometrics_sampling FOR SELECT USING (true);
-CREATE POLICY "Allow read wqs" ON water_quality_logs FOR SELECT USING (true);
-CREATE POLICY "Allow read feed" ON feed_barrel_logs FOR SELECT USING (true);
-CREATE POLICY "Allow read weather" ON weather_logs FOR SELECT USING (true);
-CREATE POLICY "Allow read feed sap" ON growout_pond_feed_sap FOR SELECT USING (true);
-CREATE POLICY "Allow read harvest plan" ON pond_harvest_plan FOR SELECT USING (true);
+-- Helper functions deployed:
+--   fn_verify_dbms_passcode(TEXT) -> BOOLEAN
+--   fn_verify_field_ops_passcode(INT, TEXT) -> BOOLEAN
+--   fn_get_request_role(TEXT) -> 'admin' | 'dbms' | 'field_ops' | 'anonymous'
+--   fn_can_write_dbms() -> BOOLEAN
+--   fn_can_write_field_ops() -> BOOLEAN
 
-CREATE POLICY "Allow modify stocking" ON stocking_records FOR ALL USING (true);
-CREATE POLICY "Allow modify gate" ON active_operational_ponds FOR ALL USING (true);
-CREATE POLICY "Allow modify sampling" ON biometrics_sampling FOR ALL USING (true);
-CREATE POLICY "Allow modify wqs" ON water_quality_logs FOR ALL USING (true);
-CREATE POLICY "Allow modify feed" ON feed_barrel_logs FOR ALL USING (true);
-CREATE POLICY "Allow modify weather" ON weather_logs FOR ALL USING (true);
-CREATE POLICY "Allow modify feed sap" ON growout_pond_feed_sap FOR ALL USING (true);
-CREATE POLICY "Allow modify harvest plan" ON pond_harvest_plan FOR ALL USING (true);
+-- Tables with Public SELECT and Authenticated Writes (DBMS & Field-Ops):
+--   stocking_records, active_operational_ponds, growout_pond_master, biometrics_sampling,
+--   water_quality_logs, feed_barrel_logs, weather_logs, growout_pond_feed_sap,
+--   pond_harvest_plan, pond_stocking_batches, pond_harvest_daily, pond_harvest_sales,
+--   daily_pond_records, mineral_probiotic_used, pond_issues, lab_water_quality,
+--   qaqc_inspections, pond_inventories, pond_aerator_inventory, pond_event_date, etc.
+
+-- Restricted Sensitive Tables:
+--   app_passwords: SELECT revoked from anon/authenticated; managed strictly via pgcrypto RPCs.
+--   module_passwords: SELECT revoked from anon/authenticated; managed strictly via pgcrypto RPCs.
+--   growout_pond_finance: SELECT & WRITE strictly restricted to authenticated DBMS passcodes.
 
 -- 8. WQS GATEKEEPER INGESTION FUNCTION (RPC)
 CREATE OR REPLACE FUNCTION log_water_quality(
@@ -409,7 +406,7 @@ During the transitional phase while iSHARP DBMS 2.0 is operational, the farm tea
   2. **Authoritative Stocking (pond_stocking_batches):** Replaces existing window records for reconciled pond_index cycles with official hatchery batches from Access.
   3. **Authoritative Harvest (pond_harvest_daily & pond_harvest_sales):** Replaces existing window records for reconciled pond_index cycles with official scale weights and sales invoices.
   4. **Authoritative Biometrics & Lab (iometrics_sampling & pond_issues):** Replaces existing window records for reconciled pond_index cycles with official sampling and PCR pathology reports.
-  5. **Deterministic ERP Ledgers:** Synchronizes growout_pond_feed_sap and pond_harvest_plan by deterministic sync_key, and growout_pond_finance by pond_index.
+  5. **Deterministic ERP Ledgers:** Synchronizes growout_pond_feed_sap and pond_harvest_plan by deterministic sync_key, growout_pond_finance by pond_index, and archival feed via growout_pond_feed_legacy (id identity + natural tuple deduplication per migration 11).
 
 ### Error Recovery & Clean Overwrites:
 * **Mistake Protection:** If a user accidentally enters the wrong harvest weight, wrong stocking count, or an erroneous partial harvest in the UI during the week, Friday's sync cleanly wipes the mistake for that cycle and replaces it with Access's audited records.
