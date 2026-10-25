@@ -69,7 +69,7 @@ export function renderQaqcHub(data = {}) {
                     <!-- 2. POND STOCKING READINESS -->
                     <div class="qaqc-bento-card qaqc-card-queued" id="btn-qaqc-sec-readiness" role="button" tabindex="0">
                         <div class="qaqc-bento-header">
-                            <div class="qaqc-bento-icon orb-upcoming">💧</div>
+                            <div class="qaqc-bento-icon qaqc-bento-icon-queued">💧</div>
                             <span class="qaqc-status-pill pill-upcoming">SOON</span>
                         </div>
                         <div class="qaqc-bento-body">
@@ -85,7 +85,7 @@ export function renderQaqcHub(data = {}) {
                     <!-- 3. STOCKING EVENT INSPECTION -->
                     <div class="qaqc-bento-card qaqc-card-queued" id="btn-qaqc-sec-stocking" role="button" tabindex="0">
                         <div class="qaqc-bento-header">
-                            <div class="qaqc-bento-icon orb-upcoming">🦐</div>
+                            <div class="qaqc-bento-icon qaqc-bento-icon-queued">🦐</div>
                             <span class="qaqc-status-pill pill-upcoming">SOON</span>
                         </div>
                         <div class="qaqc-bento-body">
@@ -101,7 +101,7 @@ export function renderQaqcHub(data = {}) {
                     <!-- 4. MORTALITY REPORT -->
                     <div class="qaqc-bento-card qaqc-card-queued" id="btn-qaqc-sec-mortality" role="button" tabindex="0">
                         <div class="qaqc-bento-header">
-                            <div class="qaqc-bento-icon orb-upcoming">⚠️</div>
+                            <div class="qaqc-bento-icon qaqc-bento-icon-queued">⚠️</div>
                             <span class="qaqc-status-pill pill-upcoming">SOON</span>
                         </div>
                         <div class="qaqc-bento-body">
@@ -117,7 +117,7 @@ export function renderQaqcHub(data = {}) {
                     <!-- 5. PRE-HARVEST INSPECTION -->
                     <div class="qaqc-bento-card qaqc-card-queued" id="btn-qaqc-sec-preharvest" role="button" tabindex="0">
                         <div class="qaqc-bento-header">
-                            <div class="qaqc-bento-icon orb-upcoming">⚖️</div>
+                            <div class="qaqc-bento-icon qaqc-bento-icon-queued">⚖️</div>
                             <span class="qaqc-status-pill pill-upcoming">SOON</span>
                         </div>
                         <div class="qaqc-bento-body">
@@ -133,7 +133,7 @@ export function renderQaqcHub(data = {}) {
                     <!-- 6. POST-HARVEST AUDIT -->
                     <div class="qaqc-bento-card qaqc-card-queued qaqc-bento-span-mobile" id="btn-qaqc-sec-postharvest" role="button" tabindex="0">
                         <div class="qaqc-bento-header">
-                            <div class="qaqc-bento-icon orb-upcoming">🏁</div>
+                            <div class="qaqc-bento-icon qaqc-bento-icon-queued">🏁</div>
                             <span class="qaqc-status-pill pill-upcoming">SOON</span>
                         </div>
                         <div class="qaqc-bento-body">

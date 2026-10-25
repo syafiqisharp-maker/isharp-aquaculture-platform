@@ -427,8 +427,9 @@
     z-index: 1;
 }
 
-/* Upcoming Satellites Styling (Frosted Aero Glass) */
+/* Upcoming Satellites Styling (Frosted Aero Glass - Scoped to Portal) */
 .orb-upcoming {
+    position: relative;
     background: radial-gradient(circle at 40% 30%, rgba(255, 255, 255, 0.95) 0%, rgba(224, 242, 254, 0.8) 35%, rgba(186, 230, 253, 0.5) 70%, rgba(148, 163, 184, 0.35) 100%);
     border: 1.5px solid rgba(255, 255, 255, 0.85);
     box-shadow: 
@@ -437,7 +438,7 @@
         inset 0 8px 16px rgba(255, 255, 255, 0.95) !important;
 }
 
-.orb-upcoming::before {
+#view-portal .orb-upcoming::before {
     content: '';
     position: absolute;
     top: 5%;
