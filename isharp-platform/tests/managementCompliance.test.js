@@ -181,3 +181,44 @@ test("formatWeeklyManagementCalloutWhatsApp: outputs formatted broadcast text", 
     assert.ok(waMod1.includes("iSHARP MANAGEMENT CALLOUT — MODULE 01"));
     assert.ok(waMod1.includes("1/2 Updated"));
 });
+test("Weekly Management Callout & Audit Guard: Unconfirmed new cycle is strictly MISSING even if prior cycle had staff (Smart Carry-Forward isolation)", () => {
+    // Scenario: Pond 01.01.01 has rolled over to cycle 41.
+    // In database (view_growout_pond_cycles), the new cycle record has unconfirmed/null staff and 0 HP aerator.
+    // Client-side UI shows Smart Carry-Forward from cycle 40, but database remains untouched until explicit save.
+    const unconfirmedNewCycle = {
+        pond_index: "2010101.41",
+        pond: "01.01.01",
+        modl: "1",
+        pond_status: "PRODUCTION",
+        cycle_no: "41",
+        pm_staff_no: null,
+        sv_staff_no: null,
+        rl_staff_no: null,
+        po_staff_no: null,
+        support_staff_no: null,
+        aerator_1hp: 0,
+        aerator_2hp: 0
+    };
+
+    const res = evaluatePondManagementCompliance(unconfirmedNewCycle, null, mockStaffDirectory);
+    
+    // Must be strictly marked MISSING and NON-COMPLIANT
+    assert.equal(res.status, "MISSING", "Unconfirmed cycle must be MISSING in weekly compliance report");
+    assert.equal(res.isCompliant, false, "Must not be marked compliant before user submits form");
+    assert.equal(res.hasValidCoreStaff, false, "Core staff must be flagged invalid/absent");
+    assert.ok(res.missingItems.some(i => i.includes("Supervisor") || i.includes("Staff")));
+    assert.ok(res.missingItems.includes("Paddlewheels (0 HP)"));
+    assert.ok(res.missingItems.includes("Inventory (Trays/Feeders & Hut)"));
+
+    // Verify WhatsApp callout summary lists it as incomplete
+    const summary = summarizeModuleManagementCompliance([unconfirmedNewCycle], [], mockStaffDirectory);
+    assert.equal(summary.farmTotals.totalOperational, 1);
+    assert.equal(summary.farmTotals.completedCount, 0);
+    assert.equal(summary.farmTotals.missingCount, 1);
+    assert.equal(summary.farmTotals.compliancePercent, 0);
+
+    const wa = formatWeeklyManagementCalloutWhatsApp(summary, { reportDate: "25 Oct 2026" });
+    assert.ok(wa.includes("0/1 Updated"));
+    assert.ok(wa.includes("1 Pending"));
+    assert.ok(wa.includes("Missing Info: Staff (1), Aerators (1), Inventory (1)"));
+});

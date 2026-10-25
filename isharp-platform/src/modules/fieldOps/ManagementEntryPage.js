@@ -20,6 +20,9 @@ import { OfflineSync } from "./offlineSync.js";
 import { security } from "../../config/security.js";
 import { getManagementEntryHtml } from "./templates/managementEntryTemplate.js";
 
+const SESSION_STAFF_KEY = "isharp_mgmt_last_saved_staff";
+const SESSION_POND_KEY = "isharp_mgmt_last_saved_pond";
+
 export class ManagementEntryPage {
     /**
      * @param {string} containerId Element ID where page is mounted
@@ -32,9 +35,110 @@ export class ManagementEntryPage {
         this.pondsList = [];
         this.isSaving = false;
 
-        // In-memory cache of last saved personnel in this session (speeds up multi-pond setup)
+        // In-memory cache & session storage of last saved personnel (speeds up multi-pond setup)
         this.lastSavedStaff = null;
         this.lastSavedPondLabel = "";
+        this.loadSessionStaff();
+    }
+
+    saveSessionStaff(staffAssignments, pondLabel) {
+        this.lastSavedStaff = { ...staffAssignments };
+        this.lastSavedPondLabel = pondLabel || "";
+        try {
+            if (typeof sessionStorage !== "undefined") {
+                sessionStorage.setItem(SESSION_STAFF_KEY, JSON.stringify(this.lastSavedStaff));
+                sessionStorage.setItem(SESSION_POND_KEY, this.lastSavedPondLabel);
+            }
+        } catch {
+            // Ignore sessionStorage quota or access errors
+        }
+    }
+
+    loadSessionStaff() {
+        if (this.lastSavedStaff && Object.values(this.lastSavedStaff).some(Boolean)) {
+            return { staff: this.lastSavedStaff, pondLabel: this.lastSavedPondLabel };
+        }
+        try {
+            if (typeof sessionStorage !== "undefined") {
+                const raw = sessionStorage.getItem(SESSION_STAFF_KEY);
+                const pondLabel = sessionStorage.getItem(SESSION_POND_KEY) || "";
+                if (raw) {
+                    const parsed = JSON.parse(raw);
+                    if (parsed && typeof parsed === "object" && Object.values(parsed).some(Boolean)) {
+                        this.lastSavedStaff = parsed;
+                        this.lastSavedPondLabel = pondLabel;
+                        return { staff: parsed, pondLabel };
+                    }
+                }
+            }
+        } catch {
+            // Ignore parse errors
+        }
+        return null;
+    }
+
+    getCopySourceStaff(currentPond) {
+        // Priority 1: Check session storage or last saved in this browser session
+        const sessionSource = this.loadSessionStaff();
+        if (sessionSource && sessionSource.staff && Object.values(sessionSource.staff).some(Boolean)) {
+            return {
+                source: "session",
+                label: sessionSource.pondLabel || "Previous Pond",
+                staff: sessionSource.staff
+            };
+        }
+
+        // Priority 2: Fall back to preceding pond in active module list (Pond N - 1)
+        if (this.pondsList && this.pondsList.length > 1) {
+            const currIdx = this.pondsList.findIndex(p =>
+                (p.pond_index && p.pond_index === currentPond?.pond_index) ||
+                (p.pond && p.pond === currentPond?.pond)
+            );
+            if (currIdx > 0) {
+                const prevPond = this.pondsList[currIdx - 1];
+                const hasPrevStaff = Boolean(
+                    prevPond.pm_staff_no || prevPond.sv_staff_no ||
+                    prevPond.rl_staff_no || prevPond.po_staff_no ||
+                    prevPond.support_staff_no
+                );
+                if (hasPrevStaff) {
+                    return {
+                        source: "sequence",
+                        label: prevPond.pond || prevPond.pond_index || "Previous Pond",
+                        staff: {
+                            pm_staff_no: prevPond.pm_staff_no || null,
+                            sv_staff_no: prevPond.sv_staff_no || null,
+                            rl_staff_no: prevPond.rl_staff_no || null,
+                            po_staff_no: prevPond.po_staff_no || null,
+                            support_staff_no: prevPond.support_staff_no || null
+                        }
+                    };
+                }
+            }
+        }
+
+        return null;
+    }
+
+    updateCopyPrevButton(pond) {
+        const copyContainer = this.container?.querySelector("#mgmt-copy-prev-container");
+        const btnCopy = this.container?.querySelector("#btn-copy-prev-pond");
+        if (!copyContainer || !btnCopy) return;
+
+        // In read-only viewer mode, do not show copy action
+        if (!security.canEditFieldOps()) {
+            copyContainer.style.display = "none";
+            return;
+        }
+
+        const copySource = this.getCopySourceStaff(pond);
+        if (copySource && copySource.staff) {
+            copyContainer.style.display = "block";
+            btnCopy.innerHTML = `<span>📋 Copy from Pond ${copySource.label}</span>`;
+            btnCopy.title = `Copy supervisory personnel from Pond ${copySource.label}`;
+        } else {
+            copyContainer.style.display = "none";
+        }
     }
 
     /**
@@ -116,37 +220,44 @@ export class ManagementEntryPage {
             btnNextPond.addEventListener("click", () => this.switchPond(1));
         }
 
-        // Live staff name resolution on typing ID
+        // Live staff name resolution on typing ID or Name
         const staffRoles = ["pm", "sv", "rl", "po", "support"];
         staffRoles.forEach(role => {
             const idInput = this.container.querySelector(`#mgmt-${role}-id`);
             const nameInput = this.container.querySelector(`#mgmt-${role}-name`);
             if (idInput && nameInput) {
-                const resolveStaff = () => {
-                    const enteredId = idInput.value.trim();
-                    if (!enteredId) {
+                const handleStaffLookup = (event) => {
+                    const raw = idInput.value ? idInput.value.trim() : "";
+                    if (!raw) {
                         nameInput.value = "";
                         idInput.style.borderColor = "";
                         idInput.style.background = "";
                         return;
                     }
-                    const found = StaffRepository.findStaffByNo(enteredId);
+                    const found = StaffRepository.findStaff(raw);
                     if (found) {
-                        idInput.value = found.staff_no;
                         nameInput.value = `${found.staff_name} (${found.staff_position || 'Staff'})`;
                         nameInput.style.color = "#047857";
                         idInput.style.borderColor = "";
                         idInput.style.background = "";
+
+                        // Only normalize ID box when user commits (selects from dropdown, blurs, or hits enter)
+                        if (event && (event.type === "change" || event.type === "blur")) {
+                            idInput.value = found.staff_no;
+                        }
                     } else {
-                        nameInput.value = "⚠️ Unknown / Inactive Staff ID";
-                        nameInput.style.color = "#b91c1c";
-                        idInput.style.borderColor = "#ef4444";
-                        idInput.style.background = "#fef2f2";
+                        // On commit, show warning if unrecognized
+                        if (event && (event.type === "change" || event.type === "blur")) {
+                            nameInput.value = "⚠️ Unknown / Inactive Staff ID or Name";
+                            nameInput.style.color = "#b91c1c";
+                            idInput.style.borderColor = "#ef4444";
+                            idInput.style.background = "#fef2f2";
+                        }
                     }
                 };
-                idInput.addEventListener("input", resolveStaff);
-                idInput.addEventListener("change", resolveStaff);
-                idInput.addEventListener("blur", resolveStaff);
+                idInput.addEventListener("input", handleStaffLookup);
+                idInput.addEventListener("change", handleStaffLookup);
+                idInput.addEventListener("blur", handleStaffLookup);
             }
         });
 
@@ -157,33 +268,57 @@ export class ManagementEntryPage {
                 staffRoles.forEach(role => {
                     const idInput = this.container.querySelector(`#mgmt-${role}-id`);
                     const nameInput = this.container.querySelector(`#mgmt-${role}-name`);
-                    if (idInput) idInput.value = "";
+                    if (idInput) {
+                        idInput.value = "";
+                        idInput.style.borderColor = "";
+                        idInput.style.background = "";
+                    }
                     if (nameInput) nameInput.value = "";
                 });
                 const banner = this.container.querySelector("#mgmt-carry-forward-badge");
                 if (banner) banner.style.display = "none";
+
+                // Ensure copy button stays visible if a copy source exists
+                this.updateCopyPrevButton(pond);
             });
         }
 
-        // Copy from Previous Pond in session button
+        // Copy from Previous Pond button (always bound)
         const btnCopyPrev = this.container.querySelector("#btn-copy-prev-pond");
-        if (btnCopyPrev && this.lastSavedStaff) {
+        if (btnCopyPrev) {
             btnCopyPrev.addEventListener("click", () => {
+                const copySource = this.getCopySourceStaff(pond);
+                if (!copySource || !copySource.staff) {
+                    Toast.warning("No previous pond personnel found to copy.");
+                    return;
+                }
+
                 staffRoles.forEach(role => {
                     const key = `${role}_staff_no`;
-                    const val = this.lastSavedStaff[key];
+                    const val = copySource.staff[key];
                     const idInput = this.container.querySelector(`#mgmt-${role}-id`);
                     const nameInput = this.container.querySelector(`#mgmt-${role}-name`);
-                    if (idInput && val) {
-                        idInput.value = val;
-                        const found = StaffRepository.findStaffByNo(val);
-                        if (found && nameInput) {
-                            nameInput.value = `${found.staff_name} (${found.staff_position || 'Staff'})`;
-                            nameInput.style.color = "#047857";
+                    if (idInput) {
+                        idInput.value = val || "";
+                        idInput.style.borderColor = "";
+                        idInput.style.background = "";
+                    }
+                    if (nameInput) {
+                        if (val) {
+                            const found = StaffRepository.findStaff(val);
+                            if (found) {
+                                nameInput.value = `${found.staff_name} (${found.staff_position || 'Staff'})`;
+                                nameInput.style.color = "#047857";
+                            } else {
+                                nameInput.value = `Staff #${val}`;
+                                nameInput.style.color = "#0f172a";
+                            }
+                        } else {
+                            nameInput.value = "";
                         }
                     }
                 });
-                Toast.info(`Copied supervisory personnel from Pond ${this.lastSavedPondLabel}`);
+                Toast.info(`Copied personnel from Pond ${copySource.label}`);
             });
         }
 
@@ -331,16 +466,11 @@ export class ManagementEntryPage {
                         badgePill.textContent = `Cycle ${lastCycleStaff.cycle_no} Preset`;
                     }
                 }
-            } else if (this.lastSavedStaff) {
-                // No previous cycle in DB, but user saved personnel in this session -> show copy shortcut
-                const copyContainer = this.container.querySelector("#mgmt-copy-prev-container");
-                const btnCopy = this.container.querySelector("#btn-copy-prev-pond");
-                if (copyContainer) copyContainer.style.display = "block";
-                if (btnCopy && this.lastSavedPondLabel) {
-                    btnCopy.innerHTML = `<span>📋 Copy from Pond ${this.lastSavedPondLabel}</span>`;
-                }
             }
         }
+
+        // Always check and show Copy from Previous Pond button if valid source exists
+        this.updateCopyPrevButton(pond);
 
         // 2. Load inventory from pond_inventories table
         try {
@@ -397,36 +527,38 @@ export class ManagementEntryPage {
             const pondIndex = pond.pond_index;
             const pondLabel = pond.pond || pondIndex;
 
-            // Validate that all entered staff IDs exist in directory
+            // Validate that all entered staff IDs or names exist in directory
             const staffRoles = ["pm", "sv", "rl", "po", "support"];
             for (const role of staffRoles) {
                 const raw = this.container.querySelector(`#mgmt-${role}-id`)?.value.trim();
                 if (raw) {
-                    const found = StaffRepository.findStaffByNo(raw);
+                    const found = StaffRepository.findStaff(raw);
                     if (!found) {
-                        Toast.error(`Cannot save: Staff ID "${raw}" is not recognized or inactive. Please correct or clear.`);
+                        Toast.error(`Cannot save: Staff "${raw}" is not recognized or inactive. Please correct or clear.`);
                         this.isSaving = false;
                         if (btnSave) btnSave.disabled = false;
                         if (btnSaveNext) btnSaveNext.disabled = false;
                         if (activeBtn) activeBtn.innerHTML = advanceToNextPond ? "<span>💾 Save &amp; Next Pond ➔</span>" : "<span>💾 Save Management Info</span>";
                         return;
                     }
+                    // Normalize the ID box on screen to the 4-digit ID
+                    const idInput = this.container.querySelector(`#mgmt-${role}-id`);
+                    if (idInput) idInput.value = found.staff_no;
                 }
             }
 
             // 1. Staff Assignments (Saved to growout_pond_master)
             const staffAssignments = {
-                pm_staff_no: this.container.querySelector("#mgmt-pm-id")?.value.trim() || null,
-                sv_staff_no: this.container.querySelector("#mgmt-sv-id")?.value.trim() || null,
-                rl_staff_no: this.container.querySelector("#mgmt-rl-id")?.value.trim() || null,
-                po_staff_no: this.container.querySelector("#mgmt-po-id")?.value.trim() || null,
-                support_staff_no: this.container.querySelector("#mgmt-support-id")?.value.trim() || null
+                pm_staff_no: StaffRepository.normalizeStaffNo(this.container.querySelector("#mgmt-pm-id")?.value),
+                sv_staff_no: StaffRepository.normalizeStaffNo(this.container.querySelector("#mgmt-sv-id")?.value),
+                rl_staff_no: StaffRepository.normalizeStaffNo(this.container.querySelector("#mgmt-rl-id")?.value),
+                po_staff_no: StaffRepository.normalizeStaffNo(this.container.querySelector("#mgmt-po-id")?.value),
+                support_staff_no: StaffRepository.normalizeStaffNo(this.container.querySelector("#mgmt-support-id")?.value)
             };
             await StaffRepository.saveCycleStaff(pondIndex, staffAssignments);
 
-            // Cache in-memory for session copy shortcut
-            this.lastSavedStaff = { ...staffAssignments };
-            this.lastSavedPondLabel = pondLabel;
+            // Cache in-memory and in sessionStorage for session copy shortcut
+            this.saveSessionStaff(staffAssignments, pondLabel);
 
             // 2. Active Paddlewheels (1.0 HP & 2.0 HP only, saved to growout_pond_master & pond_aerator_inventory)
             const u1 = parseInt(this.container.querySelector("#mgmt-input-1hp")?.value || 0, 10);
@@ -514,8 +646,7 @@ export class ManagementEntryPage {
                 }, { type: "management_inventory", pondIndex });
 
                 Object.assign(pond, staffAssignments, { aerator_1hp: u1, aerator_2hp: u2 });
-                this.lastSavedStaff = { ...staffAssignments };
-                this.lastSavedPondLabel = pondLabel;
+                this.saveSessionStaff(staffAssignments, pondLabel);
 
                 Toast.info(`📡 Saved locally (Offline). Will sync when connection is restored!`);
                 if (typeof this.callbacks.onSaved === "function") this.callbacks.onSaved(pond);

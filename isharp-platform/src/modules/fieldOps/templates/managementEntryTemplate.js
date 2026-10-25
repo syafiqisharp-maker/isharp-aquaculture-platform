@@ -133,7 +133,7 @@ export function getManagementEntryHtml({
 
             <!-- Autocomplete Datalist for Staff ID Lookup -->
             <datalist id="mgmt-staff-datalist">
-                ${staffList.map(s => `<option value="${s.staff_no}">${s.staff_name} (${s.staff_position || 'Staff'})</option>`).join("")}
+                ${staffList.map(s => `<option value="${s.staff_no}">${s.staff_no} - ${s.staff_name} (${s.staff_position || 'Staff'})</option>`).join("")}
             </datalist>
 
             <!-- SECTION 1: ASSIGNED POND PERSONNEL -->
@@ -156,35 +156,35 @@ export function getManagementEntryHtml({
                     <!-- Asst Manager (PM) -->
                     <div class="mgmt-staff-row" style="display: grid; grid-template-columns: 140px 130px 1fr; gap: 0.85rem; align-items: center; background: #f8fafc; padding: 0.65rem 0.9rem; border-radius: 10px; border: 1px solid #e2e8f0;">
                         <label style="font-size: 0.82rem; font-weight: 700; color: #334155; margin: 0;">👔 Asst Manager</label>
-                        <input type="text" id="mgmt-pm-id" list="mgmt-staff-datalist" class="form-control" placeholder="ID" title="Enter 4-digit staff ID (e.g. 0042)" maxlength="6" value="${pond.pm_staff_no || ''}" style="font-size: 0.85rem; font-weight: 700; text-align: center; background: #ffffff;">
+                        <input type="text" id="mgmt-pm-id" list="mgmt-staff-datalist" class="form-control" placeholder="ID or Name (e.g. 0042)" title="Enter staff ID or name (e.g. 0042 or Bujang)" maxlength="60" value="${pond.pm_staff_no || ''}" style="font-size: 0.85rem; font-weight: 700; text-align: center; background: #ffffff;">
                         <input type="text" id="mgmt-pm-name" class="form-control" placeholder="Asst Manager Name (Auto-resolved)" readonly style="background: rgba(241, 245, 249, 0.8); font-size: 0.84rem; color: #0f172a; font-weight: 600;">
                     </div>
 
                     <!-- Supervisor (SV) -->
                     <div class="mgmt-staff-row" style="display: grid; grid-template-columns: 140px 130px 1fr; gap: 0.85rem; align-items: center; background: #f8fafc; padding: 0.65rem 0.9rem; border-radius: 10px; border: 1px solid #e2e8f0;">
                         <label style="font-size: 0.82rem; font-weight: 700; color: #334155; margin: 0;">📋 Supervisor</label>
-                        <input type="text" id="mgmt-sv-id" list="mgmt-staff-datalist" class="form-control" placeholder="ID" title="Enter 4-digit staff ID (e.g. 1157)" maxlength="6" value="${pond.sv_staff_no || ''}" style="font-size: 0.85rem; font-weight: 700; text-align: center; background: #ffffff;">
+                        <input type="text" id="mgmt-sv-id" list="mgmt-staff-datalist" class="form-control" placeholder="ID or Name (e.g. 1157)" title="Enter staff ID or name (e.g. 1157 or Azlan)" maxlength="60" value="${pond.sv_staff_no || ''}" style="font-size: 0.85rem; font-weight: 700; text-align: center; background: #ffffff;">
                         <input type="text" id="mgmt-sv-name" class="form-control" placeholder="Supervisor Name (Auto-resolved)" readonly style="background: rgba(241, 245, 249, 0.8); font-size: 0.84rem; color: #0f172a; font-weight: 600;">
                     </div>
 
                     <!-- Row Leader (RL) -->
                     <div class="mgmt-staff-row" style="display: grid; grid-template-columns: 140px 130px 1fr; gap: 0.85rem; align-items: center; background: #f8fafc; padding: 0.65rem 0.9rem; border-radius: 10px; border: 1px solid #e2e8f0;">
                         <label style="font-size: 0.82rem; font-weight: 700; color: #334155; margin: 0;">🚜 Row Leader</label>
-                        <input type="text" id="mgmt-rl-id" list="mgmt-staff-datalist" class="form-control" placeholder="ID" title="Enter 4-digit staff ID (e.g. 1120)" maxlength="6" value="${pond.rl_staff_no || ''}" style="font-size: 0.85rem; font-weight: 700; text-align: center; background: #ffffff;">
+                        <input type="text" id="mgmt-rl-id" list="mgmt-staff-datalist" class="form-control" placeholder="ID or Name (e.g. 1120)" title="Enter staff ID or name (e.g. 1120 or Hairi)" maxlength="60" value="${pond.rl_staff_no || ''}" style="font-size: 0.85rem; font-weight: 700; text-align: center; background: #ffffff;">
                         <input type="text" id="mgmt-rl-name" class="form-control" placeholder="Row Leader Name (Auto-resolved)" readonly style="background: rgba(241, 245, 249, 0.8); font-size: 0.84rem; color: #0f172a; font-weight: 600;">
                     </div>
 
                     <!-- Pond Operator (PO) -->
                     <div class="mgmt-staff-row" style="display: grid; grid-template-columns: 140px 130px 1fr; gap: 0.85rem; align-items: center; background: #f8fafc; padding: 0.65rem 0.9rem; border-radius: 10px; border: 1px solid #e2e8f0;">
                         <label style="font-size: 0.82rem; font-weight: 700; color: #334155; margin: 0;">🦐 Pond Operator</label>
-                        <input type="text" id="mgmt-po-id" list="mgmt-staff-datalist" class="form-control" placeholder="ID" title="Enter 4-digit staff ID (e.g. 1216)" maxlength="6" value="${pond.po_staff_no || ''}" style="font-size: 0.85rem; font-weight: 700; text-align: center; background: #ffffff;">
+                        <input type="text" id="mgmt-po-id" list="mgmt-staff-datalist" class="form-control" placeholder="ID or Name (e.g. 1216)" title="Enter staff ID or name (e.g. 1216 or Ikmal)" maxlength="60" value="${pond.po_staff_no || ''}" style="font-size: 0.85rem; font-weight: 700; text-align: center; background: #ffffff;">
                         <input type="text" id="mgmt-po-name" class="form-control" placeholder="Operator Name (Auto-resolved)" readonly style="background: rgba(241, 245, 249, 0.8); font-size: 0.84rem; color: #0f172a; font-weight: 600;">
                     </div>
 
                     <!-- Support Operator -->
                     <div class="mgmt-staff-row" style="display: grid; grid-template-columns: 140px 130px 1fr; gap: 0.85rem; align-items: center; background: #f8fafc; padding: 0.65rem 0.9rem; border-radius: 10px; border: 1px solid #e2e8f0;">
                         <label style="font-size: 0.82rem; font-weight: 700; color: #334155; margin: 0;">🛠️ Support Operator</label>
-                        <input type="text" id="mgmt-support-id" list="mgmt-staff-datalist" class="form-control" placeholder="ID" title="Enter 4-digit staff ID (e.g. 2057)" maxlength="6" value="${pond.support_staff_no || ''}" style="font-size: 0.85rem; font-weight: 700; text-align: center; background: #ffffff;">
+                        <input type="text" id="mgmt-support-id" list="mgmt-staff-datalist" class="form-control" placeholder="ID or Name (e.g. 2057)" title="Enter staff ID or name (e.g. 2057 or Syaqirin)" maxlength="60" value="${pond.support_staff_no || ''}" style="font-size: 0.85rem; font-weight: 700; text-align: center; background: #ffffff;">
                         <input type="text" id="mgmt-support-name" class="form-control" placeholder="Support Name (Auto-resolved)" readonly style="background: rgba(241, 245, 249, 0.8); font-size: 0.84rem; color: #0f172a; font-weight: 600;">
                     </div>
 
