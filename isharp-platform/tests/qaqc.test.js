@@ -122,3 +122,32 @@ test("QA/QC Domain: generateCleaningWhatsAppText matches format for Failed inspe
     assert.ok(text.includes("*Defect / Rework Note:*"));
     assert.ok(text.includes("Sludge accumulated at central sump, needs re-flushing."));
 });
+
+test("QA/QC UI Template Contracts: Inspector buttons & Requestor dropdown", async () => {
+    const { renderPondCleaningForm } = await import("../src/modules/qaqc/templates/pondCleaningFormTemplate.js");
+    const html = renderPondCleaningForm();
+
+    // 1. Requestor dropdown
+    assert.ok(html.includes('id="select-qaqc-requestor"'), "Must include select-qaqc-requestor");
+    assert.ok(html.includes('value="Rosdi"'), "Must include Rosdi option");
+    assert.ok(html.includes('value="Shamrin"'), "Must include Shamrin option");
+    assert.ok(html.includes('value="Azlie"'), "Must include Azlie option");
+    assert.ok(html.includes('value="Hairi"'), "Must include Hairi option");
+    assert.ok(html.includes('value="__custom__"'), "Must include __custom__ option");
+    assert.ok(html.includes('id="input-qaqc-requestor-custom"'), "Must include input-qaqc-requestor-custom");
+
+    // 2. Inspector quick-tap buttons in strict order: Helmi, Isma, Aiman, Nik
+    assert.ok(html.includes('id="qaqc-inspector-chips"'), "Must include qaqc-inspector-chips");
+    const helmiIdx = html.indexOf('data-inspector="Helmi"');
+    const ismaIdx = html.indexOf('data-inspector="Isma"');
+    const aimanIdx = html.indexOf('data-inspector="Aiman"');
+    const nikIdx = html.indexOf('data-inspector="Nik"');
+
+    assert.ok(helmiIdx > -1 && ismaIdx > -1 && aimanIdx > -1 && nikIdx > -1, "All 4 inspectors must be present");
+    assert.ok(helmiIdx < ismaIdx, "Helmi must come before Isma");
+    assert.ok(ismaIdx < aimanIdx, "Isma must come before Aiman");
+    assert.ok(aimanIdx < nikIdx, "Aiman must come before Nik");
+
+    // 3. Clean UI: no "(For WhatsApp)" tags
+    assert.ok(!html.includes("(For WhatsApp)"), "Must not contain '(For WhatsApp)' badge");
+});

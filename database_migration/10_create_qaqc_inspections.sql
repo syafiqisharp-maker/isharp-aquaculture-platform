@@ -13,6 +13,7 @@ CREATE TABLE IF NOT EXISTS public.qaqc_inspections (
     inspection_date date NOT NULL,
     inspector_staff_no text,
     inspector_name text NOT NULL,
+    requestor_name text,
     team text NOT NULL,
     status text NOT NULL, -- 'PASSED', 'FAILED'
     remarks text,
@@ -26,5 +27,8 @@ ON public.qaqc_inspections (pond_index, inspection_date DESC);
 
 CREATE INDEX IF NOT EXISTS idx_qaqc_type_date 
 ON public.qaqc_inspections (inspection_type, inspection_date DESC);
+
+-- Backward compatibility in case table was created earlier
+ALTER TABLE public.qaqc_inspections ADD COLUMN IF NOT EXISTS requestor_name text;
 
 COMMIT;

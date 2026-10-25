@@ -30,6 +30,8 @@ export class QaqcView {
         this.selectedModule = "";
         this.selectedRow = "";
         this.selectedPond = null;
+        this.selectedInspector = "Helmi";
+        this.selectedRequestor = "Rosdi";
         
         this.checklist = {
             lining: true,
@@ -84,6 +86,8 @@ export class QaqcView {
     async openCleaningForm() {
         if (!this.container) return;
         this.currentViewMode = "CLEANING_FORM";
+        this.selectedInspector = "Helmi";
+        this.selectedRequestor = "Rosdi";
         this.container.innerHTML = renderPondCleaningForm();
 
         // 1. Set today's date in local YYYY-MM-DD
@@ -273,21 +277,49 @@ export class QaqcView {
             inputDate.addEventListener("input", () => this.updateWhatsAppPreview());
         }
 
-        // Inspector input change & quick chips
-        const inputInspector = document.getElementById("input-qaqc-inspector");
-        if (inputInspector) {
-            inputInspector.addEventListener("input", () => this.updateWhatsAppPreview());
+        // Inspector quick chips selection
+        document.querySelectorAll(".qaqc-inspector-chip").forEach(btn => {
+            btn.addEventListener("click", () => {
+                document.querySelectorAll(".qaqc-inspector-chip").forEach(b => b.classList.remove("active"));
+                btn.classList.add("active");
+                const inspectorVal = btn.getAttribute("data-inspector") || "Helmi";
+                this.selectedInspector = inspectorVal;
+                const hiddenInput = document.getElementById("input-qaqc-inspector");
+                if (hiddenInput) hiddenInput.value = inspectorVal;
+            });
+        });
+
+        // Requestor dropdown & custom input
+        const selectRequestor = document.getElementById("select-qaqc-requestor");
+        const inputCustomRequestor = document.getElementById("input-qaqc-requestor-custom");
+
+        if (selectRequestor) {
+            selectRequestor.addEventListener("change", (e) => {
+                const val = e.target.value;
+                if (val === "__custom__") {
+                    if (inputCustomRequestor) {
+                        inputCustomRequestor.classList.remove("hidden");
+                        inputCustomRequestor.focus();
+                        this.selectedRequestor = inputCustomRequestor.value.trim() || "";
+                    }
+                } else {
+                    if (inputCustomRequestor) {
+                        inputCustomRequestor.classList.add("hidden");
+                    }
+                    this.selectedRequestor = val;
+                }
+                this.updateWhatsAppPreview();
+            });
         }
 
-        document.querySelectorAll("[data-set-inspector]").forEach(btn => {
-            btn.addEventListener("click", () => {
-                const name = btn.getAttribute("data-set-inspector");
-                if (inputInspector) {
-                    inputInspector.value = name;
+        if (inputCustomRequestor) {
+            inputCustomRequestor.addEventListener("input", (e) => {
+                if (selectRequestor && selectRequestor.value === "__custom__") {
+                    this.selectedRequestor = e.target.value.trim();
                     this.updateWhatsAppPreview();
                 }
             });
-        });
+        }
 
         // Team selection chips
         document.querySelectorAll(".qaqc-team-chip").forEach(btn => {
@@ -418,12 +450,12 @@ export class QaqcView {
 
     getCurrentFormValues() {
         const inputDate = document.getElementById("input-qaqc-date");
-        const inputInspector = document.getElementById("input-qaqc-inspector");
         const inputTeam = document.getElementById("input-qaqc-team");
         const inputRemarks = document.getElementById("input-qaqc-remarks");
 
         const dateVal = inputDate ? inputDate.value : "";
-        const inspectorVal = inputInspector ? inputInspector.value.trim() : "Rosdi";
+        const inspectorVal = this.selectedInspector || "Helmi";
+        const requestorVal = this.selectedRequestor || "Rosdi";
         const teamVal = inputTeam ? inputTeam.value.trim() : "Int 2";
         const remarksVal = inputRemarks ? inputRemarks.value.trim() : "";
         const pondVal = this.selectedPond ? this.selectedPond.pond : "01.01.07";
@@ -438,7 +470,8 @@ export class QaqcView {
 
         return {
             date: dateVal,
-            requestor: inspectorVal,
+            inspector: inspectorVal,
+            requestor: requestorVal,
             team: teamVal,
             location: modStr,
             pond: pondVal,
@@ -501,7 +534,8 @@ export class QaqcView {
                 pond: this.selectedPond.pond,
                 inspection_type: "POND_CLEANING",
                 inspection_date: vals.date,
-                inspector_name: vals.requestor,
+                inspector_name: vals.inspector,
+                requestor_name: vals.requestor,
                 team: vals.team,
                 status: vals.status,
                 remarks: vals.remarks,

@@ -67,13 +67,14 @@ export function renderPondCleaningForm() {
                         </div>
                     </div>
 
-                    <!-- 2. Inspection Parameters (Date, Inspector, Team) -->
+                    <!-- 2. Inspection Parameters (Date, Requestor, Inspector, Team) -->
                     <div class="qaqc-card-panel compact-panel">
                         <div class="qaqc-panel-header-mini">
                             <span class="qaqc-badge-step">2</span>
-                            <span class="qaqc-panel-label">INSPECTOR &amp; TEAM</span>
+                            <span class="qaqc-panel-label">INSPECTION PARAMETERS</span>
                         </div>
 
+                        <!-- Date & Requestor Row -->
                         <div class="qaqc-meta-flex">
                             <!-- Date Input -->
                             <div class="qaqc-field-group flex-1">
@@ -82,17 +83,30 @@ export function renderPondCleaningForm() {
                                 <span class="qaqc-preview-day" id="preview-formatted-date">--</span>
                             </div>
 
-                            <!-- Requestor / Inspector -->
+                            <!-- Requestor Dropdown -->
                             <div class="qaqc-field-group flex-1">
-                                <label for="input-qaqc-inspector" class="qaqc-label-micro">Inspector</label>
-                                <input type="text" id="input-qaqc-inspector" class="qaqc-input-touch" list="qaqc-staff-list" placeholder="Name" value="Rosdi" />
-                                <datalist id="qaqc-staff-list"></datalist>
-                                <div class="qaqc-quick-chips">
-                                    <button type="button" class="qaqc-chip-mini" data-set-inspector="Rosdi">Rosdi</button>
-                                    <button type="button" class="qaqc-chip-mini" data-set-inspector="Mohd Azlie">Azlie</button>
-                                    <button type="button" class="qaqc-chip-mini" data-set-inspector="Hairi Azha">Hairi</button>
-                                </div>
+                                <label for="select-qaqc-requestor" class="qaqc-label-micro">Requestor</label>
+                                <select id="select-qaqc-requestor" class="qaqc-select-touch">
+                                    <option value="Rosdi">Rosdi</option>
+                                    <option value="Shamrin">Shamrin</option>
+                                    <option value="Azlie">Azlie</option>
+                                    <option value="Hairi">Hairi</option>
+                                    <option value="__custom__">+ Custom Name...</option>
+                                </select>
+                                <input type="text" id="input-qaqc-requestor-custom" class="qaqc-input-touch hidden" placeholder="Enter name" style="margin-top: 0.35rem;" />
                             </div>
+                        </div>
+
+                        <!-- Inspector Quick-Tap Buttons -->
+                        <div class="qaqc-inspector-row">
+                            <label class="qaqc-label-micro">Inspector</label>
+                            <div class="qaqc-inspector-chips-group" id="qaqc-inspector-chips">
+                                <button type="button" class="qaqc-inspector-chip active" data-inspector="Helmi">Helmi</button>
+                                <button type="button" class="qaqc-inspector-chip" data-inspector="Isma">Isma</button>
+                                <button type="button" class="qaqc-inspector-chip" data-inspector="Aiman">Aiman</button>
+                                <button type="button" class="qaqc-inspector-chip" data-inspector="Nik">Nik</button>
+                            </div>
+                            <input type="hidden" id="input-qaqc-inspector" value="Helmi" />
                         </div>
 
                         <!-- Team Chips -->

@@ -473,6 +473,43 @@
     touch-action: manipulation;
 }
 
+/* ── Inspector Buttons Group ─────────────────────────────────────────────── */
+.qaqc-inspector-row {
+    margin-top: 0.55rem;
+    margin-bottom: 0.45rem;
+}
+
+.qaqc-inspector-chips-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin-top: 0.25rem;
+}
+
+.qaqc-inspector-chip {
+    flex: 1;
+    min-width: 65px;
+    min-height: 40px;
+    padding: 0.35rem 0.65rem;
+    background: #f8fafc;
+    border: 1.5px solid #cbd5e1;
+    border-radius: 8px;
+    font-weight: 800;
+    font-size: 0.85rem;
+    color: #1e293b;
+    cursor: pointer;
+    touch-action: manipulation;
+    text-align: center;
+    transition: all 0.15s ease;
+}
+
+.qaqc-inspector-chip.active {
+    background: #0284c7;
+    border-color: #0284c7;
+    color: #ffffff;
+    box-shadow: 0 2px 6px rgba(2, 132, 199, 0.35);
+}
+
 .qaqc-team-row {
     margin-top: 0.4rem;
 }
