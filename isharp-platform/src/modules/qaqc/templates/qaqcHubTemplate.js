@@ -1,125 +1,151 @@
 /**
- * iSHARP QA/QC Inspection Portal — 6-Section Hub Template (Mobile-First)
+ * iSHARP QA/QC Inspection Portal — 6-Section Hub Template (Frutiger Aero Bento Layout)
+ * Mobile-First, 2-Column Responsive Bento, High Sunlight Contrast & Live Telemetry
  */
 
-export function renderQaqcHub() {
+export function renderQaqcHub(data = {}) {
+    const candidateCount = data.candidateCount ?? "--";
+
     return `
-        <div class="qaqc-hub-container">
-            <!-- Compact Mobile-Friendly Header -->
-            <div class="qaqc-hub-banner">
-                <div class="qaqc-hub-title-group">
-                    <span class="qaqc-badge-pill">QA/QC GATEWAY</span>
-                    <h1 class="qaqc-hub-title">Field Inspections</h1>
-                    <p class="qaqc-hub-subtitle">Setiu Shrimp Farm &bull; Digital QA/QC &amp; WhatsApp Sync</p>
+        <div class="qaqc-hub-wrapper">
+            
+            <!-- Compact Mobile App Bar -->
+            <div class="qaqc-hub-topbar">
+                <div class="qaqc-topbar-left">
+                    <span class="qaqc-gateway-chip">QA/QC GATEWAY</span>
+                    <h1 class="qaqc-topbar-title">Field Inspections</h1>
+                    <span class="qaqc-topbar-farm">Setiu Shrimp Farm &bull; Digital Standard</span>
                 </div>
-                <button type="button" class="btn-qaqc-portal-return" data-nav-view="portal">
+                <button type="button" class="btn-qaqc-portal-pill" data-nav-view="portal" aria-label="Return to Portal">
                     &larr; Portal
                 </button>
             </div>
 
-            <!-- 6-Section Clean Card Grid -->
-            <div class="qaqc-sections-grid">
+            <!-- Bento Dashboard Container -->
+            <div class="qaqc-bento-dashboard">
                 
-                <!-- 1. POND CLEANING (ACTIVE) -->
-                <div class="qaqc-section-card qaqc-card-active" id="btn-qaqc-sec-cleaning" role="button" tabindex="0">
-                    <div class="qaqc-card-header">
-                        <div class="qaqc-card-icon-orb orb-cleaning">
+                <!-- 1. HERO CARD: POND CLEANING (ACTIVE & PRIMARY) -->
+                <div class="qaqc-hero-card" id="btn-qaqc-sec-cleaning" role="button" tabindex="0">
+                    <div class="qaqc-hero-top">
+                        <div class="qaqc-hero-icon-orb orb-cleaning">
                             <span class="qaqc-orb-emoji">🧹</span>
                         </div>
-                        <span class="qaqc-status-pill pill-active">ACTIVE</span>
+                        <div class="qaqc-hero-badge-group">
+                            <span class="qaqc-phase-chip">PHASE 1 &bull; TURNAROUND</span>
+                            <span class="qaqc-status-pill pill-active">🟢 ACTIVE</span>
+                        </div>
                     </div>
-                    <div class="qaqc-card-body">
-                        <h2 class="qaqc-card-title">1. Pond Cleaning</h2>
-                        <span class="qaqc-card-subtag">Lining, Sump, PWA, Jetty</span>
+
+                    <div class="qaqc-hero-content">
+                        <h2 class="qaqc-hero-title">1. Pond Cleaning Inspection</h2>
+                        <p class="qaqc-hero-desc">Lining, Central Sump, PWA &amp; Autofeeder, Jetty verification with 1-tap WhatsApp broadcast.</p>
+                        
+                        <!-- Live Telemetry Strip -->
+                        <div class="qaqc-hero-metric-bar">
+                            <div class="qaqc-metric-chip">
+                                <span class="qaqc-metric-val" id="qaqc-stat-pond-count">${candidateCount}</span>
+                                <span class="qaqc-metric-label">Ponds in Turnaround</span>
+                            </div>
+                            <div class="qaqc-check-pill-group">
+                                <span class="qaqc-mini-tag">Lining</span>
+                                <span class="qaqc-mini-tag">Sump</span>
+                                <span class="qaqc-mini-tag">PWA</span>
+                                <span class="qaqc-mini-tag">Jetty</span>
+                            </div>
+                        </div>
                     </div>
-                    <div class="qaqc-card-footer">
-                        <span class="qaqc-btn-text">Open Form &rarr;</span>
+
+                    <div class="qaqc-hero-action">
+                        <div class="btn-hero-launch">
+                            <span>Buka Borang &bull; Start Inspection</span>
+                            <span class="hero-arrow">&rarr;</span>
+                        </div>
                     </div>
                 </div>
 
-                <!-- 2. POND STOCKING READINESS (UPCOMING) -->
-                <div class="qaqc-section-card qaqc-card-disabled" id="btn-qaqc-sec-readiness">
-                    <div class="qaqc-card-header">
-                        <div class="qaqc-card-icon-orb orb-upcoming">
-                            <span class="qaqc-orb-emoji">💧</span>
+                <!-- 2-COLUMN COMPACT BENTO GRID FOR SECTIONS 2 TO 6 -->
+                <div class="qaqc-bento-grid-2col">
+                    
+                    <!-- 2. POND STOCKING READINESS -->
+                    <div class="qaqc-bento-card qaqc-card-queued" id="btn-qaqc-sec-readiness" role="button" tabindex="0">
+                        <div class="qaqc-bento-header">
+                            <div class="qaqc-bento-icon orb-upcoming">💧</div>
+                            <span class="qaqc-status-pill pill-upcoming">SOON</span>
                         </div>
-                        <span class="qaqc-status-pill pill-upcoming">SOON</span>
+                        <div class="qaqc-bento-body">
+                            <span class="qaqc-card-phase">Phase 2 &bull; Pre-Stock</span>
+                            <h3 class="qaqc-bento-title">2. Stocking Readiness</h3>
+                            <p class="qaqc-bento-meta">GCS Fill, Water Culture &amp; Biosecurity</p>
+                        </div>
+                        <div class="qaqc-bento-footer">
+                            <span class="qaqc-lock-badge">🔒 Phase 2</span>
+                        </div>
                     </div>
-                    <div class="qaqc-card-body">
-                        <h2 class="qaqc-card-title">2. Stocking Readiness</h2>
-                        <span class="qaqc-card-subtag">GCS Fill, Water Culture</span>
-                    </div>
-                    <div class="qaqc-card-footer">
-                        <span class="qaqc-badge-lock">🔒 Upcoming</span>
-                    </div>
-                </div>
 
-                <!-- 3. STOCKING EVENT INSPECTION (UPCOMING) -->
-                <div class="qaqc-section-card qaqc-card-disabled" id="btn-qaqc-sec-stocking">
-                    <div class="qaqc-card-header">
-                        <div class="qaqc-card-icon-orb orb-upcoming">
-                            <span class="qaqc-orb-emoji">🦐</span>
+                    <!-- 3. STOCKING EVENT INSPECTION -->
+                    <div class="qaqc-bento-card qaqc-card-queued" id="btn-qaqc-sec-stocking" role="button" tabindex="0">
+                        <div class="qaqc-bento-header">
+                            <div class="qaqc-bento-icon orb-upcoming">🦐</div>
+                            <span class="qaqc-status-pill pill-upcoming">SOON</span>
                         </div>
-                        <span class="qaqc-status-pill pill-upcoming">SOON</span>
+                        <div class="qaqc-bento-body">
+                            <span class="qaqc-card-phase">Phase 3 &bull; Stocking Day</span>
+                            <h3 class="qaqc-bento-title">3. Stocking Event</h3>
+                            <p class="qaqc-bento-meta">Hatchery QC, Acclimation &amp; Stress Test</p>
+                        </div>
+                        <div class="qaqc-bento-footer">
+                            <span class="qaqc-lock-badge">🔒 Phase 2</span>
+                        </div>
                     </div>
-                    <div class="qaqc-card-body">
-                        <h2 class="qaqc-card-title">3. Stocking Event</h2>
-                        <span class="qaqc-card-subtag">Hatchery QC, Stress Test</span>
-                    </div>
-                    <div class="qaqc-card-footer">
-                        <span class="qaqc-badge-lock">🔒 Upcoming</span>
-                    </div>
-                </div>
 
-                <!-- 4. MORTALITY REPORT (UPCOMING) -->
-                <div class="qaqc-section-card qaqc-card-disabled" id="btn-qaqc-sec-mortality">
-                    <div class="qaqc-card-header">
-                        <div class="qaqc-card-icon-orb orb-upcoming">
-                            <span class="qaqc-orb-emoji">⚠️</span>
+                    <!-- 4. MORTALITY REPORT -->
+                    <div class="qaqc-bento-card qaqc-card-queued" id="btn-qaqc-sec-mortality" role="button" tabindex="0">
+                        <div class="qaqc-bento-header">
+                            <div class="qaqc-bento-icon orb-upcoming">⚠️</div>
+                            <span class="qaqc-status-pill pill-upcoming">SOON</span>
                         </div>
-                        <span class="qaqc-status-pill pill-upcoming">SOON</span>
+                        <div class="qaqc-bento-body">
+                            <span class="qaqc-card-phase">Phase 4 &bull; Culture</span>
+                            <h3 class="qaqc-bento-title">4. Mortality Report</h3>
+                            <p class="qaqc-bento-meta">Daily Count, Biomass Loss &amp; Pathology</p>
+                        </div>
+                        <div class="qaqc-bento-footer">
+                            <span class="qaqc-lock-badge">🔒 Phase 2</span>
+                        </div>
                     </div>
-                    <div class="qaqc-card-body">
-                        <h2 class="qaqc-card-title">4. Mortality Report</h2>
-                        <span class="qaqc-card-subtag">Daily kg, Symptoms</span>
-                    </div>
-                    <div class="qaqc-card-footer">
-                        <span class="qaqc-badge-lock">🔒 Upcoming</span>
-                    </div>
-                </div>
 
-                <!-- 5. PRE-HARVEST INSPECTION (UPCOMING) -->
-                <div class="qaqc-section-card qaqc-card-disabled" id="btn-qaqc-sec-preharvest">
-                    <div class="qaqc-card-header">
-                        <div class="qaqc-card-icon-orb orb-upcoming">
-                            <span class="qaqc-orb-emoji">⚖️</span>
+                    <!-- 5. PRE-HARVEST INSPECTION -->
+                    <div class="qaqc-bento-card qaqc-card-queued" id="btn-qaqc-sec-preharvest" role="button" tabindex="0">
+                        <div class="qaqc-bento-header">
+                            <div class="qaqc-bento-icon orb-upcoming">⚖️</div>
+                            <span class="qaqc-status-pill pill-upcoming">SOON</span>
                         </div>
-                        <span class="qaqc-status-pill pill-upcoming">SOON</span>
+                        <div class="qaqc-bento-body">
+                            <span class="qaqc-card-phase">Phase 5 &bull; Pre-Harvest</span>
+                            <h3 class="qaqc-bento-title">5. Pre-Harvest</h3>
+                            <p class="qaqc-bento-meta">Molt Stage, Gut Fullness &amp; Flavor QC</p>
+                        </div>
+                        <div class="qaqc-bento-footer">
+                            <span class="qaqc-lock-badge">🔒 Phase 2</span>
+                        </div>
                     </div>
-                    <div class="qaqc-card-body">
-                        <h2 class="qaqc-card-title">5. Pre-Harvest</h2>
-                        <span class="qaqc-card-subtag">Molt Stage, Flavor Test</span>
-                    </div>
-                    <div class="qaqc-card-footer">
-                        <span class="qaqc-badge-lock">🔒 Upcoming</span>
-                    </div>
-                </div>
 
-                <!-- 6. POST-HARVEST AUDIT (UPCOMING) -->
-                <div class="qaqc-section-card qaqc-card-disabled" id="btn-qaqc-sec-postharvest">
-                    <div class="qaqc-card-header">
-                        <div class="qaqc-card-icon-orb orb-upcoming">
-                            <span class="qaqc-orb-emoji">🏁</span>
+                    <!-- 6. POST-HARVEST AUDIT -->
+                    <div class="qaqc-bento-card qaqc-card-queued qaqc-bento-span-mobile" id="btn-qaqc-sec-postharvest" role="button" tabindex="0">
+                        <div class="qaqc-bento-header">
+                            <div class="qaqc-bento-icon orb-upcoming">🏁</div>
+                            <span class="qaqc-status-pill pill-upcoming">SOON</span>
                         </div>
-                        <span class="qaqc-status-pill pill-upcoming">SOON</span>
+                        <div class="qaqc-bento-body">
+                            <span class="qaqc-card-phase">Phase 6 &bull; Cycle Close</span>
+                            <h3 class="qaqc-bento-title">6. Post-Harvest Audit</h3>
+                            <p class="qaqc-bento-meta">Actual Yield Reconciliation &amp; Liner Audit</p>
+                        </div>
+                        <div class="qaqc-bento-footer">
+                            <span class="qaqc-lock-badge">🔒 Phase 2</span>
+                        </div>
                     </div>
-                    <div class="qaqc-card-body">
-                        <h2 class="qaqc-card-title">6. Post-Harvest</h2>
-                        <span class="qaqc-card-subtag">Yield Audit, Liner Check</span>
-                    </div>
-                    <div class="qaqc-card-footer">
-                        <span class="qaqc-badge-lock">🔒 Upcoming</span>
-                    </div>
+
                 </div>
 
             </div>

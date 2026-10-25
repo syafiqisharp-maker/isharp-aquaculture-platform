@@ -120,3 +120,29 @@ body::after {
         scroll-behavior: auto !important;
     }
 }
+
+/* ==========================================================================
+   Universal Third-Party / Netlify Badge & Drawer Edge Suppression
+   Prevents edge-injected widgets from covering mobile docks or UI buttons
+   ========================================================================== */
+#netlify-badge,
+.netlify-badge,
+netlify-badge,
+[data-netlify-badge],
+iframe[src*="netlify"],
+iframe[title*="Netlify"],
+div[id*="netlify-drawer"],
+#netlify-drawer,
+div:has(> iframe[src*="netlify"]),
+div:has(> netlify-badge) {
+    display: none !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+    opacity: 0 !important;
+    width: 0 !important;
+    height: 0 !important;
+    max-height: 0 !important;
+    position: absolute !important;
+    clip: rect(0, 0, 0, 0) !important;
+    z-index: -9999 !important;
+}

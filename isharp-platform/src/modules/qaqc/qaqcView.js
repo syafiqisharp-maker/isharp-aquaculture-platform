@@ -51,8 +51,26 @@ export class QaqcView {
     renderHub() {
         if (!this.container) return;
         this.currentViewMode = "HUB";
-        this.container.innerHTML = renderQaqcHub();
+        const candidateCount = this.candidatePonds && this.candidatePonds.length > 0 
+            ? this.candidatePonds.length 
+            : "--";
+        this.container.innerHTML = renderQaqcHub({ candidateCount });
         this.bindHubEvents();
+        this.updateHubMetrics();
+    }
+
+    async updateHubMetrics() {
+        try {
+            if (!this.candidatePonds || this.candidatePonds.length === 0) {
+                this.candidatePonds = await QaqcRepository.getCandidateCleaningPonds();
+            }
+            const countEl = document.getElementById("qaqc-stat-pond-count");
+            if (countEl && this.candidatePonds) {
+                countEl.textContent = this.candidatePonds.length;
+            }
+        } catch (err) {
+            console.warn("Could not load candidate ponds count for hub:", err);
+        }
     }
 
     bindHubEvents() {
