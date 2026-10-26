@@ -277,3 +277,22 @@ Every modification action must respect user roles defined in `src/config/permiss
 
 
 
+---
+
+## 19. Weekly Access Sync, RLS InitPlan Constraint & Zero-Duplication Standard (No `index_no`)
+
+- **Statement-Level RLS InitPlan Rule (`(SELECT ...)`):**
+  - Because `public.fn_can_write_dbms()`, `public.fn_can_write_field_ops()`, and `public.fn_can_read_sensitive()` evaluate `pgcrypto` bcrypt hashes (~70ms per call), **never** write RLS policies as `USING (public.fn_can_write_dbms())`.
+  - Always wrap security helper calls in a scalar subquery: `USING ((SELECT public.fn_can_write_dbms()))` and `WITH CHECK ((SELECT public.fn_can_write_dbms()))`. This forces PostgreSQL to evaluate the passcode check **once per SQL statement** as an `InitPlan` instead of once per row, preventing `57014` statement timeouts on multi-row batch writes and reads.
+- **Zero `index_no` Dependency & Natural-Key Uniqueness:**
+  - Legacy Microsoft Access `index_no` auto-number fields are strictly deprecated and must **never** be included in Supabase insert/upsert payloads (`biometrics_sampling`, `growout_pond_feed_legacy`, `pond_harvest_sales`, `pond_notes`, etc.).
+  - Deduplication is enforced by natural business keys at both the repository/sync layer and the PostgreSQL index layer:
+    - `biometrics_sampling`: `uq_biometrics_sampling_pond_date UNIQUE (pond_index, smpl_date)`
+    - `pond_notes`: `uq_pond_notes_pond_hash_idx UNIQUE (pond_index, md5(btrim(COALESCE(note, ''))))`
+    - `pond_harvest_sales`: `uq_pond_harvest_sales_slip_idx UNIQUE (pond_index, hvt_date, upper(btrim(COALESCE(hvt_buyer, ''))), COALESCE(round(good_wgt, 2), 0), COALESCE(round(raw_wgt, 2), 0), COALESCE(round(net_sales, 2), 0))`
+    - `growout_pond_feed_legacy`: `uq_growout_pond_feed_legacy_natural UNIQUE (pond_index, feed_date, feed_type, quantity_kg)`
+  - When writing PostgreSQL expression indexes or generated columns, never use `concat_ws()` or `date::text` casts (which PostgreSQL marks `STABLE` rather than `IMMUTABLE`, triggering `ERROR: 42P17`). Index native `date` and `round(numeric, 2)` columns directly.
+- **PostgREST Pagination & PowerShell URL Interpolation Rules:**
+  - PostgREST caps single `GET` responses at 1,000 rows (`db-max-rows = 1000`). Any script or repository fetching tables that can exceed 1,000 rows (`pond_notes`, `growout_pond_master`, `biometrics_sampling`, `pond_harvest_sales`, `pond_issues`, `growout_pond_feed_legacy`) MUST paginate using `limit=1000&offset=N` (`Get-AllFromSupabase`).
+  - In PowerShell scripts (`sync_weekly_access.ps1`), always delimit variables before `?` in URL strings using braces (`"$supabaseUrl/rest/v1/${endpoint}?pond_index=..."`), never `"$endpoint?..."` (PowerShell parses `?` as part of the variable identifier, resolving `$endpoint?` to `$null`).
+  - Never swallow purge/delete errors before inserting cycle records; if a fallback `DELETE` fails after all retries, abort immediately to prevent duplicate records.

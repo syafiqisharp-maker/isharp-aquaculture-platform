@@ -49,7 +49,7 @@ The platform provides a unified Frutiger Aero gateway connecting three distinct 
 │   │   ├── infrastructure/       # Supabase Cloud Client & Repositories
 │   │   ├── domain/               # Aeration, Biometrics & Feeding Action Models
 │   │   └── state/                # Reactive Pub/Sub State Stores
-│   ├── tests/                    # 🧪 Node.js Native Unit Test Suite (190 unit tests across 19 suites)
+│   ├── tests/                    # 🧪 Node.js Native Unit Test Suite (195 unit tests across 19 suites)
 │   ├── public/                   # Static assets, logos & Netlify _redirects
 │   └── package.json              # isharp-aquaculture-platform (npm test, build, dev)
 │
@@ -61,6 +61,7 @@ The platform provides a unified Frutiger Aero gateway connecting three distinct 
 │   ├── 11_migrate_feed_legacy_pk.sql # Feed ledger surrogate PK & natural deduplication
 │   ├── 12_normalize_staff_and_aerators.sql # Master staff directory & aerator inventory view
 │   ├── 13_security_hardening_rls_and_rpc.sql # pgcrypto bcrypt RPCs & header-based RLS
+│   ├── 15_sync_hardening.sql     # RLS InitPlan speedup, atomic sync RPC & natural-key constraints
 │   └── SUPABASE_MIGRATION_GUIDE.md # Supabase Cloud Architecture Specification
 │
 ├── netlify.toml                  # 🌐 Netlify Edge Deployment Configuration
@@ -90,7 +91,7 @@ Edge firmware for pond IoT sensors, Dissolved Oxygen (DO), pH probes, water colo
 
 ## 🛡️ Database Architecture & Automated E2E Testing
 
-The cloud database (`keappoukeagyzpoxkrru.supabase.co`) operates under an enterprise 4-phase remediation and normalization standard:
+The cloud database (`keappoukeagyzpoxkrru.supabase.co`) operates under an enterprise 6-phase remediation, security, and synchronization standard:
 
 1. **Phase 1: Security Hotfixes**
    * Row-Level Security (RLS) enabled across all public tables.
@@ -100,11 +101,6 @@ The cloud database (`keappoukeagyzpoxkrru.supabase.co`) operates under an enterp
    * Added covering indexes to high-frequency query paths (`active_operational_ponds(pond_index)`).
    * Eliminated redundant unique indexes saving write I/O.
    * Consolidated duplicate permissive RLS policies (clearing 105 Supabase advisor findings down to 0).
-4. **Phase 5: Security Hardening & Zero-Plaintext Defense**
-   * Migrated password storage to PostgreSQL `pgcrypto` bcrypt hashes with `SECURITY DEFINER` RPCs.
-   * Enforced header-based Row Level Security (`x-isharp-passcode`) protecting writes across 20+ tables.
-   * Stripped all plaintext secrets from frontend client assets in favor of salted SHA-256 offline digests.
-   * Integrated DOM XSS escaping, CSV formula injection neutralization, and edge CSP/HSTS headers.
 3. **Phase 3: Schema Hardening & Normalization**
    * Reconnected 23,384 SAP ERP feed entries by zero-padding cycle notations (`.3` $\rightarrow$ `.03`).
    * Enforced `FOREIGN KEY ... ON DELETE CASCADE` on `growout_pond_feed_sap` and `pond_harvest_plan`.
@@ -113,6 +109,16 @@ The cloud database (`keappoukeagyzpoxkrru.supabase.co`) operates under an enterp
    * Decoupled legacy spreadsheet columns into relational tables: `pond_event_date` (event log) and `pond_initiatives` (dynamic trials).
    * Established `pond_aerator_inventory` as the single source of truth for paddlewheels.
    * Reconstructed backward-compatible virtual views (`view_growout_pond_cycles`) with zero frontend breakage.
+5. **Phase 5: Security Hardening & Zero-Plaintext Defense**
+   * Migrated password storage to PostgreSQL `pgcrypto` bcrypt hashes with `SECURITY DEFINER` RPCs.
+   * Enforced header-based Row Level Security (`x-isharp-passcode`) protecting writes across 20+ tables.
+   * Stripped all plaintext secrets from frontend client assets in favor of salted SHA-256 offline digests.
+   * Integrated DOM XSS escaping, CSV formula injection neutralization, and edge CSP/HSTS headers.
+6. **Phase 6: Weekly Sync Hardening, RLS InitPlan Optimization & Zero-Duplication Guarantee**
+   * Wrapped RLS policy checks in PostgreSQL InitPlan subqueries (`USING ((SELECT public.fn_can_write_dbms()))` and `USING ((SELECT public.fn_can_read_sensitive()))`) so `pgcrypto` bcrypt authentication evaluates **once per SQL statement** instead of once per row, eliminating `57014` statement timeouts during batch syncs.
+   * Deployed atomic cycle-replacement RPC `public.fn_sync_replace_cycles(p_table, p_pond_indices, p_rows)` so `DELETE` + `INSERT` per pond cycle executes in a single rollback-safe database transaction.
+   * Completely removed legacy `index_no` dependencies across all tables in favor of natural keys (`uq_biometrics_sampling_pond_date`, `uq_pond_notes_pond_hash_idx`, `uq_pond_harvest_sales_slip_idx`) and in-memory canonical cycle-signature delta comparison.
+   * Hardened `Run_Friday_Sync.bat` and `sync_weekly_access.ps1` with PID lock-file protection, exponential network backoff (~13m tolerance), paginated PostgREST fetching (`Get-AllFromSupabase`), and persistent checkpoint resume (`sync_checkpoint.json`).
 
 ### Run Automated Testing & Schema Verification Probes
 ```bash
@@ -124,9 +130,8 @@ npm run test:audit
 # 2. Permanent Live REST Client Probe (19/19 storage operations against Supabase with auto-teardown)
 npm run test:e2e
 
-# 3. Domain & UI Contract Unit Tests (114/114 tests)
+# 3. Domain & UI Contract Unit Tests (195/195 tests)
 npm test
 ```
 
-For full documentation and audit logs, see [database_migration/SCHEMA_AUDIT_GUIDE.md](database_migration/SCHEMA_AUDIT_GUIDE.md).
-
+For full documentation and audit logs, see [database_migration/SCHEMA_AUDIT_GUIDE.md](database_migration/SCHEMA_AUDIT_GUIDE.md) and [database_migration/SUPABASE_MIGRATION_GUIDE.md](database_migration/SUPABASE_MIGRATION_GUIDE.md).

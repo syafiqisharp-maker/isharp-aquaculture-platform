@@ -373,8 +373,13 @@ test('Domain: getOperationalPondState (Operational Status SSOT)', async (t) => {
     });
 
     await t.test('stocked production cycle displays numeric DOC and correct species', () => {
-        // Stocked 40 days ago
-        const stckDate = new Date(Date.now() - 40 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+        // Stocked 40 days ago (timezone-safe local date)
+        const today = new Date();
+        const d = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 40);
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        const stckDate = [y, m, day].join('-');
         const cycle = {
             pond: '01.01.01',
             pond_index: '2010101.40',

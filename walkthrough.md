@@ -686,3 +686,32 @@ This file serves as a persistent record of key milestones, architecture decision
   * **Automated Unit Tests:** 190/190 passing across 19 suites (`npm test`).
   * **Production Build:** `npm run build` generated Vite bundle in 7.82s with 0 errors.
   * **Entropy & Secret Inspection:** Grepped production bundle `dist/assets/*.js`; confirmed 0 occurrences of plaintext passwords (`mantaray`, `todak`, `isharp`, `siakap`, etc.).
+
+
+---
+
+## 2026-10-26: Weekly Sync Hardening, RLS InitPlan Optimization & Full Operational Deduplication
+* **Root-Cause Investigation (Duplicate Sampling, Notes & Harvest Sales):**
+  * **Bug 1 — PowerShell URL Variable Interpolation (`$endpoint?`):** In `database_migration/sync_weekly_access.ps1`, `Purge-PondIndexRecords` constructed URLs using `"$supabaseUrl/rest/v1/$endpoint?pond_index=..."`. PowerShell parsed `$endpoint?` as an undefined variable name, sending `DELETE /rest/v1/=in.(...)` (HTTP 404). When the purge failed, `Purge-PondIndexRecords` swallowed the error and proceeded to `POST` the Access rows anyway, duplicating records on every run.
+  * **Bug 2 — PostgREST 1,000-Row Truncation on `pond_notes`:** Stage 6 queried `pond_notes?select=pond_index,note&limit=5000` without pagination. Because PostgREST caps responses at 1,000 rows, all notes beyond row 1,000 (649 notes) appeared "missing" and were re-inserted on every sync run (creating 4,545 redundant rows).
+  * **Bug 3 — Per-Row RLS Bcrypt Statement Timeout (`57014`):** RLS policies invoked `public.fn_can_write_dbms()` and `public.fn_can_read_sensitive()` directly per row (~70ms bcrypt evaluation per row), hitting Supabase's 3-second statement timeout whenever batch writes or sensitive reads exceeded ~30 rows.
+  * **Bug 4 — Removal of Legacy `index_no`:** Replaced all `index_no` dependencies across `biometrics_sampling`, `growout_pond_feed_legacy`, and all cycle tables with natural keys and canonical cycle-level delta reconciliation.
+* **Live Supabase Database Cleanup & Authoritative Rebuild from Access (`Bab SGo (r42) 26.10.23.accdb`):**
+  * **`biometrics_sampling`:** Removed 53 duplicate rows $\rightarrow$ **52,025 clean rows, 0 duplicates** (Pond `05.09.01` / `2050901.40` verified at 6 canonical rows matching Access 100%).
+  * **`pond_notes`:** Removed 4,545 duplicate rows $\rightarrow$ **1,649 clean rows, 0 duplicates** (matching Access's 1,649 notes 100%).
+  * **`pond_harvest_sales`:** Removed 6,102 duplicate/stale rows and rebuilt 250 missing slips from Access $\rightarrow$ **33,618 clean rows, 0 duplicates** (matching all valid Access sales slips 100%).
+  * **`pond_issues`:** Removed 19 duplicate rows $\rightarrow$ **13,415 clean rows, 0 duplicates**.
+  * **`pond_stocking_batches` (7,456 rows)**, **`pond_harvest_daily` (7,604 rows)**, and **`growout_pond_feed_legacy` (8,147 rows):** Verified **0 duplicates**.
+* **Database Hardening Migration (`database_migration/15_sync_hardening.sql`):**
+  * Wrapped all RLS policy calls in PostgreSQL InitPlan scalar subqueries (`USING ((SELECT public.fn_can_write_dbms()))` and `USING ((SELECT public.fn_can_read_sensitive()))`) so bcrypt evaluates **once per SQL statement** instead of once per row.
+  * Added pure `IMMUTABLE` unique constraints and expression indexes (`uq_biometrics_sampling_pond_date`, `uq_pond_notes_pond_hash_idx`, `uq_pond_harvest_sales_slip_idx`), avoiding non-immutable `concat_ws()` / `date::text` casts (`42P17`).
+  * Deployed atomic transactional RPC `public.fn_sync_replace_cycles(p_table, p_pond_indices, p_rows)` for rollback-safe cycle replacement.
+* **Weekly Sync Engine & Batch Launcher Overhaul (`sync_weekly_access.ps1` & `Run_Friday_Sync.bat`):**
+  * Added pre-flight security check (`fn_verify_dbms_passcode`) and automatic `fn_sync_replace_cycles` capability detection.
+  * Built `Invoke-SupabaseRequest` with 10-attempt exponential backoff (`2s..240s`, ~13m total wait) and automatic batch-splitting on `57014` timeout.
+  * Implemented persistent checkpointing (`database_migration/sync_checkpoint.json`) across stages and cycle chunks so interrupted runs resume seamlessly.
+  * Implemented paginated `Get-AllFromSupabase` and in-memory 2-decimal canonical cycle-signature delta comparison (`Sync-CycleTable`) so unchanged cycles require 0 network writes.
+  * Hardened `Run_Friday_Sync.bat` with `sync.lock` PID checking, timestamped logs (`sync_logs\`), exit code reporting, and `--no-pause` support.
+* **Frontend & Test Verification:**
+  * Updated `samplingRepository.js` to upsert on `pond_index,smpl_date` and deduplicate read queries defensively.
+  * Verified **195/195 unit tests passing** (`npm test`) and verified end-to-end `Run_Friday_Sync.bat` execution (completed in 1m 42s with Exit Code 0 and 0 duplicates across all 7 tables).

@@ -30,3 +30,8 @@ turbidity meter/
 ESP32_Water_Color_Sensor/
 Feed Barrel Sensor/
 water colour example/
+
+# Weekly Sync runtime lock, checkpoint & log folder
+sync_logs/
+sync.lock
+database_migration/sync_checkpoint.json

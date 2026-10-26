@@ -396,23 +396,68 @@ ORDER BY hour_bucket DESC;
 
 ## 6. Weekly Operations: Access-to-Supabase Authoritative Cycle-Reconciliation Engine
 
-During the transitional phase while iSHARP DBMS 2.0 is operational, the farm team can update operational ponds **daily via the DBMS 2.0 UI** (stocking, harvests, pond statuses, and sampling), while the legacy Microsoft Access database (.accdb) continues to be maintained by the Planner and synced every Friday.
+During the transitional phase while iSHARP DBMS 2.0 is operational, the farm team can update operational ponds **daily via the DBMS 2.0 UI** (stocking, harvests, pond statuses, and sampling), while the legacy Microsoft Access database (`.accdb`) continues to be maintained by the Planner and synced every Friday via `Pond Operations Management System/Legacy Access DB/Run_Friday_Sync.bat` and `database_migration/sync_weekly_access.ps1`.
 
-### Architecture & Pipeline (Zero index_no Dependency)
-- **Daily Updates via DBMS 2.0 UI:** Saved directly to Supabase with native auto-incrementing id keys, keeping mobile and executive dashboards live in real-time.
-- **Weekly Official Reconciliation via Access:** Every Friday, Run_Friday_Sync.bat executes sync_weekly_access.ps1.
-- **Cycle-Level Master Authority:** For all active and recent cycles (pond_index) tracked in Access:
-  1. **Master Cycles & Gatekeeper:** Reconciles growout_pond_master and ctive_operational_ponds. Cleans up accidental premature next-cycle rollovers.
-  2. **Authoritative Stocking (pond_stocking_batches):** Replaces existing window records for reconciled pond_index cycles with official hatchery batches from Access.
-  3. **Authoritative Harvest (pond_harvest_daily & pond_harvest_sales):** Replaces existing window records for reconciled pond_index cycles with official scale weights and sales invoices.
-  4. **Authoritative Biometrics & Lab (iometrics_sampling & pond_issues):** Replaces existing window records for reconciled pond_index cycles with official sampling and PCR pathology reports.
-  5. **Deterministic ERP Ledgers:** Synchronizes growout_pond_feed_sap and pond_harvest_plan by deterministic sync_key, growout_pond_finance by pond_index, and archival feed via growout_pond_feed_legacy (id identity + natural tuple deduplication per migration 11).
+---
 
-### Error Recovery & Clean Overwrites:
-* **Mistake Protection:** If a user accidentally enters the wrong harvest weight, wrong stocking count, or an erroneous partial harvest in the UI during the week, Friday's sync cleanly wipes the mistake for that cycle and replaces it with Access's audited records.
-* **Fresh Log Preservation:** If a pond is stocked or harvested on Friday afternoon in the UI before the Planner receives the paper slip, the sync leaves that UI record intact until the Planner inputs it the following week.
+### 6.1 How RLS Security Constraints Affect Weekly Sync (and How Migration 15 Solves It)
+
+Following the Phase 5 security hardening (`13_security_hardening_rls_and_rpc.sql`), all write operations across 20+ operational tables (and `SELECT` on `growout_pond_finance`) are protected by Row-Level Security (RLS) policies that verify the `x-isharp-passcode` HTTP header against `pgcrypto` bcrypt hashes in `public.app_passwords`.
+
+* **The Per-Row Bcrypt Constraint (`57014` Statement Timeout):**
+  * Bcrypt is intentionally CPU-intensive (~70ms per evaluation) to defeat brute-force attacks.
+  * When an RLS policy is written as `USING (public.fn_can_write_dbms())`, PostgreSQL may evaluate `fn_can_write_dbms()` **once for every row** touched by a `DELETE`, `INSERT`, `UPDATE`, or sensitive `SELECT` statement.
+  * If a batch sync statement touches >25–40 rows at once, 40 x 70ms = 2.8s, exceeding Supabase's default 3-second PostgREST statement timeout (`HTTP 500: {"code":"57014","message":"canceling statement due to statement timeout"}`).
+* **The Solution (`database_migration/15_sync_hardening.sql`):**
+  1. **Statement-Level InitPlan Policies (`(SELECT ...)`):** Wrapping the helper function in a scalar subquery — `USING ((SELECT public.fn_can_write_dbms()))` and `USING ((SELECT public.fn_can_read_sensitive()))` — forces the PostgreSQL query planner to evaluate the passcode check **once per SQL statement** as an `InitPlan` rather than once per row.
+  2. **Fast-Path Passcode Resolution:** `public.fn_get_request_role()` checks `service_role` JWT claims and indexed column equality before falling back to `extensions.crypt()`.
+  3. **Atomic Cycle-Replacement RPC (`public.fn_sync_replace_cycles`):** Executes `DELETE` + `INSERT` for a batch of `pond_index` cycles inside a single `SECURITY DEFINER` transaction that verifies `fn_can_write_dbms()` once at the top of the function and rolls back automatically if the network drops mid-request.
+
+---
+
+### 6.2 Why Data Duplication Occurred Previously & How Zero-Duplication Is Enforced (Without `index_no`)
+
+Because legacy `index_no` auto-numbers from Microsoft Access are no longer synced to Supabase, the platform enforces strict **natural-key uniqueness** and **full-cycle canonical reconciliation**:
+
+1. **Bug 1 — PowerShell Variable Interpolation on Purge (`$endpoint?`):**
+   * *Root Cause:* `Purge-PondIndexRecords` previously constructed URLs with `"$supabaseUrl/rest/v1/$endpoint?pond_index=..."`. PowerShell parsed `$endpoint?` as an undefined variable, sending `DELETE /rest/v1/=in.(...)` (HTTP 404). When the purge failed, the old script swallowed the error and proceeded to `POST` the Access rows anyway, duplicating records on every run.
+   * *Fix:* Fixed URL interpolation to `${endpoint}?`, added single-cycle fallback retries, and made purge failures fatal (`throw`) so `POST` can never execute over an unpurged cycle.
+2. **Bug 2 — PostgREST 1,000-Row Truncation on `pond_notes`:**
+   * *Root Cause:* Stage 6 fetched existing notes via `pond_notes?select=pond_index,note&limit=5000` without pagination. Because PostgREST caps single responses at `db-max-rows = 1000`, all notes beyond row 1,000 (649 notes) appeared "missing" on every sync run and were re-inserted repeatedly (creating 4,545 redundant rows).
+   * *Fix:* Implemented paginated `Get-AllFromSupabase` (`limit=1000&offset=N`) across all stages and added a database-level unique expression index `uq_pond_notes_pond_hash_idx ON public.pond_notes (pond_index, md5(btrim(COALESCE(note, ''))))`.
+3. **Bug 3 — Date-Filtered Partial Extraction & Backdated Edits:**
+   * *Root Cause:* Filtering Access queries by `WHERE smpldate >= Date() - 30` extracted only recent rows while purging the entire `pond_index`, or failed to reconcile older edited rows in the same cycle.
+   * *Fix:* Stages 3–7 now identify any `pond_index` that is active or had activity within the **180-day safety window** (`$reconcileDays = 180`), extract **100% of rows for those cycles** from Access, deduplicate them in memory by natural key, and compare their canonical 2-decimal signature against Supabase (`Sync-CycleTable`). Unchanged cycles are skipped (`0 writes needed`), and changed cycles are replaced atomically.
+
+#### Natural Keys Enforced Across All Synced Tables (Zero `index_no`)
+
+| Supabase Table | Natural Uniqueness Key / Constraint | Verified Clean Rows |
+| :--- | :--- | :---: |
+| `biometrics_sampling` | `uq_biometrics_sampling_pond_date UNIQUE (pond_index, smpl_date)` | **52,025** |
+| `pond_notes` | `uq_pond_notes_pond_hash_idx UNIQUE (pond_index, md5(btrim(COALESCE(note, ''))))` | **1,649** |
+| `pond_harvest_sales` | `uq_pond_harvest_sales_slip_idx UNIQUE (pond_index, hvt_date, upper(btrim(hvt_buyer)), round(good_wgt,2), round(raw_wgt,2), round(net_sales,2))` | **33,618** |
+| `pond_issues` | Cycle-level canonical reconciliation (`pond_index, issue_date, issue_category, issue_status, issue_test`) | **13,415** |
+| `pond_stocking_batches` | Cycle-level canonical reconciliation (`pond_index, stck_date, stck_tank, stck_pcs`) | **7,456** |
+| `pond_harvest_daily` | Cycle-level canonical reconciliation (`pond_index, harv_date, harv_status, harv_weight, harv_abw`) | **7,604** |
+| `growout_pond_feed_legacy` | `uq_growout_pond_feed_legacy_natural UNIQUE (pond_index, feed_date, feed_type, quantity_kg)` | **8,147** |
+| `growout_pond_feed_sap` | `sync_key PRIMARY KEY` (`order_no + pond_index + post_date + feed_idx + movement + kg + seq`) | **89,244** |
+| `pond_harvest_plan` | `sync_key PRIMARY KEY` (`pond_index + plan_harv_date + plan_harv_status`) | **9,313** |
+| `growout_pond_finance` | `pond_index PRIMARY KEY` (1 row per cycle, delta-checked on `revenue, total_cost, gross_profit, ebitda`) | **1,806** |
+
+---
+
+### 6.3 Low / Unstable Internet Resilience & Checkpoint Recovery
+
+To protect the weekly sync against unstable farm internet connections or sudden Wi-Fi/4G drops:
+1. **Exponential Backoff HTTP Layer (`Invoke-SupabaseRequest`):** Automatically retries transient network failures, DNS drops, TCP resets (`WinError 10054`), and HTTP `408`/`429`/`502`/`503`/`504` up to **10 attempts** (`2s -> 4s -> 8s -> 15s -> 30s -> 60s -> 90s -> 120s -> 180s -> 240s`, ~13 minutes total tolerance).
+2. **Automatic Batch Splitting on Timeout (`57014`):** If any batch `POST` or `DELETE` encounters a statement timeout, `sync_weekly_access.ps1` automatically splits the batch into single-cycle / single-row requests so it succeeds even under heavy database load.
+3. **Persistent Checkpoint State (`database_migration/sync_checkpoint.json`):** Saves completed stages (`1..12`) and per-stage reconciled `pond_index` lists after every chunk. If internet is lost completely, simply re-running `Run_Friday_Sync.bat` resumes from the exact stage and cycle where it stopped.
+4. **Hardened Batch Launcher (`Run_Friday_Sync.bat`):**
+   * Uses `sync.lock` (with active PID verification) to prevent accidental double-click concurrent runs.
+   * Tees full console output to timestamped logs in `Pond Operations Management System\Legacy Access DB\sync_logs\sync_YYYYMMDD_HHMMSS.log`.
+   * Supports `--no-pause` for unattended Windows Task Scheduler execution.
 
 ### Standard Friday Routine:
-1. Save the new email attachment into Legacy Access DB\.
-2. Double-click Run_Friday_Sync.bat.
-3. The console will display real-time progress and output a verification report of all cycles synchronized.
+1. Save the new `.accdb` file into `D:\DB\` or `Pond Operations Management System\Legacy Access DB\`.
+2. Double-click `Run_Friday_Sync.bat`.
+3. Verify the `[SUCCESS] Weekly Database Sync completed with 0 errors` banner at the end of the run.
