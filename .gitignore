@@ -35,3 +35,6 @@ water colour example/
 sync_logs/
 sync.lock
 database_migration/sync_checkpoint.json
+
+# Local Netlify folder
+.netlify
