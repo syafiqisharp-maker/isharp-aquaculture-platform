@@ -616,6 +616,19 @@ export class PondRepository {
             return [];
         }
     }
+
+    /**
+     * Fetches all 216 pond daily progress records from public.pond_daily_progress.
+     * Gracefully returns [] if table is not yet created or empty.
+     * @returns {Promise<Array<object>>}
+     */
+    static async getDailyPondProgress() {
+        const endpoint = "pond_daily_progress?select=*&order=pond.asc&limit=300";
+        try {
+            return (await supabase.request(endpoint)) || [];
+        } catch (err) {
+            console.warn("Could not fetch pond_daily_progress:", err);
+            return [];
+        }
+    }
 }
-
-

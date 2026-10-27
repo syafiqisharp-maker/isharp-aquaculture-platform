@@ -1,6 +1,7 @@
 /**
  * iSHARP DBMS 2.0 — Executive Pond Detail Drawer Template
- * Generates slide-out drawer markup for pond biosecurity, sampling metrics, and issue logs.
+ * Generates slide-out drawer markup for pond biosecurity, sampling metrics,
+ * daily preparation milestones, and issue logs.
  * 
  * Clean Coding Standard: Pure HTML template functions.
  */
@@ -11,53 +12,142 @@ import { formatNumber } from "../../../utils/formatters.js";
 /**
  * Generates drawer HTML markup.
  * @param {object} params
+ * @param {string} params.pondCode
+ * @param {object|null} params.cycle
+ * @param {Array<object>} [params.issues]
+ * @param {number} [params.idleDays]
+ * @param {boolean} [params.isProd]
+ * @param {object|null} [params.dailyProgress]
+ * @param {object|null} [params.pondData]
  * @returns {string}
  */
-export function getDrawerHtml({ pondCode, cycle, issues = [], idleDays = 0, isProd = false }) {
+export function getDrawerHtml({ pondCode, cycle, issues = [], idleDays = 0, isProd = false, dailyProgress = null, pondData = null }) {
+    const isNewStock = pondData?.syncState === "NEWLY_STOCKED_EXCEL";
+    const isMidHarvest = pondData?.syncState === "HARVESTED_MIDWEEK_EXCEL";
+    const progressLabel = pondData?.progressLabel || (isProd ? "Culture" : "Idle");
+    const progressDays = pondData?.progressDays ?? idleDays;
+
     const docText = isProd
-        ? (cycle && cycle.stck_date ? `${calculateDOC(cycle.stck_date, cycle.date_close)} DOC` : "—")
-        : `${idleDays} Days ${idleDays > 30 ? "⚠️ (>30d)" : ""}`;
+        ? (cycle && cycle.stck_date ? `${calculateDOC(cycle.stck_date, cycle.date_close)} DOC` : (isNewStock ? `${progressDays} DOC` : "—"))
+        : `${progressDays} Days ${progressDays > 30 ? "⚠️ (>30d)" : ""}`;
+
+    // Sub-title logic
+    const subTitle = cycle 
+        ? `Cycle Index: ${cycle.pond_index} • Stage: ${progressLabel}`
+        : `Physical Pond • Progress: ${progressLabel} (${progressDays}d)`;
 
     return `
         <div class="drawer-header">
             <div>
                 <div class="drawer-pond-title">Pond ${pondCode}</div>
-                <div class="drawer-pond-sub">${cycle ? `Cycle Index: ${cycle.pond_index}` : "No active culture cycle"}</div>
+                <div class="drawer-pond-sub">${subTitle}</div>
             </div>
             <button type="button" class="drawer-close-btn" id="btn-close-drawer">✕</button>
         </div>
 
         <div class="drawer-body">
+
+            <!-- Mid-Week Sync Callout Banner -->
+            ${isNewStock ? `
+                <div class="drawer-sync-alert sync-alert-stocked">
+                    <div style="font-weight: 800; font-size: 0.82rem; display: flex; align-items: center; gap: 0.4rem; color: #065f46;">
+                        <span>🌱 Newly Stocked on ${dailyProgress?.stocking_date || 'Recent'} (${progressDays} DOC)</span>
+                    </div>
+                    <div style="font-size: 0.72rem; color: #047857; margin-top: 0.25rem; line-height: 1.35;">
+                        Reported via Daily Status tracker. Species variety (VAN/MON) and full stocking batch telemetry will link automatically following Friday's Access DBMS sync.
+                    </div>
+                </div>
+            ` : isMidHarvest ? `
+                <div class="drawer-sync-alert sync-alert-harvested">
+                    <div style="font-weight: 800; font-size: 0.82rem; display: flex; align-items: center; gap: 0.4rem; color: #92400e;">
+                        <span>🚜 Harvested Mid-Week (${dailyProgress?.last_harvest_date || 'Recent'})</span>
+                    </div>
+                    <div style="font-size: 0.72rem; color: #b45309; margin-top: 0.25rem; line-height: 1.35;">
+                        Pond transition to <strong>${progressLabel} (${progressDays}d)</strong> active in Daily Tracker. The previous cycle is pending formal termination in Friday's DBMS sync.
+                    </div>
+                </div>
+            ` : ""}
+
+            <!-- Quick Stat Grid -->
             <div class="drawer-stat-grid">
                 <div class="drawer-stat-box">
-                    <div class="drawer-stat-lbl">${isProd ? "Culture Age" : "Idle Duration"}</div>
-                    <div class="drawer-stat-val" style="${!isProd && idleDays > 30 ? "color: #b45309; font-weight: 800;" : ""}">
-                        ${docText}
+                    <div class="drawer-stat-lbl">${isProd ? "Culture Age" : "Progress Stage"}</div>
+                    <div class="drawer-stat-val" style="${!isProd && progressDays > 30 ? "color: #b45309; font-weight: 800;" : ""}">
+                        ${isProd ? docText : `${progressLabel} (${progressDays}d)`}
                     </div>
                 </div>
                 <div class="drawer-stat-box">
-                    <div class="drawer-stat-lbl">Species</div>
-                    <div class="drawer-stat-val">${isProd && cycle ? (cycle.stck_species || "P. VANNAMEI") : "—"}</div>
+                    <div class="drawer-stat-lbl">Species / Badge</div>
+                    <div class="drawer-stat-val">${isProd ? (isNewStock ? "NEW (Pending)" : (cycle?.stck_species || "P. VANNAMEI")) : progressLabel}</div>
                 </div>
                 <div class="drawer-stat-box">
                     <div class="drawer-stat-lbl">Stocking Date</div>
-                    <div class="drawer-stat-val" style="font-size: 0.95rem;">${isProd && cycle && cycle.stck_date ? cycle.stck_date : "—"}</div>
+                    <div class="drawer-stat-val" style="font-size: 0.95rem;">
+                        ${isProd ? (cycle?.stck_date || dailyProgress?.stocking_date || "—") : "—"}
+                    </div>
                 </div>
                 <div class="drawer-stat-box">
                     <div class="drawer-stat-lbl">Stocked Pieces</div>
-                    <div class="drawer-stat-val" style="font-size: 1.05rem;">${isProd && cycle && cycle.stck_total ? formatNumber(cycle.stck_total) : "—"}</div>
+                    <div class="drawer-stat-val" style="font-size: 1.05rem;">
+                        ${isProd && cycle && cycle.stck_total ? formatNumber(cycle.stck_total) : (isNewStock ? "Pending Sync" : "—")}
+                    </div>
                 </div>
             </div>
 
-            <!-- Biometrics Sampling Preview -->
-            <div class="drawer-section">
-                <div class="drawer-section-title">
-                    <span>📊 Latest Growth Biometrics</span>
+            <!-- Daily Preparation & Progress Milestones Stepper -->
+            ${dailyProgress ? `
+                <div class="drawer-section">
+                    <div class="drawer-section-title">
+                        <span>🗓️ Preparation &amp; Progress Milestones</span>
+                        <span style="font-size: 0.7rem; color: #0284c7; font-weight: 700; background: #e0f2fe; padding: 0.1rem 0.45rem; border-radius: 4px;">
+                            ${dailyProgress.excel_as_of_date ? `As of ${dailyProgress.excel_as_of_date}` : "Daily Tracker"}
+                        </span>
+                    </div>
+
+                    <div class="drawer-milestone-grid">
+                        <div class="drawer-milestone-item ${dailyProgress.last_harvest_date ? 'done' : ''}">
+                            <div class="milestone-lbl">Last Harvest</div>
+                            <div class="milestone-val">${dailyProgress.last_harvest_date || '—'}</div>
+                        </div>
+                        <div class="drawer-milestone-item ${dailyProgress.clean_progress_date || dailyProgress.cleaning_done_date ? 'done' : ''}">
+                            <div class="milestone-lbl">Cleaning</div>
+                            <div class="milestone-val">${dailyProgress.cleaning_done_date || dailyProgress.clean_progress_date || '—'}</div>
+                        </div>
+                        <div class="drawer-milestone-item ${dailyProgress.repair_done_date || dailyProgress.repair_progress_date ? 'done' : ''}">
+                            <div class="milestone-lbl">Repaired</div>
+                            <div class="milestone-val">${dailyProgress.repair_done_date || dailyProgress.repair_progress_date || '—'}</div>
+                        </div>
+                        <div class="drawer-milestone-item ${dailyProgress.filled_water_date ? 'done' : ''}">
+                            <div class="milestone-lbl">Water Filled</div>
+                            <div class="milestone-val">${dailyProgress.filled_water_date || '—'}</div>
+                        </div>
+                        <div class="drawer-milestone-item ${dailyProgress.water_treat_date ? 'done' : ''}">
+                            <div class="milestone-lbl">Water Treated</div>
+                            <div class="milestone-val">${dailyProgress.water_treat_date || '—'}</div>
+                        </div>
+                        <div class="drawer-milestone-item ${dailyProgress.pass_bioassay ? 'done' : ''}">
+                            <div class="milestone-lbl">Bioassay / QAQC</div>
+                            <div class="milestone-val">
+                                ${dailyProgress.pass_bioassay 
+                                    ? `<span style="color:#059669; font-weight:800;">PASS</span> ${dailyProgress.bioassay_date || ''}` 
+                                    : (dailyProgress.bioassay_date || 'Pending')}
+                            </div>
+                        </div>
+                    </div>
                 </div>
-                <div id="drawer-sampling-container" style="padding: 0.5rem; text-align: center; color: #64748b; font-size: 0.8rem;">
-                    <span>Loading sampling history...</span>
+            ` : ""}
+
+            <!-- Biometrics Sampling Preview (for active/established culture ponds) -->
+            ${isProd && !isNewStock ? `
+                <div class="drawer-section">
+                    <div class="drawer-section-title">
+                        <span>📊 Latest Growth Biometrics</span>
+                    </div>
+                    <div id="drawer-sampling-container" style="padding: 0.5rem; text-align: center; color: #64748b; font-size: 0.8rem;">
+                        <span>Loading sampling history...</span>
+                    </div>
                 </div>
-            </div>
+            ` : ""}
 
             <!-- Biosecurity & Pathology History -->
             <div class="drawer-section">

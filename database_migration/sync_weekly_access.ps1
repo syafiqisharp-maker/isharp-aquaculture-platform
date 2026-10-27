@@ -1706,6 +1706,20 @@ if (Test-Path $checkpointPath) {
     Remove-Item $checkpointPath -Force -ErrorAction SilentlyContinue
 }
 
+# -------------------------------------------------------------
+# AUTOMATED DAILY POND PROGRESS SYNC TRIGGER
+# -------------------------------------------------------------
+$dailySyncScript = Join-Path $PSScriptRoot "sync_daily_pond_progress.ps1"
+if (Test-Path $dailySyncScript) {
+    Write-Output ""
+    Write-Output "[POST-SYNC] Invoking Daily Pond Progress Sync Engine (Excel -> Supabase)..."
+    try {
+        & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $dailySyncScript -supabaseUrl $supabaseUrl -supabaseKey $supabaseKey -editorPasscode $editorPasscode
+    } catch {
+        Write-Warning "Daily Pond Progress Sync encountered a warning: $($_.Exception.Message)"
+    }
+}
+
 Write-Output ""
 Write-Output "=========================================================="
 Write-Output "  WEEKLY SYNC COMPLETED SUCCESSFULLY!"

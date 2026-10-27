@@ -680,3 +680,288 @@ export function getOperationalPondState(cycle) {
     };
 }
 
+
+/**
+ * Canonical Pond Progress States & Metadata.
+ */
+export const POND_PROGRESS_STATES = {
+    CULTURE: {
+        code: "CULTURE",
+        label: "Culture",
+        badgeText: "CULTURE",
+        badgeClass: "sp-culture",
+        tileClass: "progress-culture",
+        order: 1
+    },
+    READY: {
+        code: "READY",
+        label: "Ready for Stocking",
+        badgeText: "READY",
+        badgeClass: "sp-ready",
+        tileClass: "progress-ready",
+        order: 2
+    },
+    WATER_CULTURE: {
+        code: "WATER_CULTURE",
+        label: "Water Culture",
+        badgeText: "WATER CULT",
+        badgeClass: "sp-water-cult",
+        tileClass: "progress-water-culture",
+        order: 3
+    },
+    REPAIRED: {
+        code: "REPAIRED",
+        label: "Repaired",
+        badgeText: "REPAIRED",
+        badgeClass: "sp-repaired",
+        tileClass: "progress-repaired",
+        order: 4
+    },
+    CLEANED: {
+        code: "CLEANED",
+        label: "Cleaned",
+        badgeText: "CLEANED",
+        badgeClass: "sp-cleaned",
+        tileClass: "progress-cleaned",
+        order: 5
+    },
+    CLEANING: {
+        code: "CLEANING",
+        label: "Cleaning",
+        badgeText: "CLEANING",
+        badgeClass: "sp-cleaning",
+        tileClass: "progress-cleaning",
+        order: 6
+    },
+    IDLE: {
+        code: "IDLE",
+        label: "Idle",
+        badgeText: "IDLE",
+        badgeClass: "sp-idle",
+        tileClass: "risk-idle",
+        order: 7
+    }
+};
+
+/**
+ * Normalizes raw Excel progress/status strings into canonical 7 states.
+ * @param {string} rawStatus 
+ * @param {string} [statusCode] 
+ * @param {string} [mapCode] 
+ * @returns {string}
+ */
+export function normalizePondProgressState(rawStatus, statusCode = "", mapCode = "") {
+    const raw = String(rawStatus || "").trim().toUpperCase();
+    const sc = String(statusCode || "").trim();
+    const mc = String(mapCode || "").trim().toUpperCase();
+
+    if (raw.includes("READY") || mc.includes("BIOA")) {
+        return "READY";
+    }
+    if (raw.includes("WATER CULTURE") || raw.includes("WATER FILLING") || sc === "Wc" || sc === "Fw") {
+        return "WATER_CULTURE";
+    }
+    if (raw.includes("REPAIRED") || raw.includes("REPAIR") || sc === "Rw" || sc === "RW" || sc === "Rp") {
+        return "REPAIRED";
+    }
+    if (raw.includes("CLEANED") || sc === "Cr") {
+        return "CLEANED";
+    }
+    if (raw.includes("CLEANING") || sc === "Cp") {
+        return "CLEANING";
+    }
+    if (raw.includes("CULTURE") || sc === "Opr") {
+        return "CULTURE";
+    }
+    return "IDLE";
+}
+
+/**
+ * Calculates non-negative days in progress state, dynamically evaluating
+ * date diff from status_start_date when available, clamped to >= 0.
+ * @param {object|null} dailyRecord 
+ * @param {Date|string} [referenceDate=new Date()] 
+ * @returns {number}
+ */
+export function calculateProgressDays(dailyRecord, referenceDate = new Date()) {
+    if (!dailyRecord) return 0;
+    if (dailyRecord.status_start_date) {
+        const start = new Date(dailyRecord.status_start_date);
+        const ref = new Date(referenceDate);
+        if (!isNaN(start.getTime()) && !isNaN(ref.getTime())) {
+            const diffMs = ref.getTime() - start.getTime();
+            const days = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+            return Math.max(0, days);
+        }
+    }
+    const raw = parseInt(dailyRecord.days_in_status, 10);
+    return isNaN(raw) ? 0 : Math.max(0, raw);
+}
+
+/**
+ * Reconciles Supabase cycle SSOT with daily Excel pond progress telemetry.
+ * Implements Smart Hybrid SSOT:
+ * 1. Established culture ponds in Supabase use full DBMS data (DOC, species, PCR).
+ * 2. Mid-week newly stocked ponds in Excel immediately render as Culture (DOC from stocking_date + NEW badge).
+ * 3. Mid-week harvested ponds in Excel override stale Culture cycles and display new progress state.
+ * 4. Unstocked ponds display accurate preparation stage, badge, and clamped day count.
+ * 
+ * @param {string} pondCode e.g. "01.01.03"
+ * @param {object|null} cycle Supabase cycle record
+ * @param {object|null} dailyRecord Daily Excel progress record from pond_daily_progress
+ * @param {Array<object>} [pondIssues=[]] Lab pathogen test records
+ * @param {Date|string} [referenceDate=new Date()]
+ * @returns {object}
+ */
+export function resolveHybridPondState(pondCode, cycle, dailyRecord, pondIssues = [], referenceDate = new Date()) {
+    const opState = getOperationalPondState(cycle);
+
+    // 1. Detect Mid-Week New Stocking from Excel (pending Friday Access sync)
+    const hasMidWeekStocking = !opState.isStocked && 
+        Boolean(dailyRecord && (dailyRecord.progress_state === "CULTURE" || String(dailyRecord.raw_template_status || "").toUpperCase().includes("CULTURE")) && dailyRecord.stocking_date);
+
+    // 2. Detect Mid-Week Harvest from Excel (harvest date newer than stocking date)
+    const hasMidWeekHarvest = opState.isStocked && 
+        Boolean(dailyRecord && dailyRecord.progress_state !== "CULTURE" && dailyRecord.last_harvest_date && cycle && cycle.stck_date && dailyRecord.last_harvest_date > cycle.stck_date);
+
+    // Case A: Mid-Week Stocking (Excel has stocking date before Friday DBMS sync)
+    if (hasMidWeekStocking) {
+        const doc = calculateDOC(dailyRecord.stocking_date, referenceDate);
+        return {
+            pondCode,
+            pondIndex: cycle ? cycle.pond_index : "",
+            isActive: true,
+            doc,
+            docDisplay: String(doc),
+            speciesCode: "NEW",
+            speciesLabel: "NEW",
+            speciesBadgeClass: "sp-new",
+            health: "GREEN",
+            healthDescription: "Newly Stocked (Daily Tracker) — Pending Friday DBMS Sync",
+            stageCode: doc > 70 ? "FINISHING" : (doc >= 30 ? "MID" : "EARLY"),
+            cssClass: "risk-green",
+            progressState: "CULTURE",
+            progressLabel: "Culture",
+            progressBadgeText: "NEW",
+            progressBadgeClass: "sp-new",
+            progressDays: doc,
+            idleDays: 0,
+            syncState: "NEWLY_STOCKED_EXCEL",
+            dailyRecord
+        };
+    }
+
+    // Case B: Mid-Week Harvest (Excel was harvested after cycle.stck_date)
+    if (hasMidWeekHarvest) {
+        const progressState = dailyRecord.progress_state || normalizePondProgressState(dailyRecord.raw_template_status, dailyRecord.status_code, dailyRecord.map_code);
+        const meta = POND_PROGRESS_STATES[progressState] || POND_PROGRESS_STATES.IDLE;
+        const progressDays = calculateProgressDays(dailyRecord, referenceDate);
+
+        return {
+            pondCode,
+            pondIndex: cycle ? cycle.pond_index : "",
+            isActive: false,
+            doc: 0,
+            docDisplay: `${progressDays}d`,
+            speciesCode: progressState,
+            speciesLabel: meta.badgeText,
+            speciesBadgeClass: meta.badgeClass,
+            health: "IDLE",
+            healthDescription: `Harvested Mid-Week: ${meta.label} (${progressDays} days)`,
+            stageCode: "IDLE",
+            cssClass: (progressDays > 30 && progressState === "IDLE") ? "risk-idle idle-overdue" : meta.tileClass,
+            progressState,
+            progressLabel: meta.label,
+            progressBadgeText: meta.badgeText,
+            progressBadgeClass: meta.badgeClass,
+            progressDays,
+            idleDays: progressDays,
+            syncState: "HARVESTED_MIDWEEK_EXCEL",
+            dailyRecord
+        };
+    }
+
+    // Case C: Established Stocked Culture (Supabase cycle is stocked)
+    if (opState.isStocked) {
+        let stageCode = "EARLY";
+        if (opState.doc >= 30 && opState.doc <= 70) stageCode = "MID";
+        else if (opState.doc > 70) stageCode = "FINISHING";
+
+        // Biosecurity health evaluation
+        let health = "GREEN";
+        let healthDesc = "Clean Biosecurity";
+        let cssClass = "risk-green";
+
+        const hasRed = (pondIssues || []).some(i => (i.issue_flag || "").toUpperCase() === "RED" || (i.pcr_result || "").toUpperCase() === "POSITIVE");
+        const hasYellow = (pondIssues || []).some(i => (i.issue_flag || "").toUpperCase() === "YELLOW");
+
+        if (hasRed) {
+            health = "RED";
+            healthDesc = "Red Alert: Active Pathogen Detected";
+            cssClass = "risk-red";
+        } else if (hasYellow) {
+            health = "YELLOW";
+            healthDesc = "Warning: Monitored Symptoms";
+            cssClass = "risk-yellow";
+        }
+
+        return {
+            pondCode,
+            pondIndex: cycle ? cycle.pond_index : "",
+            isActive: true,
+            doc: opState.doc,
+            docDisplay: opState.docDisplay,
+            speciesCode: opState.speciesCode,
+            speciesLabel: opState.speciesLabel,
+            speciesBadgeClass: opState.speciesBadgeClass,
+            health,
+            healthDescription: healthDesc,
+            stageCode,
+            cssClass,
+            progressState: "CULTURE",
+            progressLabel: "Culture",
+            progressBadgeText: opState.speciesLabel,
+            progressBadgeClass: opState.speciesBadgeClass,
+            progressDays: opState.doc,
+            idleDays: 0,
+            syncState: "SYNCED",
+            dailyRecord
+        };
+    }
+
+    // Case D: Non-Stocked Pond (Preparation / Idle)
+    let progressState = "IDLE";
+    if (dailyRecord) {
+        const rawState = dailyRecord.progress_state || normalizePondProgressState(dailyRecord.raw_template_status, dailyRecord.status_code, dailyRecord.map_code);
+        // If Excel marked as Culture but has no stocking date, fallback to prep/idle
+        progressState = (rawState === "CULTURE") ? (opState.isPrep ? "CLEANING" : "IDLE") : rawState;
+    } else {
+        progressState = opState.isPrep ? "CLEANING" : "IDLE";
+    }
+
+    const meta = POND_PROGRESS_STATES[progressState] || POND_PROGRESS_STATES.IDLE;
+    const progressDays = dailyRecord ? calculateProgressDays(dailyRecord, referenceDate) : (opState.idleDays || 0);
+
+    return {
+        pondCode,
+        pondIndex: cycle ? cycle.pond_index : "",
+        isActive: false,
+        doc: 0,
+        docDisplay: `${progressDays}d`,
+        speciesCode: progressState,
+        speciesLabel: meta.badgeText,
+        speciesBadgeClass: meta.badgeClass,
+        health: "IDLE",
+        healthDescription: `${meta.label} (${progressDays} days)`,
+        stageCode: "IDLE",
+        cssClass: (progressDays > 30 && progressState === "IDLE") ? "risk-idle idle-overdue" : meta.tileClass,
+        progressState,
+        progressLabel: meta.label,
+        progressBadgeText: meta.badgeText,
+        progressBadgeClass: meta.badgeClass,
+        progressDays,
+        idleDays: progressDays,
+        syncState: "SYNCED",
+        dailyRecord
+    };
+}

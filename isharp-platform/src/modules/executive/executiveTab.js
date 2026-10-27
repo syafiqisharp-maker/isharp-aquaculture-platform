@@ -88,24 +88,9 @@ export class ExecutiveView {
                         </div>
 
                         <div class="exec-kpi-card">
-                            <div class="exec-kpi-title">Species Under Culture</div>
-                            <div class="exec-kpi-num" style="color: #0e7490; font-size: 1.35rem;">VAN &amp; MON</div>
-                            <div class="exec-kpi-sub">P. vannamei &amp; P. monodon</div>
-                        </div>
-
-                        <div class="exec-kpi-card">
                             <div class="exec-kpi-title">Pathogen Biosecurity</div>
                             <div class="exec-kpi-num" id="exec-kpi-health" style="color: #d97706;">Live Monitoring</div>
                             <div class="exec-kpi-sub">Supabase Lab Telemetry Active</div>
-                        </div>
-
-                        <div class="exec-kpi-card" id="card-exec-kpi-mgmt" style="cursor: pointer;" title="Click to view weekly management info compliance">
-                            <div class="exec-kpi-title" style="display: flex; justify-content: space-between; align-items: center;">
-                                <span>Management Info</span>
-                                <span style="font-size: 0.68rem; background: #e0f2fe; color: #0369a1; padding: 0.1rem 0.4rem; border-radius: 4px; font-weight: 700;">Audit</span>
-                            </div>
-                            <div class="exec-kpi-num" id="exec-kpi-mgmt" style="color: #0284c7; font-size: 1.35rem;">Audit Callout</div>
-                            <div class="exec-kpi-sub">Staff, Aerators &amp; Inventory</div>
                         </div>
                     </section>
 
@@ -184,13 +169,6 @@ export class ExecutiveView {
         const btnCallout = this.container.querySelector("#btn-exec-mgmt-callout");
         if (btnCallout) {
             btnCallout.addEventListener("click", () => {
-                ManagementCalloutModal.open({ initialModule: "ALL" });
-            });
-        }
-
-        const cardMgmt = this.container.querySelector("#card-exec-kpi-mgmt");
-        if (cardMgmt) {
-            cardMgmt.addEventListener("click", () => {
                 ManagementCalloutModal.open({ initialModule: "ALL" });
             });
         }

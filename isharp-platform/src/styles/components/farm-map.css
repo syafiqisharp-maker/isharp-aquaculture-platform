@@ -718,3 +718,152 @@
     box-shadow: 0 4px 12px rgba(2, 132, 199, 0.4);
 }
 
+
+/* ==========================================================================
+   14. POND PROGRESS & PREPARATION STAGE VISUALS
+   ========================================================================== */
+
+/* Filter Count Pill Badge */
+.filter-count-badge {
+    display: inline-block;
+    padding: 0.05rem 0.35rem;
+    font-size: 0.65rem;
+    font-weight: 800;
+    font-family: 'JetBrains Mono', monospace;
+    border-radius: 9999px;
+    background: #e2e8f0;
+    color: #475569;
+    margin-left: 0.25rem;
+    line-height: 1.1;
+    transition: all 0.15s ease;
+}
+
+.farm-filter-btn.active .filter-count-badge {
+    background: rgba(255, 255, 255, 0.25);
+    color: #ffffff;
+}
+
+/* Mid-Week Sync Indicator Badges on Tile Header */
+.pond-sync-badge {
+    font-size: 0.52rem;
+    font-weight: 900;
+    padding: 0.05rem 0.25rem;
+    border-radius: 3px;
+    line-height: 1;
+    letter-spacing: 0.03em;
+}
+
+.pond-sync-badge.sync-new {
+    background: #10b981;
+    color: #ffffff;
+    box-shadow: 0 0 5px rgba(16, 185, 129, 0.5);
+}
+
+.pond-sync-badge.sync-harvest {
+    background: #f59e0b;
+    color: #ffffff;
+}
+
+/* Progress-Specific Tile Styles */
+.pond-tile.progress-ready {
+    background: linear-gradient(145deg, #ecfeff 0%, #cffafe 100%);
+    border-color: #22d3ee;
+    box-shadow: 0 1px 4px rgba(6, 182, 212, 0.18);
+}
+.pond-tile.progress-ready .pond-tile-doc { color: #0891b2; font-weight: 900; }
+.pond-tile.progress-ready .pond-badge-indicator { background: #06b6d4; }
+
+.pond-tile.progress-water-culture {
+    background: linear-gradient(145deg, #f0f9ff 0%, #e0f2fe 100%);
+    border-color: #7dd3fc;
+}
+.pond-tile.progress-water-culture .pond-tile-doc { color: #0284c7; }
+.pond-tile.progress-water-culture .pond-badge-indicator { background: #38bdf8; }
+
+.pond-tile.progress-repaired {
+    background: linear-gradient(145deg, #f5f3ff 0%, #ede9fe 100%);
+    border-color: #c4b5fd;
+}
+.pond-tile.progress-repaired .pond-tile-doc { color: #6366f1; }
+.pond-tile.progress-repaired .pond-badge-indicator { background: #818cf8; }
+
+.pond-tile.progress-cleaned {
+    background: linear-gradient(145deg, #fffbeb 0%, #fef3c7 100%);
+    border-color: #fcd34d;
+}
+.pond-tile.progress-cleaned .pond-tile-doc { color: #d97706; }
+.pond-tile.progress-cleaned .pond-badge-indicator { background: #f59e0b; }
+
+.pond-tile.progress-cleaning {
+    background: linear-gradient(145deg, #fff7ed 0%, #ffedd5 100%);
+    border-color: #fdba74;
+}
+.pond-tile.progress-cleaning .pond-tile-doc { color: #ea580c; }
+.pond-tile.progress-cleaning .pond-badge-indicator { background: #f97316; }
+
+/* Progress Species/Stage Badges */
+.pond-species-badge.sp-ready { background: #0891b2; color: #ffffff; }
+.pond-species-badge.sp-water-cult { background: #0284c7; color: #ffffff; }
+.pond-species-badge.sp-repaired { background: #4f46e5; color: #ffffff; }
+.pond-species-badge.sp-cleaned { background: #d97706; color: #ffffff; }
+.pond-species-badge.sp-cleaning { background: #ea580c; color: #ffffff; }
+.pond-species-badge.sp-new { background: #059669; color: #ffffff; }
+
+/* Drawer Mid-Week Sync Callout Banners */
+.drawer-sync-alert {
+    padding: 0.75rem 0.9rem;
+    border-radius: 8px;
+    margin-bottom: 0.25rem;
+    border: 1px solid transparent;
+}
+.drawer-sync-alert.sync-alert-stocked {
+    background: #ecfdf5;
+    border-color: #a7f3d0;
+}
+.drawer-sync-alert.sync-alert-harvested {
+    background: #fffbeb;
+    border-color: #fde68a;
+}
+
+/* Drawer Preparation Milestone Timeline Grid */
+.drawer-milestone-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.5rem;
+}
+
+.drawer-milestone-item {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    padding: 0.55rem 0.65rem;
+    transition: all 0.15s ease;
+}
+
+.drawer-milestone-item.done {
+    background: #f0fdf4;
+    border-color: #bbf7d0;
+}
+
+.drawer-milestone-item .milestone-lbl {
+    font-size: 0.68rem;
+    font-weight: 700;
+    color: #64748b;
+    text-transform: uppercase;
+    margin-bottom: 0.15rem;
+}
+
+.drawer-milestone-item.done .milestone-lbl {
+    color: #166534;
+}
+
+.drawer-milestone-item .milestone-val {
+    font-size: 0.82rem;
+    font-weight: 800;
+    font-family: 'JetBrains Mono', monospace;
+    color: #0f172a;
+}
+
+.drawer-milestone-item.done .milestone-val {
+    color: #15803d;
+}

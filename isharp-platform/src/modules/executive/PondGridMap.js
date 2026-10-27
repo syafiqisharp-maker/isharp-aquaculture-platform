@@ -10,12 +10,12 @@ import { PondRepository } from "../../infrastructure/repositories/pondRepository
 import { LabRepository } from "../../infrastructure/repositories/labRepository.js";
 import { SamplingRepository } from "../../infrastructure/repositories/samplingRepository.js";
 import { appState } from "../../state/appState.js";
-import { calculateDOC, getOperationalPondState } from "../../domain/biometrics.js";
+import { resolveHybridPondState, POND_PROGRESS_STATES } from "../../domain/biometrics.js";
 import { Toast } from "../../components/Toast.js";
 import { getFarmMapShellHtml, renderPondTileHtml } from "./templates/pondGridCellTemplate.js";
 import { getDrawerHtml, getDrawerSamplingHtml } from "./templates/pondDrawerTemplate.js";
 
-const CACHE_KEY = "isharp_farm_map_cache_v2";
+const CACHE_KEY = "isharp_farm_map_cache_v3";
 const CACHE_TTL_MS = 5 * 60 * 1000; // 5-minute session cache
 
 export class PondGridMap {
@@ -28,14 +28,27 @@ export class PondGridMap {
 
         // Internal State
         this.filters = {
+            progress: "ALL",     // ALL, CULTURE, READY, WATER_CULTURE, REPAIRED, CLEANED, CLEANING, IDLE
             species: "ALL",      // ALL, VAN, MON
             health: "ALL",       // ALL, RED, YELLOW, GREEN, IDLE
             stage: "ALL",        // ALL, EARLY, MID, FINISHING
             search: ""
         };
 
-        this.activeCycleMap = new Map(); // normalized pond_code (e.g. "04.08.02") -> stocking record
-        this.issuesMap = new Map();      // pond_index -> array of issues
+        this.progressCounts = {
+            ALL: 216,
+            CULTURE: 0,
+            READY: 0,
+            WATER_CULTURE: 0,
+            REPAIRED: 0,
+            CLEANED: 0,
+            CLEANING: 0,
+            IDLE: 0
+        };
+
+        this.activeCycleMap = new Map();     // normalized pond_code (e.g. "04.08.02") -> stocking record
+        this.dailyProgressMap = new Map();   // normalized pond_code -> daily progress record
+        this.issuesMap = new Map();          // pond_index -> array of issues
         this.selectedPond = null;
         this.isLoading = false;
 
@@ -100,9 +113,24 @@ export class PondGridMap {
                 const type = btn.getAttribute("data-filter-type");
                 const val = btn.getAttribute("data-filter-val");
 
+                // Smart Filter Auto-Reset Logic
+                if (type === "progress") {
+                    // Selecting non-Culture preparation stage: auto-reset Culture-specific filters
+                    if (val !== "ALL" && val !== "CULTURE") {
+                        this.resetCultureFilters();
+                    }
+                } else if (type === "species" || type === "stage" || (type === "health" && val !== "ALL" && val !== "IDLE")) {
+                    // Selecting Culture-specific filters: auto-reset progress if on a preparation stage
+                    if (this.filters.progress !== "ALL" && this.filters.progress !== "CULTURE") {
+                        this.resetProgressFilter();
+                    }
+                }
+
                 const group = btn.closest(".farm-filter-group");
-                group.querySelectorAll(".farm-filter-btn").forEach(b => b.classList.remove("active"));
-                btn.classList.add("active");
+                if (group) {
+                    group.querySelectorAll(".farm-filter-btn").forEach(b => b.classList.remove("active"));
+                    btn.classList.add("active");
+                }
 
                 this.filters[type] = val;
                 this.applyFilters();
@@ -126,7 +154,43 @@ export class PondGridMap {
     }
 
     /**
-     * Loads live farm telemetry and active cycles across all 9 modules from Supabase.
+     * Resets species, stage, and pathogen health filters to ALL.
+     */
+    resetCultureFilters() {
+        this.filters.species = "ALL";
+        this.filters.stage = "ALL";
+        if (this.filters.health !== "ALL" && this.filters.health !== "IDLE") {
+            this.filters.health = "ALL";
+        }
+
+        ["species", "stage", "health"].forEach(type => {
+            const group = this.container.querySelector(`.farm-filter-group#filter-group-${type}`);
+            if (group) {
+                group.querySelectorAll(".farm-filter-btn").forEach(b => {
+                    const val = b.getAttribute("data-filter-val");
+                    if (val === this.filters[type]) b.classList.add("active");
+                    else b.classList.remove("active");
+                });
+            }
+        });
+    }
+
+    /**
+     * Resets Pond Progress filter to ALL.
+     */
+    resetProgressFilter() {
+        this.filters.progress = "ALL";
+        const group = this.container.querySelector(".farm-filter-group#filter-group-pond-progress");
+        if (group) {
+            group.querySelectorAll(".farm-filter-btn").forEach(b => {
+                if (b.getAttribute("data-filter-val") === "ALL") b.classList.add("active");
+                else b.classList.remove("active");
+            });
+        }
+    }
+
+    /**
+     * Loads live farm telemetry, daily progress, and active cycles across all 9 modules from Supabase.
      * @param {boolean} forceRefresh 
      */
     async loadData(forceRefresh = false) {
@@ -146,7 +210,7 @@ export class PondGridMap {
                     try {
                         const parsed = JSON.parse(cached);
                         if (Date.now() - parsed.timestamp < CACHE_TTL_MS) {
-                            this.populateFromData(parsed.activeCycles, parsed.activePonds, parsed.issues);
+                            this.populateFromData(parsed.activeCycles, parsed.activePonds, parsed.issues, parsed.dailyProgress || []);
                             this.renderGrid();
                             this.isLoading = false;
                             if (this.dom.btnRefresh) {
@@ -161,11 +225,12 @@ export class PondGridMap {
                 }
             }
 
-            // Batch fetch non-closed cycles, gatekeeper, and issues
-            const [activeCycles, activePonds, issues] = await Promise.all([
+            // Batch fetch non-closed cycles, gatekeeper, issues, and daily progress
+            const [activeCycles, activePonds, issues, dailyProgress] = await Promise.all([
                 PondRepository.getActiveCycles(),
                 PondRepository.getActiveOperationalPonds(),
-                LabRepository.getAllRecentIssues(1000)
+                LabRepository.getAllRecentIssues(1000),
+                PondRepository.getDailyPondProgress()
             ]);
 
             // Save to session cache
@@ -174,15 +239,16 @@ export class PondGridMap {
                     timestamp: Date.now(),
                     activeCycles,
                     activePonds,
-                    issues
+                    issues,
+                    dailyProgress
                 }));
             } catch (e) {
                 console.warn("Could not cache farm map state in sessionStorage", e);
             }
 
-            this.populateFromData(activeCycles, activePonds, issues);
+            this.populateFromData(activeCycles, activePonds, issues, dailyProgress);
             this.renderGrid();
-            Toast.success("Farm biosecurity map updated across all 9 modules.");
+            Toast.success("Farm biosecurity & daily progress map updated across all 9 modules.");
         } catch (err) {
             console.error("Error loading farm map data:", err);
             Toast.error("Failed to sync farm map data. Using cached snapshot.");
@@ -196,11 +262,12 @@ export class PondGridMap {
     }
 
     /**
-     * Ingests cycles, gatekeeper active ponds, and issues into fast lookup tables.
+     * Ingests cycles, gatekeeper active ponds, issues, and daily progress into fast lookup tables.
      */
-    populateFromData(cycles = [], activePonds = [], issues = []) {
+    populateFromData(cycles = [], activePonds = [], issues = [], dailyProgress = []) {
         this.activeCycleMap.clear();
         this.issuesMap.clear();
+        this.dailyProgressMap.clear();
 
         // 1. Map issues by pond_index
         (issues || []).forEach(issue => {
@@ -212,14 +279,22 @@ export class PondGridMap {
             this.issuesMap.get(pIdx).push(issue);
         });
 
-        // 2. Build set of active gatekeeper ponds
+        // 2. Map daily progress by normalized pond code
+        (dailyProgress || []).forEach(dp => {
+            const code = this.normalizePondCode(dp.pond);
+            if (code) {
+                this.dailyProgressMap.set(code, dp);
+            }
+        });
+
+        // 3. Build set of active gatekeeper ponds
         const gatekeeperSet = new Set();
         (activePonds || []).forEach(p => {
             const norm = this.normalizePondCode(p.pond) || this.derivePondCode(p.pond_index);
             if (norm) gatekeeperSet.add(norm);
         });
 
-        // 3. Map cycles by normalized pond code (e.g. "02.03.07")
+        // 4. Map cycles by normalized pond code (e.g. "02.03.07")
         (cycles || []).forEach(cycle => {
             let code = this.normalizePondCode(cycle.pond);
             if (!code && cycle.pond_index) {
@@ -259,6 +334,18 @@ export class PondGridMap {
      */
     renderGrid() {
         if (!this.dom.gridMount) return;
+
+        // Reset progress counters
+        this.progressCounts = {
+            ALL: 0,
+            CULTURE: 0,
+            READY: 0,
+            WATER_CULTURE: 0,
+            REPAIRED: 0,
+            CLEANED: 0,
+            CLEANING: 0,
+            IDLE: 0
+        };
 
         let html = "";
         let redCount = 0;
@@ -317,6 +404,7 @@ export class PondGridMap {
         this.dom.gridMount.innerHTML = html;
         this.bindPondTileEvents();
         this.updateHeaderKPIs(activeCount, idleCount, redCount, yellowCount, greenCount);
+        this.updateFilterCountBadges();
         this.applyFilters();
     }
 
@@ -330,6 +418,15 @@ export class PondGridMap {
             const cycle = this.activeCycleMap.get(pondCode);
 
             const pondData = this.evaluatePondState(pondCode, cycle);
+
+            // Accumulate progress stage counts
+            this.progressCounts.ALL = (this.progressCounts.ALL || 0) + 1;
+            const pKey = pondData.progressState || "IDLE";
+            if (this.progressCounts[pKey] !== undefined) {
+                this.progressCounts[pKey] += 1;
+            } else {
+                this.progressCounts.IDLE = (this.progressCounts.IDLE || 0) + 1;
+            }
 
             if (pondData.health === "RED") red++;
             else if (pondData.health === "YELLOW") yellow++;
@@ -345,71 +442,16 @@ export class PondGridMap {
         return cells;
     }
 
+    /**
+     * Resolves single source of truth pond state using Smart Hybrid reconciliation.
+     * @param {string} pondCode 
+     * @param {object|null} cycle 
+     * @returns {object}
+     */
     evaluatePondState(pondCode, cycle) {
-        if (!cycle) {
-            return {
-                pondCode,
-                pondIndex: "",
-                isActive: false,
-                doc: 0,
-                docDisplay: "—",
-                speciesCode: "IDLE",
-                speciesLabel: "IDLE",
-                speciesBadgeClass: "sp-idle",
-                health: "IDLE",
-                healthDescription: "Idle / Preparation Pond",
-                stageCode: "IDLE",
-                cssClass: "risk-idle",
-                idleDays: 0
-            };
-        }
-
-        const opState = getOperationalPondState(cycle);
-
-        let stageCode = "EARLY";
-        if (opState.doc >= 30 && opState.doc <= 70) stageCode = "MID";
-        else if (opState.doc > 70) stageCode = "FINISHING";
-
-        // Biosecurity determination
-        let health = "GREEN";
-        let healthDesc = "Clean Biosecurity";
-        let cssClass = "risk-green";
-
-        if (!opState.isStocked) {
-            health = "IDLE";
-            healthDesc = opState.isPrep ? "Pond in Preparation / Awaiting Stocking" : `Idle / Preparation (${opState.idleDays} days)`;
-            cssClass = (opState.idleDays > 30) ? "risk-idle idle-overdue" : "risk-idle";
-        } else {
-            const pondIssues = this.issuesMap.get(String(cycle.pond_index)) || [];
-            const hasRed = pondIssues.some(i => (i.issue_flag || "").toUpperCase() === "RED" || (i.pcr_result || "").toUpperCase() === "POSITIVE");
-            const hasYellow = pondIssues.some(i => (i.issue_flag || "").toUpperCase() === "YELLOW");
-
-            if (hasRed) {
-                health = "RED";
-                healthDesc = "Red Alert: Active Pathogen Detected";
-                cssClass = "risk-red";
-            } else if (hasYellow) {
-                health = "YELLOW";
-                healthDesc = "Warning: Monitored Symptoms";
-                cssClass = "risk-yellow";
-            }
-        }
-
-        return {
-            pondCode,
-            pondIndex: cycle.pond_index,
-            isActive: opState.isStocked,
-            doc: opState.doc,
-            docDisplay: opState.docDisplay,
-            speciesCode: opState.speciesCode,
-            speciesLabel: opState.speciesLabel,
-            speciesBadgeClass: opState.speciesBadgeClass,
-            health,
-            healthDescription: healthDesc,
-            stageCode: opState.isStocked ? stageCode : "IDLE",
-            cssClass,
-            idleDays: opState.idleDays
-        };
+        const dailyRecord = this.dailyProgressMap.get(pondCode) || null;
+        const pondIssues = cycle ? (this.issuesMap.get(String(cycle.pond_index)) || []) : [];
+        return resolveHybridPondState(pondCode, cycle, dailyRecord, pondIssues);
     }
 
     bindPondTileEvents() {
@@ -428,11 +470,12 @@ export class PondGridMap {
         if (!this.drawer || !this.drawerBackdrop) return;
 
         const cycle = this.activeCycleMap.get(pondCode);
+        const dailyProgress = this.dailyProgressMap.get(pondCode) || null;
         const issues = pondIndex ? (this.issuesMap.get(String(pondIndex)) || []) : [];
-        const isProd = cycle && (cycle.pond_status || "").toUpperCase() === "PRODUCTION";
+        const pondData = this.evaluatePondState(pondCode, cycle);
 
-        let idleDays = 0;
-        if (cycle && !isProd) {
+        let idleDays = pondData.progressDays || 0;
+        if (!pondData.isActive && !dailyProgress && cycle) {
             if (cycle.date_cycle) {
                 const start = new Date(cycle.date_cycle);
                 if (!isNaN(start.getTime())) {
@@ -448,7 +491,9 @@ export class PondGridMap {
             cycle,
             issues,
             idleDays,
-            isProd
+            isProd: pondData.isActive,
+            dailyProgress,
+            pondData
         });
 
         // Slide Drawer Open
@@ -467,7 +512,7 @@ export class PondGridMap {
             });
         }
 
-        if (pondIndex) {
+        if (pondIndex && pondData.isActive) {
             this.loadDrawerSampling(pondIndex, cycle);
         }
     }
@@ -489,6 +534,19 @@ export class PondGridMap {
         if (this.drawer) this.drawer.classList.remove("open");
     }
 
+    /**
+     * Updates live count numbers inside filter pill buttons.
+     */
+    updateFilterCountBadges() {
+        const badges = this.container.querySelectorAll(".filter-count-badge[data-count-key]");
+        badges.forEach(badge => {
+            const key = badge.getAttribute("data-count-key");
+            if (this.progressCounts && this.progressCounts[key] !== undefined) {
+                badge.textContent = this.progressCounts[key];
+            }
+        });
+    }
+
     updateHeaderKPIs(active, idle, red, yellow, green) {
         const elActive = document.getElementById("exec-kpi-active");
         if (elActive) {
@@ -498,6 +556,22 @@ export class PondGridMap {
         const elIdle = document.getElementById("exec-kpi-idle");
         if (elIdle) {
             elIdle.innerHTML = `${idle} <span style="font-size: 0.9rem; color: #64748b; font-weight: 500;">Ponds</span>`;
+            
+            // Dynamic sub-text breaking down In Prep vs Idle
+            const cardParent = elIdle.closest(".exec-kpi-card");
+            if (cardParent) {
+                const sub = cardParent.querySelector(".exec-kpi-sub");
+                if (sub) {
+                    const prepCount = (this.progressCounts.READY || 0) + 
+                                      (this.progressCounts.WATER_CULTURE || 0) + 
+                                      (this.progressCounts.REPAIRED || 0) + 
+                                      (this.progressCounts.CLEANED || 0) + 
+                                      (this.progressCounts.CLEANING || 0);
+                    const ready = this.progressCounts.READY || 0;
+                    const trueIdle = this.progressCounts.IDLE || 0;
+                    sub.textContent = `${prepCount} In Prep (${ready} Ready) • ${trueIdle} Idle`;
+                }
+            }
         }
 
         const elHealth = document.getElementById("exec-kpi-health");
@@ -516,6 +590,7 @@ export class PondGridMap {
         const tiles = this.container.querySelectorAll(".pond-tile");
 
         tiles.forEach(tile => {
+            const pr = tile.getAttribute("data-progress");
             const sp = tile.getAttribute("data-species");
             const hl = tile.getAttribute("data-health");
             const st = tile.getAttribute("data-stage");
@@ -523,6 +598,7 @@ export class PondGridMap {
 
             let match = true;
 
+            if (this.filters.progress !== "ALL" && this.filters.progress !== pr) match = false;
             if (this.filters.species !== "ALL" && this.filters.species !== sp) match = false;
             if (this.filters.health !== "ALL" && this.filters.health !== hl) match = false;
             if (this.filters.stage !== "ALL" && this.filters.stage !== st) match = false;

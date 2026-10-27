@@ -188,9 +188,9 @@
         white-space: nowrap !important;
     }
 
-    /* Executive Quick KPI Strip: 5-column single horizontal ribbon */
+    /* Executive Quick KPI Strip: 3-column single horizontal ribbon */
     .exec-kpi-strip {
-        grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+        grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
         gap: 0.45rem !important;
     }
 
