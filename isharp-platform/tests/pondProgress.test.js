@@ -5,7 +5,8 @@ import {
     POND_PROGRESS_STATES,
     normalizePondProgressState,
     calculateProgressDays,
-    resolveHybridPondState
+    resolveHybridPondState,
+    buildPondProgressTimeline
 } from '../src/domain/biometrics.js';
 import { getFarmMapShellHtml, renderPondTileHtml } from '../src/modules/executive/templates/pondGridCellTemplate.js';
 import { getDrawerHtml } from '../src/modules/executive/templates/pondDrawerTemplate.js';
@@ -186,6 +187,127 @@ test('Pond Progress: resolveHybridPondState (Smart Hybrid SSOT)', async (t) => {
     });
 });
 
+test('Pond Progress: buildPondProgressTimeline (Compact 3-Column Timeline SSOT)', async (t) => {
+    await t.test('calculates exact inter-event days delta matching the user hand-drawn sketch', () => {
+        // Hand-drawn sketch scenario:
+        // Last Harvest: 2026-07-30
+        // Cleaning Start: 2026-08-10 (11 days)
+        // Cleaned: 2026-08-12 (2 days)
+        // Repaired: 2026-08-15 (3 days)
+        const dailyProgress = {
+            last_harvest_date: '2026-07-30',
+            clean_progress_date: '2026-08-10',
+            cleaning_done_date: '2026-08-12',
+            repair_done_date: '2026-08-15',
+            filled_water_date: null,
+            water_treat_date: null,
+            pass_bioassay: false,
+            bioassay_date: null,
+            stocking_date: null
+        };
+        const pondData = {
+            progressState: 'REPAIRED',
+            progressDays: 3
+        };
+
+        const timeline = buildPondProgressTimeline(dailyProgress, null, pondData);
+
+        assert.equal(timeline.hasAnyDate, true);
+        assert.equal(timeline.isStocked, false);
+        assert.equal(timeline.steps.length, 8);
+
+        // Step 0: Last Harvest
+        assert.equal(timeline.steps[0].key, 'harvest');
+        assert.equal(timeline.steps[0].date, '2026-07-30');
+        assert.equal(timeline.steps[0].segmentDays, 11);
+        assert.equal(timeline.steps[0].segmentLabel, '11 days');
+        assert.equal(timeline.steps[0].segmentDone, true);
+        assert.equal(timeline.steps[0].status, 'done');
+
+        // Step 1: Cleaning Start
+        assert.equal(timeline.steps[1].key, 'cleaning_start');
+        assert.equal(timeline.steps[1].date, '2026-08-10');
+        assert.equal(timeline.steps[1].segmentDays, 2);
+        assert.equal(timeline.steps[1].segmentLabel, '2 days');
+        assert.equal(timeline.steps[1].segmentDone, true);
+        assert.equal(timeline.steps[1].status, 'done');
+
+        // Step 2: Cleaned
+        assert.equal(timeline.steps[2].key, 'cleaned');
+        assert.equal(timeline.steps[2].date, '2026-08-12');
+        assert.equal(timeline.steps[2].segmentDays, 3);
+        assert.equal(timeline.steps[2].segmentLabel, '3 days');
+        assert.equal(timeline.steps[2].segmentDone, true);
+        assert.equal(timeline.steps[2].status, 'done');
+
+        // Step 3: Repaired (Current Active Milestone)
+        assert.equal(timeline.steps[3].key, 'repaired');
+        assert.equal(timeline.steps[3].date, '2026-08-15');
+        assert.equal(timeline.steps[3].segmentDays, null); // Next date is null
+        assert.equal(timeline.steps[3].segmentLabel, null);
+        assert.equal(timeline.steps[3].status, 'current');
+        assert.equal(timeline.steps[3].nodeBadge, 'Active • 3d');
+
+        // Step 4: Water Filled (Pending)
+        assert.equal(timeline.steps[4].key, 'water_filled');
+        assert.equal(timeline.steps[4].date, null);
+        assert.equal(timeline.steps[4].status, 'pending');
+
+        // Total turnaround from harvest to latest milestone (16 days: 2026-07-30 to 2026-08-15)
+        assert.equal(timeline.totalTurnaroundDays, 16);
+    });
+
+    await t.test('formats singular "1 day" for 24h gap correctly', () => {
+        const dailyProgress = {
+            last_harvest_date: '2026-08-10',
+            clean_progress_date: '2026-08-11'
+        };
+        const timeline = buildPondProgressTimeline(dailyProgress);
+        assert.equal(timeline.steps[0].segmentDays, 1);
+        assert.equal(timeline.steps[0].segmentLabel, '1 day');
+    });
+
+    await t.test('handles full culture cycle with turnaround and DOC badge', () => {
+        const cycle = {
+            pond: '01.01.01',
+            pond_status: 'PRODUCTION',
+            stck_date: '2026-09-03'
+        };
+        const dailyProgress = {
+            last_harvest_date: '2026-07-30',
+            clean_progress_date: '2026-08-10',
+            cleaning_done_date: '2026-08-12',
+            repair_done_date: '2026-08-15',
+            filled_water_date: '2026-08-20',
+            water_treat_date: '2026-08-22',
+            pass_bioassay: true,
+            bioassay_date: '2026-08-28',
+            stocking_date: '2026-09-03'
+        };
+        const pondData = {
+            isActive: true,
+            progressState: 'CULTURE',
+            docDisplay: '54'
+        };
+
+        const timeline = buildPondProgressTimeline(dailyProgress, cycle, pondData);
+
+        assert.equal(timeline.isStocked, true);
+        assert.equal(timeline.totalTurnaroundDays, 35); // 2026-07-30 to 2026-09-03 = 35 days
+        assert.equal(timeline.steps[7].status, 'current');
+        assert.equal(timeline.steps[7].nodeBadge, 'Current • 54 DOC');
+        assert.equal(timeline.steps[6].nodeBadge, 'PASS');
+    });
+
+    await t.test('handles null/empty records gracefully without errors', () => {
+        const timeline = buildPondProgressTimeline(null);
+        assert.equal(timeline.hasAnyDate, false);
+        assert.equal(timeline.totalTurnaroundDays, null);
+        assert.equal(timeline.steps.length, 8);
+        assert.equal(timeline.steps[0].status, 'pending');
+    });
+});
+
 test('Pond Progress: UI Template Contract Verification', async (t) => {
     await t.test('getFarmMapShellHtml contains Pond Progress filter row with count spans', () => {
         const html = getFarmMapShellHtml();
@@ -228,21 +350,22 @@ test('Pond Progress: UI Template Contract Verification', async (t) => {
         assert.ok(tileHtml.includes('progress-water-culture'));
     });
 
-    await t.test('getDrawerHtml renders Preparation Milestone Timeline and Sync Banners', () => {
+    await t.test('getDrawerHtml renders Preparation Milestone Timeline matching sketch layout', () => {
         const dailyProgress = {
-            last_harvest_date: '2026-10-20',
-            cleaning_done_date: '2026-10-22',
-            repair_done_date: '2026-10-23',
-            filled_water_date: '2026-10-24',
-            water_treat_date: '2026-10-25',
-            pass_bioassay: true,
-            bioassay_date: '2026-10-26',
+            last_harvest_date: '2026-07-30',
+            clean_progress_date: '2026-08-10',
+            cleaning_done_date: '2026-08-12',
+            repair_done_date: '2026-08-15',
+            filled_water_date: null,
+            water_treat_date: null,
+            pass_bioassay: false,
+            bioassay_date: null,
             excel_as_of_date: '2026-10-26'
         };
         const pondData = {
-            progressState: 'READY',
-            progressLabel: 'Ready for Stocking',
-            progressDays: 2,
+            progressState: 'REPAIRED',
+            progressLabel: 'Repaired',
+            progressDays: 3,
             syncState: 'SYNCED'
         };
 
@@ -253,9 +376,32 @@ test('Pond Progress: UI Template Contract Verification', async (t) => {
             pondData
         });
 
-        assert.ok(drawerHtml.includes('Preparation &amp; Progress Milestones'));
-        assert.ok(drawerHtml.includes('2026-10-20'));
-        assert.ok(drawerHtml.includes('PASS'));
-        assert.ok(drawerHtml.includes('Ready for Stocking'));
+        // Title and Section
+        assert.ok(drawerHtml.includes('Preparation &amp; Progress Timeline'));
+        assert.ok(drawerHtml.includes('As of 2026-10-26'));
+
+        // Compact Vertical Timeline 3-column elements
+        assert.ok(drawerHtml.includes('compact-v-timeline'));
+        assert.ok(drawerHtml.includes('v-tl-item'));
+        assert.ok(drawerHtml.includes('v-tl-left'));
+        assert.ok(drawerHtml.includes('v-tl-title'));
+        assert.ok(drawerHtml.includes('v-tl-date'));
+        assert.ok(drawerHtml.includes('v-tl-center'));
+        assert.ok(drawerHtml.includes('v-tl-dot'));
+        assert.ok(drawerHtml.includes('v-tl-line'));
+        assert.ok(drawerHtml.includes('v-tl-right'));
+        assert.ok(drawerHtml.includes('v-tl-segment-days'));
+
+        // Values from sketch
+        assert.ok(drawerHtml.includes('Last Harvest'));
+        assert.ok(drawerHtml.includes('2026-07-30'));
+        assert.ok(drawerHtml.includes('11 days'));
+        assert.ok(drawerHtml.includes('2 days'));
+        assert.ok(drawerHtml.includes('3 days'));
+
+        // Summary banner
+        assert.ok(drawerHtml.includes('v-tl-summary-banner'));
+        assert.ok(drawerHtml.includes('Elapsed Since Harvest:'));
+        assert.ok(drawerHtml.includes('16 days'));
     });
 });

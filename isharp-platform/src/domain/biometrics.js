@@ -965,3 +965,158 @@ export function resolveHybridPondState(pondCode, cycle, dailyRecord, pondIssues 
         dailyRecord
     };
 }
+
+/**
+ * Builds an ordered 8-step vertical timeline model for the Executive Pond Detail Drawer.
+ * Computes inter-event day counts for the vertical connector segments between nodes
+ * matching the user's compact 3-column timeline layout (Left: Event & Date, Center: Node & Line, Right: Segment Days).
+ * 
+ * @param {object|null} dailyProgress Record from public.pond_daily_progress
+ * @param {object|null} [cycle=null] Active cycle from Supabase
+ * @param {object|null} [pondData=null] Evaluated hybrid pond state
+ * @param {Date|string} [referenceDate=new Date()]
+ * @returns {{ steps: Array<object>, totalTurnaroundDays: number|null, hasAnyDate: boolean, isStocked: boolean }}
+ */
+export function buildPondProgressTimeline(dailyProgress, cycle = null, pondData = null, referenceDate = new Date()) {
+    const isProd = Boolean(pondData?.isActive || (cycle && cycle.stck_date && (cycle.pond_status || '').toUpperCase() === 'PRODUCTION'));
+    const isNewlyStocked = pondData?.syncState === 'NEWLY_STOCKED_EXCEL';
+
+    const stockDate = (dailyProgress && dailyProgress.stocking_date) || (isProd && cycle ? cycle.stck_date : null);
+
+    const definitions = [
+        {
+            key: 'harvest',
+            label: 'Last Harvest',
+            code: 'Hv',
+            date: dailyProgress?.last_harvest_date || null
+        },
+        {
+            key: 'cleaning_start',
+            label: 'Cleaning Start',
+            code: 'Cp',
+            date: dailyProgress?.clean_progress_date || null
+        },
+        {
+            key: 'cleaned',
+            label: 'Cleaned',
+            code: 'Cr',
+            date: dailyProgress?.cleaning_done_date || null
+        },
+        {
+            key: 'repaired',
+            label: 'Repaired',
+            code: 'Rw',
+            date: dailyProgress?.repair_done_date || dailyProgress?.repair_progress_date || null
+        },
+        {
+            key: 'water_filled',
+            label: 'Water Filled',
+            code: 'Fw',
+            date: dailyProgress?.filled_water_date || null
+        },
+        {
+            key: 'water_treated',
+            label: 'Water Treated',
+            code: 'Wc',
+            date: dailyProgress?.water_treat_date || null
+        },
+        {
+            key: 'bioassay',
+            label: 'Bioassay & QAQC',
+            code: 'BioA',
+            date: dailyProgress?.bioassay_date || dailyProgress?.qaqc_date || null,
+            isBioassay: true
+        },
+        {
+            key: 'stocked',
+            label: 'Stocked',
+            code: 'Opr',
+            date: stockDate
+        }
+    ];
+
+    // Determine current active milestone index (the latest completed milestone)
+    let lastCompletedIdx = -1;
+    for (let i = 0; i < definitions.length; i++) {
+        if (definitions[i].date) {
+            lastCompletedIdx = i;
+        }
+    }
+    // If pond is marked ready for stocking or pass_bioassay is true, mark bioassay as reached
+    if (lastCompletedIdx < 6 && (dailyProgress?.pass_bioassay || pondData?.progressState === 'READY')) {
+        lastCompletedIdx = 6;
+    }
+    // If in culture, active milestone is stocked
+    if (isProd || isNewlyStocked || pondData?.progressState === 'CULTURE') {
+        lastCompletedIdx = 7;
+    }
+
+    // Build steps with status and segment deltas
+    const steps = definitions.map((def, idx) => {
+        const isDone = idx <= lastCompletedIdx && Boolean(def.date || (def.key === 'bioassay' && dailyProgress?.pass_bioassay));
+        const isCurrent = idx === lastCompletedIdx;
+        const status = isCurrent ? 'current' : (isDone ? 'done' : 'pending');
+
+        let nodeBadge = null;
+        let nodeBadgeClass = null;
+
+        if (def.key === 'bioassay' && dailyProgress?.pass_bioassay) {
+            nodeBadge = 'PASS';
+            nodeBadgeClass = 'badge-pass';
+        } else if (isCurrent && !isProd && pondData?.progressDays !== undefined) {
+            nodeBadge = `Active • ${pondData.progressDays}d`;
+            nodeBadgeClass = 'badge-active-stage';
+        } else if (isCurrent && isProd && pondData?.docDisplay) {
+            nodeBadge = `Current • ${pondData.docDisplay} DOC`;
+            nodeBadgeClass = 'badge-current-doc';
+        }
+
+        return {
+            ...def,
+            status,
+            isCurrent,
+            isDone,
+            nodeBadge,
+            nodeBadgeClass,
+            segmentDays: null,
+            segmentLabel: null,
+            segmentDone: false
+        };
+    });
+
+    // Calculate segmentDays between step i and the next step
+    for (let i = 0; i < steps.length - 1; i++) {
+        const curStep = steps[i];
+        const nextStep = steps[i + 1];
+
+        if (curStep.date && nextStep.date) {
+            const dCur = new Date(curStep.date);
+            const dNext = new Date(nextStep.date);
+            if (!isNaN(dCur.getTime()) && !isNaN(dNext.getTime())) {
+                const diffMs = dNext.getTime() - dCur.getTime();
+                const days = Math.round(diffMs / (1000 * 60 * 60 * 24));
+                const clamped = Math.max(0, days);
+                curStep.segmentDays = clamped;
+                curStep.segmentLabel = clamped === 1 ? '1 day' : `${clamped} days`;
+                curStep.segmentDone = true;
+            }
+        }
+    }
+
+    // Calculate total turnaround days if both harvest and stocking exist, or days elapsed since harvest
+    let totalTurnaroundDays = null;
+    const harvestDate = steps[0].date ? new Date(steps[0].date) : null;
+    const finalDate = (isProd && steps[7].date) ? new Date(steps[7].date) : (lastCompletedIdx > 0 && steps[lastCompletedIdx].date ? new Date(steps[lastCompletedIdx].date) : null);
+
+    if (harvestDate && finalDate && !isNaN(harvestDate.getTime()) && !isNaN(finalDate.getTime())) {
+        const diffMs = finalDate.getTime() - harvestDate.getTime();
+        totalTurnaroundDays = Math.max(0, Math.round(diffMs / (1000 * 60 * 60 * 24)));
+    }
+
+    return {
+        steps,
+        totalTurnaroundDays,
+        isStocked: isProd || isNewlyStocked,
+        hasAnyDate: steps.some(s => Boolean(s.date))
+    };
+}

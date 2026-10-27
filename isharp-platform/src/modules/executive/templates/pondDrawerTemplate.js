@@ -6,7 +6,7 @@
  * Clean Coding Standard: Pure HTML template functions.
  */
 
-import { calculateDOC } from "../../../domain/biometrics.js";
+import { calculateDOC, buildPondProgressTimeline } from "../../../domain/biometrics.js";
 import { formatNumber } from "../../../utils/formatters.js";
 
 /**
@@ -35,6 +35,9 @@ export function getDrawerHtml({ pondCode, cycle, issues = [], idleDays = 0, isPr
     const subTitle = cycle 
         ? `Cycle Index: ${cycle.pond_index} • Stage: ${progressLabel}`
         : `Physical Pond • Progress: ${progressLabel} (${progressDays}d)`;
+
+    // Build timeline model from domain helper
+    const timeline = buildPondProgressTimeline(dailyProgress, cycle, pondData);
 
     return `
         <div class="drawer-header">
@@ -94,45 +97,54 @@ export function getDrawerHtml({ pondCode, cycle, issues = [], idleDays = 0, isPr
                 </div>
             </div>
 
-            <!-- Daily Preparation & Progress Milestones Stepper -->
-            ${dailyProgress ? `
+            <!-- Daily Preparation & Progress Milestones (Compact Vertical Timeline matching hand sketch) -->
+            ${timeline.hasAnyDate ? `
                 <div class="drawer-section">
                     <div class="drawer-section-title">
-                        <span>🗓️ Preparation &amp; Progress Milestones</span>
+                        <span>🗓️ Preparation &amp; Progress Timeline</span>
                         <span style="font-size: 0.7rem; color: #0284c7; font-weight: 700; background: #e0f2fe; padding: 0.1rem 0.45rem; border-radius: 4px;">
-                            ${dailyProgress.excel_as_of_date ? `As of ${dailyProgress.excel_as_of_date}` : "Daily Tracker"}
+                            ${dailyProgress?.excel_as_of_date ? `As of ${dailyProgress.excel_as_of_date}` : "Daily Tracker"}
                         </span>
                     </div>
 
-                    <div class="drawer-milestone-grid">
-                        <div class="drawer-milestone-item ${dailyProgress.last_harvest_date ? 'done' : ''}">
-                            <div class="milestone-lbl">Last Harvest</div>
-                            <div class="milestone-val">${dailyProgress.last_harvest_date || '—'}</div>
+                    ${timeline.totalTurnaroundDays !== null ? `
+                        <div class="v-tl-summary-banner">
+                            <span>⏱️ <strong>${timeline.isStocked ? "Turnaround (Harvest → Stocking):" : "Elapsed Since Harvest:"}</strong></span>
+                            <span class="v-tl-summary-days">${timeline.totalTurnaroundDays} days</span>
                         </div>
-                        <div class="drawer-milestone-item ${dailyProgress.clean_progress_date || dailyProgress.cleaning_done_date ? 'done' : ''}">
-                            <div class="milestone-lbl">Cleaning</div>
-                            <div class="milestone-val">${dailyProgress.cleaning_done_date || dailyProgress.clean_progress_date || '—'}</div>
-                        </div>
-                        <div class="drawer-milestone-item ${dailyProgress.repair_done_date || dailyProgress.repair_progress_date ? 'done' : ''}">
-                            <div class="milestone-lbl">Repaired</div>
-                            <div class="milestone-val">${dailyProgress.repair_done_date || dailyProgress.repair_progress_date || '—'}</div>
-                        </div>
-                        <div class="drawer-milestone-item ${dailyProgress.filled_water_date ? 'done' : ''}">
-                            <div class="milestone-lbl">Water Filled</div>
-                            <div class="milestone-val">${dailyProgress.filled_water_date || '—'}</div>
-                        </div>
-                        <div class="drawer-milestone-item ${dailyProgress.water_treat_date ? 'done' : ''}">
-                            <div class="milestone-lbl">Water Treated</div>
-                            <div class="milestone-val">${dailyProgress.water_treat_date || '—'}</div>
-                        </div>
-                        <div class="drawer-milestone-item ${dailyProgress.pass_bioassay ? 'done' : ''}">
-                            <div class="milestone-lbl">Bioassay / QAQC</div>
-                            <div class="milestone-val">
-                                ${dailyProgress.pass_bioassay 
-                                    ? `<span style="color:#059669; font-weight:800;">PASS</span> ${dailyProgress.bioassay_date || ''}` 
-                                    : (dailyProgress.bioassay_date || 'Pending')}
-                            </div>
-                        </div>
+                    ` : ""}
+
+                    <div class="compact-v-timeline">
+                        ${timeline.steps.map((step, idx) => {
+                            const isLast = idx === timeline.steps.length - 1;
+                            return `
+                                <div class="v-tl-item ${step.status}" data-step-key="${step.key}">
+                                    <!-- Left Column: Event Name + Date underneath (Matching user sketch) -->
+                                    <div class="v-tl-left">
+                                        <div class="v-tl-title">${step.label}</div>
+                                        <div class="v-tl-date">${step.date || "Pending"}</div>
+                                    </div>
+
+                                    <!-- Center Column: Node Circle Dot + Vertical Line Segment down to next node -->
+                                    <div class="v-tl-center">
+                                        <div class="v-tl-dot ${step.status}"></div>
+                                        ${!isLast ? `<div class="v-tl-line ${step.segmentDone ? 'done' : 'pending'}"></div>` : ""}
+                                    </div>
+
+                                    <!-- Right Column: Status Tag at Node + Elapsed Days alongside the Line Segment -->
+                                    <div class="v-tl-right">
+                                        <div class="v-tl-node-meta">
+                                            ${step.nodeBadge ? `<span class="v-tl-badge ${step.nodeBadgeClass || ''}">${step.nodeBadge}</span>` : ""}
+                                        </div>
+                                        ${!isLast ? `
+                                            <div class="v-tl-segment-days ${step.segmentDays !== null ? 'has-days' : ''}">
+                                                ${step.segmentLabel || ""}
+                                            </div>
+                                        ` : ""}
+                                    </div>
+                                </div>
+                            `;
+                        }).join("")}
                     </div>
                 </div>
             ` : ""}

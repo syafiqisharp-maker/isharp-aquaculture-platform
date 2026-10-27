@@ -825,45 +825,168 @@
     border-color: #fde68a;
 }
 
-/* Drawer Preparation Milestone Timeline Grid */
-.drawer-milestone-grid {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 0.5rem;
-}
-
-.drawer-milestone-item {
-    background: #f8fafc;
-    border: 1px solid #e2e8f0;
+/* Drawer Preparation Milestone Timeline (Sketch Layout) */
+.v-tl-summary-banner {
+    font-size: 0.74rem;
+    color: #475569;
+    margin-bottom: 0.65rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #f1f5f9;
+    padding: 0.35rem 0.65rem;
     border-radius: 6px;
-    padding: 0.55rem 0.65rem;
-    transition: all 0.15s ease;
+    border: 1px solid #e2e8f0;
 }
 
-.drawer-milestone-item.done {
-    background: #f0fdf4;
-    border-color: #bbf7d0;
-}
-
-.drawer-milestone-item .milestone-lbl {
-    font-size: 0.68rem;
-    font-weight: 700;
-    color: #64748b;
-    text-transform: uppercase;
-    margin-bottom: 0.15rem;
-}
-
-.drawer-milestone-item.done .milestone-lbl {
-    color: #166534;
-}
-
-.drawer-milestone-item .milestone-val {
-    font-size: 0.82rem;
+.v-tl-summary-days {
     font-weight: 800;
     font-family: 'JetBrains Mono', monospace;
-    color: #0f172a;
+    color: #0369a1;
 }
 
-.drawer-milestone-item.done .milestone-val {
+.compact-v-timeline {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 0.75rem 0.85rem;
+    display: flex;
+    flex-direction: column;
+}
+
+.v-tl-item {
+    display: grid;
+    grid-template-columns: 1fr 24px 1fr;
+    align-items: stretch;
+}
+
+/* Left Column: Event Name + Date underneath (right-aligned toward the center axis) */
+.v-tl-left {
+    text-align: right;
+    padding-right: 0.65rem;
+    padding-bottom: 0.65rem;
+}
+
+.v-tl-title {
+    font-size: 0.78rem;
+    font-weight: 800;
+    color: #0f172a;
+    line-height: 1.2;
+}
+
+.v-tl-date {
+    font-size: 0.7rem;
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 600;
+    color: #475569;
+    margin-top: 0.12rem;
+}
+
+.v-tl-item.pending .v-tl-title {
+    color: #94a3b8;
+    font-weight: 600;
+}
+
+.v-tl-item.pending .v-tl-date {
+    color: #cbd5e1;
+}
+
+/* Center Column: Node Dot + Vertical Line Segment down */
+.v-tl-center {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.v-tl-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    border: 2px solid #cbd5e1;
+    background: #ffffff;
+    margin-top: 3px;
+    flex-shrink: 0;
+    z-index: 2;
+    transition: all 0.2s ease;
+}
+
+.v-tl-dot.done {
+    border-color: #059669;
+    background: #10b981;
+}
+
+.v-tl-dot.current {
+    border-color: #0284c7;
+    background: #0284c7;
+    box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.25);
+}
+
+.v-tl-line {
+    width: 2px;
+    flex-grow: 1;
+    min-height: 20px;
+    background: #cbd5e1;
+    margin: 2px 0;
+}
+
+.v-tl-line.done {
+    background: #10b981;
+}
+
+.v-tl-line.pending {
+    background: repeating-linear-gradient(to bottom, #cbd5e1 0, #cbd5e1 3px, transparent 3px, transparent 6px);
+}
+
+/* Right Column: Node Level Status + Elapsed Days beside Line Segment */
+.v-tl-right {
+    padding-left: 0.65rem;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+
+.v-tl-node-meta {
+    min-height: 16px;
+    display: flex;
+    align-items: center;
+}
+
+.v-tl-badge {
+    font-size: 0.6rem;
+    font-weight: 800;
+    padding: 0.08rem 0.35rem;
+    border-radius: 3px;
+    letter-spacing: 0.03em;
+    line-height: 1;
+}
+
+.v-tl-badge.badge-pass {
+    background: #dcfce7;
     color: #15803d;
+    border: 1px solid #86efac;
+}
+
+.v-tl-badge.badge-active-stage {
+    background: #e0f2fe;
+    color: #0369a1;
+    border: 1px solid #bae6fd;
+}
+
+.v-tl-badge.badge-current-doc {
+    background: #ecfdf5;
+    color: #065f46;
+    border: 1px solid #a7f3d0;
+}
+
+.v-tl-segment-days {
+    font-size: 0.72rem;
+    font-weight: 800;
+    font-family: 'JetBrains Mono', monospace;
+    color: #0284c7;
+    padding: 0.15rem 0 0.4rem 0;
+    line-height: 1;
+}
+
+.v-tl-item.pending .v-tl-segment-days {
+    color: #94a3b8;
 }
