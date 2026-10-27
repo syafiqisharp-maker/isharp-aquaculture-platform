@@ -1016,7 +1016,7 @@ export function buildPondProgressTimeline(dailyProgress, cycle = null, pondData 
         },
         {
             key: 'water_treated',
-            label: 'Water Treated',
+            label: 'W. Culture Start',
             code: 'Wc',
             date: dailyProgress?.water_treat_date || null
         },
@@ -1055,7 +1055,10 @@ export function buildPondProgressTimeline(dailyProgress, cycle = null, pondData 
     const steps = definitions.map((def, idx) => {
         const isDone = idx <= lastCompletedIdx && Boolean(def.date || (def.key === 'bioassay' && dailyProgress?.pass_bioassay));
         const isCurrent = idx === lastCompletedIdx;
-        const status = isCurrent ? 'current' : (isDone ? 'done' : 'pending');
+        let status = isCurrent ? 'current' : (isDone ? 'done' : 'pending');
+        if (!isCurrent && !isDone && idx < lastCompletedIdx && !def.date) {
+            status = 'skipped';
+        }
 
         let nodeBadge = null;
         let nodeBadgeClass = null;
@@ -1084,22 +1087,39 @@ export function buildPondProgressTimeline(dailyProgress, cycle = null, pondData 
         };
     });
 
-    // Calculate segmentDays between step i and the next step
+    // Ensure all traversed segments prior to the active milestone are marked completed (solid line)
     for (let i = 0; i < steps.length - 1; i++) {
-        const curStep = steps[i];
-        const nextStep = steps[i + 1];
+        if (i < lastCompletedIdx) {
+            steps[i].segmentDone = true;
+        }
+    }
 
-        if (curStep.date && nextStep.date) {
-            const dCur = new Date(curStep.date);
-            const dNext = new Date(nextStep.date);
-            if (!isNaN(dCur.getTime()) && !isNaN(dNext.getTime())) {
-                const diffMs = dNext.getTime() - dCur.getTime();
-                const days = Math.round(diffMs / (1000 * 60 * 60 * 24));
-                const clamped = Math.max(0, days);
-                curStep.segmentDays = clamped;
-                curStep.segmentLabel = clamped === 1 ? '1 day' : `${clamped} days`;
-                curStep.segmentDone = true;
+    // Collect all chronological milestones that have valid dates
+    const datedMilestones = [];
+    for (let i = 0; i < steps.length; i++) {
+        if (steps[i].date) {
+            const d = new Date(steps[i].date);
+            if (!isNaN(d.getTime())) {
+                datedMilestones.push({ index: i, time: d.getTime() });
             }
+        }
+    }
+
+    // Calculate segmentDays between each consecutive pair of available dated events
+    // Even if intermediate events have no date, compute the elapsed days between the two available events (Option B)
+    for (let k = 0; k < datedMilestones.length - 1; k++) {
+        const start = datedMilestones[k];
+        const end = datedMilestones[k + 1];
+
+        const diffMs = end.time - start.time;
+        const days = Math.max(0, Math.round(diffMs / (1000 * 60 * 60 * 24)));
+        const curStep = steps[start.index];
+        curStep.segmentDays = days;
+        curStep.segmentLabel = days === 1 ? '1 day' : `${days} days`;
+
+        // Mark all intermediate line segments from start to end as completed
+        for (let j = start.index; j < end.index; j++) {
+            steps[j].segmentDone = true;
         }
     }
 

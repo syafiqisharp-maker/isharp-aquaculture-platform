@@ -122,7 +122,7 @@ export function getDrawerHtml({ pondCode, cycle, issues = [], idleDays = 0, isPr
                                     <!-- Left Column: Event Name + Date underneath (Matching user sketch) -->
                                     <div class="v-tl-left">
                                         <div class="v-tl-title">${step.label}</div>
-                                        <div class="v-tl-date">${step.date || "Pending"}</div>
+                                        <div class="v-tl-date">${step.date || (step.status === 'skipped' ? "—" : "Pending")}</div>
                                     </div>
 
                                     <!-- Center Column: Node Circle Dot + Vertical Line Segment down to next node -->

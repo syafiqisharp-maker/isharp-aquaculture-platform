@@ -891,6 +891,15 @@
     color: #cbd5e1;
 }
 
+.v-tl-item.skipped .v-tl-title {
+    color: #64748b;
+    font-weight: 600;
+}
+
+.v-tl-item.skipped .v-tl-date {
+    color: #94a3b8;
+}
+
 /* Center Column: Node Dot + Vertical Line Segment down */
 .v-tl-center {
     display: flex;
@@ -913,6 +922,11 @@
 .v-tl-dot.done {
     border-color: #059669;
     background: #10b981;
+}
+
+.v-tl-dot.skipped {
+    border-color: #94a3b8;
+    background: #f1f5f9;
 }
 
 .v-tl-dot.current {

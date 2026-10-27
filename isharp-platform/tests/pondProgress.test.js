@@ -294,9 +294,93 @@ test('Pond Progress: buildPondProgressTimeline (Compact 3-Column Timeline SSOT)'
 
         assert.equal(timeline.isStocked, true);
         assert.equal(timeline.totalTurnaroundDays, 35); // 2026-07-30 to 2026-09-03 = 35 days
+        assert.equal(timeline.steps[5].label, 'W. Culture Start'); // Renamed milestone
         assert.equal(timeline.steps[7].status, 'current');
         assert.equal(timeline.steps[7].nodeBadge, 'Current • 54 DOC');
         assert.equal(timeline.steps[6].nodeBadge, 'PASS');
+    });
+
+    await t.test('Option B: calculates elapsed days between two available events when intermediate event dates are missing', () => {
+        // Real farm scenario (pond 01.01.11):
+        // W. Culture Start is 2026-08-24
+        // Bioassay & QAQC is unrecorded (null)
+        // Stocked is 2026-09-09
+        // Elapsed days between W. Culture Start and Stocked: 16 days
+        const cycle = {
+            pond: '01.01.11',
+            pond_status: 'PRODUCTION',
+            stck_date: '2026-09-09'
+        };
+        const dailyProgress = {
+            last_harvest_date: '2026-07-28',
+            clean_progress_date: '2026-08-20',
+            cleaning_done_date: '2026-08-21',
+            repair_done_date: '2026-08-22',
+            filled_water_date: '2026-08-22',
+            water_treat_date: '2026-08-24',
+            pass_bioassay: false,
+            bioassay_date: null, // Missing date
+            stocking_date: '2026-09-09'
+        };
+        const pondData = {
+            isActive: true,
+            progressState: 'CULTURE',
+            docDisplay: '48'
+        };
+
+        const timeline = buildPondProgressTimeline(dailyProgress, cycle, pondData);
+
+        // Step 5: W. Culture Start -> Step 7: Stocked
+        assert.equal(timeline.steps[5].label, 'W. Culture Start');
+        assert.equal(timeline.steps[5].segmentDays, 16);
+        assert.equal(timeline.steps[5].segmentLabel, '16 days');
+        assert.equal(timeline.steps[5].segmentDone, true);
+
+        // Step 6: Bioassay & QAQC (Skipped/unrecorded)
+        assert.equal(timeline.steps[6].key, 'bioassay');
+        assert.equal(timeline.steps[6].date, null);
+        assert.equal(timeline.steps[6].status, 'skipped');
+        assert.equal(timeline.steps[6].segmentDays, null);
+        assert.equal(timeline.steps[6].segmentDone, true); // Continuous solid spine
+
+        // Step 7: Stocked
+        assert.equal(timeline.steps[7].key, 'stocked');
+        assert.equal(timeline.steps[7].status, 'current');
+    });
+
+    await t.test('Option B: handles multiple missing intermediate event dates across a wide span', () => {
+        // Last Harvest on 2026-09-20, Cleaning and Repair not entered, Water Filled on 2026-10-21 (31 days)
+        const dailyProgress = {
+            last_harvest_date: '2026-09-20',
+            clean_progress_date: null,
+            cleaning_done_date: null,
+            repair_done_date: null,
+            filled_water_date: '2026-10-21'
+        };
+        const pondData = {
+            progressState: 'WATER_CULTURE',
+            progressDays: 6
+        };
+
+        const timeline = buildPondProgressTimeline(dailyProgress, null, pondData);
+
+        // Harvest -> Water Filled (31 days)
+        assert.equal(timeline.steps[0].segmentDays, 31);
+        assert.equal(timeline.steps[0].segmentLabel, '31 days');
+        assert.equal(timeline.steps[0].segmentDone, true);
+
+        // Skipped steps
+        assert.equal(timeline.steps[1].status, 'skipped');
+        assert.equal(timeline.steps[2].status, 'skipped');
+        assert.equal(timeline.steps[3].status, 'skipped');
+        assert.equal(timeline.steps[1].segmentDone, true);
+        assert.equal(timeline.steps[2].segmentDone, true);
+        assert.equal(timeline.steps[3].segmentDone, true);
+
+        // Water Filled
+        assert.equal(timeline.steps[4].key, 'water_filled');
+        assert.equal(timeline.steps[4].date, '2026-10-21');
+        assert.equal(timeline.steps[4].status, 'current');
     });
 
     await t.test('handles null/empty records gracefully without errors', () => {
@@ -398,10 +482,46 @@ test('Pond Progress: UI Template Contract Verification', async (t) => {
         assert.ok(drawerHtml.includes('11 days'));
         assert.ok(drawerHtml.includes('2 days'));
         assert.ok(drawerHtml.includes('3 days'));
+        assert.ok(drawerHtml.includes('W. Culture Start'));
 
         // Summary banner
         assert.ok(drawerHtml.includes('v-tl-summary-banner'));
         assert.ok(drawerHtml.includes('Elapsed Since Harvest:'));
         assert.ok(drawerHtml.includes('16 days'));
+    });
+
+    await t.test('getDrawerHtml renders elapsed days across unrecorded milestone dates (Option B)', () => {
+        const dailyProgress = {
+            last_harvest_date: '2026-07-28',
+            clean_progress_date: '2026-08-20',
+            cleaning_done_date: '2026-08-21',
+            repair_done_date: '2026-08-22',
+            filled_water_date: '2026-08-22',
+            water_treat_date: '2026-08-24',
+            pass_bioassay: false,
+            bioassay_date: null,
+            stocking_date: '2026-09-09',
+            excel_as_of_date: '2026-10-26'
+        };
+        const pondData = {
+            isActive: true,
+            progressState: 'CULTURE',
+            docDisplay: '48',
+            syncState: 'SYNCED'
+        };
+
+        const drawerHtml = getDrawerHtml({
+            pondCode: '01.01.11',
+            cycle: { pond: '01.01.11', pond_status: 'PRODUCTION', stck_date: '2026-09-09' },
+            dailyProgress,
+            pondData
+        });
+
+        assert.ok(drawerHtml.includes('W. Culture Start'));
+        assert.ok(drawerHtml.includes('16 days')); // 2026-08-24 to 2026-09-09
+        assert.ok(drawerHtml.includes('Stocked'));
+        assert.ok(drawerHtml.includes('Current • 48 DOC'));
+        assert.ok(drawerHtml.includes('Turnaround (Harvest → Stocking):'));
+        assert.ok(drawerHtml.includes('43 days'));
     });
 });
