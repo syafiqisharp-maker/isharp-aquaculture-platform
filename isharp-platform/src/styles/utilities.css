@@ -81,3 +81,341 @@
     color: var(--status-alert, #dc2626) !important;
 }
 
+/* ==========================================================================
+   Pond EBITDA Calculator Component (Utilities Tab)
+   ========================================================================== */
+.calc-card {
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.95), rgba(240, 249, 255, 0.92));
+    border: 1px solid rgba(186, 230, 253, 0.9);
+    border-radius: var(--radius-lg, 12px);
+    padding: 1.5rem;
+    box-shadow: 0 4px 16px rgba(2, 132, 199, 0.08);
+    margin-bottom: 2rem;
+}
+
+.calc-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    flex-wrap: wrap;
+    gap: 1rem;
+    border-bottom: 1px solid rgba(224, 242, 254, 0.8);
+    padding-bottom: 1rem;
+    margin-bottom: 1.25rem;
+}
+
+.calc-title h3 {
+    margin: 0;
+    font-size: 1.25rem;
+    font-weight: 800;
+    color: #0369a1;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.calc-subtitle {
+    margin: 0.25rem 0 0 0;
+    font-size: 0.85rem;
+    color: #64748b;
+}
+
+.calc-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 1rem;
+    margin-bottom: 1.25rem;
+}
+
+.calc-field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+
+.calc-field label {
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: #334155;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.calc-field .form-input,
+.calc-field .form-select {
+    padding: 0.6rem 0.75rem;
+    border-radius: 6px;
+    border: 1px solid #cbd5e1;
+    background: #ffffff;
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: #0f172a;
+    transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.calc-field .form-input:focus,
+.calc-field .form-select:focus {
+    outline: none;
+    border-color: #0284c7;
+    box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.15);
+}
+
+.calc-field .field-hint {
+    font-size: 0.72rem;
+    color: #64748b;
+}
+
+.calc-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 1.5rem;
+}
+
+.btn-primary-calc {
+    background: linear-gradient(135deg, #0284c7, #0369a1);
+    color: #ffffff;
+    font-weight: 700;
+    padding: 0.65rem 1.4rem;
+    border-radius: 6px;
+    border: none;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(2, 132, 199, 0.25);
+    transition: transform 0.15s, box-shadow 0.15s;
+}
+
+.btn-primary-calc:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(2, 132, 199, 0.35);
+}
+
+/* Scenarios Bento Grid */
+.scenarios-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1.25rem;
+    margin-bottom: 1.5rem;
+}
+
+@media (max-width: 900px) {
+    .scenarios-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.scenario-card {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    padding: 1.25rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    position: relative;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
+}
+
+.scenario-card.conservative {
+    border-top: 4px solid #64748b;
+}
+
+.scenario-card.base-case {
+    border: 2px solid #0284c7;
+    border-top: 5px solid #0284c7;
+    background: linear-gradient(180deg, #f0f9ff 0%, #ffffff 40%);
+    box-shadow: 0 4px 16px rgba(2, 132, 199, 0.12);
+}
+
+.scenario-card.optimistic {
+    border-top: 4px solid #059669;
+}
+
+.scenario-badge {
+    position: absolute;
+    top: 0.75rem;
+    right: 0.75rem;
+    font-size: 0.68rem;
+    font-weight: 800;
+    padding: 0.2rem 0.5rem;
+    border-radius: 4px;
+    text-transform: uppercase;
+}
+
+.badge-conservative {
+    background: #f1f5f9;
+    color: #475569;
+}
+
+.badge-base {
+    background: #e0f2fe;
+    color: #0369a1;
+}
+
+.badge-optimistic {
+    background: #ecfdf5;
+    color: #047857;
+}
+
+.scenario-header h4 {
+    margin: 0;
+    font-size: 0.95rem;
+    font-weight: 800;
+    color: #1e293b;
+}
+
+.scenario-header .scenario-desc {
+    font-size: 0.75rem;
+    color: #64748b;
+}
+
+.scenario-ebitda {
+    margin: 0.5rem 0;
+}
+
+.scenario-ebitda .ebitda-label {
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: #64748b;
+    text-transform: uppercase;
+}
+
+.scenario-ebitda .ebitda-val {
+    font-size: 1.75rem;
+    font-weight: 900;
+    letter-spacing: -0.02em;
+}
+
+.scenario-ebitda .ebitda-val.positive {
+    color: #059669;
+}
+
+.scenario-ebitda .ebitda-val.negative {
+    color: #dc2626;
+}
+
+.scenario-kpi-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.8rem;
+    padding: 0.25rem 0;
+    border-top: 1px dashed #e2e8f0;
+}
+
+.scenario-kpi-row .kpi-lbl {
+    color: #64748b;
+}
+
+.scenario-kpi-row .kpi-num {
+    font-weight: 700;
+    color: #0f172a;
+}
+
+/* KPI Chips Bar */
+.calc-chips-bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    margin-bottom: 1.25rem;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 0.65rem 1rem;
+    align-items: center;
+}
+
+.calc-chip {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: #334155;
+}
+
+.calc-chip strong {
+    color: #0284c7;
+}
+
+/* Financial Ledger Table */
+.calc-breakdown-card {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    overflow: hidden;
+    margin-bottom: 1.25rem;
+}
+
+.calc-breakdown-card table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85rem;
+}
+
+.calc-breakdown-card th {
+    background: #f8fafc;
+    color: #475569;
+    font-weight: 700;
+    text-transform: uppercase;
+    font-size: 0.72rem;
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid #e2e8f0;
+    text-align: right;
+}
+
+.calc-breakdown-card th:first-child {
+    text-align: left;
+}
+
+.calc-breakdown-card td {
+    padding: 0.65rem 1rem;
+    border-bottom: 1px solid #f1f5f9;
+    text-align: right;
+    color: #1e293b;
+}
+
+.calc-breakdown-card td:first-child {
+    text-align: left;
+    font-weight: 600;
+}
+
+.calc-breakdown-card tr.row-total td {
+    font-weight: 800;
+    background: #f8fafc;
+    border-top: 2px solid #cbd5e1;
+    border-bottom: 2px solid #cbd5e1;
+}
+
+.calc-breakdown-card tr.row-ebitda td {
+    font-weight: 900;
+    font-size: 0.95rem;
+    background: #f0fdf4;
+    color: #047857;
+    border-top: 2px solid #86efac;
+}
+
+/* Assumptions & Metadata Card */
+.calc-assumptions-card {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 1rem 1.25rem;
+    font-size: 0.8rem;
+    color: #64748b;
+}
+
+.calc-assumptions-card h5 {
+    margin: 0 0 0.5rem 0;
+    font-size: 0.85rem;
+    font-weight: 800;
+    color: #334155;
+}
+
+.calc-assumptions-list {
+    margin: 0;
+    padding-left: 1.2rem;
+}
+
+.calc-assumptions-list li {
+    margin-bottom: 0.25rem;
+}
+

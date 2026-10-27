@@ -277,12 +277,12 @@ WHERE id IN (
             PARTITION BY
                 pond_index,
                 issue_date,
-                COALESCE(issue_category, ''),
-                COALESCE(issue_status, ''),
-                COALESCE(issue_test, ''),
-                COALESCE(issue_flag, ''),
-                COALESCE(issue_grade, ''),
-                COALESCE(issue_note, '')
+                upper(btrim(COALESCE(issue_category, ''))),
+                upper(btrim(COALESCE(issue_status, ''))),
+                upper(btrim(COALESCE(issue_test, ''))),
+                upper(btrim(COALESCE(issue_flag, ''))),
+                upper(btrim(COALESCE(issue_grade, ''))),
+                md5(upper(btrim(COALESCE(issue_note, ''))))
             ORDER BY created_at DESC NULLS LAST, id DESC
         ) AS rn
         FROM public.pond_issues
@@ -295,7 +295,11 @@ DELETE FROM public.pond_stocking_batches
 WHERE id IN (
     SELECT id FROM (
         SELECT id, ROW_NUMBER() OVER (
-            PARTITION BY pond_index, stck_date, COALESCE(stck_tank, ''), COALESCE(stck_pcs, 0)
+            PARTITION BY
+                pond_index,
+                stck_date,
+                upper(btrim(COALESCE(stck_tank, ''))),
+                COALESCE(round(stck_pcs, 2), 0)
             ORDER BY created_at DESC NULLS LAST, id DESC
         ) AS rn
         FROM public.pond_stocking_batches
@@ -308,7 +312,12 @@ DELETE FROM public.pond_harvest_daily
 WHERE id IN (
     SELECT id FROM (
         SELECT id, ROW_NUMBER() OVER (
-            PARTITION BY pond_index, harv_date, COALESCE(harv_status, ''), COALESCE(harv_weight, 0), COALESCE(harv_abw, 0)
+            PARTITION BY
+                pond_index,
+                harv_date,
+                upper(btrim(COALESCE(harv_status, ''))),
+                COALESCE(round(harv_weight, 2), 0),
+                COALESCE(round(harv_abw, 2), 0)
             ORDER BY created_at DESC NULLS LAST, id DESC
         ) AS rn
         FROM public.pond_harvest_daily
@@ -361,6 +370,44 @@ CREATE UNIQUE INDEX uq_pond_harvest_sales_slip_idx
         COALESCE(round(net_sales, 2), 0)
     );
 
+-- 4D. pond_stocking_batches: unique expression index on natural stocking batch key
+DROP INDEX IF EXISTS public.uq_pond_stocking_batches_natural_idx;
+
+CREATE UNIQUE INDEX uq_pond_stocking_batches_natural_idx
+    ON public.pond_stocking_batches (
+        pond_index,
+        stck_date,
+        upper(btrim(COALESCE(stck_tank, ''))),
+        COALESCE(round(stck_pcs, 2), 0)
+    );
+
+-- 4E. pond_harvest_daily: unique expression index on natural daily harvest key
+DROP INDEX IF EXISTS public.uq_pond_harvest_daily_natural_idx;
+
+CREATE UNIQUE INDEX uq_pond_harvest_daily_natural_idx
+    ON public.pond_harvest_daily (
+        pond_index,
+        harv_date,
+        upper(btrim(COALESCE(harv_status, ''))),
+        COALESCE(round(harv_weight, 2), 0),
+        COALESCE(round(harv_abw, 2), 0)
+    );
+
+-- 4F. pond_issues: unique expression index on natural pathology issue key
+DROP INDEX IF EXISTS public.uq_pond_issues_natural_idx;
+
+CREATE UNIQUE INDEX uq_pond_issues_natural_idx
+    ON public.pond_issues (
+        pond_index,
+        issue_date,
+        upper(btrim(COALESCE(issue_category, ''))),
+        upper(btrim(COALESCE(issue_status, ''))),
+        upper(btrim(COALESCE(issue_test, ''))),
+        upper(btrim(COALESCE(issue_flag, ''))),
+        upper(btrim(COALESCE(issue_grade, ''))),
+        md5(upper(btrim(COALESCE(issue_note, ''))))
+    );
+
 -- ============================================================================
 -- 5. Atomic Cycle-Replacement RPC (Network-Drop Proof & Transactionally Safe)
 --    Replaces all rows for a batch of pond_index cycles in a single transaction.
@@ -406,7 +453,8 @@ BEGIN
                     r.pond_index, r.stck_date, r.stck_source, r.stck_species, r.stck_pcs,
                     r.stck_type, r.stck_allow, r.stck_total, r.stck_tank, r.stck_size,
                     r.stck_plstts, r.bs_line
-                FROM jsonb_populate_recordset(null::public.pond_stocking_batches, p_rows) AS r;
+                FROM jsonb_populate_recordset(null::public.pond_stocking_batches, p_rows) AS r
+                ON CONFLICT DO NOTHING;
                 GET DIAGNOSTICS v_inserted = ROW_COUNT;
             END IF;
 
@@ -423,7 +471,8 @@ BEGIN
                 SELECT
                     r.pond_index, r.harv_date, r.harv_status, r.harv_weight,
                     r.harv_abw, r.harv_revenue, r.harv_method
-                FROM jsonb_populate_recordset(null::public.pond_harvest_daily, p_rows) AS r;
+                FROM jsonb_populate_recordset(null::public.pond_harvest_daily, p_rows) AS r
+                ON CONFLICT DO NOTHING;
                 GET DIAGNOSTICS v_inserted = ROW_COUNT;
             END IF;
 
@@ -460,7 +509,8 @@ BEGIN
                 SELECT
                     r.pond_index, r.issue_date, r.issue_category, r.issue_status,
                     r.issue_test, r.issue_flag, r.issue_grade, r.issue_note
-                FROM jsonb_populate_recordset(null::public.pond_issues, p_rows) AS r;
+                FROM jsonb_populate_recordset(null::public.pond_issues, p_rows) AS r
+                ON CONFLICT DO NOTHING;
                 GET DIAGNOSTICS v_inserted = ROW_COUNT;
             END IF;
 

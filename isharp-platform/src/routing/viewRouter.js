@@ -282,12 +282,21 @@ export class ViewRouter {
         // Restore scroll position if navigating back or returning to a previously scrolled view
         const targetY = isBack ? (this.viewScrollPositions[viewName] || 0) : 0;
         window.scrollTo(0, targetY);
+
+        if (viewName === "executive") {
+            const layoutEl = document.querySelector(".executive-view-layout");
+            if (layoutEl && !isBack) {
+                layoutEl.scrollTop = 0;
+            }
+        }
+
         requestAnimationFrame(() => {
             window.scrollTo(0, targetY);
             setTimeout(() => {
                 window.scrollTo(0, targetY);
-                // Smart fallback: If targetY is 0 but returning to executive with an active pond, center its module
-                if (targetY === 0 && viewName === "executive" && appState.currentPond) {
+                // Smart fallback: Only center module if returning on wide desktop with explicit saved pond
+                const isMobile = window.innerWidth <= 768 || (window.innerWidth <= 932 && window.innerHeight < 500);
+                if (!isMobile && targetY === 0 && viewName === "executive" && appState.currentPond && this.isNavigatingBack) {
                     const rawPond = String(appState.currentPond.pond || "");
                     let modStr = rawPond.split(".")[0];
                     if (!modStr && appState.currentPond.pond_index) {

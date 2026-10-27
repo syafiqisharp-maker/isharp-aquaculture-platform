@@ -48,7 +48,10 @@
 /* 15. Executive Production & Biomass Intelligence (Sleek Pastel Theme) */
 @import "./components/biomass-intelligence.css";
 
-/* 16. Frontier Predictive Simulation & MRP Engine */
+/* 16. Executive Mobile Landscape & 12-Across Map System */
+@import "./components/executive-mobile-landscape.css";
+
+/* 17. Frontier Predictive Simulation & MRP Engine */
 @import "./components/simulation.css";
 
 /* 17. Field Lab & QA/QC Portal & Inspection Forms */

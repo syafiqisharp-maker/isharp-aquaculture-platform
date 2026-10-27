@@ -6,7 +6,9 @@ import {
     buildHierarchicalPondTree,
     generateCleaningWhatsAppText,
     calculatePondIdleDays,
-    extractShortPondNumber
+    extractShortPondNumber,
+    QAQC_INSPECTORS,
+    QAQC_REQUESTORS
 } from "../src/domain/qaqcWhatsAppFormatter.js";
 
 test("QA/QC Domain: formatDateWithDay", () => {
@@ -123,30 +125,55 @@ test("QA/QC Domain: generateCleaningWhatsAppText matches format for Failed inspe
     assert.ok(text.includes("Sludge accumulated at central sump, needs re-flushing."));
 });
 
-test("QA/QC UI Template Contracts: Inspector buttons & Requestor dropdown", async () => {
+test("QA/QC UI Template Contracts: Inspector buttons & Requestor autofill", async () => {
     const { renderPondCleaningForm } = await import("../src/modules/qaqc/templates/pondCleaningFormTemplate.js");
     const html = renderPondCleaningForm();
 
-    // 1. Requestor dropdown
-    assert.ok(html.includes('id="select-qaqc-requestor"'), "Must include select-qaqc-requestor");
-    assert.ok(html.includes('value="Rosdi"'), "Must include Rosdi option");
-    assert.ok(html.includes('value="Shamrin"'), "Must include Shamrin option");
-    assert.ok(html.includes('value="Azlie"'), "Must include Azlie option");
-    assert.ok(html.includes('value="Hairi"'), "Must include Hairi option");
-    assert.ok(html.includes('value="__custom__"'), "Must include __custom__ option");
-    assert.ok(html.includes('id="input-qaqc-requestor-custom"'), "Must include input-qaqc-requestor-custom");
+    // 1. Requestor autofill input & datalist
+    assert.ok(html.includes('id="input-qaqc-requestor"'), "Must include input-qaqc-requestor");
+    assert.ok(html.includes('list="qaqc-requestor-list"'), "Must bind to datalist qaqc-requestor-list");
+    assert.ok(html.includes('id="qaqc-requestor-list"'), "Must include datalist qaqc-requestor-list");
 
-    // 2. Inspector quick-tap buttons in strict order: Helmi, Isma, Aiman, Nik
+    const requestorInputTag = html.match(/<input[^>]*id="input-qaqc-requestor"[^>]*>/)?.[0] || "";
+    assert.ok(requestorInputTag, "Must find input-qaqc-requestor tag in HTML");
+    assert.ok(!requestorInputTag.includes("placeholder="), "Requestor input must have no placeholder per user requirement");
+    assert.ok(!requestorInputTag.includes("value="), "Requestor input must start completely blank per user requirement");
+
+    // Verify all 16 user-specified requestor names are present in datalist
+    const expectedRequestors = [
+        "Pak Bujang", "Shamrin", "Rosdi", "Azlie", "Faiz", "Ranzi",
+        "Ikmal", "Hasif", "Hafiz", "Izham", "Aliff", "Muiz",
+        "Nazronha", "Hairi", "Rohaimi", "Syafiq"
+    ];
+    assert.deepEqual(QAQC_REQUESTORS, expectedRequestors);
+    expectedRequestors.forEach(name => {
+        assert.ok(html.includes(`value="${name}"`), `Must include datalist option for ${name}`);
+    });
+
+    // Verify legacy custom dropdown elements are removed
+    assert.ok(!html.includes('id="select-qaqc-requestor"'), "Must remove legacy select-qaqc-requestor");
+    assert.ok(!html.includes('id="input-qaqc-requestor-custom"'), "Must remove legacy input-qaqc-requestor-custom");
+
+    // 2. Inspector quick-tap buttons in strict order: Helmi, Isma, Aiman, Nik, Syazwan
     assert.ok(html.includes('id="qaqc-inspector-chips"'), "Must include qaqc-inspector-chips");
+    assert.deepEqual(QAQC_INSPECTORS, ["Helmi", "Isma", "Aiman", "Nik", "Syazwan"]);
+
     const helmiIdx = html.indexOf('data-inspector="Helmi"');
     const ismaIdx = html.indexOf('data-inspector="Isma"');
     const aimanIdx = html.indexOf('data-inspector="Aiman"');
     const nikIdx = html.indexOf('data-inspector="Nik"');
+    const syazwanIdx = html.indexOf('data-inspector="Syazwan"');
 
-    assert.ok(helmiIdx > -1 && ismaIdx > -1 && aimanIdx > -1 && nikIdx > -1, "All 4 inspectors must be present");
+    assert.ok(helmiIdx > -1, "Helmi must be present");
+    assert.ok(ismaIdx > -1, "Isma must be present");
+    assert.ok(aimanIdx > -1, "Aiman must be present");
+    assert.ok(nikIdx > -1, "Nik must be present");
+    assert.ok(syazwanIdx > -1, "Syazwan must be present");
+
     assert.ok(helmiIdx < ismaIdx, "Helmi must come before Isma");
     assert.ok(ismaIdx < aimanIdx, "Isma must come before Aiman");
     assert.ok(aimanIdx < nikIdx, "Aiman must come before Nik");
+    assert.ok(nikIdx < syazwanIdx, "Nik must come before Syazwan");
 
     // 3. Clean UI: no "(For WhatsApp)" tags
     assert.ok(!html.includes("(For WhatsApp)"), "Must not contain '(For WhatsApp)' badge");

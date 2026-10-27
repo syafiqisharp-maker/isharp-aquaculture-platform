@@ -461,3 +461,23 @@ To protect the weekly sync against unstable farm internet connections or sudden 
 1. Save the new `.accdb` file into `D:\DB\` or `Pond Operations Management System\Legacy Access DB\`.
 2. Double-click `Run_Friday_Sync.bat`.
 3. Verify the `[SUCCESS] Weekly Database Sync completed with 0 errors` banner at the end of the run.
+
+
+---
+
+### 6.4 The 5 Mandatory Sync & Security Rules (Lessons Learned — October 2026)
+
+Any future script or AI agent modifying `sync_weekly_access.ps1` or performing backfills **MUST** obey these 5 rules:
+1. **Zero-Delete on Missing Cycles (`SupaCount == 0`):** Never call `Purge-PondIndexRecords` (`HTTP DELETE`) on a cycle that currently has `0` rows in Supabase. Always use pure `INSERT` (`HTTP POST`) so network interruptions can never cause data loss.
+2. **Use `Prefer: return=minimal` on Pure Inserts:** When uploading rows to a table without an `on_conflict` target, never send `Prefer: resolution=merge-duplicates`. Sending `merge-duplicates` causes PostgREST to emit `INSERT ... ON CONFLICT (id) DO UPDATE`, forcing PostgreSQL to evaluate both `INSERT` and `UPDATE` RLS policies (`extensions.crypt` bcrypt), doubling CPU time and risking `57014` statement timeouts.
+3. **Unified Cycle Window (`$reconcileMasterPondSet`) Across All Stages:** Stages 3–7 (`pond_stocking_batches`, `pond_harvest_daily`, `pond_harvest_sales`, `pond_issues`, `biometrics_sampling`) must always include every cycle in `$reconcileMasterPondSet` (all `ACTIVE` cycles + all cycles closed within `-$reconcileDays`), even if a closed cycle's `stckdate` is older than `-$reconcileDays` (e.g., `2010101.39` stocked 7 months ago and closed 2 months ago).
+4. **Zero-Row Self-Healing on Stocking & Harvest Daily:** Stages 3 and 4 perform a lightweight `select=pond_index` check against Supabase so any cycle present in Access `[GrowoutPondStocking]` or `[GrowoutPondHarvestDaily]` that has `0` rows in Supabase is automatically healed via pure `INSERT`.
+5. **Pre-Flight `EDITOR` Verification & Trigger Awareness:** Always verify `fn_verify_dbms_passcode` returns `'EDITOR'` before writing, and remember that `pond_stocking_batches` fires `fn_trig_batch_stocking_to_production()` (which evaluates RLS on `growout_pond_master` and `active_operational_ponds`, so fallback batch sizes on `pond_stocking_batches` must stay small: `chunkSize = 2..4`).
+
+#### Updated Natural-Key Unique Indexes (`15_sync_hardening.sql`)
+- `uq_biometrics_sampling_pond_date UNIQUE (pond_index, smpl_date)` (**52,355** rows)
+- `uq_pond_notes_pond_hash_idx UNIQUE (pond_index, md5(btrim(COALESCE(note, ''))))` (**1,649** rows)
+- `uq_pond_harvest_sales_slip_idx UNIQUE (pond_index, hvt_date, upper(btrim(hvt_buyer)), round(good_wgt,2), round(raw_wgt,2), round(net_sales,2))` (**33,618** rows)
+- `uq_pond_stocking_batches_natural_idx UNIQUE (pond_index, stck_date, upper(btrim(stck_tank)), round(stck_pcs,2))` (**8,378** rows)
+- `uq_pond_harvest_daily_natural_idx UNIQUE (pond_index, harv_date, upper(btrim(harv_status)), round(harv_weight,2), round(harv_abw,2))` (**9,622** rows)
+- `uq_pond_issues_natural_idx UNIQUE (pond_index, issue_date, upper(btrim(issue_category)), upper(btrim(issue_status)), upper(btrim(issue_test)), upper(btrim(issue_flag)), upper(btrim(issue_grade)), md5(upper(btrim(issue_note))))` (**14,456** rows)

@@ -6,6 +6,89 @@
 export function getUtilitiesTabHtml() {
     return `
     <div id="tab-utilities" class="tab-pane" role="tabpanel">
+        
+        <!-- =============================================================== -->
+        <!-- POND EBITDA CALCULATOR (Audited Unit-Economics Model)          -->
+        <!-- =============================================================== -->
+        <div class="calc-card">
+            <div class="calc-header">
+                <div class="calc-title">
+                    <h3>💰 Pond EBITDA Calculator</h3>
+                    <p class="calc-subtitle">
+                        Empirically calibrated from past 12-month audited cycle financials (<code>growout_pond_finance</code>).
+                        Calculates expected gross revenue, cash operating costs, and net EBITDA range across species and size bands.
+                    </p>
+                </div>
+                <div id="calc-auth-badge" style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.8rem; font-weight: 700; background: #e0f2fe; color: #0369a1; padding: 0.4rem 0.8rem; border-radius: 6px; border: 1px solid #bae6fd;">
+                    <span>🔒</span>
+                    <span id="calc-auth-status-text">Audited Finance Active</span>
+                </div>
+            </div>
+
+            <!-- Input Fields Grid -->
+            <form id="form-ebitda-calculator" onsubmit="return false;">
+                <div class="calc-grid">
+                    <!-- 1. Species -->
+                    <div class="calc-field">
+                        <label for="calc-ebitda-species">Species</label>
+                        <select id="calc-ebitda-species" class="form-select">
+                            <option value="VANNAMEI" selected>L. vannamei (Whiteleg)</option>
+                            <option value="MONODON">P. monodon (Black Tiger)</option>
+                        </select>
+                        <span class="field-hint">Root species biological profile</span>
+                    </div>
+
+                    <!-- 2. Target DOC -->
+                    <div class="calc-field">
+                        <label for="calc-ebitda-doc">Days of Culture (DOC)</label>
+                        <input type="number" id="calc-ebitda-doc" class="form-input" value="90" min="15" max="240" step="1" required>
+                        <span class="field-hint">Active pond culture duration</span>
+                    </div>
+
+                    <!-- 3. Expected Harvest (kg) -->
+                    <div class="calc-field">
+                        <label for="calc-ebitda-tonnage">Expected Harvest (kg)</label>
+                        <input type="number" id="calc-ebitda-tonnage" class="form-input" value="3500" min="100" max="50000" step="50" required>
+                        <span class="field-hint">Total crop final biomass (kg)</span>
+                    </div>
+
+                    <!-- 4. Total Feed (kg) -->
+                    <div class="calc-field">
+                        <label for="calc-ebitda-feed">Total Feed (kg)</label>
+                        <input type="number" id="calc-ebitda-feed" class="form-input" value="5250" min="0" max="100000" step="10" required>
+                        <span class="field-hint">Cumulative feed consumed</span>
+                    </div>
+
+                    <!-- 5. Harvest ABW (g) -->
+                    <div class="calc-field">
+                        <label for="calc-ebitda-abw">Average Body Weight (g)</label>
+                        <input type="number" id="calc-ebitda-abw" class="form-input" value="16.5" min="4.0" max="70.0" step="0.1" required>
+                        <span class="field-hint">Final harvest ABW per tail</span>
+                    </div>
+
+                    <!-- 6. Stocked PL (pcs, optional) -->
+                    <div class="calc-field">
+                        <label for="calc-ebitda-pl">Stocked PL (pcs) <span style="font-weight: 400; text-transform: none; color: #64748b;">(Optional)</span></label>
+                        <input type="number" id="calc-ebitda-pl" class="form-input" placeholder="e.g. 400000" min="10000" max="2000000" step="1000">
+                        <span class="field-hint">Blank = use historical fry cost/kg</span>
+                    </div>
+                </div>
+
+                <div class="calc-actions">
+                    <button id="btn-calc-ebitda" type="button" class="btn-primary-calc">⚡ Calculate Pond EBITDA</button>
+                    <button id="btn-reset-ebitda" type="button" class="btn-action btn-secondary">🔄 Reset</button>
+                    <span id="calc-loading-indicator" style="display: none; font-size: 0.85rem; color: #0284c7; font-weight: 600;">
+                        ⏳ Querying audited 12-month finance ledger...
+                    </span>
+                </div>
+            </form>
+
+            <!-- Results Display Container -->
+            <div id="calc-ebitda-results" style="display: none;">
+                <!-- Populated dynamically via UtilitiesTab.renderEbitdaResults() -->
+            </div>
+        </div>
+
         <div class="card panel-card">
             <div class="card-header">
                 <div>

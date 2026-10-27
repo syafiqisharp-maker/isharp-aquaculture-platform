@@ -7,6 +7,7 @@ import { appState } from "../../state/appState.js";
 import { PondGridMap } from "./PondGridMap.js";
 import { ExecutiveBiomassView } from "./ExecutiveBiomassView.js";
 import { ManagementCalloutModal } from "../../components/ManagementCalloutModal.js";
+import { Toast } from "../../components/Toast.js";
 
 export class ExecutiveView {
     constructor(containerId = "view-executive") {
@@ -31,6 +32,14 @@ export class ExecutiveView {
         this.container.innerHTML = `
             <div class="executive-view-layout">
                 
+                <!-- Floating 180° Orientation Flip Button for Mobile -->
+                <button class="btn-exec-flip" id="btn-exec-flip-orientation" type="button" aria-label="Flip landscape 180 degrees" title="Flip landscape view 180°">
+                    <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/>
+                    </svg>
+                    <span>Flip 180°</span>
+                </button>
+
                 <!-- Executive Header Bar -->
                 <header class="exec-header">
                     <div class="exec-header-left">
@@ -163,6 +172,15 @@ export class ExecutiveView {
 
     bindEvents() {
         // [data-nav-view] is handled globally by ViewRouter
+        const btnFlip = this.container.querySelector("#btn-exec-flip-orientation");
+        if (btnFlip) {
+            btnFlip.addEventListener("click", () => {
+                this.container.classList.toggle("exec-flipped");
+                const isFlipped = this.container.classList.contains("exec-flipped");
+                Toast.info(isFlipped ? "Flipped view 180°" : "Reset orientation view");
+            });
+        }
+
         const btnCallout = this.container.querySelector("#btn-exec-mgmt-callout");
         if (btnCallout) {
             btnCallout.addEventListener("click", () => {
@@ -176,6 +194,137 @@ export class ExecutiveView {
                 ManagementCalloutModal.open({ initialModule: "ALL" });
             });
         }
+
+        // Initialize natural touch & gesture scrolling for mobile horizontal view
+        this.initMobileTouchScroll();
+    }
+
+    /**
+     * Provides fluid touch, drag, and momentum scrolling when the Executive Dashboard
+     * is displayed in mobile virtual landscape (90° / 270° CSS rotation).
+     */
+    initMobileTouchScroll() {
+        const layoutEl = this.container.querySelector(".executive-view-layout");
+        if (!layoutEl) return;
+
+        let isTouching = false;
+        let isDragging = false;
+        let lastX = 0;
+        let lastY = 0;
+        let lastTime = 0;
+        let velocity = 0;
+        let animId = null;
+
+        const stopInertia = () => {
+            if (animId) {
+                cancelAnimationFrame(animId);
+                animId = null;
+            }
+            velocity = 0;
+        };
+
+        layoutEl.addEventListener("touchstart", (e) => {
+            if (e.touches.length !== 1) return;
+            if (e.target.closest("input, select, textarea, button")) return;
+
+            stopInertia();
+            isTouching = true;
+            isDragging = false;
+            window.__isDraggingExecMap = false;
+            lastX = e.touches[0].clientX;
+            lastY = e.touches[0].clientY;
+            lastTime = performance.now();
+        }, { passive: true });
+
+        layoutEl.addEventListener("touchmove", (e) => {
+            if (!isTouching || e.touches.length !== 1) return;
+
+            const isPortrait = window.innerHeight > window.innerWidth && window.innerWidth <= 768;
+            const isFlipped = this.container.classList.contains("exec-flipped");
+
+            if (!isPortrait && !isFlipped) {
+                // In unrotated physical landscape, native browser scrolling handles touches natively
+                return;
+            }
+
+            const curX = e.touches[0].clientX;
+            const curY = e.touches[0].clientY;
+            const curTime = performance.now();
+            const dt = Math.max(curTime - lastTime, 8);
+
+            const dx = curX - lastX;
+            const dy = curY - lastY;
+
+            let deltaScroll = 0;
+            if (isPortrait) {
+                // Virtual landscape (default 270° counter-clockwise, or 90° when flipped):
+                // Dragging along physical X axis maps directly to visual vertical scroll
+                if (Math.abs(dx) >= Math.abs(dy)) {
+                    deltaScroll = isFlipped ? -dx : dx;
+                } else {
+                    deltaScroll = isFlipped ? dy : -dy;
+                }
+            } else if (isFlipped) {
+                // Physical landscape held upside-down (180° rotation)
+                deltaScroll = -dy;
+            }
+
+            if (!isDragging && (Math.abs(dx) > 4 || Math.abs(dy) > 4)) {
+                isDragging = true;
+                window.__isDraggingExecMap = true;
+            }
+
+            if (isDragging && deltaScroll !== 0) {
+                layoutEl.scrollTop -= deltaScroll;
+                velocity = deltaScroll / dt;
+            }
+
+            lastX = curX;
+            lastY = curY;
+            lastTime = curTime;
+        }, { passive: true });
+
+        const endTouch = () => {
+            if (!isTouching) return;
+            isTouching = false;
+
+            if (isDragging) {
+                // Keep dragging flag briefly to suppress accidental tap on pond tile
+                setTimeout(() => {
+                    window.__isDraggingExecMap = false;
+                }, 80);
+
+                if (Math.abs(velocity) > 0.08) {
+                    const runInertia = () => {
+                        if (Math.abs(velocity) < 0.02) {
+                            animId = null;
+                            return;
+                        }
+                        layoutEl.scrollTop -= velocity * 16;
+                        velocity *= 0.94; // friction decay
+                        animId = requestAnimationFrame(runInertia);
+                    };
+                    animId = requestAnimationFrame(runInertia);
+                }
+            } else {
+                window.__isDraggingExecMap = false;
+            }
+            isDragging = false;
+        };
+
+        layoutEl.addEventListener("touchend", endTouch, { passive: true });
+        layoutEl.addEventListener("touchcancel", endTouch, { passive: true });
+
+        // Wheel event support for desktop trackpads/mice on rotated container
+        layoutEl.addEventListener("wheel", (e) => {
+            const isPortrait = window.innerHeight > window.innerWidth && window.innerWidth <= 768;
+            if (isPortrait) {
+                const delta = Math.abs(e.deltaY) >= Math.abs(e.deltaX) ? e.deltaY : e.deltaX;
+                if (delta) {
+                    layoutEl.scrollTop += delta;
+                }
+            }
+        }, { passive: true });
     }
 
     updateKPIs(cycles) {

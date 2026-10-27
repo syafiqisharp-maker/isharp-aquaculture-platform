@@ -1,0 +1,438 @@
+/* ==========================================================================
+   iSHARP DBMS 2.0 — Executive Dashboard Mobile Horizontal & 12-Across Map System
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   1. FLOATING 180° FLIP BUTTON
+   Hidden on desktop / tablet; visible only in mobile phone landscape views
+   -------------------------------------------------------------------------- */
+.btn-exec-flip {
+    display: none;
+}
+
+@media screen and (max-width: 768px), screen and (max-width: 932px) and (orientation: landscape) {
+    .btn-exec-flip {
+        display: inline-flex !important;
+        align-items: center !important;
+        gap: 0.35rem !important;
+        position: fixed !important;
+        bottom: 14px !important;
+        right: 14px !important;
+        z-index: 9999 !important;
+        padding: 0.42rem 0.8rem !important;
+        background: rgba(15, 23, 42, 0.85) !important;
+        backdrop-filter: blur(10px) !important;
+        -webkit-backdrop-filter: blur(10px) !important;
+        color: #ffffff !important;
+        border: 1px solid rgba(255, 255, 255, 0.22) !important;
+        border-radius: 9999px !important;
+        font-family: inherit !important;
+        font-size: 0.72rem !important;
+        font-weight: 700 !important;
+        cursor: pointer !important;
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3) !important;
+        transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.15s ease !important;
+        user-select: none !important;
+        -webkit-tap-highlight-color: transparent !important;
+    }
+
+    .btn-exec-flip:hover {
+        background: rgba(2, 132, 199, 0.95) !important;
+        border-color: rgba(56, 189, 248, 0.7) !important;
+        transform: scale(1.04) !important;
+    }
+
+    .btn-exec-flip:active {
+        transform: scale(0.96) !important;
+    }
+
+    .btn-exec-flip svg {
+        flex-shrink: 0;
+        transition: transform 0.3s ease;
+    }
+
+    #view-executive.exec-flipped .btn-exec-flip svg {
+        transform: rotate(180deg);
+    }
+}
+
+/* --------------------------------------------------------------------------
+   2. MOBILE PHONE PORTRAIT ROTATION MATRIX (< 768px in Portrait)
+   Forces virtual landscape by rotating container 90° / 270° with 100dvh width
+   -------------------------------------------------------------------------- */
+@media screen and (max-width: 768px) and (orientation: portrait) {
+    body:has(#view-executive.active-view) {
+        overflow: hidden !important;
+    }
+
+    #view-executive.active-view {
+        position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
+        width: 100vw !important;
+        height: 100vh !important;
+        height: 100dvh !important;
+        overflow: hidden !important;
+        z-index: 120 !important;
+        background: #f8fafc !important;
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+
+    #view-executive.active-view .executive-view-layout {
+        position: absolute !important;
+        top: 0 !important;
+        left: 0 !important;
+        width: 100vh !important;
+        width: 100dvh !important;
+        height: 100vw !important;
+        height: 100dvw !important;
+        transform-origin: 0 0 !important;
+        overflow-y: auto !important;
+        overflow-x: hidden !important;
+        -webkit-overflow-scrolling: touch !important;
+        overscroll-behavior: contain !important;
+        background: linear-gradient(180deg, #f0fdf4 0%, #f0f9ff 35%, #f8fafc 100%) !important;
+        box-sizing: border-box !important;
+    }
+
+    /* Default Counter-Clockwise (270° / -90°) Rotation: Top of phone to left places header at visual TOP */
+    #view-executive.active-view:not(.exec-flipped) .executive-view-layout {
+        transform: rotate(270deg) translateX(-100%) !important;
+    }
+
+    /* Flipped 180°: Clockwise (90°) Rotation */
+    #view-executive.active-view.exec-flipped .executive-view-layout {
+        transform: rotate(90deg) translateY(-100%) !important;
+    }
+}
+
+/* --------------------------------------------------------------------------
+   3. PHYSICAL LANDSCAPE ON MOBILE / COMPACT SCREENS (<= 932px)
+   Eliminates nested scroll enclosure by allowing natural document-level scrolling
+   -------------------------------------------------------------------------- */
+@media screen and (max-width: 932px) and (orientation: landscape) {
+    #view-executive.active-view .executive-view-layout {
+        width: 100% !important;
+        min-height: auto !important;
+        transform: none !important;
+        overflow: visible !important;
+    }
+
+    /* Flip 180° if physically held upside down */
+    #view-executive.active-view.exec-flipped .executive-view-layout {
+        transform: rotate(180deg) !important;
+        transform-origin: center center !important;
+    }
+}
+
+/* --------------------------------------------------------------------------
+   4. 216-POND MAP & EXECUTIVE COCKPIT RESPONSIVE HORIZONTAL LAYOUT
+   Applies in mobile virtual landscape or physical phone landscape
+   -------------------------------------------------------------------------- */
+@media screen and (max-width: 768px), screen and (max-width: 932px) and (orientation: landscape) {
+
+    /* Layout Body Padding */
+    .exec-content-body {
+        padding: 0.5rem 0.75rem 3rem !important;
+        gap: 0.65rem !important;
+        max-width: 100% !important;
+    }
+
+    /* Executive Header: Single sleek 42px row, non-sticky so it scrolls off naturally */
+    .exec-header {
+        position: static !important;
+        top: auto !important;
+        box-shadow: none !important;
+        padding: 0.35rem 0.75rem !important;
+        display: flex !important;
+        flex-wrap: nowrap !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+        gap: 0.5rem !important;
+        min-height: 42px !important;
+    }
+
+    .exec-header-left {
+        gap: 0.5rem !important;
+        flex-shrink: 0 !important;
+        display: flex !important;
+        align-items: center !important;
+    }
+
+    .exec-header-title {
+        font-size: 0.85rem !important;
+        white-space: nowrap !important;
+    }
+
+    .exec-header-sub {
+        display: none !important; /* Hide long subtitle on mobile landscape to guarantee single-row header */
+    }
+
+    .exec-header-right {
+        gap: 0.35rem !important;
+        flex-shrink: 0 !important;
+        display: flex !important;
+        align-items: center !important;
+    }
+
+    .exec-header-right .btn-action {
+        padding: 0.25rem 0.55rem !important;
+        font-size: 0.68rem !important;
+        white-space: nowrap !important;
+    }
+
+    .btn-portal-back {
+        padding: 0.25rem 0.55rem !important;
+        font-size: 0.68rem !important;
+        white-space: nowrap !important;
+    }
+
+    /* Executive Quick KPI Strip: 5-column single horizontal ribbon */
+    .exec-kpi-strip {
+        grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+        gap: 0.45rem !important;
+    }
+
+    .exec-kpi-card {
+        padding: 0.4rem 0.55rem !important;
+        border-radius: 6px !important;
+    }
+
+    .exec-kpi-title {
+        font-size: 0.58rem !important;
+        margin-bottom: 0.15rem !important;
+        white-space: nowrap !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+    }
+
+    .exec-kpi-num {
+        font-size: 1.15rem !important;
+        margin-bottom: 0.1rem !important;
+        line-height: 1 !important;
+    }
+
+    .exec-kpi-sub {
+        font-size: 0.58rem !important;
+        white-space: nowrap !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+    }
+
+    /* Section Panels */
+    .exec-section-panel {
+        border-radius: 8px !important;
+    }
+
+    .exec-section-header {
+        padding: 0.5rem 0.85rem !important;
+    }
+
+    .exec-section-title {
+        font-size: 0.86rem !important;
+    }
+
+    .exec-section-body {
+        padding: 0.65rem 0.75rem !important;
+    }
+
+    /* Farm Map Filter Toolbar */
+    .farm-map-toolbar {
+        padding: 0.4rem 0.65rem !important;
+        margin-bottom: 0.65rem !important;
+        gap: 0.45rem !important;
+    }
+
+    .farm-filter-group {
+        gap: 0.3rem !important;
+    }
+
+    .farm-filter-label {
+        font-size: 0.66rem !important;
+        margin-right: 0.15rem !important;
+    }
+
+    .farm-filter-btn {
+        padding: 0.2rem 0.45rem !important;
+        font-size: 0.68rem !important;
+        border-radius: 5px !important;
+    }
+
+    .farm-search-input {
+        width: 120px !important;
+        padding: 0.22rem 0.45rem !important;
+        font-size: 0.7rem !important;
+    }
+
+    /* ------------------------------------------------------------------------
+       216-POND FARM GRID: FITS ALL 12 PONDS ACROSS WITHOUT HORIZONTAL SCROLL
+       ------------------------------------------------------------------------ */
+    .farm-grid-container {
+        gap: 0.55rem !important;
+        overflow-x: hidden !important; /* Zero horizontal scrollbar */
+        padding-bottom: 0.25rem !important;
+    }
+
+    .farm-module-block {
+        padding: 0.45rem 0.5rem 0.55rem !important;
+        border-radius: 8px !important;
+    }
+
+    .farm-module-header {
+        margin-bottom: 0.35rem !important;
+        padding-bottom: 0.25rem !important;
+    }
+
+    .farm-module-name {
+        font-size: 0.78rem !important;
+    }
+
+    .farm-module-badge {
+        font-size: 0.6rem !important;
+        padding: 0.08rem 0.3rem !important;
+    }
+
+    .farm-row-container {
+        gap: 0.3rem !important;
+        margin-bottom: 0.3rem !important;
+    }
+
+    .farm-row-label {
+        width: 32px !important;
+        font-size: 0.62rem !important;
+        padding-right: 0.15rem !important;
+        text-align: right !important;
+    }
+
+    /* The critical 12-column grid rule */
+    .farm-row-ponds {
+        display: grid !important;
+        grid-template-columns: repeat(12, minmax(0, 1fr)) !important;
+        gap: 2px !important;
+        flex-grow: 1 !important;
+    }
+
+    /* High-density Pond Tile */
+    .pond-tile {
+        min-height: 42px !important;
+        padding: 2px 2px !important;
+        border-radius: 4px !important;
+    }
+
+    .pond-tile-top {
+        line-height: 1 !important;
+    }
+
+    .pond-tile-id {
+        font-size: 0.55rem !important;
+        font-weight: 700 !important;
+        line-height: 1 !important;
+    }
+
+    .pond-badge-indicator {
+        width: 5px !important;
+        height: 5px !important;
+    }
+
+    .pond-tile-doc {
+        font-size: 0.78rem !important;
+        font-weight: 800 !important;
+        margin: 0.04rem 0 !important;
+        line-height: 1 !important;
+    }
+
+    .pond-species-badge {
+        font-size: 0.48rem !important;
+        padding: 0.05rem 0.18rem !important;
+        line-height: 1 !important;
+        border-radius: 2px !important;
+        font-weight: 800 !important;
+    }
+
+    /* ------------------------------------------------------------------------
+       SLIDE-OVER POND DETAIL DRAWER (RIGHT 45-50% SHEET)
+       ------------------------------------------------------------------------ */
+    .pond-drawer-backdrop {
+        position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
+        right: 0 !important;
+        bottom: 0 !important;
+        z-index: 1000 !important;
+    }
+
+    .pond-detail-drawer {
+        position: fixed !important;
+        top: 0 !important;
+        right: 0 !important;
+        bottom: 0 !important;
+        width: 380px !important;
+        max-width: 50% !important;
+        z-index: 1001 !important;
+        box-shadow: -6px 0 24px rgba(0, 0, 0, 0.25) !important;
+    }
+
+    .drawer-header {
+        padding: 0.65rem 0.85rem !important;
+    }
+
+    .drawer-pond-title {
+        font-size: 1rem !important;
+    }
+
+    .drawer-body {
+        padding: 0.75rem 0.85rem !important;
+        gap: 0.65rem !important;
+    }
+
+    .drawer-stat-grid {
+        gap: 0.45rem !important;
+    }
+
+    .drawer-stat-box {
+        padding: 0.45rem 0.6rem !important;
+    }
+
+    .drawer-stat-val {
+        font-size: 0.95rem !important;
+    }
+
+    .drawer-footer {
+        padding: 0.65rem 0.85rem !important;
+    }
+
+    /* ------------------------------------------------------------------------
+       EXECUTIVE PRODUCTION INTELLIGENCE (ADAPTIVE 2-COLUMN COCKPIT)
+       ------------------------------------------------------------------------ */
+    .exec-kpi-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+        gap: 0.6rem !important;
+    }
+
+    .sleek-card.sleek-kpi {
+        padding: 0.65rem 0.8rem !important;
+    }
+
+    /* 12-Month Moving Chart & Commercial Quality Packout Side-by-Side */
+    .exec-biomass-analytics-grid {
+        display: grid !important;
+        grid-template-columns: 1.3fr 1fr !important;
+        gap: 0.85rem !important;
+    }
+
+    .exec-biomass-analytics-grid .sleek-card {
+        grid-column: span 1 !important;
+    }
+
+    /* Pipeline Tabs */
+    .exec-pipeline-tabs {
+        font-size: 0.68rem !important;
+        flex-wrap: wrap !important;
+    }
+
+    .exec-pipeline-tabs .tab-pill {
+        padding: 0.22rem 0.5rem !important;
+        font-size: 0.68rem !important;
+    }
+}

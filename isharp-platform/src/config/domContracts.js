@@ -244,9 +244,18 @@ export const DOM_IDS = Object.freeze({
         TEXTAREA_NOTES: "textarea-notes"
     },
 
-    // Tab 10: Utilities
+    // Tab 10: Utilities & Pond EBITDA Calculator
     UTILITIES: {
-        TAB_PANE: "tab-utilities"
+        TAB_PANE: "tab-utilities",
+        CALC_SPECIES: "calc-ebitda-species",
+        CALC_DOC: "calc-ebitda-doc",
+        CALC_TONNAGE: "calc-ebitda-tonnage",
+        CALC_FEED: "calc-ebitda-feed",
+        CALC_ABW: "calc-ebitda-abw",
+        CALC_PL: "calc-ebitda-pl",
+        BTN_CALCULATE: "btn-calc-ebitda",
+        BTN_RESET: "btn-reset-ebitda",
+        CALC_RESULTS: "calc-ebitda-results"
     },
 
     // Universal Excel Modal

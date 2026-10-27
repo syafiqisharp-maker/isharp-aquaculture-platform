@@ -15,6 +15,11 @@ import { calculateFCR } from "../../domain/feeding.js";
 import { hasPermission, PERMISSIONS } from "../../config/permissions.js";
 import { Toast } from "../../components/Toast.js";
 import { DOM_IDS, validateContract } from "../../config/domContracts.js";
+import { FinanceRepository } from "../../infrastructure/repositories/financeRepository.js";
+import { estimateEbitda, ESTIMATOR_SPECIES } from "../../domain/ebitdaEstimator.js";
+import { security } from "../../config/security.js";
+import { formatCurrency, formatNumber, formatPercent, escapeHtml } from "../../utils/formatters.js";
+
 
 export class UtilitiesTab {
     constructor() {
@@ -24,6 +29,8 @@ export class UtilitiesTab {
             tabPane: document.getElementById(DOM_IDS.UTILITIES.TAB_PANE)
         };
 
+        this.cacheCalcDom();
+        this.updateAuthBadge();
         this.bindEvents();
         appState.subscribe("pondChanged", (pond) => this.render(pond));
         appState.subscribe("roleChanged", () => this.applyRolePermissions());
@@ -33,6 +40,24 @@ export class UtilitiesTab {
         if (!this.dom.tabPane) return;
 
         // 1. Active Ponds Master (291 Ponds)
+        
+        // EBITDA Calculator Events
+        const btnCalc = this.dom.tabPane.querySelector("#btn-calc-ebitda");
+        if (btnCalc) {
+            btnCalc.addEventListener("click", () => this.handleCalculateEbitda());
+        }
+
+        const btnResetCalc = this.dom.tabPane.querySelector("#btn-reset-ebitda");
+        if (btnResetCalc) {
+            btnResetCalc.addEventListener("click", () => this.handleResetCalculator());
+        }
+
+        const badgeAuth = this.dom.tabPane.querySelector("#calc-auth-badge");
+        if (badgeAuth) {
+            badgeAuth.style.cursor = "pointer";
+            badgeAuth.addEventListener("click", () => this.promptPasscodeUnlock());
+        }
+
         const btnActivePonds = this.dom.tabPane.querySelector("#btn-export-active-ponds");
         if (btnActivePonds) {
             btnActivePonds.addEventListener("click", () => this.exportActivePondsMaster());
@@ -754,10 +779,373 @@ export class UtilitiesTab {
         const canEdit = hasPermission(appState.userRole, PERMISSIONS.EDIT_WQS_CALIBRATION);
         if (!this.dom.tabPane) return;
 
-        const inputs = this.dom.tabPane.querySelectorAll("input, select, textarea");
+        const inputs = this.dom.tabPane.querySelectorAll("input:not(#form-ebitda-calculator *), select:not(#form-ebitda-calculator *), textarea:not(#form-ebitda-calculator *)");
         inputs.forEach(inp => {
             inp.disabled = !canEdit;
             inp.style.opacity = canEdit ? "1" : "0.75";
         });
+    }
+
+    cacheCalcDom() {
+        if (!this.dom.tabPane) return;
+        this.dom.calcSpecies = this.dom.tabPane.querySelector("#calc-ebitda-species");
+        this.dom.calcDoc = this.dom.tabPane.querySelector("#calc-ebitda-doc");
+        this.dom.calcTonnage = this.dom.tabPane.querySelector("#calc-ebitda-tonnage");
+        this.dom.calcFeed = this.dom.tabPane.querySelector("#calc-ebitda-feed");
+        this.dom.calcAbw = this.dom.tabPane.querySelector("#calc-ebitda-abw");
+        this.dom.calcPl = this.dom.tabPane.querySelector("#calc-ebitda-pl");
+        this.dom.calcResults = this.dom.tabPane.querySelector("#calc-ebitda-results");
+        this.dom.calcLoading = this.dom.tabPane.querySelector("#calc-loading-indicator");
+        this.dom.calcAuthBadge = this.dom.tabPane.querySelector("#calc-auth-badge");
+        this.dom.calcAuthText = this.dom.tabPane.querySelector("#calc-auth-status-text");
     }
+
+    updateAuthBadge() {
+        if (!this.dom.calcAuthBadge || !this.dom.calcAuthText) return;
+        const hasPass = FinanceRepository.hasActivePasscode();
+        if (hasPass) {
+            this.dom.calcAuthBadge.style.background = "#ecfdf5";
+            this.dom.calcAuthBadge.style.color = "#047857";
+            this.dom.calcAuthBadge.style.borderColor = "#a7f3d0";
+            this.dom.calcAuthBadge.innerHTML = `<span>🔓</span> <span>Audited Finance Active</span>`;
+        } else {
+            this.dom.calcAuthBadge.style.background = "#fef3c7";
+            this.dom.calcAuthBadge.style.color = "#b45309";
+            this.dom.calcAuthBadge.style.borderColor = "#fde68a";
+            this.dom.calcAuthBadge.innerHTML = `<span>🔒</span> <span>Click to Unlock Finance</span>`;
+        }
+    }
+
+    async promptPasscodeUnlock() {
+        const entered = window.prompt("Enter iSHARP Passcode to access Audited Finance (e.g. VIEWER or EDITOR):");
+        if (!entered) return false;
+        try {
+            const role = await security.verifyDbmsPassword(entered);
+            if (role) {
+                Toast.success(`Passcode verified (${role}). Audited financials unlocked.`);
+                this.updateAuthBadge();
+                return true;
+            } else {
+                Toast.error("Invalid passcode. Access denied to growout_pond_finance.");
+                return false;
+            }
+        } catch (err) {
+            Toast.error("Verification failed: " + err.message);
+            return false;
+        }
+    }
+
+    async handleCalculateEbitda() {
+        this.cacheCalcDom();
+        if (!this.dom.calcSpecies || !this.dom.calcTonnage) return;
+
+        const species = this.dom.calcSpecies.value || "VANNAMEI";
+        const doc = parseFloat(this.dom.calcDoc.value);
+        const harvestKg = parseFloat(this.dom.calcTonnage.value);
+        const totalFeed = parseFloat(this.dom.calcFeed.value);
+        const abw = parseFloat(this.dom.calcAbw.value);
+        const rawPl = this.dom.calcPl.value ? parseFloat(this.dom.calcPl.value) : null;
+        const stockedPl = rawPl && rawPl > 0 ? rawPl : null;
+
+        // Validation
+        if (isNaN(doc) || doc <= 0) {
+            Toast.warn("Please enter a valid DOC in days (e.g. 90).");
+            this.dom.calcDoc.focus();
+            return;
+        }
+        if (isNaN(harvestKg) || harvestKg <= 0) {
+            Toast.warn("Please enter a valid expected harvest weight in kg (e.g. 3500).");
+            this.dom.calcTonnage.focus();
+            return;
+        }
+        if (isNaN(totalFeed) || totalFeed < 0) {
+            Toast.warn("Please enter a valid cumulative feed in kg (e.g. 5250).");
+            this.dom.calcFeed.focus();
+            return;
+        }
+        if (isNaN(abw) || abw <= 0) {
+            Toast.warn("Please enter a valid ABW in grams (e.g. 16.5).");
+            this.dom.calcAbw.focus();
+            return;
+        }
+
+        // Passcode verification check
+        if (!FinanceRepository.hasActivePasscode()) {
+            const unlocked = await this.promptPasscodeUnlock();
+            if (!unlocked) {
+                Toast.warn("Calculation requires an active passcode to query growout_pond_finance.");
+                return;
+            }
+        }
+
+        try {
+            if (this.dom.calcLoading) this.dom.calcLoading.style.display = "inline-block";
+            Toast.info("Calibrating unit economics from past 12-month audited cycles...");
+
+            // Fetch empirical priors & calibrate
+            const economics = await FinanceRepository.getCalibratedEconomics(species, abw);
+            const result = estimateEbitda({
+                species,
+                doc,
+                harvestKg,
+                tonnage: harvestKg,
+                totalFeed,
+                abw,
+                stockedPl
+            }, economics);
+
+            this.renderEbitdaResults(result);
+            Toast.success(`EBITDA calculated successfully (${result.metadata.cycleCount} historical ${result.inputs.species} cycles calibrated).`);
+        } catch (err) {
+            console.error("[UtilitiesTab] EBITDA Calculation error:", err);
+            Toast.error("Calculation failed: " + err.message);
+        } finally {
+            if (this.dom.calcLoading) this.dom.calcLoading.style.display = "none";
+        }
+    }
+
+    renderEbitdaResults(res) {
+        if (!this.dom.calcResults) return;
+        const { inputs, scenarios, drivers, metadata } = res;
+        const { low, base, high } = scenarios;
+
+        const formatValClass = (val) => val >= 0 ? "positive" : "negative";
+
+        let warningsHtml = "";
+        if (metadata.warnings && metadata.warnings.length > 0) {
+            warningsHtml = `
+                <div style="background: #fffbeb; border: 1px solid #fef3c7; border-left: 4px solid #f59e0b; border-radius: 6px; padding: 0.75rem 1rem; margin-bottom: 1.25rem;">
+                    <div style="font-weight: 700; color: #b45309; font-size: 0.85rem; margin-bottom: 0.25rem;">⚠️ Advisory Notices</div>
+                    <ul style="margin: 0; padding-left: 1.2rem; font-size: 0.8rem; color: #92400e;">
+                        ${metadata.warnings.map(w => `<li>${escapeHtml(w)}</li>`).join("")}
+                    </ul>
+                </div>
+            `;
+        }
+
+        const html = `
+            ${warningsHtml}
+
+            <!-- KPI Chips Bar -->
+            <div class="calc-chips-bar">
+                <div class="calc-chip">
+                    <span>Biomass:</span>
+                    <strong>${formatNumber(inputs.tonnageKg)} kg (${inputs.tonnageMt.toFixed(2)} MT)</strong>
+                </div>
+                <div class="calc-chip">
+                    <span>FCR:</span>
+                    <strong>${inputs.fcr.toFixed(2)}</strong>
+                </div>
+                <div class="calc-chip">
+                    <span>ABW Band:</span>
+                    <strong>${escapeHtml(metadata.abwBand)} (${inputs.abw.toFixed(1)}g)</strong>
+                </div>
+                <div class="calc-chip">
+                    <span>12-Mo Sample:</span>
+                    <strong>${metadata.cycleCount} cycles (${escapeHtml(metadata.confidenceLevel)} Confidence)</strong>
+                </div>
+                <div class="calc-chip">
+                    <span>Culture:</span>
+                    <strong>${inputs.doc} DOC</strong>
+                </div>
+            </div>
+
+            <!-- Scenarios Bento Cards -->
+            <div class="scenarios-grid">
+                <!-- 1. Conservative (Low) -->
+                <div class="scenario-card conservative">
+                    <span class="scenario-badge badge-conservative">Conservative (P25)</span>
+                    <div class="scenario-header">
+                        <h4>Conservative Case</h4>
+                        <span class="scenario-desc">P25 Selling Price &amp; P75 Unit Costs</span>
+                    </div>
+                    <div class="scenario-ebitda">
+                        <div class="ebitda-label">Estimated Pond EBITDA</div>
+                        <div class="ebitda-val ${formatValClass(low.ebitda)}">${formatCurrency(low.ebitda)}</div>
+                    </div>
+                    <div class="scenario-kpi-row">
+                        <span class="kpi-lbl">EBITDA / kg:</span>
+                        <span class="kpi-num">${formatCurrency(low.ebitdaPerKg)} / kg</span>
+                    </div>
+                    <div class="scenario-kpi-row">
+                        <span class="kpi-lbl">Effective Price:</span>
+                        <span class="kpi-num">${formatCurrency(low.effectivePricePerKg)} / kg</span>
+                    </div>
+                    <div class="scenario-kpi-row">
+                        <span class="kpi-lbl">Cash Cost / kg:</span>
+                        <span class="kpi-num">${formatCurrency(low.cashCostPerKg)} / kg</span>
+                    </div>
+                    <div class="scenario-kpi-row">
+                        <span class="kpi-lbl">Gross Revenue:</span>
+                        <span class="kpi-num">${formatCurrency(low.revenue)}</span>
+                    </div>
+                </div>
+
+                <!-- 2. Base Case (Median P50 - Recommended) -->
+                <div class="scenario-card base-case">
+                    <span class="scenario-badge badge-base">⭐ Base Case (Median)</span>
+                    <div class="scenario-header">
+                        <h4>Base Case (Median P50)</h4>
+                        <span class="scenario-desc">Audited Median Price &amp; Operational Costs</span>
+                    </div>
+                    <div class="scenario-ebitda">
+                        <div class="ebitda-label">Estimated Pond EBITDA</div>
+                        <div class="ebitda-val ${formatValClass(base.ebitda)}">${formatCurrency(base.ebitda)}</div>
+                    </div>
+                    <div class="scenario-kpi-row">
+                        <span class="kpi-lbl">EBITDA / kg:</span>
+                        <span class="kpi-num" style="color: #0284c7; font-size: 0.95rem;">${formatCurrency(base.ebitdaPerKg)} / kg</span>
+                    </div>
+                    <div class="scenario-kpi-row">
+                        <span class="kpi-lbl">Effective Price:</span>
+                        <span class="kpi-num">${formatCurrency(base.effectivePricePerKg)} / kg</span>
+                    </div>
+                    <div class="scenario-kpi-row">
+                        <span class="kpi-lbl">Cash Cost / kg:</span>
+                        <span class="kpi-num">${formatCurrency(base.cashCostPerKg)} / kg</span>
+                    </div>
+                    <div class="scenario-kpi-row">
+                        <span class="kpi-lbl">Gross Revenue:</span>
+                        <span class="kpi-num">${formatCurrency(base.revenue)}</span>
+                    </div>
+                </div>
+
+                <!-- 3. Optimistic (High) -->
+                <div class="scenario-card optimistic">
+                    <span class="scenario-badge badge-optimistic">Optimistic (P75)</span>
+                    <div class="scenario-header">
+                        <h4>Optimistic Case</h4>
+                        <span class="scenario-desc">P75 Selling Price &amp; P25 Efficient Costs</span>
+                    </div>
+                    <div class="scenario-ebitda">
+                        <div class="ebitda-label">Estimated Pond EBITDA</div>
+                        <div class="ebitda-val ${formatValClass(high.ebitda)}">${formatCurrency(high.ebitda)}</div>
+                    </div>
+                    <div class="scenario-kpi-row">
+                        <span class="kpi-lbl">EBITDA / kg:</span>
+                        <span class="kpi-num">${formatCurrency(high.ebitdaPerKg)} / kg</span>
+                    </div>
+                    <div class="scenario-kpi-row">
+                        <span class="kpi-lbl">Effective Price:</span>
+                        <span class="kpi-num">${formatCurrency(high.effectivePricePerKg)} / kg</span>
+                    </div>
+                    <div class="scenario-kpi-row">
+                        <span class="kpi-lbl">Cash Cost / kg:</span>
+                        <span class="kpi-num">${formatCurrency(high.cashCostPerKg)} / kg</span>
+                    </div>
+                    <div class="scenario-kpi-row">
+                        <span class="kpi-lbl">Gross Revenue:</span>
+                        <span class="kpi-num">${formatCurrency(high.revenue)}</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Full 5-Element Ledger Table -->
+            <div class="calc-breakdown-card">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Line Item / Financial Element</th>
+                            <th>Conservative (P25)</th>
+                            <th>Base Case (P50)</th>
+                            <th>Optimistic (P75)</th>
+                            <th>Driver Rate (Base P50)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>🦐 Gross Revenue</td>
+                            <td>${formatCurrency(low.revenue)}</td>
+                            <td><strong>${formatCurrency(base.revenue)}</strong></td>
+                            <td>${formatCurrency(high.revenue)}</td>
+                            <td>${formatCurrency(drivers.pricePerKgP50)} / kg</td>
+                        </tr>
+                        <tr>
+                            <td>🌾 (-) Feed Cost (<code>cons_of_feed</code>)</td>
+                            <td>${formatCurrency(low.feedCost)}</td>
+                            <td>${formatCurrency(base.feedCost)}</td>
+                            <td>${formatCurrency(high.feedCost)}</td>
+                            <td>${formatCurrency(drivers.feedCostPerKgFeedP50)} / kg feed</td>
+                        </tr>
+                        <tr>
+                            <td>🦐 (-) Fry / PL Cost (<code>cons_of_fries</code>)</td>
+                            <td>${formatCurrency(low.fryCost)}</td>
+                            <td>${formatCurrency(base.fryCost)}</td>
+                            <td>${formatCurrency(high.fryCost)}</td>
+                            <td>RM ${drivers.fryCostRateP50.toFixed(3)} ${escapeHtml(drivers.fryCostUnit)}</td>
+                        </tr>
+                        <tr>
+                            <td>🧪 (-) Variable Operations (Chemicals, Supplies, Harvest)</td>
+                            <td>${formatCurrency(low.variableCost)}</td>
+                            <td>${formatCurrency(base.variableCost)}</td>
+                            <td>${formatCurrency(high.variableCost)}</td>
+                            <td>${formatCurrency(drivers.variableCostPerKgP50)} / kg harv</td>
+                        </tr>
+                        <tr>
+                            <td>⚡ (-) Daily Fixed Costs (Electricity, Wages, Maintenance, Overheads)</td>
+                            <td>${formatCurrency(low.fixedCost)}</td>
+                            <td>${formatCurrency(base.fixedCost)}</td>
+                            <td>${formatCurrency(high.fixedCost)}</td>
+                            <td>${formatCurrency(drivers.dailyFixedCostPerDayP50)} / active-day</td>
+                        </tr>
+                        <tr class="row-total">
+                            <td>💼 Total Cash Operating Cost</td>
+                            <td>${formatCurrency(low.totalCashCost)}</td>
+                            <td>${formatCurrency(base.totalCashCost)}</td>
+                            <td>${formatCurrency(high.totalCashCost)}</td>
+                            <td>${formatCurrency(base.cashCostPerKg)} / kg</td>
+                        </tr>
+                        <tr class="row-ebitda">
+                            <td>📈 Net Pond EBITDA</td>
+                            <td>${formatCurrency(low.ebitda)}</td>
+                            <td><strong>${formatCurrency(base.ebitda)}</strong></td>
+                            <td>${formatCurrency(high.ebitda)}</td>
+                            <td>${formatCurrency(base.ebitdaPerKg)} / kg</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Assumptions & Empirical Calibration Panel -->
+            <div class="calc-assumptions-card">
+                <h5>📋 Empirical Calibration &amp; Methodology Notes</h5>
+                <ul class="calc-assumptions-list">
+                    <li>
+                        <strong>Data Source:</strong> Audited <code>growout_pond_finance</code> ledger joined with <code>pond_harvest_daily</code>, 
+                        <code>pond_stocking_batches</code>, and <code>growout_pond_feed_sap</code> for Setiu farm cycles closed in the past 12 months.
+                    </li>
+                    <li>
+                        <strong>Species Normalization:</strong> Calibrated against ${metadata.cycleCount} closed ${inputs.species} cycles 
+                        (${metadata.abwBandCycleCount} cycles in the ${escapeHtml(metadata.abwBand)} size band).
+                    </li>
+                    <li>
+                        <strong>Formula:</strong> <code>EBITDA = Tonnage × Price(ABW) - Feed Cost - Fry Cost - Variable Costs - (DOC × Daily Fixed Overhead)</code>. 
+                        In alignment with official accounting, non-cash depreciation is excluded from cash operating costs.
+                    </li>
+                    <li>
+                        <strong>Security Invariant:</strong> Queries are executed with zero <code>index_no</code> columns and authenticated via server-side <code>x-isharp-passcode</code>.
+                    </li>
+                </ul>
+            </div>
+        `;
+
+        this.dom.calcResults.innerHTML = html;
+        this.dom.calcResults.style.display = "block";
+    }
+
+    handleResetCalculator() {
+        this.cacheCalcDom();
+        if (this.dom.calcSpecies) this.dom.calcSpecies.value = "VANNAMEI";
+        if (this.dom.calcDoc) this.dom.calcDoc.value = "90";
+        if (this.dom.calcTonnage) this.dom.calcTonnage.value = "3500";
+        if (this.dom.calcFeed) this.dom.calcFeed.value = "5250";
+        if (this.dom.calcAbw) this.dom.calcAbw.value = "16.5";
+        if (this.dom.calcPl) this.dom.calcPl.value = "";
+        if (this.dom.calcResults) {
+            this.dom.calcResults.innerHTML = "";
+            this.dom.calcResults.style.display = "none";
+        }
+        Toast.info("Calculator reset to baseline defaults.");
+    }
+
 }

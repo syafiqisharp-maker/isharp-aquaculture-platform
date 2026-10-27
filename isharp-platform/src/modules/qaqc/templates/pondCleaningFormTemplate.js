@@ -2,6 +2,8 @@
  * iSHARP QA/QC Inspection Portal — Mobile-First Pond Cleaning Form Template
  */
 
+import { QAQC_INSPECTORS, QAQC_REQUESTORS } from "../../../domain/qaqcWhatsAppFormatter.js";
+
 export function renderPondCleaningForm() {
     return `
         <div class="qaqc-form-wrapper mobile-optimized">
@@ -83,17 +85,19 @@ export function renderPondCleaningForm() {
                                 <span class="qaqc-preview-day" id="preview-formatted-date">--</span>
                             </div>
 
-                            <!-- Requestor Dropdown -->
+                            <!-- Requestor Autofill Input -->
                             <div class="qaqc-field-group flex-1">
-                                <label for="select-qaqc-requestor" class="qaqc-label-micro">Requestor</label>
-                                <select id="select-qaqc-requestor" class="qaqc-select-touch">
-                                    <option value="Rosdi">Rosdi</option>
-                                    <option value="Shamrin">Shamrin</option>
-                                    <option value="Azlie">Azlie</option>
-                                    <option value="Hairi">Hairi</option>
-                                    <option value="__custom__">+ Custom Name...</option>
-                                </select>
-                                <input type="text" id="input-qaqc-requestor-custom" class="qaqc-input-touch hidden" placeholder="Enter name" style="margin-top: 0.35rem;" />
+                                <label for="input-qaqc-requestor" class="qaqc-label-micro">Requestor</label>
+                                <input 
+                                    type="text" 
+                                    id="input-qaqc-requestor" 
+                                    list="qaqc-requestor-list" 
+                                    class="qaqc-input-touch" 
+                                    autocomplete="off" 
+                                />
+                                <datalist id="qaqc-requestor-list">
+                                    ${QAQC_REQUESTORS.map(name => `<option value="${name}"></option>`).join("\n                                    ")}
+                                </datalist>
                             </div>
                         </div>
 
@@ -101,12 +105,9 @@ export function renderPondCleaningForm() {
                         <div class="qaqc-inspector-row">
                             <label class="qaqc-label-micro">Inspector</label>
                             <div class="qaqc-inspector-chips-group" id="qaqc-inspector-chips">
-                                <button type="button" class="qaqc-inspector-chip active" data-inspector="Helmi">Helmi</button>
-                                <button type="button" class="qaqc-inspector-chip" data-inspector="Isma">Isma</button>
-                                <button type="button" class="qaqc-inspector-chip" data-inspector="Aiman">Aiman</button>
-                                <button type="button" class="qaqc-inspector-chip" data-inspector="Nik">Nik</button>
+                                ${QAQC_INSPECTORS.map((insp, i) => `<button type="button" class="qaqc-inspector-chip${i === 0 ? " active" : ""}" data-inspector="${insp}">${insp}</button>`).join("\n                                ")}
                             </div>
-                            <input type="hidden" id="input-qaqc-inspector" value="Helmi" />
+                            <input type="hidden" id="input-qaqc-inspector" value="${QAQC_INSPECTORS[0]}" />
                         </div>
 
                         <!-- Team Chips -->

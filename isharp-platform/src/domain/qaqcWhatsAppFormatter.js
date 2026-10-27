@@ -5,6 +5,33 @@
 
 const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
+export const QAQC_INSPECTORS = [
+    "Helmi",
+    "Isma",
+    "Aiman",
+    "Nik",
+    "Syazwan"
+];
+
+export const QAQC_REQUESTORS = [
+    "Pak Bujang",
+    "Shamrin",
+    "Rosdi",
+    "Azlie",
+    "Faiz",
+    "Ranzi",
+    "Ikmal",
+    "Hasif",
+    "Hafiz",
+    "Izham",
+    "Aliff",
+    "Muiz",
+    "Nazronha",
+    "Hairi",
+    "Rohaimi",
+    "Syafiq"
+];
+
 /**
  * Formats a Date object or YYYY-MM-DD string into 'DD/MM/YYYY (Day)'
  * e.g. '2026-10-20' -> '20/10/2026 (Tue)'

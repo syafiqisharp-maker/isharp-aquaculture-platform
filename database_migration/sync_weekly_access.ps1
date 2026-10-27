@@ -336,14 +336,21 @@ function Post-BatchToSupabase(
     $chunkSize = if ($script:hasAtomicRpc) {
         if ($endpoint -eq "growout_pond_finance") { 50 } else { 100 }
     } else {
-        if ($endpoint -eq "growout_pond_finance") { 2 } else { 5 }
+        if ($endpoint -in @("growout_pond_finance", "pond_stocking_batches")) { 2 } else { 5 }
+    }
+
+    # For pure inserts without a conflict key, use return=minimal to avoid double RLS (INSERT + UPDATE) evaluation.
+    $effectivePrefer = if ($conflictKey -or $preferResolution -ne "resolution=merge-duplicates") {
+        $preferResolution
+    } else {
+        "return=minimal"
     }
 
     $postHeaders = @{
         "apikey"            = $supabaseKey
         "Authorization"     = "Bearer $supabaseKey"
         "Content-Type"      = "application/json; charset=utf-8"
-        "Prefer"            = $preferResolution
+        "Prefer"            = $effectivePrefer
         "x-isharp-passcode" = $editorPasscode
     }
 
@@ -551,8 +558,12 @@ function Sync-CycleTable(
                 }
             }
         } else {
-            # Fallback mode: Purge MUST succeed before Post-BatchToSupabase is called
-            Purge-PondIndexRecords $endpoint $cycleSlice
+            # Fallback mode: Only purge cycles that actually have existing rows in Supabase.
+            # Cycles with 0 rows in Supabase use pure INSERT (zero risk of destructive purge).
+            $cyclesToPurge = @($cycleSlice | Where-Object { $forceFull -or ($supaByPond.ContainsKey($_) -and $supaByPond[$_].Count -gt 0) })
+            if ($cyclesToPurge.Count -gt 0) {
+                Purge-PondIndexRecords $endpoint $cyclesToPurge
+            }
             if ($rowsSlice.Count -gt 0) {
                 Post-BatchToSupabase $endpoint $rowsSlice $conflictKey
             }
@@ -601,6 +612,8 @@ $dateBatch = @()
 $initBatch = @()
 $activeCyclesNeedingCloseCleanup = @()
 $activePondIndexSet = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
+$reconcileMasterPondSet = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
+$masterCloseLookbackDays = [Math]::Max(60, $reconcileDays)
 $masterCount = 0
 
 while ($reader.Read()) {
@@ -629,11 +642,12 @@ while ($reader.Read()) {
 
     $isNew = -not $sbPondIndices.Contains($pIdx)
     $isActive = ($cleanActive -eq "ACTIVE")
-    $isRecentClose = ($dtClose -ne $null -and [datetime]$dtClose -ge (Get-Date).AddDays(-60))
+    $isRecentClose = ($dtClose -ne $null -and [datetime]$dtClose -ge (Get-Date).AddDays(-$masterCloseLookbackDays))
 
     if (-not ($isNew -or $isActive -or $isRecentClose)) {
         continue
     }
+    $reconcileMasterPondSet.Add($pIdx) | Out-Null
 
     $pLabel = if ($pIdx.Length -ge 7) { "$($pIdx.Substring(1,2)).$($pIdx.Substring(3,2)).$($pIdx.Substring(5,2))" } else { SafeString $reader["pond"] }
 
@@ -843,14 +857,14 @@ if (-not (Test-StageDone 2)) {
 
 # -------------------------------------------------------------
 # STAGE 3: Authoritative GrowoutPondStocking -> pond_stocking_batches
-# Full-cycle extraction for any cycle active or stocked within reconcile window
+# Full-cycle extraction for any cycle active/recently closed, stocked within reconcile window, or missing in Supabase
 # -------------------------------------------------------------
 Write-Output ""
 Write-Output "[3/12] Reconciling Stocking Batches (pond_stocking_batches)..."
 $totalAccessStockingRows = 0
 if (-not (Test-StageDone 3)) {
     $targetStockingPonds = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
-    foreach ($ap in $activePondIndexSet) { $targetStockingPonds.Add($ap) | Out-Null }
+    foreach ($mp in $reconcileMasterPondSet) { $targetStockingPonds.Add($mp) | Out-Null }
 
     $cmd.CommandText = "SELECT DISTINCT PondIndex FROM [GrowoutPondStocking] WHERE stckdate >= DateAdd('d', -$reconcileDays, Date())"
     $reader = $cmd.ExecuteReader()
@@ -860,6 +874,15 @@ if (-not (Test-StageDone 3)) {
     }
     $reader.Close()
 
+    # Self-heal any cycle that exists in Access GrowoutPondStocking but currently has 0 rows in Supabase
+    $supaStockedPonds = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
+    if (-not $forceFull) {
+        $stckPondsRes = Get-AllFromSupabase "$supabaseUrl/rest/v1/pond_stocking_batches?select=pond_index"
+        foreach ($sr in $stckPondsRes) {
+            if ($sr.pond_index) { $supaStockedPonds.Add([string]$sr.pond_index) | Out-Null }
+        }
+    }
+
     $stockingByPond = @{}
     $seenStockingKeys = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
 
@@ -867,7 +890,9 @@ if (-not (Test-StageDone 3)) {
     $reader = $cmd.ExecuteReader()
     while ($reader.Read()) {
         $pIdx = SafeString $reader["PondIndex"]
-        if (-not $pIdx -or -not $targetStockingPonds.Contains($pIdx) -or -not $sbPondIndices.Contains($pIdx)) { continue }
+        if (-not $pIdx -or -not $sbPondIndices.Contains($pIdx)) { continue }
+        if (-not $forceFull -and -not $targetStockingPonds.Contains($pIdx) -and $supaStockedPonds.Contains($pIdx)) { continue }
+        $targetStockingPonds.Add($pIdx) | Out-Null
 
         $sDate = SafeDate $reader["stckdate"]
         $sTank = SafeString $reader["stcktank"]
@@ -911,14 +936,14 @@ if (-not (Test-StageDone 3)) {
 
 # -------------------------------------------------------------
 # STAGE 4: Authoritative GrowoutPondHarvestDaily -> pond_harvest_daily
-# Full-cycle extraction for any cycle active or harvested within reconcile window
+# Full-cycle extraction for any cycle active/recently closed, harvested within reconcile window, or missing in Supabase
 # -------------------------------------------------------------
 Write-Output ""
 Write-Output "[4/12] Reconciling Daily Harvest Runs (pond_harvest_daily)..."
 $totalAccessHarvestRows = 0
 if (-not (Test-StageDone 4)) {
     $targetHarvestPonds = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
-    foreach ($ap in $activePondIndexSet) { $targetHarvestPonds.Add($ap) | Out-Null }
+    foreach ($mp in $reconcileMasterPondSet) { $targetHarvestPonds.Add($mp) | Out-Null }
 
     $cmd.CommandText = "SELECT DISTINCT PondIndex FROM [GrowoutPondHarvestDaily] WHERE harvdate >= DateAdd('d', -$reconcileDays, Date())"
     $reader = $cmd.ExecuteReader()
@@ -928,6 +953,15 @@ if (-not (Test-StageDone 4)) {
     }
     $reader.Close()
 
+    # Self-heal any cycle that exists in Access GrowoutPondHarvestDaily but currently has 0 rows in Supabase
+    $supaHarvestedPonds = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
+    if (-not $forceFull) {
+        $harvPondsRes = Get-AllFromSupabase "$supabaseUrl/rest/v1/pond_harvest_daily?select=pond_index"
+        foreach ($hr in $harvPondsRes) {
+            if ($hr.pond_index) { $supaHarvestedPonds.Add([string]$hr.pond_index) | Out-Null }
+        }
+    }
+
     $harvestByPond = @{}
     $seenHarvestKeys = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
 
@@ -935,7 +969,9 @@ if (-not (Test-StageDone 4)) {
     $reader = $cmd.ExecuteReader()
     while ($reader.Read()) {
         $pIdx = SafeString $reader["PondIndex"]
-        if (-not $pIdx -or -not $targetHarvestPonds.Contains($pIdx) -or -not $sbPondIndices.Contains($pIdx)) { continue }
+        if (-not $pIdx -or -not $sbPondIndices.Contains($pIdx)) { continue }
+        if (-not $forceFull -and -not $targetHarvestPonds.Contains($pIdx) -and $supaHarvestedPonds.Contains($pIdx)) { continue }
+        $targetHarvestPonds.Add($pIdx) | Out-Null
 
         $hDate = $(if ($reader["harvdate"] -ne [DBNull]::Value) { SafeDate $reader["harvdate"] } else { (Get-Date).ToString("yyyy-MM-dd") })
         $hStts = $(if ($reader["harvstts"] -ne [DBNull]::Value) { SafeString $reader["harvstts"] } else { "TERMINATION" })
@@ -983,7 +1019,7 @@ Write-Output "[5/12] Reconciling Harvest Sales (pond_harvest_sales)..."
 $totalAccessSalesRows = 0
 if (-not (Test-StageDone 5)) {
     $targetSalesPonds = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
-    foreach ($ap in $activePondIndexSet) { $targetSalesPonds.Add($ap) | Out-Null }
+    foreach ($mp in $reconcileMasterPondSet) { $targetSalesPonds.Add($mp) | Out-Null }
 
     $cmd.CommandText = "SELECT DISTINCT HvtPondIndx FROM [GrowoutPondHarvestSales] WHERE HvtDate >= DateAdd('d', -$reconcileDays, Date())"
     $reader = $cmd.ExecuteReader()
@@ -1065,7 +1101,7 @@ $totalAccessIssueRows = 0
 $newNotesCount = 0
 if (-not (Test-StageDone 6)) {
     $targetIssuePonds = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
-    foreach ($ap in $activePondIndexSet) { $targetIssuePonds.Add($ap) | Out-Null }
+    foreach ($mp in $reconcileMasterPondSet) { $targetIssuePonds.Add($mp) | Out-Null }
 
     $cmd.CommandText = "SELECT DISTINCT PondIndex FROM [GrowoutPondIssues] WHERE issuedate >= DateAdd('d', -$reconcileDays, Date())"
     $reader = $cmd.ExecuteReader()
@@ -1167,7 +1203,7 @@ Write-Output "[7/12] Reconciling Biometrics Samplings (biometrics_sampling)..."
 $totalAccessSamplingRows = 0
 if (-not (Test-StageDone 7)) {
     $targetSamplingPonds = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
-    foreach ($ap in $activePondIndexSet) { $targetSamplingPonds.Add($ap) | Out-Null }
+    foreach ($mp in $reconcileMasterPondSet) { $targetSamplingPonds.Add($mp) | Out-Null }
 
     $cmd.CommandText = "SELECT DISTINCT PondIndex FROM [GrowoutPondSampling] WHERE smpldate >= DateAdd('d', -$reconcileDays, Date())"
     $reader = $cmd.ExecuteReader()
@@ -1640,6 +1676,30 @@ WHERE [Pond No] IS NOT NULL
 }
 
 $conn.Close()
+
+# -------------------------------------------------------------
+# POST-SYNC INTEGRITY & CLOUD COUNT VERIFICATION
+# -------------------------------------------------------------
+Write-Output ""
+Write-Output "[VERIFY] Running Post-Sync Cloud Integrity Check..."
+foreach ($tbl in @("growout_pond_master", "pond_stocking_batches", "pond_harvest_daily", "pond_harvest_sales", "pond_issues", "biometrics_sampling")) {
+    try {
+        $cntHeaders = @{
+            "apikey"            = $supabaseKey
+            "Authorization"     = "Bearer $supabaseKey"
+            "Prefer"            = "count=exact"
+            "Range-Unit"        = "items"
+            "Range"             = "0-0"
+            "x-isharp-passcode" = $editorPasscode
+        }
+        $resp = Invoke-WebRequest -Uri "$supabaseUrl/rest/v1/${tbl}?select=pond_index" -Method Get -Headers $cntHeaders -UseBasicParsing -TimeoutSec 20
+        $cr = [string]$resp.Headers["Content-Range"]
+        $totalCnt = if ($cr -match '/(\d+)$') { $Matches[1] } else { "OK" }
+        Write-Output ("  [PASS] {0,-24} : {1} rows verified in Supabase" -f $tbl, $totalCnt)
+    } catch {
+        Write-Warning "  [VERIFY] Could not read exact count header for ${tbl}: $($_.Exception.Message)"
+    }
+}
 
 # Clear checkpoint upon 100% completion
 if (Test-Path $checkpointPath) {

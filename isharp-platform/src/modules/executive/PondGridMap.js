@@ -62,12 +62,15 @@ export class PondGridMap {
      * Initializes slide-out detail drawer DOM element.
      */
     initDrawer() {
+        const mountTarget = this.container.closest(".executive-view-layout") || document.body;
         let backdrop = document.getElementById("pond-drawer-backdrop");
         if (!backdrop) {
             backdrop = document.createElement("div");
             backdrop.id = "pond-drawer-backdrop";
             backdrop.className = "pond-drawer-backdrop";
-            document.body.appendChild(backdrop);
+            mountTarget.appendChild(backdrop);
+        } else if (backdrop.parentElement !== mountTarget) {
+            mountTarget.appendChild(backdrop);
         }
 
         let drawer = document.getElementById("pond-detail-drawer");
@@ -75,7 +78,9 @@ export class PondGridMap {
             drawer = document.createElement("div");
             drawer.id = "pond-detail-drawer";
             drawer.className = "pond-detail-drawer";
-            document.body.appendChild(drawer);
+            mountTarget.appendChild(drawer);
+        } else if (drawer.parentElement !== mountTarget) {
+            mountTarget.appendChild(drawer);
         }
 
         this.drawerBackdrop = backdrop;
@@ -411,6 +416,7 @@ export class PondGridMap {
         const tiles = this.container.querySelectorAll(".pond-tile");
         tiles.forEach(tile => {
             tile.addEventListener("click", () => {
+                if (window.__isDraggingExecMap) return;
                 const pondCode = tile.getAttribute("data-pond");
                 const pondIndex = tile.getAttribute("data-index");
                 this.openDrawer(pondCode, pondIndex);

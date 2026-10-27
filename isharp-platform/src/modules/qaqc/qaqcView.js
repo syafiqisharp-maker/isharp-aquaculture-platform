@@ -31,7 +31,7 @@ export class QaqcView {
         this.selectedRow = "";
         this.selectedPond = null;
         this.selectedInspector = "Helmi";
-        this.selectedRequestor = "Rosdi";
+        this.selectedRequestor = "";
         
         this.checklist = {
             lining: true,
@@ -87,7 +87,7 @@ export class QaqcView {
         if (!this.container) return;
         this.currentViewMode = "CLEANING_FORM";
         this.selectedInspector = "Helmi";
-        this.selectedRequestor = "Rosdi";
+        this.selectedRequestor = "";
         this.container.innerHTML = renderPondCleaningForm();
 
         // 1. Set today's date in local YYYY-MM-DD
@@ -289,35 +289,19 @@ export class QaqcView {
             });
         });
 
-        // Requestor dropdown & custom input
-        const selectRequestor = document.getElementById("select-qaqc-requestor");
-        const inputCustomRequestor = document.getElementById("input-qaqc-requestor-custom");
-
-        if (selectRequestor) {
-            selectRequestor.addEventListener("change", (e) => {
-                const val = e.target.value;
-                if (val === "__custom__") {
-                    if (inputCustomRequestor) {
-                        inputCustomRequestor.classList.remove("hidden");
-                        inputCustomRequestor.focus();
-                        this.selectedRequestor = inputCustomRequestor.value.trim() || "";
-                    }
-                } else {
-                    if (inputCustomRequestor) {
-                        inputCustomRequestor.classList.add("hidden");
-                    }
-                    this.selectedRequestor = val;
-                }
+        // Requestor autofill input
+        const inputRequestor = document.getElementById("input-qaqc-requestor");
+        if (inputRequestor) {
+            inputRequestor.addEventListener("input", (e) => {
+                this.selectedRequestor = e.target.value.trim();
                 this.updateWhatsAppPreview();
             });
-        }
-
-        if (inputCustomRequestor) {
-            inputCustomRequestor.addEventListener("input", (e) => {
-                if (selectRequestor && selectRequestor.value === "__custom__") {
-                    this.selectedRequestor = e.target.value.trim();
-                    this.updateWhatsAppPreview();
-                }
+            inputRequestor.addEventListener("change", (e) => {
+                this.selectedRequestor = e.target.value.trim();
+                this.updateWhatsAppPreview();
+            });
+            inputRequestor.addEventListener("focus", () => {
+                inputRequestor.select();
             });
         }
 
@@ -452,10 +436,11 @@ export class QaqcView {
         const inputDate = document.getElementById("input-qaqc-date");
         const inputTeam = document.getElementById("input-qaqc-team");
         const inputRemarks = document.getElementById("input-qaqc-remarks");
+        const inputRequestor = document.getElementById("input-qaqc-requestor");
 
         const dateVal = inputDate ? inputDate.value : "";
         const inspectorVal = this.selectedInspector || "Helmi";
-        const requestorVal = this.selectedRequestor || "Rosdi";
+        const requestorVal = inputRequestor ? inputRequestor.value.trim() : (this.selectedRequestor || "");
         const teamVal = inputTeam ? inputTeam.value.trim() : "Int 2";
         const remarksVal = inputRemarks ? inputRemarks.value.trim() : "";
         const pondVal = this.selectedPond ? this.selectedPond.pond : "01.01.07";

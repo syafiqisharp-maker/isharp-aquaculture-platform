@@ -93,3 +93,13 @@ To update the stored procedures in PostgreSQL permanently:
 1. Open the [Supabase Dashboard SQL Editor](https://supabase.com/dashboard/project/keappoukeagyzpoxkrru/sql).
 2. Copy and execute the contents of:
    `database_migration/07_phase4_lifecycle_functions_alignment.sql`
+
+
+---
+
+## 6. Weekly Sync Security & Natural-Key Audit Rules (Migration 15)
+
+To ensure weekly synchronization (`database_migration/sync_weekly_access.ps1`) never causes duplicate rows, missing historical batches, or RLS `57014` statement timeouts:
+1. **Deploy `database_migration/15_sync_hardening.sql`** in the Supabase SQL Editor to enforce database-level natural-key unique indexes across all 6 cycle tables (`biometrics_sampling`, `pond_notes`, `pond_harvest_sales`, `pond_stocking_batches`, `pond_harvest_daily`, and `pond_issues`), statement-level RLS `InitPlan` (`(SELECT public.fn_can_write_dbms())`), and the transactional `public.fn_sync_replace_cycles` RPC.
+2. **Never run non-atomic `DELETE` before `POST` on cycles with `0` rows in Supabase** (always use pure `INSERT` with `Prefer: return=minimal`).
+3. **Always unify Stage 1–7 target cycle windows via `$reconcileMasterPondSet`** so closed cycles whose `stckdate` is older than `-$reconcileDays` are included across all child tables.

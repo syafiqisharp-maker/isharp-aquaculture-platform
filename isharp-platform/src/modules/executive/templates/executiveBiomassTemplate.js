@@ -309,7 +309,7 @@ export function getExecutiveBiomassHtml({
             </div>
 
             <!-- SECTION 3: 12-MONTH MOVING PERFORMANCE (CANVAS DUAL CHARTS + PACKOUT QUALITY) -->
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1.5rem;">
+            <div class="exec-biomass-analytics-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1.5rem;">
                 
                 <!-- Left: Minimalist Pastel Chart -->
                 <div class="sleek-card" style="padding: 1.25rem; display: flex; flex-direction: column; gap: 1rem; grid-column: span 2;">
