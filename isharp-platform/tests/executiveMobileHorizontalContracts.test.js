@@ -20,23 +20,13 @@ test("Executive Mobile Horizontal: Stylesheet exists and contains 12-across grid
         "Should define repeat(12, minmax(0, 1fr)) for fitting all 12 ponds across without horizontal scrolling"
     );
 
-    // 2. Verify 90deg and 270deg rotation transforms for mobile portrait
-    assert.ok(
-        cssContent.includes("transform: rotate(90deg) translateY(-100%)"),
-        "Should define 90deg clockwise rotation transform for mobile portrait"
-    );
+    // 2. Verify 270deg rotation transform for mobile portrait virtual landscape
     assert.ok(
         cssContent.includes("transform: rotate(270deg) translateX(-100%)"),
-        "Should define 270deg counter-clockwise rotation transform for 180° flip"
+        "Should define 270deg counter-clockwise rotation transform for virtual landscape"
     );
 
-    // 3. Verify floating flip button styles
-    assert.ok(
-        cssContent.includes(".btn-exec-flip"),
-        "Should define styles for .btn-exec-flip floating button"
-    );
-
-    // 4. Verify right slide-over sheet for drawer
+    // 3. Verify right slide-over sheet for drawer
     assert.ok(
         cssContent.includes(".pond-detail-drawer"),
         "Should define mobile drawer styles"
@@ -46,10 +36,16 @@ test("Executive Mobile Horizontal: Stylesheet exists and contains 12-across grid
         "Mobile horizontal drawer should occupy right half-screen so map remains visible"
     );
 
-    // 5. Verify non-sticky header so it scrolls away naturally
+    // 4. Verify non-sticky header so it scrolls away naturally
     assert.ok(
         cssContent.includes("position: static !important"),
         "Header should be position: static so it scrolls away completely on mobile"
+    );
+
+    // 5. Verify flip button is cleanly removed
+    assert.ok(
+        !cssContent.includes(".btn-exec-flip"),
+        "Should not include obsolete .btn-exec-flip styles"
     );
 });
 
@@ -78,20 +74,63 @@ test("Executive Mobile Horizontal: Executive Biomass view markup includes exec-b
     );
 });
 
-test("Executive Mobile Horizontal: executiveTab.js template includes 180° flip button", () => {
+test("Executive Mobile Horizontal: executiveTab.js touch scrolling", () => {
     const tabPath = path.resolve(__dirname, "../src/modules/executive/executiveTab.js");
     const content = fs.readFileSync(tabPath, "utf-8");
 
     assert.ok(
-        content.includes('id="btn-exec-flip-orientation"'),
-        "executiveTab.js must include btn-exec-flip-orientation element"
+        !content.includes('btn-exec-flip-orientation'),
+        "executiveTab.js must not contain obsolete flip button element"
     );
     assert.ok(
-        content.includes("exec-flipped"),
-        "executiveTab.js must toggle exec-flipped class on orientation flip"
+        !content.includes("exec-flipped"),
+        "executiveTab.js must not reference exec-flipped"
     );
     assert.ok(
         content.includes("initMobileTouchScroll"),
         "executiveTab.js must initialize mobile touch scroll handler"
+    );
+});
+
+test("Executive Mobile Horizontal: Pond drawer viewport and containment contracts", () => {
+    const cssPath = path.resolve(__dirname, "../src/styles/components/executive-mobile-landscape.css");
+    const cssContent = fs.readFileSync(cssPath, "utf-8");
+
+    // 1. exec-drawer-viewport is configured for portrait virtual landscape
+    assert.ok(
+        cssContent.includes(".exec-drawer-viewport"),
+        "executive-mobile-landscape.css must define .exec-drawer-viewport"
+    );
+    assert.ok(
+        cssContent.includes("transform: rotate(270deg) translateX(-100%)"),
+        "exec-drawer-viewport must have rotation transform matching virtual landscape"
+    );
+
+    // 2. farm-map.css defines exec-drawer-viewport baseline
+    const farmMapCssPath = path.resolve(__dirname, "../src/styles/components/farm-map.css");
+    const farmMapCss = fs.readFileSync(farmMapCssPath, "utf-8");
+    assert.ok(
+        farmMapCss.includes(".exec-drawer-viewport"),
+        "farm-map.css must define .exec-drawer-viewport baseline styles"
+    );
+
+    // 3. PondGridMap.js mounts drawer into exec-drawer-viewport on view-executive
+    const gridMapPath = path.resolve(__dirname, "../src/modules/executive/PondGridMap.js");
+    const gridMapContent = fs.readFileSync(gridMapPath, "utf-8");
+    assert.ok(
+        gridMapContent.includes("exec-drawer-viewport"),
+        "PondGridMap.js must initialize exec-drawer-viewport container"
+    );
+    assert.ok(
+        gridMapContent.includes("view-executive"),
+        "PondGridMap.js must mount to #view-executive"
+    );
+    assert.ok(
+        gridMapContent.includes("bindDrawerTouchScroll"),
+        "PondGridMap.js must include bindDrawerTouchScroll method"
+    );
+    assert.ok(
+        !gridMapContent.includes("exec-flipped"),
+        "PondGridMap.js must not reference obsolete exec-flipped"
     );
 });

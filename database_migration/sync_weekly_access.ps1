@@ -584,6 +584,33 @@ $conn = New-Object System.Data.OleDb.OleDbConnection($connStr)
 $conn.Open()
 Write-Output "[OK] Connected to Microsoft Access DB successfully."
 
+# Preload per-pond stocking totals and species/type for strategy inference & biomass calculations
+$stockSummaryCmd = $conn.CreateCommand()
+$stockSummaryCmd.CommandText = "SELECT PondIndex, Min(stckdate) AS FirstStockDate, Sum(stckpcs) AS TotalPieces, Max(stcktype) AS StckType, Max(stckspcs) AS StckSpecies FROM [GrowoutPondStocking] GROUP BY PondIndex"
+$stockSummaryReader = $stockSummaryCmd.ExecuteReader()
+$accessStockSummaryByPond = @{}
+while ($stockSummaryReader.Read()) {
+    $p = SafeString $stockSummaryReader["PondIndex"]
+    if (-not $p) { continue }
+    $stType = SafeString $stockSummaryReader["StckType"]
+    $stSpcs = SafeString $stockSummaryReader["StckSpecies"]
+    $normType = if ($stType) { $stType.Trim().ToUpper() } else { "" }
+    # Derive Setiu fallback strategy using Access query ~sq_cGrowoutPondMaster~sq_cstrategy
+    $fallbackSttg = if ($normType -eq "P.M") { "SD05DS.M" }
+        elseif ($normType -eq "SPR") { "SD05DS.R" }
+        elseif ($normType -eq "SPT") { "SD05DS.T" }
+        elseif ($stSpcs -and $stSpcs.ToUpper().Contains("MONODON")) { "SD05DS.M" }
+        else { "SD05DS.T" }
+
+    $accessStockSummaryByPond[$p] = @{
+        FirstStockDate   = SafeDate $stockSummaryReader["FirstStockDate"]
+        TotalPieces      = if ($stockSummaryReader["TotalPieces"] -ne [DBNull]::Value) { SafeDecimal $stockSummaryReader["TotalPieces"] } else { 0.0 }
+        FallbackStrategy = $fallbackSttg
+    }
+}
+$stockSummaryReader.Close()
+$pondStrategyMap = @{}
+
 # -------------------------------------------------------------
 # STAGE 1: Synchronize Master Cycles (growout_pond_master)
 # Upsert active cycles + recently closed/modified cycles + any new cycles
@@ -670,9 +697,19 @@ while ($reader.Read()) {
         idle_days      = 0
         idle_status    = SafeString $reader["IdleStatus"]
         water_type     = $(if ($reader["water type"] -ne [DBNull]::Value) { SafeString $reader["water type"] } else { "SEA WATER" })
-        strategy       = SafeString $reader["strategy"]
+        strategy       = $(
+            $rawSttg = SafeString $reader["strategy"]
+            if ($rawSttg) {
+                $rawSttg.Trim().ToUpper()
+            } elseif ($accessStockSummaryByPond.ContainsKey($pIdx) -and $accessStockSummaryByPond[$pIdx].FallbackStrategy) {
+                $accessStockSummaryByPond[$pIdx].FallbackStrategy
+            } else {
+                "STANDARD"
+            }
+        )
         tested         = SafeString $reader["Tested"]
     }
+    $pondStrategyMap[$pIdx] = $obj.strategy
     $masterBatch += $obj
     $sbPondIndices.Add($pIdx) | Out-Null
     $masterCount++
@@ -1197,11 +1234,39 @@ if (-not (Test-StageDone 6)) {
 # -------------------------------------------------------------
 # STAGE 7: Authoritative Biometrics Sampling -> biometrics_sampling
 # Full-cycle extraction + Natural Key (pond_index, smpl_date) deduplication
+# Automatic derivation of missing smpl_bms & sttg_* when Access macro was not run
 # -------------------------------------------------------------
 Write-Output ""
 Write-Output "[7/12] Reconciling Biometrics Samplings (biometrics_sampling)..."
 $totalAccessSamplingRows = 0
+if (-not $forceFull -and (Test-StageDone 7)) {
+    $probeNullRes = @(Get-FromSupabase "$supabaseUrl/rest/v1/biometrics_sampling?select=id&or=(smpl_bms.is.null,sttg_abw.is.null)&limit=1")
+    if ($probeNullRes -and $probeNullRes.Count -gt 0) {
+        Write-Output "  [SELF-HEAL] Detected unreconciled/null biometrics rows in Supabase; invalidating Stage 7 checkpoint..."
+        $script:checkpoint.completedStages = @($script:checkpoint.completedStages | Where-Object { $_ -ne 7 })
+    }
+}
 if (-not (Test-StageDone 7)) {
+    # 1. Preload strategy benchmarks from UtilStockStrategy for fallback calculation
+    $utilStrategyMap = @{}
+    $sttgCmd = $conn.CreateCommand()
+    $sttgCmd.CommandText = "SELECT GetStrategy, SttgDOC, SttgABW, SttgSR, SttgFCR, FeedRate FROM [UtilStockStrategy]"
+    $sttgReader = $sttgCmd.ExecuteReader()
+    while ($sttgReader.Read()) {
+        $st = SafeString $sttgReader["GetStrategy"]
+        $doc = SafeInt $sttgReader["SttgDOC"]
+        if ($st -and $doc -ne $null) {
+            $key = "$($st.ToUpper())|$doc"
+            $utilStrategyMap[$key] = @{
+                SttgABW  = if ($sttgReader["SttgABW"] -ne [DBNull]::Value) { [decimal]$sttgReader["SttgABW"] } else { $null }
+                SttgSR   = if ($sttgReader["SttgSR"] -ne [DBNull]::Value) { [decimal]$sttgReader["SttgSR"] } else { $null }
+                SttgFCR  = if ($sttgReader["SttgFCR"] -ne [DBNull]::Value) { [decimal]$sttgReader["SttgFCR"] } else { $null }
+                FeedRate = if ($sttgReader["FeedRate"] -ne [DBNull]::Value) { [decimal]$sttgReader["FeedRate"] } else { $null }
+            }
+        }
+    }
+    $sttgReader.Close()
+
     $targetSamplingPonds = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
     foreach ($mp in $reconcileMasterPondSet) { $targetSamplingPonds.Add($mp) | Out-Null }
 
@@ -1213,6 +1278,23 @@ if (-not (Test-StageDone 7)) {
     }
     $reader.Close()
 
+    # Self-heal any cycle in Supabase that currently has NULL smpl_bms or sttg_abw
+    $supaMissingSamplingPonds = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
+    if (-not $forceFull) {
+        $nullSamplingRes = Get-AllFromSupabase "$supabaseUrl/rest/v1/biometrics_sampling?select=pond_index&or=(smpl_bms.is.null,sttg_abw.is.null)"
+        foreach ($ns in $nullSamplingRes) {
+            if ($ns.pond_index) {
+                $pStr = [string]$ns.pond_index
+                $supaMissingSamplingPonds.Add($pStr) | Out-Null
+                $targetSamplingPonds.Add($pStr) | Out-Null
+            }
+        }
+        # Invalidate completedPonds checkpoint for any cycle that needs healing
+        if ($script:checkpoint.completedPonds["stage7"] -and $supaMissingSamplingPonds.Count -gt 0) {
+            $script:checkpoint.completedPonds["stage7"] = @($script:checkpoint.completedPonds["stage7"] | Where-Object { -not $supaMissingSamplingPonds.Contains($_) })
+        }
+    }
+
     $samplingByPondAndDate = @{}
     $cmd.CommandText = "SELECT PondIndex, smpldate, SmplDoc, smplabw, smplsurv, SmplDFed, SmplTFed, Psmpldate, PSmplDoc, Psmplabw, Psmplsurv, PSmplDFed, PSmplTFed, sttgabw, sttgsurv, sttgbms, sttgDFed, sttgTFed, smplbms FROM [GrowoutPondSampling] ORDER BY PondIndex ASC, smpldate ASC"
     $reader = $cmd.ExecuteReader()
@@ -1223,6 +1305,72 @@ if (-not (Test-StageDone 7)) {
         $sDate = $(if ($reader["smpldate"] -ne [DBNull]::Value) { SafeDate $reader["smpldate"] } else { $null })
         if (-not $sDate) { continue }
 
+        $stckInfo = if ($accessStockSummaryByPond.ContainsKey($pIdx)) { $accessStockSummaryByPond[$pIdx] } else { $null }
+        $totalPieces = if ($stckInfo) { $stckInfo.TotalPieces } else { 0.0 }
+        $firstStockDate = if ($stckInfo) { $stckInfo.FirstStockDate } else { $null }
+
+        $docVal = if ($reader["SmplDoc"] -ne [DBNull]::Value) { SafeInt $reader["SmplDoc"] } else { $null }
+        if (($docVal -eq $null -or $docVal -le 0) -and $firstStockDate) {
+            try {
+                $docVal = [int](([datetime]$sDate - [datetime]$firstStockDate).TotalDays)
+            } catch {
+                $docVal = 0
+            }
+        }
+        $smplDoc = if ($docVal -ne $null) { $docVal } else { 0 }
+
+        $smplAbw = $(if ($reader["smplabw"] -ne [DBNull]::Value) { SafeDecimal $reader["smplabw"] } else { 0.0 })
+        $smplSurv = SafeDecimal $reader["smplsurv"]
+        $smplDfed = SafeDecimal $reader["SmplDFed"]
+        $smplTfed = SafeDecimal $reader["SmplTFed"]
+        $smplBms = SafeDecimal $reader["smplbms"]
+
+        # If smplbms is NULL in Access, auto-calculate using exact Access formula:
+        # TotalPieces * (smplabw / 1000) * (smplsurv / 100)
+        if ($smplBms -eq $null -and $totalPieces -gt 0 -and $smplAbw -ne $null -and $smplSurv -ne $null) {
+            $smplBms = [Math]::Round([decimal]($totalPieces * ($smplAbw / 1000.0) * ($smplSurv / 100.0)), 2)
+        }
+
+        # Resolve effective strategy for this pond
+        $effStrategy = if ($pondStrategyMap.ContainsKey($pIdx) -and $pondStrategyMap[$pIdx]) {
+            $pondStrategyMap[$pIdx]
+        } elseif ($stckInfo -and $stckInfo.FallbackStrategy) {
+            $stckInfo.FallbackStrategy
+        } else {
+            "SD05DS.T"
+        }
+
+        $sttgAbw = SafeDecimal $reader["sttgabw"]
+        $sttgSurv = SafeDecimal $reader["sttgsurv"]
+        $sttgBms = SafeDecimal $reader["sttgbms"]
+        $sttgDfed = SafeDecimal $reader["sttgDFed"]
+        $sttgTfed = SafeDecimal $reader["sttgTFed"]
+
+        # If strategy columns are NULL in Access (GrowoutSpecialSttgStckSmpl7 not run), auto-calculate from UtilStockStrategy
+        $sttgLookupKey = "$($effStrategy.ToUpper())|$smplDoc"
+        if ($utilStrategyMap.ContainsKey($sttgLookupKey)) {
+            $u = $utilStrategyMap[$sttgLookupKey]
+            if ($sttgAbw -eq $null -and $u.SttgABW -ne $null) {
+                $sttgAbw = [Math]::Round([decimal]$u.SttgABW, 2)
+            }
+            if ($sttgSurv -eq $null -and $u.SttgSR -ne $null) {
+                $sttgSurv = [Math]::Round([decimal]$u.SttgSR, 2)
+            }
+            $calcSttgBms = if ($totalPieces -gt 0 -and $sttgAbw -ne $null -and $sttgSurv -ne $null) {
+                [Math]::Round([decimal]($totalPieces * ($sttgAbw / 1000.0) * ($sttgSurv / 100.0)), 2)
+            } else { $null }
+
+            if ($sttgBms -eq $null -and $calcSttgBms -ne $null) {
+                $sttgBms = $calcSttgBms
+            }
+            if ($sttgDfed -eq $null -and $calcSttgBms -ne $null -and $u.FeedRate -ne $null) {
+                $sttgDfed = [Math]::Round([decimal](($u.FeedRate / 100.0) * $calcSttgBms), 2)
+            }
+            if ($sttgTfed -eq $null -and $calcSttgBms -ne $null -and $u.SttgFCR -ne $null) {
+                $sttgTfed = [Math]::Round([decimal]($calcSttgBms * $u.SttgFCR), 2)
+            }
+        }
+
         if (-not $samplingByPondAndDate.ContainsKey($pIdx)) {
             $samplingByPondAndDate[$pIdx] = [ordered]@{}
         }
@@ -1230,23 +1378,23 @@ if (-not (Test-StageDone 7)) {
         $samplingByPondAndDate[$pIdx][$sDate] = [ordered]@{
             pond_index  = $pIdx
             smpl_date   = $sDate
-            smpl_doc    = $(if ($reader["SmplDoc"] -ne [DBNull]::Value) { SafeInt $reader["SmplDoc"] } else { 0 })
-            smpl_abw    = $(if ($reader["smplabw"] -ne [DBNull]::Value) { SafeDecimal $reader["smplabw"] } else { 0.0 })
-            smpl_surv   = SafeDecimal $reader["smplsurv"]
-            smpl_dfed   = SafeDecimal $reader["SmplDFed"]
-            smpl_tfed   = SafeDecimal $reader["SmplTFed"]
-            smpl_bms    = SafeDecimal $reader["smplbms"]
+            smpl_doc    = $smplDoc
+            smpl_abw    = $smplAbw
+            smpl_surv   = $smplSurv
+            smpl_dfed   = $smplDfed
+            smpl_tfed   = $smplTfed
+            smpl_bms    = $smplBms
             p_smpl_date = SafeDate $reader["Psmpldate"]
             p_smpl_doc  = SafeInt $reader["PSmplDoc"]
             p_smpl_abw  = SafeDecimal $reader["Psmplabw"]
             p_smpl_surv = SafeDecimal $reader["Psmplsurv"]
             p_smpl_dfed = SafeDecimal $reader["PSmplDFed"]
             p_smpl_tfed = SafeDecimal $reader["PSmplTFed"]
-            sttg_abw    = SafeDecimal $reader["sttgabw"]
-            sttg_surv   = SafeDecimal $reader["sttgsurv"]
-            sttg_bms    = SafeDecimal $reader["sttgbms"]
-            sttg_dfed   = SafeDecimal $reader["sttgDFed"]
-            sttg_tfed   = SafeDecimal $reader["sttgTFed"]
+            sttg_abw    = $sttgAbw
+            sttg_surv   = $sttgSurv
+            sttg_bms    = $sttgBms
+            sttg_dfed   = $sttgDfed
+            sttg_tfed   = $sttgTfed
         }
     }
     $reader.Close()

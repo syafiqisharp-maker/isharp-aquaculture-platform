@@ -73,17 +73,32 @@ export class PondGridMap {
 
     /**
      * Initializes slide-out detail drawer DOM element.
+     * Mounts to #view-executive (or document.body) inside a dedicated, non-scrolling
+     * viewport container (#exec-drawer-viewport) so that in mobile virtual landscape
+     * (CSS rotated 270°/90°), the drawer is anchored directly to the user's visible
+     * viewport rather than the top of the scrolling layout.
      */
     initDrawer() {
-        const mountTarget = this.container.closest(".executive-view-layout") || document.body;
+        const mountTarget = this.container.closest("#view-executive") || document.getElementById("view-executive") || document.body;
+
+        let viewport = document.getElementById("exec-drawer-viewport");
+        if (!viewport) {
+            viewport = document.createElement("div");
+            viewport.id = "exec-drawer-viewport";
+            viewport.className = "exec-drawer-viewport";
+            mountTarget.appendChild(viewport);
+        } else if (viewport.parentElement !== mountTarget) {
+            mountTarget.appendChild(viewport);
+        }
+
         let backdrop = document.getElementById("pond-drawer-backdrop");
         if (!backdrop) {
             backdrop = document.createElement("div");
             backdrop.id = "pond-drawer-backdrop";
             backdrop.className = "pond-drawer-backdrop";
-            mountTarget.appendChild(backdrop);
-        } else if (backdrop.parentElement !== mountTarget) {
-            mountTarget.appendChild(backdrop);
+            viewport.appendChild(backdrop);
+        } else if (backdrop.parentElement !== viewport) {
+            viewport.appendChild(backdrop);
         }
 
         let drawer = document.getElementById("pond-detail-drawer");
@@ -91,15 +106,126 @@ export class PondGridMap {
             drawer = document.createElement("div");
             drawer.id = "pond-detail-drawer";
             drawer.className = "pond-detail-drawer";
-            mountTarget.appendChild(drawer);
-        } else if (drawer.parentElement !== mountTarget) {
-            mountTarget.appendChild(drawer);
+            viewport.appendChild(drawer);
+        } else if (drawer.parentElement !== viewport) {
+            viewport.appendChild(drawer);
         }
 
+        this.drawerViewport = viewport;
         this.drawerBackdrop = backdrop;
         this.drawer = drawer;
 
         backdrop.addEventListener("click", () => this.closeDrawer());
+
+        // Keyboard accessibility: ESC key dismisses drawer
+        window.addEventListener("keydown", (e) => {
+            if (e.key === "Escape" && this.drawer && this.drawer.classList.contains("open")) {
+                this.closeDrawer();
+            }
+        });
+
+        this.bindDrawerTouchScroll();
+    }
+
+    /**
+     * Touch and gesture scrolling for pond detail drawer body in mobile virtual landscape.
+     */
+    bindDrawerTouchScroll() {
+        if (!this.drawer) return;
+
+        let isTouching = false;
+        let lastX = 0;
+        let lastY = 0;
+        let lastTime = 0;
+        let velocity = 0;
+        let animId = null;
+
+        const stopInertia = () => {
+            if (animId) {
+                cancelAnimationFrame(animId);
+                animId = null;
+            }
+            velocity = 0;
+        };
+
+        this.drawer.addEventListener("touchstart", (e) => {
+            if (e.touches.length !== 1) return;
+            if (e.target.closest("button, a, input, select, textarea")) return;
+
+            stopInertia();
+            isTouching = true;
+            lastX = e.touches[0].clientX;
+            lastY = e.touches[0].clientY;
+            lastTime = performance.now();
+        }, { passive: true });
+
+        this.drawer.addEventListener("touchmove", (e) => {
+            if (!isTouching || e.touches.length !== 1) return;
+
+            const isPortrait = window.innerHeight > window.innerWidth && window.innerWidth <= 768;
+            if (!isPortrait) return;
+
+            const bodyEl = this.drawer.querySelector(".drawer-body");
+            if (!bodyEl) return;
+
+            const curX = e.touches[0].clientX;
+            const curY = e.touches[0].clientY;
+            const curTime = performance.now();
+            const dt = Math.max(curTime - lastTime, 8);
+
+            const dx = curX - lastX;
+            const dy = curY - lastY;
+
+            // Virtual landscape (270° counter-clockwise):
+            // Dragging along physical X axis maps directly to visual vertical scroll
+            const deltaScroll = Math.abs(dx) >= Math.abs(dy) ? dx : -dy;
+
+            if (deltaScroll !== 0) {
+                bodyEl.scrollTop -= deltaScroll;
+                velocity = deltaScroll / dt;
+            }
+
+            lastX = curX;
+            lastY = curY;
+            lastTime = curTime;
+        }, { passive: true });
+
+        const endTouch = () => {
+            if (!isTouching) return;
+            isTouching = false;
+
+            const bodyEl = this.drawer.querySelector(".drawer-body");
+            if (!bodyEl) return;
+
+            if (Math.abs(velocity) > 0.08) {
+                const runInertia = () => {
+                    if (Math.abs(velocity) < 0.02) {
+                        animId = null;
+                        return;
+                    }
+                    bodyEl.scrollTop -= velocity * 16;
+                    velocity *= 0.94;
+                    animId = requestAnimationFrame(runInertia);
+                };
+                animId = requestAnimationFrame(runInertia);
+            }
+        };
+
+        this.drawer.addEventListener("touchend", endTouch, { passive: true });
+        this.drawer.addEventListener("touchcancel", endTouch, { passive: true });
+
+        this.drawer.addEventListener("wheel", (e) => {
+            const isPortrait = window.innerHeight > window.innerWidth && window.innerWidth <= 768;
+            if (isPortrait) {
+                const bodyEl = this.drawer.querySelector(".drawer-body");
+                if (bodyEl) {
+                    const delta = Math.abs(e.deltaY) >= Math.abs(e.deltaX) ? e.deltaY : e.deltaX;
+                    if (delta) {
+                        bodyEl.scrollTop += delta;
+                    }
+                }
+            }
+        }, { passive: true });
     }
 
     /**

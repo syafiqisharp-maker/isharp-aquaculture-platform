@@ -32,40 +32,39 @@ export class ExecutiveView {
         this.container.innerHTML = `
             <div class="executive-view-layout">
                 
-                <!-- Floating 180° Orientation Flip Button for Mobile -->
-                <button class="btn-exec-flip" id="btn-exec-flip-orientation" type="button" aria-label="Flip landscape 180 degrees" title="Flip landscape view 180°">
-                    <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/>
-                    </svg>
-                    <span>Flip 180°</span>
-                </button>
-
                 <!-- Executive Header Bar -->
                 <header class="exec-header">
                     <div class="exec-header-left">
                         <button class="btn-portal-back" type="button" data-nav-view="portal" title="Return to Portal Landing Page">
-                            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+                            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
                                 <line x1="19" y1="12" x2="5" y2="12"></line>
                                 <polyline points="12 19 5 12 12 5"></polyline>
                             </svg>
-                            <span>Back to Portal</span>
+                            <span class="lbl-full">Back to Portal</span>
+                            <span class="lbl-short">Portal</span>
                         </button>
                         
-                        <div>
-                            <div class="exec-header-title">Executive &amp; Biosecurity Dashboard</div>
+                        <div class="exec-title-group">
+                            <div class="exec-header-title">
+                                <span class="lbl-full">Executive &amp; Biosecurity Dashboard</span>
+                                <span class="lbl-short">Executive Dashboard</span>
+                            </div>
                             <div class="exec-header-sub">Blue Archipelago Berhad • Setiu Farm (216 Commercial Ponds)</div>
                         </div>
                     </div>
 
-                    <div class="exec-header-right" style="display: flex; gap: 0.6rem;">
-                        <button class="btn-action btn-secondary" id="btn-exec-mgmt-callout" type="button" style="font-weight: 700; font-size: 0.82rem; padding: 0.45rem 1rem; border-color: #38bdf8; color: #0284c7;" title="Open Weekly Management Info Audit & WhatsApp Callout">
-                            <span>📋 Weekly Mgmt Callout</span>
+                    <div class="exec-header-right">
+                        <button class="btn-action btn-secondary btn-header-callout" id="btn-exec-mgmt-callout" type="button" title="Open Weekly Management Info Audit & WhatsApp Callout">
+                            <span class="lbl-full">📋 Weekly Mgmt Callout</span>
+                            <span class="lbl-short">📋 Callout</span>
                         </button>
-                        <button class="btn-action btn-secondary" type="button" data-nav-view="field-ops" style="font-weight: 700; font-size: 0.82rem; padding: 0.45rem 1rem;">
-                            <span>Field Operations ➔</span>
+                        <button class="btn-action btn-secondary" type="button" data-nav-view="field-ops" title="Open Field Operations">
+                            <span class="lbl-full">Field Operations ➔</span>
+                            <span class="lbl-short">Field Ops ➔</span>
                         </button>
-                        <button class="btn-action btn-secondary" type="button" data-nav-view="dbms" style="font-weight: 700; font-size: 0.82rem; padding: 0.45rem 1rem;">
-                            <span>Go to Operations DBMS →</span>
+                        <button class="btn-action btn-secondary" type="button" data-nav-view="dbms" title="Open Operations DBMS">
+                            <span class="lbl-full">Go to Operations DBMS →</span>
+                            <span class="lbl-short">DBMS →</span>
                         </button>
                     </div>
                 </header>
@@ -157,15 +156,6 @@ export class ExecutiveView {
 
     bindEvents() {
         // [data-nav-view] is handled globally by ViewRouter
-        const btnFlip = this.container.querySelector("#btn-exec-flip-orientation");
-        if (btnFlip) {
-            btnFlip.addEventListener("click", () => {
-                this.container.classList.toggle("exec-flipped");
-                const isFlipped = this.container.classList.contains("exec-flipped");
-                Toast.info(isFlipped ? "Flipped view 180°" : "Reset orientation view");
-            });
-        }
-
         const btnCallout = this.container.querySelector("#btn-exec-mgmt-callout");
         if (btnCallout) {
             btnCallout.addEventListener("click", () => {
@@ -179,7 +169,7 @@ export class ExecutiveView {
 
     /**
      * Provides fluid touch, drag, and momentum scrolling when the Executive Dashboard
-     * is displayed in mobile virtual landscape (90° / 270° CSS rotation).
+     * is displayed in mobile virtual landscape (270° CSS rotation).
      */
     initMobileTouchScroll() {
         const layoutEl = this.container.querySelector(".executive-view-layout");
@@ -218,10 +208,8 @@ export class ExecutiveView {
             if (!isTouching || e.touches.length !== 1) return;
 
             const isPortrait = window.innerHeight > window.innerWidth && window.innerWidth <= 768;
-            const isFlipped = this.container.classList.contains("exec-flipped");
-
-            if (!isPortrait && !isFlipped) {
-                // In unrotated physical landscape, native browser scrolling handles touches natively
+            if (!isPortrait) {
+                // In physical landscape, native browser scrolling handles touches natively
                 return;
             }
 
@@ -233,19 +221,9 @@ export class ExecutiveView {
             const dx = curX - lastX;
             const dy = curY - lastY;
 
-            let deltaScroll = 0;
-            if (isPortrait) {
-                // Virtual landscape (default 270° counter-clockwise, or 90° when flipped):
-                // Dragging along physical X axis maps directly to visual vertical scroll
-                if (Math.abs(dx) >= Math.abs(dy)) {
-                    deltaScroll = isFlipped ? -dx : dx;
-                } else {
-                    deltaScroll = isFlipped ? dy : -dy;
-                }
-            } else if (isFlipped) {
-                // Physical landscape held upside-down (180° rotation)
-                deltaScroll = -dy;
-            }
+            // Virtual landscape (270° counter-clockwise):
+            // Dragging along physical X axis maps directly to visual vertical scroll
+            const deltaScroll = Math.abs(dx) >= Math.abs(dy) ? dx : -dy;
 
             if (!isDragging && (Math.abs(dx) > 4 || Math.abs(dy) > 4)) {
                 isDragging = true;
