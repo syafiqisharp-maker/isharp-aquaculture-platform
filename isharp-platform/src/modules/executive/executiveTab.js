@@ -98,7 +98,7 @@ export class ExecutiveView {
                     <section class="exec-section-panel" id="exec-farm-map-section">
                         <div class="exec-section-header">
                             <div class="exec-section-title">
-                                <span>🗺️ 216-Pond Farm Biosecurity Map</span>
+                                <span>🗺️ 216-Pond Farm Map</span>
                             </div>
                         </div>
                         <div class="exec-section-body" id="exec-map-container">
