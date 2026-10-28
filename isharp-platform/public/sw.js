@@ -4,7 +4,7 @@
  * Network-first policy for page navigation and live Supabase queries to guarantee immediate updates.
  */
 
-const CACHE_NAME = "isharp-platform-v2.5";
+const CACHE_NAME = "isharp-platform-v2.6";
 
 // Core static assets to precache immediately on service worker install
 const PRECACHE_ASSETS = [

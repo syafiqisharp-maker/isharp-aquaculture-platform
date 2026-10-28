@@ -1,14 +1,40 @@
 {
-  "name": "iSHARP Field Operations",
-  "short_name": "Field Ops",
-  "description": "Blue Archipelago iSHARP Field Operations & Water Quality Station PWA",
-  "start_url": "/#field-ops",
+  "name": "iSHARP Aquaculture Platform",
+  "short_name": "iSHARP Portal",
+  "description": "Blue Archipelago iSHARP Aquaculture Operations & Intelligence Platform",
+  "start_url": "/",
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait-primary",
   "background_color": "#f0f9ff",
   "theme_color": "#0284c7",
   "categories": ["business", "productivity", "utilities"],
+  "shortcuts": [
+    {
+      "name": "Front Page Portal",
+      "short_name": "Portal",
+      "description": "Gateway to all iSHARP systems",
+      "url": "/"
+    },
+    {
+      "name": "Field Operations",
+      "short_name": "Field Ops",
+      "description": "Daily pond logs & water quality station",
+      "url": "/#field-ops"
+    },
+    {
+      "name": "Executive Dashboard",
+      "short_name": "Executive",
+      "description": "Farm macro intelligence & 216-pond grid",
+      "url": "/#executive"
+    },
+    {
+      "name": "iSHARP DBMS",
+      "short_name": "DBMS",
+      "description": "Core operations database ledger",
+      "url": "/#dbms"
+    }
+  ],
   "icons": [
     {
       "src": "/assets/icon-192.png",

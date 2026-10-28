@@ -74,6 +74,31 @@ export class ViewRouter {
             }
         });
 
+        // PWA Cold-Launch Transition: Ensure standalone mode opens to Front Page Portal on fresh app launch
+        try {
+            const isStandalone = (typeof window !== "undefined") && (
+                window.matchMedia?.("(display-mode: standalone)")?.matches ||
+                window.navigator?.standalone === true ||
+                (typeof document !== "undefined" && document.referrer && document.referrer.includes("android-app://"))
+            );
+            const sessionKey = "isharp_pwa_session_active";
+            if (isStandalone && !sessionStorage.getItem(sessionKey)) {
+                sessionStorage.setItem(sessionKey, "1");
+                const currentHash = (window.location.hash || "").toLowerCase();
+                if (currentHash === "#field-ops" || currentHash === "#/field-ops") {
+                    if (window.history && window.history.replaceState) {
+                        window.history.replaceState(null, "", window.location.pathname + window.location.search);
+                    } else {
+                        window.location.hash = "";
+                    }
+                }
+            } else if (!sessionStorage.getItem(sessionKey)) {
+                sessionStorage.setItem(sessionKey, "1");
+            }
+        } catch {
+            // Safe fallback if sessionStorage or matchMedia is restricted
+        }
+
         // Trigger initial view based on current hash
         this.handleHashChange();
     }

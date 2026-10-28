@@ -587,7 +587,7 @@ export function getEffectiveBiomassGain(pond, latestSampling, harvestSummary) {
  *   idleDays: number
  * }}
  */
-export function getOperationalPondState(cycle) {
+export function getOperationalPondState(cycle, referenceDate = new Date()) {
     if (!cycle) {
         return {
             isStocked: false,
@@ -660,7 +660,7 @@ export function getOperationalPondState(cycle) {
     }
 
     // Stocked production culture
-    const doc = calculateDOC(cycle.stck_date, cycle.date_close);
+    const doc = calculateDOC(cycle.stck_date, cycle.date_close || referenceDate);
     const rawSp = String(cycle.species || cycle.stck_species || "VAN").toUpperCase();
     const speciesLabel = (rawSp.includes("MON") || rawSp.includes("BLACK") || rawSp.includes("TIGER")) ? "MON" : "VAN";
 
@@ -814,7 +814,7 @@ export function calculateProgressDays(dailyRecord, referenceDate = new Date()) {
  * @returns {object}
  */
 export function resolveHybridPondState(pondCode, cycle, dailyRecord, pondIssues = [], referenceDate = new Date()) {
-    const opState = getOperationalPondState(cycle);
+    const opState = getOperationalPondState(cycle, referenceDate);
 
     // 1. Detect Mid-Week New Stocking from Excel (pending Friday Access sync)
     const hasMidWeekStocking = !opState.isStocked && 

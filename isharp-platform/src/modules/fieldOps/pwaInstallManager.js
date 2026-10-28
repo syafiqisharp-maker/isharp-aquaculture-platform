@@ -44,7 +44,7 @@ export class PwaInstallManager {
             this.deferredPrompt = null;
             this.isInstalled = true;
             console.log("[PwaInstallManager] PWA was installed successfully.");
-            Toast.success("📲 iSHARP Field Ops installed to your home screen!");
+            Toast.success("📲 iSHARP Portal installed to your home screen!");
             this.notify(false);
         });
     }

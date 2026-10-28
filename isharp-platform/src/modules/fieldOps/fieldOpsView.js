@@ -63,8 +63,16 @@ export class FieldOpsView {
      */
     async renderModuleLogin() {
         this.container.innerHTML = `
-            <div class="field-ops-login-stage" style="min-height: 100vh; padding: 2.5rem 1.5rem; display: flex; flex-direction: column; align-items: center; justify-content: center; background: transparent;">
+            <div class="field-ops-login-stage" style="min-height: 100vh; padding: 1.75rem 1.5rem; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; background: transparent;">
                 
+                <!-- Top Navigation: Back to Welcome Portal (Top-Left) -->
+                <div style="width: 100%; max-width: 860px; display: flex; justify-content: flex-start; margin-bottom: 1.25rem;">
+                    <button type="button" class="btn-action btn-secondary btn-portal-back" data-nav-view="portal" style="font-size: 0.84rem; font-weight: 700; padding: 0.5rem 1.35rem; border-radius: 999px; display: inline-flex; align-items: center; gap: 0.45rem; box-shadow: 0 2px 8px rgba(2, 132, 199, 0.12); background: rgba(255, 255, 255, 0.95); border: 1px solid #bae6fd; color: #0369a1; cursor: pointer;">
+                        <span class="btn-text-full">← Back to Welcome Portal</span>
+                        <span class="btn-text-short">← Back to Portal</span>
+                    </button>
+                </div>
+
                 <!-- Brand Header -->
                 <div style="text-align: center; margin-bottom: 2rem;">
                     <div style="display: inline-flex; align-items: center; gap: 0.6rem; background: rgba(255, 255, 255, 0.9); padding: 0.5rem 1.25rem; border-radius: 999px; border: 1px solid rgba(255, 255, 255, 1); box-shadow: 0 4px 16px rgba(2, 132, 199, 0.1);">
@@ -96,14 +104,6 @@ export class FieldOpsView {
                             </div>
                         `;
                     }).join("")}
-                </div>
-
-                <!-- Back to Landing Page -->
-                <div>
-                    <button type="button" class="btn-action btn-secondary" data-nav-view="portal" style="font-size: 0.84rem; font-weight: 700; padding: 0.5rem 1.4rem; border-radius: 999px;">
-                        <span class="btn-text-full">← Back to Welcome Portal</span>
-                        <span class="btn-text-short">← Back to Portal</span>
-                    </button>
                 </div>
 
                 <!-- Password Modal -->
@@ -221,8 +221,9 @@ export class FieldOpsView {
                     
                     <!-- Left: Navigation & Branding -->
                     <div class="field-ops-header-top" style="display: flex; align-items: center; gap: 0.85rem;">
-                        <button type="button" class="btn-action btn-secondary" data-nav-view="portal" style="font-size: 0.78rem; font-weight: 700; padding: 0.45rem 0.85rem; border-radius: 8px;">
-                            <span>← Portal</span>
+                        <button type="button" class="btn-action btn-secondary btn-portal-back" data-nav-view="portal" title="Return to Welcome Portal" style="font-size: 0.78rem; font-weight: 700; padding: 0.45rem 0.85rem; border-radius: 8px; display: inline-flex; align-items: center; gap: 0.35rem;">
+                            <span class="btn-text-full">← Back to Welcome Portal</span>
+                            <span class="btn-text-short">← Portal</span>
                         </button>
                         <h1 style="margin: 0; font-size: 1.2rem; font-weight: 900; color: #0f172a; display: flex; align-items: center; gap: 0.5rem;">
                             <span>Field Ops — M${modStr}</span>
@@ -259,7 +260,7 @@ export class FieldOpsView {
                     <div class="pwa-banner-content">
                         <div class="pwa-banner-icon">🦐</div>
                         <div class="pwa-banner-text">
-                            <strong>Install iSHARP Field Ops</strong>
+                            <strong>Install iSHARP Portal</strong>
                             <p>Fast offline pond data logging right from your home screen.</p>
                         </div>
                     </div>
