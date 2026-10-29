@@ -16,7 +16,8 @@ export class ViewRouter {
             "field-ops": document.getElementById("view-field-ops"),
             dbms: document.getElementById("view-dbms"),
             simulation: document.getElementById("view-simulation"),
-            "lab-qaqc": document.getElementById("view-lab-qaqc")
+            "lab-qaqc": document.getElementById("view-lab-qaqc"),
+            hatchery: document.getElementById("view-hatchery")
         };
 
         this.currentView = null;
@@ -26,7 +27,8 @@ export class ViewRouter {
             "field-ops": 0,
             dbms: 0,
             simulation: 0,
-            "lab-qaqc": 0
+            "lab-qaqc": 0,
+            hatchery: 0
         };
         this.isNavigatingBack = false;
         this.viewHistory = [];
@@ -218,6 +220,8 @@ export class ViewRouter {
             targetView = "simulation";
         } else if (hash === "#/qaqc" || hash === "#qaqc" || hash === "#/lab-qaqc" || hash === "#lab-qaqc") {
             targetView = "lab-qaqc";
+        } else if (hash.startsWith("#/hatchery") || hash.startsWith("#hatchery")) {
+            targetView = "hatchery";
         } else {
             targetView = "portal";
         }
@@ -264,11 +268,17 @@ export class ViewRouter {
         if (targetView === "lab-qaqc" && qaqcView) {
             qaqcView.ensureInitialized?.();
         }
+
+        const hatcheryView = window.app?.hatcheryView || window.__isharpApp?.hatcheryView;
+        if (targetView === "hatchery" && hatcheryView) {
+            hatcheryView.ensureInitialized?.();
+            hatcheryView.handleRoute?.();
+        }
     }
 
     navigate(viewName) {
         if (viewName === "qaqc") viewName = "lab-qaqc";
-        if (!["portal", "executive", "field-ops", "dbms", "simulation", "lab-qaqc"].includes(viewName)) {
+        if (!["portal", "executive", "field-ops", "dbms", "simulation", "lab-qaqc", "hatchery"].includes(viewName)) {
             viewName = "portal";
         }
         window.location.hash = `#/${viewName}`;

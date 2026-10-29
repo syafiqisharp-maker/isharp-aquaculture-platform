@@ -1,0 +1,299 @@
+/**
+ * iSHARP DBMS 2.0 — Telaga Putat Hatchery (TPH)
+ * Broodstock & Maturation Performance Report Sub-Page
+ * Visualizes batch arrivals, daily spawning production, Hatching Rate (HR-A only per Decision 20),
+ * and nauplii distribution to PL culture tanks.
+ */
+
+import { HatcheryRepository } from "../../infrastructure/repositories/hatcheryRepository.js";
+import { escapeHtml } from "../../utils/formatters.js";
+import { Toast } from "../../components/Toast.js";
+
+export class BroodstockReportPage {
+    constructor(containerEl, onNavigate) {
+        this.container = containerEl;
+        this.onNavigate = onNavigate;
+        this.batches = [];
+        this.selectedBatchCode = "";
+        this.dailyRecords = [];
+    }
+
+    async init() {
+        this.renderLoading();
+        await this.loadData();
+        this.render();
+    }
+
+    async loadData() {
+        try {
+            const batchList = await HatcheryRepository.getBroodstockBatches();
+            this.batches = batchList;
+            if (this.batches.length > 0 && !this.selectedBatchCode) {
+                // Default to latest batch
+                this.selectedBatchCode = this.batches[0].batch_code;
+            }
+            if (this.selectedBatchCode) {
+                this.dailyRecords = await HatcheryRepository.getBroodstockDailyRecords(this.selectedBatchCode);
+            }
+        } catch (err) {
+            console.error("Failed to load Broodstock Report data:", err);
+            Toast.error("Failed to load broodstock batches.");
+        }
+    }
+
+    async selectBatch(batchCode) {
+        this.selectedBatchCode = batchCode;
+        this.renderLoading();
+        this.dailyRecords = await HatcheryRepository.getBroodstockDailyRecords(batchCode);
+        this.render();
+    }
+
+    renderLoading() {
+        if (!this.container) return;
+        this.container.innerHTML = `
+            <div class="hatchery-loading-state">
+                <div class="hatchery-loading-spinner"></div>
+                <p>Loading Broodstock Maturation telemetry &amp; daily records...</p>
+            </div>
+        `;
+    }
+
+    render() {
+        if (!this.container) return;
+
+        const currentBatch = this.batches.find(b => b.batch_code === this.selectedBatchCode) || this.batches[0] || {};
+
+        // Aggregate statistics for selected batch
+        const totalGrossNaupliiK = this.dailyRecords.reduce((sum, d) => sum + (Number(d.nauplii_gross_k) || 0), 0);
+        const totalSpawns = this.dailyRecords.reduce((sum, d) => sum + (Number(d.spawning_count) || 0), 0);
+        const validHrRecords = this.dailyRecords.filter(d => d.hr_a_pct !== null && d.hr_a_pct !== undefined && d.hr_a_pct > 0);
+        const avgHrA = validHrRecords.length > 0 
+            ? (validHrRecords.reduce((sum, d) => sum + Number(d.hr_a_pct), 0) / validHrRecords.length).toFixed(1) 
+            : '—';
+        const totalEggsK = this.dailyRecords.reduce((sum, d) => sum + (Number(d.eggs_k) || 0), 0);
+        const totalDistributedK = this.dailyRecords.reduce((sum, d) => sum + (Number(d.distribution_tph_k) || 0), 0);
+
+        this.container.innerHTML = `
+            <div class="hatchery-report-page">
+                <!-- Header -->
+                <header class="report-header">
+                    <div class="report-header-left">
+                        <button class="hatchery-nav-btn secondary" id="btn-back-to-map" title="Back to 64-Tank Map">
+                            <span class="btn-icon">⬅</span>
+                            <span>Back to Hatchery Map</span>
+                        </button>
+                        <div class="report-title-group">
+                            <span class="report-badge">BROODSTOCK MATURATION &amp; SPAWNING</span>
+                            <h1 class="report-title">Broodstock Performance &amp; Daily Spawning Report</h1>
+                        </div>
+                    </div>
+
+                    <div class="report-header-right">
+                        <button class="hatchery-nav-btn accent" id="btn-export-brood-csv" title="Export Daily Records CSV">
+                            <span class="btn-icon">📥</span>
+                            <span>Export CSV</span>
+                        </button>
+                    </div>
+                </header>
+
+                <!-- Batch Selector Bar -->
+                <div class="batch-selector-bar">
+                    <div class="batch-select-label">
+                        <span class="batch-icon">🧬</span>
+                        <strong>Select Broodstock Batch:</strong>
+                    </div>
+                    <select id="broodstock-batch-select" class="hatchery-select batch-dropdown">
+                        ${this.batches.map(b => `
+                            <option value="${b.batch_code}" ${b.batch_code === this.selectedBatchCode ? 'selected' : ''}>
+                                ${escapeHtml(b.batch_code)} — Arrived ${b.arrival_date} (${escapeHtml(b.supplier)})
+                            </option>
+                        `).join('')}
+                    </select>
+                </div>
+
+                <!-- Batch Passport Glass Card -->
+                <section class="batch-passport-glass">
+                    <div class="passport-header">
+                        <div class="passport-code-group">
+                            <span class="passport-badge">BATCH PASSPORT</span>
+                            <h2 class="passport-code">${escapeHtml(currentBatch.batch_code || '—')}</h2>
+                            <span class="passport-species">${escapeHtml(currentBatch.species || 'L.Vannamei')}</span>
+                        </div>
+                        <div class="passport-supplier-group">
+                            <span class="passport-sublabel">Breeder &amp; Supplier:</span>
+                            <span class="passport-supplier">${escapeHtml(currentBatch.supplier || '—')}</span>
+                        </div>
+                    </div>
+
+                    <div class="passport-grid">
+                        <div class="passport-stat">
+                            <span class="pstat-label">Arrival Date</span>
+                            <span class="pstat-val">${currentBatch.arrival_date || '—'} ${currentBatch.arrival_time ? '• ' + currentBatch.arrival_time : ''}</span>
+                        </div>
+                        <div class="passport-stat">
+                            <span class="pstat-label">Arrived Population</span>
+                            <span class="pstat-val">♀ ${currentBatch.arrived_pop_female || '—'} | ♂ ${currentBatch.arrived_pop_male || '—'}</span>
+                        </div>
+                        <div class="passport-stat">
+                            <span class="pstat-label">Initial Female ABW</span>
+                            <span class="pstat-val">${currentBatch.abw_female_g ? currentBatch.abw_female_g + ' g' : '—'}</span>
+                        </div>
+                        <div class="passport-stat">
+                            <span class="pstat-label">Initial Male ABW</span>
+                            <span class="pstat-val">${currentBatch.abw_male_g ? currentBatch.abw_male_g + ' g' : '—'}</span>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Batch Lifetime KPI Bento -->
+                <section class="hatchery-kpi-bento">
+                    <div class="kpi-card-glass kpi-cyan">
+                        <div class="kpi-icon-orbit">✨</div>
+                        <div class="kpi-body">
+                            <span class="kpi-label">Total Nauplii Gross</span>
+                            <span class="kpi-value">${(totalGrossNaupliiK / 1000).toFixed(2)}M <small>nauplii</small></span>
+                            <span class="kpi-caption">${totalGrossNaupliiK.toLocaleString()}k total gross production</span>
+                        </div>
+                    </div>
+
+                    <div class="kpi-card-glass kpi-green">
+                        <div class="kpi-icon-orbit">🥚</div>
+                        <div class="kpi-body">
+                            <span class="kpi-label">Average Hatching Rate (HR-A)</span>
+                            <span class="kpi-value hr-val">${avgHrA}%</span>
+                            <span class="kpi-caption">Empirical display HR (Decision 20)</span>
+                        </div>
+                    </div>
+
+                    <div class="kpi-card-glass kpi-blue">
+                        <div class="kpi-icon-orbit">🦐</div>
+                        <div class="kpi-body">
+                            <span class="kpi-label">Total Spawning Events</span>
+                            <span class="kpi-value">${totalSpawns}</span>
+                            <span class="kpi-caption">Total mated female spawns</span>
+                        </div>
+                    </div>
+
+                    <div class="kpi-card-glass kpi-purple">
+                        <div class="kpi-icon-orbit">🚚</div>
+                        <div class="kpi-body">
+                            <span class="kpi-label">Distributed to TPH Tanks</span>
+                            <span class="kpi-value">${(totalDistributedK / 1000).toFixed(2)}M</span>
+                            <span class="kpi-caption">${totalDistributedK.toLocaleString()}k stocked into PL tanks</span>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Daily Monitoring Records Table -->
+                <section class="report-section-glass">
+                    <div class="section-title-row">
+                        <h3 class="section-title">📅 Daily Maturation &amp; Spawning Monitoring Records</h3>
+                        <span class="section-subtag">${this.dailyRecords.length} recorded daily shifts for ${escapeHtml(currentBatch.batch_code || '')}</span>
+                    </div>
+
+                    <div class="table-responsive">
+                        <table class="hatchery-table">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>DOC</th>
+                                    <th>DOP</th>
+                                    <th>Spawns</th>
+                                    <th>Eggs (k)</th>
+                                    <th>Fertilization %</th>
+                                    <th>Nauplii Gross (k)</th>
+                                    <th>Hatching Rate (HR-A)</th>
+                                    <th>TPH Stocking (k)</th>
+                                    <th>Target Tanks</th>
+                                    <th>Spawn Block</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${this.dailyRecords.length > 0 ? this.dailyRecords.map(d => `
+                                    <tr>
+                                        <td><strong>${d.rec_date}</strong></td>
+                                        <td>${d.doc !== null ? 'DOC ' + d.doc : '—'}</td>
+                                        <td>${d.dop !== null ? 'DOP ' + d.dop : '—'}</td>
+                                        <td>${d.spawning_count || '0'}</td>
+                                        <td>${d.eggs_k ? Number(d.eggs_k).toLocaleString() + 'k' : '—'}</td>
+                                        <td>${d.fertilization_rate_pct !== null && d.fertilization_rate_pct !== undefined ? d.fertilization_rate_pct + '%' : '—'}</td>
+                                        <td><strong>${d.nauplii_gross_k ? Number(d.nauplii_gross_k).toLocaleString() + 'k' : '—'}</strong></td>
+                                        <td class="hr-cell">
+                                            <strong>${d.hr_a_pct !== null && d.hr_a_pct !== undefined ? d.hr_a_pct + '%' : '—'}</strong>
+                                        </td>
+                                        <td>${d.distribution_tph_k ? Number(d.distribution_tph_k).toLocaleString() + 'k' : '—'}</td>
+                                        <td>
+                                            ${d.distribution_tank_list ? `<span class="tank-target-pill">${escapeHtml(d.distribution_tank_list)}</span>` : '—'}
+                                        </td>
+                                        <td>
+                                            <span class="spawn-block-tag ${d.spawn_block ? d.spawn_block.toLowerCase() : ''}">${d.spawn_block || '—'}</span>
+                                        </td>
+                                    </tr>
+                                `).join('') : `
+                                    <tr><td colspan="11" class="text-center text-muted">No daily records found for this batch.</td></tr>
+                                `}
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+            </div>
+        `;
+
+        this.bindEvents();
+    }
+
+    bindEvents() {
+        const btnBack = document.getElementById("btn-back-to-map");
+        if (btnBack) {
+            btnBack.addEventListener("click", () => {
+                if (this.onNavigate) this.onNavigate("hatchery");
+            });
+        }
+
+        const batchSelect = document.getElementById("broodstock-batch-select");
+        if (batchSelect) {
+            batchSelect.addEventListener("change", (e) => {
+                this.selectBatch(e.target.value);
+            });
+        }
+
+        const btnExport = document.getElementById("btn-export-brood-csv");
+        if (btnExport) {
+            btnExport.addEventListener("click", () => this.exportCsv());
+        }
+    }
+
+    exportCsv() {
+        if (!this.dailyRecords || this.dailyRecords.length === 0) {
+            Toast.warning("No daily records to export.");
+            return;
+        }
+
+        const headers = ["Batch", "Date", "DOC", "DOP", "Spawning Count", "Eggs (k)", "Fertilization %", "Nauplii Gross (k)", "HR-A %", "Distribution TPH (k)", "Tanks", "Spawn Block"];
+        const rows = this.dailyRecords.map(d => [
+            d.batch_code,
+            d.rec_date,
+            d.doc !== null ? d.doc : "",
+            d.dop !== null ? d.dop : "",
+            d.spawning_count || "0",
+            d.eggs_k || "",
+            d.fertilization_rate_pct !== null ? d.fertilization_rate_pct : "",
+            d.nauplii_gross_k || "",
+            d.hr_a_pct !== null ? d.hr_a_pct : "",
+            d.distribution_tph_k || "",
+            d.distribution_tank_list || "",
+            d.spawn_block || ""
+        ]);
+
+        const csvContent = "\uFEFF" + [headers.join(","), ...rows.map(row => row.map(v => `"${String(v).replace(/"/g, '""')}"`).join(","))].join("\r\n");
+        const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.setAttribute("href", url);
+        link.setAttribute("download", `TPH_Broodstock_Batch_${this.selectedBatchCode.replace(/[\/\s]/g, '_')}_${new Date().toISOString().split("T")[0]}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        Toast.success("Exported Broodstock Daily Records CSV!");
+    }
+}

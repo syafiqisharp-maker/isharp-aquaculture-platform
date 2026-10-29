@@ -56,3 +56,6 @@
 
 /* 17. Field Lab & QA/QC Portal & Inspection Forms */
 @import "./components/qaqc.css";
+
+/* 18. Telaga Putat Hatchery (TPH) Command Center */
+@import "./components/hatchery.css";

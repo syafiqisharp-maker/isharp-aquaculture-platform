@@ -1,0 +1,1370 @@
+/* ==============================================================================
+   iSHARP DBMS 2.0 — Telaga Putat Hatchery (TPH) Stylesheet
+   Frutiger Aero Marine Aesthetic • 64-Tank Matrix • Maturation & Lab Slots
+   ============================================================================== */
+
+.hatchery-dashboard,
+.hatchery-report-page {
+    width: 100%;
+    max-width: 1540px;
+    margin: 0 auto;
+    padding: 1.5rem 1.25rem 3.5rem 1.25rem;
+    color: #0f172a;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+/* Loading State */
+.hatchery-loading-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 480px;
+    gap: 1.25rem;
+    color: #0284c7;
+    font-weight: 500;
+}
+
+.hatchery-loading-spinner {
+    width: 48px;
+    height: 48px;
+    border: 4px solid rgba(2, 132, 199, 0.15);
+    border-top-color: #0284c7;
+    border-radius: 50%;
+    animation: hatchery-spin 0.8s linear infinite;
+}
+
+@keyframes hatchery-spin {
+    to { transform: rotate(360deg); }
+}
+
+/* Header */
+.hatchery-header,
+.report-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 1.25rem;
+    padding: 1.25rem 1.5rem;
+    margin-bottom: 1.75rem;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.85) 0%, rgba(240, 249, 255, 0.8) 100%);
+    backdrop-filter: blur(16px);
+    border: 1px solid rgba(186, 230, 253, 0.6);
+    border-radius: 20px;
+    box-shadow: 0 10px 30px rgba(2, 132, 199, 0.08);
+}
+
+.hatchery-title-group,
+.report-title-group {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.hatchery-icon-badge {
+    width: 52px;
+    height: 52px;
+    border-radius: 16px;
+    background: radial-gradient(circle at 35% 30%, #ffffff 0%, #38bdf8 60%, #0284c7 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.6rem;
+    box-shadow: 0 6px 18px rgba(2, 132, 199, 0.3), inset 0 2px 4px #ffffff;
+}
+
+.hatchery-subtitle-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.25rem;
+}
+
+.hatchery-badge-pill,
+.report-badge {
+    display: inline-block;
+    padding: 0.2rem 0.6rem;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    color: #ffffff;
+    background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
+    border-radius: 999px;
+    box-shadow: 0 2px 6px rgba(2, 132, 199, 0.3);
+}
+
+.hatchery-badge-pill.secondary {
+    background: rgba(2, 132, 199, 0.1);
+    color: #0369a1;
+    border: 1px solid rgba(2, 132, 199, 0.25);
+    box-shadow: none;
+}
+
+.hatchery-title,
+.report-title {
+    font-size: 1.45rem;
+    font-weight: 800;
+    margin: 0;
+    color: #0c4a6e;
+    letter-spacing: -0.02em;
+}
+
+.hatchery-action-toolbar,
+.report-header-right {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    flex-wrap: wrap;
+}
+
+.hatchery-nav-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.6rem 1.1rem;
+    font-size: 0.88rem;
+    font-weight: 600;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    border: 1px solid transparent;
+}
+
+.hatchery-nav-btn.primary {
+    background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
+    color: #ffffff;
+    box-shadow: 0 4px 14px rgba(2, 132, 199, 0.35);
+}
+
+.hatchery-nav-btn.primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(2, 132, 199, 0.45);
+}
+
+.hatchery-nav-btn.accent {
+    background: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%);
+    color: #ffffff;
+    box-shadow: 0 4px 14px rgba(109, 40, 217, 0.35);
+}
+
+.hatchery-nav-btn.accent:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(109, 40, 217, 0.45);
+}
+
+.hatchery-nav-btn.secondary,
+.hatchery-nav-btn.portal-back {
+    background: rgba(255, 255, 255, 0.85);
+    color: #334155;
+    border: 1px solid #cbd5e1;
+}
+
+.hatchery-nav-btn.secondary:hover,
+.hatchery-nav-btn.portal-back:hover {
+    background: #ffffff;
+    color: #0284c7;
+    border-color: #38bdf8;
+    transform: translateY(-2px);
+}
+
+/* KPI Bento */
+.hatchery-kpi-bento {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 1.1rem;
+    margin-bottom: 1.75rem;
+}
+
+.kpi-card-glass {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 1.1rem;
+    padding: 1.15rem 1.25rem;
+    border-radius: 18px;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.9) 0%, rgba(248, 250, 252, 0.85) 100%);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(226, 232, 240, 0.8);
+    box-shadow: 0 6px 18px rgba(15, 23, 42, 0.04);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.kpi-card-glass:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
+}
+
+.kpi-card-glass.kpi-cyan { border-left: 5px solid #06b6d4; }
+.kpi-card-glass.kpi-blue { border-left: 5px solid #0284c7; }
+.kpi-card-glass.kpi-amber { border-left: 5px solid #f59e0b; }
+.kpi-card-glass.kpi-purple { border-left: 5px solid #8b5cf6; }
+.kpi-card-glass.kpi-green { border-left: 5px solid #10b981; }
+
+.kpi-icon-orbit {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    background: #f1f5f9;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.35rem;
+    flex-shrink: 0;
+}
+
+.kpi-card-glass.kpi-cyan .kpi-icon-orbit { background: rgba(6, 182, 212, 0.12); }
+.kpi-card-glass.kpi-blue .kpi-icon-orbit { background: rgba(2, 132, 199, 0.12); }
+.kpi-card-glass.kpi-amber .kpi-icon-orbit { background: rgba(245, 158, 11, 0.12); }
+.kpi-card-glass.kpi-purple .kpi-icon-orbit { background: rgba(139, 92, 246, 0.12); }
+.kpi-card-glass.kpi-green .kpi-icon-orbit { background: rgba(16, 185, 129, 0.12); }
+
+.kpi-body {
+    display: flex;
+    flex-direction: column;
+}
+
+.kpi-label {
+    font-size: 0.78rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #64748b;
+    margin-bottom: 0.2rem;
+}
+
+.kpi-value {
+    font-size: 1.6rem;
+    font-weight: 800;
+    color: #0f172a;
+    line-height: 1.1;
+}
+
+.kpi-value small {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #64748b;
+}
+
+.kpi-caption {
+    font-size: 0.75rem;
+    color: #64748b;
+    margin-top: 0.35rem;
+}
+
+/* Maturation Section */
+.hatchery-maturation-section {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
+    gap: 1.25rem;
+    margin-bottom: 1.75rem;
+}
+
+.maturation-block-card {
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(241, 245, 249, 0.85) 100%);
+    backdrop-filter: blur(14px);
+    border: 1px solid rgba(203, 213, 225, 0.8);
+    border-radius: 18px;
+    padding: 1.25rem 1.4rem;
+    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.05);
+}
+
+.maturation-block-card.block-a { border-top: 4px solid #0284c7; }
+.maturation-block-card.block-b { border-top: 4px solid #8b5cf6; }
+
+.mat-card-header {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.mat-badge {
+    padding: 0.25rem 0.6rem;
+    font-size: 0.72rem;
+    font-weight: 800;
+    color: #ffffff;
+    background: #0f172a;
+    border-radius: 6px;
+}
+
+.mat-title {
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: #0f172a;
+    margin: 0;
+    flex-grow: 1;
+}
+
+.mat-status-pill {
+    font-size: 0.72rem;
+    font-weight: 700;
+    padding: 0.2rem 0.55rem;
+    border-radius: 999px;
+}
+
+.mat-status-pill.live {
+    background: rgba(16, 185, 129, 0.15);
+    color: #047857;
+    border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.mat-status-pill.idle {
+    background: #f1f5f9;
+    color: #64748b;
+    border: 1px solid #cbd5e1;
+}
+
+.mat-card-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0.75rem;
+}
+
+.mat-stat {
+    display: flex;
+    flex-direction: column;
+}
+
+.mat-stat-label {
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    color: #64748b;
+    margin-bottom: 0.2rem;
+}
+
+.mat-stat-val {
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: #0f172a;
+}
+
+.mat-stat-val.highlight {
+    color: #0284c7;
+}
+
+.mat-stat-val.hr-val {
+    color: #059669;
+}
+
+/* Controls & Filter Bar */
+.hatchery-controls-bar {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+    padding: 0.9rem 1.25rem;
+    margin-bottom: 1.5rem;
+    background: rgba(255, 255, 255, 0.85);
+    backdrop-filter: blur(12px);
+    border: 1px solid #e2e8f0;
+    border-radius: 14px;
+}
+
+.filter-group {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.filter-label {
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: #475569;
+}
+
+.hatchery-select {
+    padding: 0.45rem 0.85rem;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #0f172a;
+    background: #ffffff;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    cursor: pointer;
+    outline: none;
+    transition: border-color 0.2s;
+}
+
+.hatchery-select:focus {
+    border-color: #0284c7;
+    box-shadow: 0 0 0 2px rgba(2, 132, 199, 0.2);
+}
+
+.search-group {
+    flex-grow: 1;
+    min-width: 220px;
+}
+
+.hatchery-search-input {
+    width: 100%;
+    padding: 0.45rem 0.9rem;
+    font-size: 0.85rem;
+    background: #ffffff;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    outline: none;
+    transition: border-color 0.2s;
+}
+
+.hatchery-search-input:focus {
+    border-color: #0284c7;
+    box-shadow: 0 0 0 2px rgba(2, 132, 199, 0.2);
+}
+
+.legend-group {
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: #64748b;
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+}
+
+.legend-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+}
+
+.dot-culture { background: #10b981; box-shadow: 0 0 8px rgba(16, 185, 129, 0.6); }
+.dot-harvested { background: #0284c7; }
+.dot-flushed { background: #f59e0b; }
+.dot-idle { background: #94a3b8; }
+
+/* 64-Tank Matrix Layout */
+.hatchery-matrix-stage {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.hatchery-block-container {
+    background: rgba(255, 255, 255, 0.75);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(226, 232, 240, 0.9);
+    border-radius: 20px;
+    padding: 1.25rem 1.4rem;
+    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.04);
+    position: relative;
+}
+
+.block-indicator-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.3rem 0.75rem;
+    background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+    color: #ffffff;
+    border-radius: 8px;
+    font-size: 0.82rem;
+    font-weight: 800;
+    letter-spacing: 0.05em;
+    margin-bottom: 1rem;
+}
+
+.block-indicator-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #38bdf8;
+    box-shadow: 0 0 8px #38bdf8;
+}
+
+.block-tanks-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 0.9rem;
+}
+
+.block-tank-row {
+    display: grid;
+    grid-template-columns: repeat(8, 1fr);
+    gap: 0.85rem;
+}
+
+/* Individual Tank Card */
+.hatchery-tank-card {
+    background: #ffffff;
+    border: 1.5px solid #cbd5e1;
+    border-radius: 12px;
+    padding: 0.75rem 0.65rem;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    min-height: 104px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    outline: none;
+    position: relative;
+    box-shadow: 0 2px 6px rgba(15, 23, 42, 0.03);
+}
+
+.hatchery-tank-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 18px rgba(15, 23, 42, 0.08);
+}
+
+.hatchery-tank-card.selected {
+    border-color: #0284c7;
+    box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.25);
+}
+
+/* Tank Status Theming */
+.hatchery-tank-card.status-culture {
+    border-color: rgba(16, 185, 129, 0.5);
+    background: linear-gradient(180deg, #ffffff 0%, rgba(236, 253, 245, 0.6) 100%);
+}
+
+.hatchery-tank-card.status-culture:hover {
+    border-color: #10b981;
+}
+
+.hatchery-tank-card.status-harvested {
+    border-color: rgba(2, 132, 199, 0.4);
+    background: linear-gradient(180deg, #ffffff 0%, rgba(240, 249, 255, 0.6) 100%);
+}
+
+.hatchery-tank-card.status-flushed {
+    border-color: rgba(245, 158, 11, 0.4);
+    background: linear-gradient(180deg, #ffffff 0%, rgba(254, 243, 199, 0.6) 100%);
+}
+
+.hatchery-tank-card.status-idle {
+    border-color: #e2e8f0;
+    background: #f8fafc;
+    opacity: 0.85;
+}
+
+.tank-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.tank-code {
+    font-size: 0.95rem;
+    font-weight: 800;
+    color: #0f172a;
+}
+
+.tank-status-dot {
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+}
+
+.tank-status-dot.dot-culture {
+    background: #10b981;
+    box-shadow: 0 0 8px rgba(16, 185, 129, 0.8);
+    animation: pulse-dot 2s infinite;
+}
+
+@keyframes pulse-dot {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.6; transform: scale(1.15); }
+}
+
+.tank-status-dot.dot-harvested { background: #0284c7; }
+.tank-status-dot.dot-flushed { background: #f59e0b; }
+.tank-status-dot.dot-idle { background: #cbd5e1; }
+
+.tank-card-body {
+    margin: 0.35rem 0;
+}
+
+.tank-main-metric {
+    display: block;
+    font-size: 0.88rem;
+    font-weight: 700;
+    color: #0f172a;
+}
+
+.status-culture .tank-main-metric { color: #047857; }
+.status-harvested .tank-main-metric { color: #0369a1; }
+.status-flushed .tank-main-metric { color: #b45309; }
+
+.tank-sub-metric {
+    display: block;
+    font-size: 0.72rem;
+    color: #64748b;
+    margin-top: 0.15rem;
+}
+
+.tank-card-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-top: 1px dashed rgba(203, 213, 225, 0.6);
+    padding-top: 0.3rem;
+}
+
+.tank-source-tag {
+    font-size: 0.68rem;
+    color: #475569;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 90px;
+}
+
+.harvest-window-pill {
+    font-size: 0.65rem;
+    font-weight: 700;
+    padding: 0.1rem 0.35rem;
+    border-radius: 4px;
+}
+
+.harvest-window-pill.window {
+    background: #10b981;
+    color: #ffffff;
+}
+
+.harvest-window-pill.approaching {
+    background: #f59e0b;
+    color: #ffffff;
+}
+
+/* Artemia Facility Room */
+.hatchery-facility-room {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 1.25rem 2rem;
+    background: linear-gradient(135deg, rgba(254, 243, 199, 0.7) 0%, rgba(253, 230, 138, 0.5) 100%);
+    border: 2px dashed rgba(245, 158, 11, 0.4);
+    border-radius: 16px;
+    box-shadow: inset 0 2px 4px rgba(255, 255, 255, 0.8);
+}
+
+.facility-signboard {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.2rem;
+}
+
+.facility-icon {
+    font-size: 1.75rem;
+}
+
+.facility-title {
+    font-size: 1.15rem;
+    font-weight: 800;
+    color: #92400e;
+    letter-spacing: 0.08em;
+}
+
+.facility-subtag {
+    font-size: 0.75rem;
+    color: #b45309;
+    font-weight: 500;
+}
+
+/* Drawer / Modal */
+.hatchery-drawer-backdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(15, 23, 42, 0.4);
+    backdrop-filter: blur(6px);
+    z-index: 10000;
+    display: flex;
+    justify-content: flex-end;
+}
+
+.hatchery-drawer-backdrop.hidden {
+    display: none;
+}
+
+.hatchery-drawer-panel {
+    width: 100%;
+    max-width: 580px;
+    height: 100%;
+    background: #ffffff;
+    box-shadow: -10px 0 35px rgba(15, 23, 42, 0.15);
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    animation: drawer-slide-in 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes drawer-slide-in {
+    from { transform: translateX(100%); }
+    to { transform: translateX(0); }
+}
+
+.drawer-header {
+    padding: 1.5rem 1.75rem;
+    border-bottom: 1px solid #e2e8f0;
+    background: #f8fafc;
+}
+
+.drawer-title-row {
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+}
+
+.drawer-tank-badge {
+    font-size: 1.25rem;
+    font-weight: 800;
+    color: #0f172a;
+}
+
+.drawer-status-pill {
+    padding: 0.25rem 0.65rem;
+    font-size: 0.75rem;
+    font-weight: 700;
+    border-radius: 999px;
+}
+
+.drawer-status-pill.culture { background: rgba(16, 185, 129, 0.15); color: #047857; }
+.drawer-status-pill.harvested { background: rgba(2, 132, 199, 0.15); color: #0369a1; }
+.drawer-status-pill.flushed { background: rgba(245, 158, 11, 0.15); color: #b45309; }
+.drawer-status-pill.idle { background: #f1f5f9; color: #64748b; }
+
+.drawer-close-btn {
+    margin-left: auto;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: none;
+    background: #e2e8f0;
+    color: #475569;
+    font-size: 1rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.drawer-close-btn:hover {
+    background: #cbd5e1;
+    color: #0f172a;
+}
+
+.drawer-subtitle {
+    font-size: 0.82rem;
+    color: #64748b;
+    margin-top: 0.4rem;
+}
+
+.drawer-tabs-bar {
+    display: flex;
+    gap: 0.5rem;
+    padding: 0.75rem 1.5rem;
+    border-bottom: 1px solid #e2e8f0;
+    background: #ffffff;
+    overflow-x: auto;
+}
+
+.drawer-tab {
+    padding: 0.5rem 0.85rem;
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: #64748b;
+    background: transparent;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.drawer-tab.active {
+    background: #0284c7;
+    color: #ffffff;
+}
+
+.tab-badge-beta {
+    font-size: 0.65rem;
+    padding: 0.1rem 0.35rem;
+    border-radius: 4px;
+    background: rgba(245, 158, 11, 0.2);
+    color: #d97706;
+}
+
+.drawer-tab.active .tab-badge-beta {
+    background: rgba(255, 255, 255, 0.3);
+    color: #ffffff;
+}
+
+.drawer-body {
+    padding: 1.5rem 1.75rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    flex-grow: 1;
+}
+
+.drawer-section {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.drawer-sec-title {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: #0f172a;
+    margin: 0;
+}
+
+.drawer-meta-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.75rem;
+}
+
+.meta-item {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    padding: 0.75rem;
+    display: flex;
+    flex-direction: column;
+}
+
+.meta-label {
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    color: #64748b;
+    margin-bottom: 0.2rem;
+}
+
+.meta-value {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: #0f172a;
+}
+
+.meta-value.highlight { color: #0284c7; }
+.meta-value.success { color: #059669; }
+.meta-value.warn { color: #d97706; }
+
+.drawer-lineage-card {
+    background: linear-gradient(135deg, rgba(240, 249, 255, 0.8) 0%, rgba(224, 242, 254, 0.5) 100%);
+    border: 1px solid rgba(186, 230, 253, 0.8);
+    border-radius: 12px;
+    padding: 0.9rem 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.lineage-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.82rem;
+}
+
+.lineage-label {
+    color: #475569;
+    font-weight: 600;
+}
+
+.lineage-val {
+    font-weight: 700;
+    color: #0f172a;
+}
+
+.lineage-val.highlight { color: #0284c7; }
+.lineage-val.hr-val { color: #059669; }
+
+/* Events timeline */
+.drawer-events-timeline {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.timeline-event-card {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    padding: 0.75rem 0.9rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+}
+
+.timeline-event-card.event-harvest { border-left: 4px solid #0284c7; }
+.timeline-event-card.event-flush { border-left: 4px solid #f59e0b; }
+.timeline-event-card.event-culture { border-left: 4px solid #10b981; }
+
+.event-header-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.event-type-pill {
+    padding: 0.15rem 0.5rem;
+    font-size: 0.7rem;
+    font-weight: 700;
+    border-radius: 4px;
+}
+
+.event-type-pill.harvest { background: rgba(2, 132, 199, 0.12); color: #0369a1; }
+.event-type-pill.flush { background: rgba(245, 158, 11, 0.12); color: #b45309; }
+.event-type-pill.culture { background: rgba(16, 185, 129, 0.12); color: #047857; }
+
+.event-date {
+    font-size: 0.75rem;
+    color: #64748b;
+    font-weight: 600;
+}
+
+.event-body-row {
+    display: flex;
+    gap: 0.85rem;
+    font-size: 0.82rem;
+    font-weight: 600;
+}
+
+.event-qty { color: #0f172a; font-weight: 800; }
+.event-sr { color: #059669; }
+.event-reason { font-size: 0.78rem; color: #b45309; }
+.event-lot { font-size: 0.75rem; color: #64748b; }
+
+/* Linked Ponds */
+.drawer-pond-links-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.pond-link-card {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 0.85rem 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.45rem;
+}
+
+.pond-link-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.pond-link-code {
+    font-size: 0.92rem;
+    font-weight: 800;
+    color: #0284c7;
+}
+
+.pond-link-badge {
+    padding: 0.15rem 0.55rem;
+    font-size: 0.7rem;
+    font-weight: 700;
+    border-radius: 999px;
+}
+
+.pond-link-badge.linked { background: rgba(16, 185, 129, 0.15); color: #047857; }
+.pond-link-badge.review { background: rgba(245, 158, 11, 0.15); color: #b45309; }
+
+.pond-link-meta {
+    display: flex;
+    gap: 1rem;
+    font-size: 0.78rem;
+    color: #475569;
+}
+
+.pond-link-notes {
+    font-size: 0.75rem;
+    color: #64748b;
+    background: #ffffff;
+    padding: 0.4rem 0.6rem;
+    border-radius: 6px;
+    border: 1px solid #e2e8f0;
+}
+
+/* Lab Placeholder */
+.drawer-lab-section {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.lab-placeholder-banner {
+    background: linear-gradient(135deg, rgba(254, 243, 199, 0.6) 0%, rgba(253, 230, 138, 0.4) 100%);
+    border: 1px dashed #f59e0b;
+    border-radius: 12px;
+    padding: 1.1rem;
+    text-align: center;
+}
+
+.lab-icon { font-size: 2rem; display: block; margin-bottom: 0.35rem; }
+.lab-placeholder-banner h4 { margin: 0 0 0.3rem 0; font-size: 1rem; color: #92400e; }
+.lab-placeholder-banner p { margin: 0; font-size: 0.8rem; color: #b45309; }
+
+.lab-cards-preview {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0.75rem;
+}
+
+.lab-card-slot {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    padding: 0.85rem;
+}
+
+.lab-card-slot h5 { margin: 0 0 0.25rem 0; font-size: 0.88rem; color: #0f172a; }
+.lab-card-slot p { margin: 0 0 0.5rem 0; font-size: 0.78rem; color: #64748b; }
+.lab-status-badge {
+    font-size: 0.7rem;
+    font-weight: 600;
+    padding: 0.15rem 0.5rem;
+    border-radius: 4px;
+    background: #e2e8f0;
+    color: #475569;
+}
+
+/* Report Pages Shared Styles */
+.report-section-glass {
+    background: rgba(255, 255, 255, 0.9);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(226, 232, 240, 0.8);
+    border-radius: 18px;
+    padding: 1.25rem 1.4rem;
+    margin-bottom: 1.75rem;
+    box-shadow: 0 6px 18px rgba(15, 23, 42, 0.04);
+}
+
+.section-title-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+    padding-bottom: 0.65rem;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.section-title {
+    font-size: 1.05rem;
+    font-weight: 700;
+    margin: 0;
+    color: #0f172a;
+}
+
+.section-subtag {
+    font-size: 0.75rem;
+    color: #64748b;
+}
+
+.table-responsive {
+    overflow-x: auto;
+    width: 100%;
+}
+
+.hatchery-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.82rem;
+}
+
+.hatchery-table th {
+    background: #f8fafc;
+    color: #475569;
+    font-weight: 700;
+    text-align: left;
+    padding: 0.65rem 0.75rem;
+    border-bottom: 2px solid #e2e8f0;
+    white-space: nowrap;
+}
+
+.hatchery-table td {
+    padding: 0.65rem 0.75rem;
+    border-bottom: 1px solid #f1f5f9;
+    color: #1e293b;
+    white-space: nowrap;
+}
+
+.hatchery-table tr:hover td {
+    background: #f8fafc;
+}
+
+.hatchery-status-tag {
+    display: inline-block;
+    padding: 0.15rem 0.5rem;
+    font-size: 0.7rem;
+    font-weight: 700;
+    border-radius: 4px;
+}
+
+.hatchery-status-tag.harvest,
+.hatchery-status-tag.harvested { background: rgba(2, 132, 199, 0.12); color: #0369a1; }
+.hatchery-status-tag.culture { background: rgba(16, 185, 129, 0.12); color: #047857; }
+.hatchery-status-tag.flush,
+.hatchery-status-tag.flushed { background: rgba(245, 158, 11, 0.12); color: #b45309; }
+
+.flag-pill {
+    font-size: 0.68rem;
+    padding: 0.1rem 0.4rem;
+    border-radius: 4px;
+    background: rgba(239, 68, 68, 0.1);
+    color: #dc2626;
+    font-weight: 600;
+}
+
+/* Broodstock Passport Card */
+.batch-selector-bar {
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+    margin-bottom: 1.25rem;
+    background: rgba(255, 255, 255, 0.85);
+    padding: 0.85rem 1.25rem;
+    border-radius: 14px;
+    border: 1px solid #e2e8f0;
+}
+
+.batch-dropdown {
+    min-width: 380px;
+    font-size: 0.92rem;
+}
+
+.batch-passport-glass {
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(240, 249, 255, 0.85) 100%);
+    border: 1px solid rgba(186, 230, 253, 0.8);
+    border-radius: 18px;
+    padding: 1.35rem 1.6rem;
+    margin-bottom: 1.75rem;
+    box-shadow: 0 8px 24px rgba(2, 132, 199, 0.06);
+}
+
+.passport-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-bottom: 1rem;
+    margin-bottom: 1rem;
+    border-bottom: 1px solid rgba(186, 230, 253, 0.6);
+}
+
+.passport-code {
+    font-size: 1.5rem;
+    font-weight: 800;
+    color: #0c4a6e;
+    margin: 0.2rem 0;
+}
+
+.passport-species {
+    font-size: 0.82rem;
+    color: #0284c7;
+    font-weight: 600;
+}
+
+.passport-supplier-group {
+    text-align: right;
+}
+
+.passport-sublabel {
+    display: block;
+    font-size: 0.72rem;
+    color: #64748b;
+}
+
+.passport-supplier {
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: #0f172a;
+}
+
+.passport-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1rem;
+}
+
+.passport-stat {
+    display: flex;
+    flex-direction: column;
+}
+
+.pstat-label {
+    font-size: 0.72rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    color: #64748b;
+    margin-bottom: 0.2rem;
+}
+
+.pstat-val {
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: #0f172a;
+}
+
+.tank-target-pill {
+    padding: 0.15rem 0.5rem;
+    font-size: 0.72rem;
+    font-weight: 700;
+    border-radius: 4px;
+    background: #f1f5f9;
+    color: #0284c7;
+    border: 1px solid #cbd5e1;
+}
+
+.spawn-block-tag {
+    padding: 0.15rem 0.45rem;
+    font-size: 0.7rem;
+    font-weight: 700;
+    border-radius: 4px;
+}
+
+.spawn-block-tag.sha { background: rgba(2, 132, 199, 0.12); color: #0369a1; }
+.spawn-block-tag.shb { background: rgba(139, 92, 246, 0.12); color: #6d28d9; }
+
+/* Responsive Adjustments */
+@media (max-width: 1024px) {
+    .block-tank-row {
+        grid-template-columns: repeat(4, 1fr);
+    }
+    .mat-card-grid,
+    .passport-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 640px) {
+    .block-tank-row {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    .hatchery-header,
+    .report-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    .hatchery-action-toolbar {
+        width: 100%;
+    }
+    .hatchery-nav-btn {
+        flex-grow: 1;
+        justify-content: center;
+    }
+}
+
+/* -------------------------------------------------------------
+ * Stocking Tab Hatchery Origin & Traceability Integration Card
+ * ------------------------------------------------------------- */
+.hatchery-trace-card {
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.95), rgba(240, 249, 255, 0.85));
+    border: 1px solid rgba(2, 132, 199, 0.25);
+    border-radius: 12px;
+    padding: 1.1rem 1.35rem;
+    box-shadow: 0 4px 16px rgba(2, 132, 199, 0.08);
+    margin-bottom: 1rem;
+    position: relative;
+    overflow: hidden;
+}
+
+.hatchery-trace-card::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 5px;
+    height: 100%;
+    background: linear-gradient(180deg, #0284c7, #06b6d4);
+}
+
+.hatchery-trace-card.fallback {
+    background: rgba(248, 250, 252, 0.85);
+    border: 1px dashed #cbd5e1;
+    box-shadow: none;
+}
+.hatchery-trace-card.fallback::before {
+    display: none;
+}
+
+.hatchery-trace-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.85rem;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.trace-title {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.95rem;
+    color: #0f172a;
+}
+
+.trace-icon {
+    font-size: 1.25rem;
+}
+
+.btn-hatchery-jump {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.35rem 0.75rem;
+    border-radius: 6px;
+    background: rgba(2, 132, 199, 0.1);
+    color: #0284c7;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-decoration: none;
+    border: 1px solid rgba(2, 132, 199, 0.25);
+    transition: all 0.2s ease;
+}
+.btn-hatchery-jump:hover {
+    background: #0284c7;
+    color: #ffffff;
+    box-shadow: 0 2px 8px rgba(2, 132, 199, 0.35);
+}
+
+.trace-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 1rem;
+    padding-top: 0.65rem;
+    border-top: 1px solid rgba(226, 232, 240, 0.9);
+}
+
+.trace-col {
+    display: flex;
+    flex-direction: column;
+}
+
+.trace-label {
+    font-size: 0.68rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #64748b;
+    margin-bottom: 0.2rem;
+    font-weight: 600;
+}
+
+.trace-val-main {
+    font-size: 0.95rem;
+    line-height: 1.25;
+}
+
+.trace-sub {
+    font-size: 0.75rem;
+    color: #64748b;
+    margin-top: 0.2rem;
+}

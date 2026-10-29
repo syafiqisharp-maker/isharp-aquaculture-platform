@@ -5,6 +5,7 @@
 
 import { appState } from "../../state/appState.js";
 import { PondRepository } from "../../infrastructure/repositories/pondRepository.js";
+import { HatcheryRepository } from "../../infrastructure/repositories/hatcheryRepository.js";
 import { hasPermission, PERMISSIONS } from "../../config/permissions.js";
 import { Toast } from "../../components/Toast.js";
 import { DOM_IDS, validateContract } from "../../config/domContracts.js";
@@ -23,7 +24,8 @@ export class StockingTab {
             stckLine: document.getElementById(DOM_IDS.STOCKING.STCK_LINE),
             stckSize: document.getElementById(DOM_IDS.STOCKING.STCK_SIZE),
             stckTank: document.getElementById(DOM_IDS.STOCKING.STCK_TANK),
-            tbodyBatches: document.getElementById(DOM_IDS.STOCKING.TBODY_BATCHES)
+            tbodyBatches: document.getElementById(DOM_IDS.STOCKING.TBODY_BATCHES),
+            containerHatcheryOrigin: document.getElementById(DOM_IDS.STOCKING.HATCHERY_ORIGIN)
         };
 
         this.btnSave = document.getElementById(DOM_IDS.STOCKING.BTN_SAVE);
@@ -74,7 +76,10 @@ export class StockingTab {
         }
         if (this.dom.stckTank) this.dom.stckTank.value = pond.stck_tank || pond.tank_no || "";
 
-        await this.loadBatches(pond);
+        await Promise.all([
+            this.loadBatches(pond),
+            this.loadHatcheryOrigin(pond)
+        ]);
         this.applyRolePermissions();
     }
 
@@ -141,6 +146,96 @@ export class StockingTab {
         } catch (err) {
             console.error("Failed to load stocking batches:", err);
             this.dom.tbodyBatches.innerHTML = `<tr><td colspan="9" class="text-center text-danger">Error loading batch records: ${err.message}</td></tr>`;
+        }
+    }
+
+    async loadHatcheryOrigin(pond) {
+        if (!this.dom.containerHatcheryOrigin) return;
+        if (!pond || !pond.pond_index) {
+            this.dom.containerHatcheryOrigin.innerHTML = "";
+            return;
+        }
+
+        try {
+            const origins = await HatcheryRepository.getPondHatcheryOrigin(pond.pond_index);
+
+            if (origins && origins.length > 0) {
+                this.dom.containerHatcheryOrigin.innerHTML = origins.map(orig => {
+                    const srPct = orig.hatchery_tank_sr_pct !== null && orig.hatchery_tank_sr_pct !== undefined 
+                        ? `${Number(orig.hatchery_tank_sr_pct).toFixed(1)}%` 
+                        : "—";
+                    const srTotalPct = orig.hatchery_tank_sr_total_pct !== null && orig.hatchery_tank_sr_total_pct !== undefined 
+                        ? `${Number(orig.hatchery_tank_sr_total_pct).toFixed(1)}%` 
+                        : "—";
+                    // Decision 20: Display ONLY HR-A (orig.display_hr_pct), never HR-B
+                    const hrPct = orig.display_hr_pct !== null && orig.display_hr_pct !== undefined 
+                        ? `${Number(orig.display_hr_pct).toFixed(1)}%` 
+                        : "—";
+
+                    return `
+                        <div class="hatchery-trace-card">
+                            <div class="hatchery-trace-header">
+                                <div class="trace-title">
+                                    <span class="trace-icon">🦐</span>
+                                    <span class="font-bold">Telaga Putat Hatchery (SHT) Origin &amp; Traceability</span>
+                                    <span class="badge badge-success">VERIFIED SHT LINK</span>
+                                    <span class="badge badge-info">${orig.match_method || 'TANK+DATE'}</span>
+                                </div>
+                                <a href="#/hatchery" class="btn-hatchery-jump" title="Open Telaga Putat Hatchery Module">
+                                    <span>View Tank Map ↗</span>
+                                </a>
+                            </div>
+                            <div class="trace-grid">
+                                <div class="trace-col">
+                                    <span class="trace-label">PL Culture Tank</span>
+                                    <div class="trace-val-main font-mono text-primary font-bold">Tank ${orig.hatchery_tank || '—'}</div>
+                                    <div class="trace-sub font-mono">Run: ${orig.hatchery_stock_date || '—'}</div>
+                                </div>
+                                <div class="trace-col">
+                                    <span class="trace-label">Tank Harvest SR%</span>
+                                    <div class="trace-val-main font-mono text-success font-bold">${srPct}</div>
+                                    <div class="trace-sub">Total SR: ${srTotalPct}</div>
+                                </div>
+                                <div class="trace-col">
+                                    <span class="trace-label">Nauplii Supplier / Origin</span>
+                                    <div class="trace-val-main font-bold">${orig.source_name || orig.hatchery_supplier || '—'}</div>
+                                    <div class="trace-sub">${orig.hatchery_origin || 'Local Hatchery'}</div>
+                                </div>
+                                <div class="trace-col">
+                                    <span class="trace-label">Broodstock Batch</span>
+                                    <div class="trace-val-main font-mono font-bold">${orig.broodstock_batch || '—'}</div>
+                                    <div class="trace-sub">${orig.broodstock_doc != null ? 'DOC ' + orig.broodstock_doc : '—'}</div>
+                                </div>
+                                <div class="trace-col">
+                                    <span class="trace-label">Hatching Rate (HR-A)</span>
+                                    <div class="trace-val-main font-mono text-info font-bold">${hrPct}</div>
+                                    <div class="trace-sub">${orig.spawn_block ? 'Spawn: ' + orig.spawn_block : '—'}</div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }).join("");
+            } else {
+                const cleanOrigin = (pond.stck_source && pond.stck_source !== "—") ? pond.stck_source : (pond.pl_origin && pond.pl_origin !== "—" ? pond.pl_origin : "");
+                this.dom.containerHatcheryOrigin.innerHTML = `
+                    <div class="hatchery-trace-card fallback">
+                        <div class="hatchery-trace-header">
+                            <div class="trace-title">
+                                <span class="trace-icon">🦐</span>
+                                <span class="font-bold">Hatchery Origin &amp; Traceability</span>
+                                <span class="badge badge-neutral">EXTERNAL / UNLINKED</span>
+                            </div>
+                        </div>
+                        <div class="trace-body text-muted text-sm">
+                            No Telaga Putat Hatchery (SHT) origin record linked for cycle <strong>[${pond.pond_index}]</strong>.
+                            ${cleanOrigin ? `Recorded source: <span class="font-mono font-bold text-foreground">${cleanOrigin}</span>.` : ""}
+                        </div>
+                    </div>
+                `;
+            }
+        } catch (err) {
+            console.error("Failed to load hatchery origin for pond:", err);
+            this.dom.containerHatcheryOrigin.innerHTML = "";
         }
     }
 

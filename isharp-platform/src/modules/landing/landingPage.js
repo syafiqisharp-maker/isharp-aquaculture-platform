@@ -106,10 +106,10 @@ export class LandingPage {
                         <span>Planned System Expansions</span>
                     </div>
 
-                    <!-- 4. SATELLITE 3 (Mid-Left): Telaga Putat Hatchery (UPCOMING) -->
-                    <div class="portal-option-orb orb-satellite pos-mid-left orb-disabled" id="btn-portal-hatchery" role="button" tabindex="0" aria-label="Telaga Putat Hatchery (Upcoming)">
-                        <div class="orb-sphere-shell orb-upcoming">
-                            <svg class="orb-icon" aria-hidden="true" viewBox="0 0 24 24" width="38" height="38" fill="none" stroke="#0369a1" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                    <!-- 4. SATELLITE 3 (Mid-Left): Telaga Putat Hatchery (ACTIVE) -->
+                    <div class="portal-option-orb orb-satellite pos-mid-left" id="btn-portal-hatchery" role="button" tabindex="0" aria-label="Enter Telaga Putat Hatchery">
+                        <div class="orb-sphere-shell orb-hatchery" style="background: radial-gradient(circle at 35% 30%, #ffffff 0%, #06b6d4 50%, #0284c7 100%); box-shadow: inset 0 2px 4px #ffffff, 0 6px 20px rgba(2, 132, 199, 0.35); color: #ffffff;">
+                            <svg class="orb-icon" aria-hidden="true" viewBox="0 0 24 24" width="38" height="38" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
                                 <path d="M2 6c.6.5 1.2 1 2.5 1C7 7 7 5 9.5 5c2.6 0 2.4 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1"></path>
                                 <path d="M2 12c.6.5 1.2 1 2.5 1 2.5 0 2.5-2 5-2 2.6 0 2.4 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1"></path>
                                 <path d="M2 18c.6.5 1.2 1 2.5 1 2.5 0 2.5-2 5-2 2.6 0 2.4 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1"></path>
@@ -118,7 +118,7 @@ export class LandingPage {
                         <div class="orb-content">
                             <div class="orb-title-row">
                                 <h2 class="orb-title">Telaga Putat Hatchery</h2>
-                                <span class="orb-badge-upcoming">Upcoming</span>
+                                <span class="orb-badge-active" style="background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%); color: #ffffff;">OPERATIONS</span>
                             </div>
                         </div>
                     </div>
@@ -231,28 +231,28 @@ export class LandingPage {
         const btnSimulator = document.getElementById("btn-portal-simulator");
         const btnFuture = document.getElementById("btn-portal-future");
 
-        const activeOrbs = [btnExec, btnFieldOps, btnDbms, btnLab, btnSimulator].filter(Boolean);
+        const activeOrbs = [btnExec, btnFieldOps, btnDbms, btnHatchery, btnLab, btnSimulator].filter(Boolean);
 
         if (btnExec) {
-            btnExec.addEventListener("click", () => this.handleSelection("executive", btnExec, [btnFieldOps, btnDbms, btnLab, btnSimulator]));
+            btnExec.addEventListener("click", () => this.handleSelection("executive", btnExec, [btnFieldOps, btnDbms, btnHatchery, btnLab, btnSimulator]));
         }
         if (btnFieldOps) {
-            btnFieldOps.addEventListener("click", () => this.handleSelection("field-ops", btnFieldOps, [btnExec, btnDbms, btnLab, btnSimulator]));
+            btnFieldOps.addEventListener("click", () => this.handleSelection("field-ops", btnFieldOps, [btnExec, btnDbms, btnHatchery, btnLab, btnSimulator]));
         }
         if (btnDbms) {
-            btnDbms.addEventListener("click", () => this.handleSelection("dbms", btnDbms, [btnExec, btnFieldOps, btnLab, btnSimulator]));
+            btnDbms.addEventListener("click", () => this.handleSelection("dbms", btnDbms, [btnExec, btnFieldOps, btnHatchery, btnLab, btnSimulator]));
+        }
+        if (btnHatchery) {
+            btnHatchery.addEventListener("click", () => this.handleSelection("hatchery", btnHatchery, [btnExec, btnFieldOps, btnDbms, btnLab, btnSimulator]));
         }
         if (btnLab) {
-            btnLab.addEventListener("click", () => this.handleSelection("lab-qaqc", btnLab, [btnExec, btnFieldOps, btnDbms, btnSimulator]));
+            btnLab.addEventListener("click", () => this.handleSelection("lab-qaqc", btnLab, [btnExec, btnFieldOps, btnDbms, btnHatchery, btnSimulator]));
         }
         if (btnSimulator) {
-            btnSimulator.addEventListener("click", () => this.handleSelection("simulation", btnSimulator, [btnExec, btnFieldOps, btnDbms, btnLab]));
+            btnSimulator.addEventListener("click", () => this.handleSelection("simulation", btnSimulator, [btnExec, btnFieldOps, btnDbms, btnHatchery, btnLab]));
         }
 
         // Informative toasts for upcoming modules
-        if (btnHatchery) {
-            btnHatchery.addEventListener("click", () => Toast.info("🌊 Telaga Putat Hatchery module is currently under development."));
-        }
         if (btnFuture) {
             btnFuture.addEventListener("click", () => Toast.info("🚀 Future Expansion slot reserved for upcoming Blue Archipelago operations."));
         }

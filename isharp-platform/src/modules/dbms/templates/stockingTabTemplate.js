@@ -69,6 +69,10 @@ export function getStockingTabHtml() {
             </div>
 
             <div class="divider mt-4"></div>
+
+            <!-- Hatchery Origin & Traceability Container -->
+            <div id="container-hatchery-origin" class="mt-4 mb-3"></div>
+
             <div class="card-header flex-between mt-3">
                 <div>
                     <h4>Multi-Batch Stocking History (<code>GrowoutPondStocking</code>)</h4>

@@ -122,6 +122,7 @@ export const DOM_IDS = Object.freeze({
         STCK_SIZE: "input-stck-size",
         STCK_TANK: "input-stck-tank",
         TBODY_BATCHES: "tbody-stocking-batches",
+        HATCHERY_ORIGIN: "container-hatchery-origin",
         BTN_SAVE: "btn-save-stocking"
     },
 
