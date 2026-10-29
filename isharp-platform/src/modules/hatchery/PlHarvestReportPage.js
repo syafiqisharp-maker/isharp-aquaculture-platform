@@ -21,10 +21,15 @@ export class PlHarvestReportPage {
         this.allRuns = [];
         this.flushes = [];
 
-        // Master Filter State (Default: Full Year 2026 Executive View)
+        // Master Filter State for Executive Summary Table
         this.selectedYear = "2026";
         this.selectedMonth = "ALL";
         this.selectedSpecies = "ALL";
+
+        // Filter State for PL Harvest & Dispatch Register (Default: Current Month)
+        const now = new Date();
+        this.dispatchFilterYear = String(now.getFullYear()); // e.g. "2026"
+        this.dispatchFilterMonth = String(now.getMonth() + 1).padStart(2, "0"); // e.g. "10" for October
 
         // Lower Tab & Search State
         this.activeViewTab = "dispatches"; // "dispatches" | "runs"
@@ -98,8 +103,16 @@ export class PlHarvestReportPage {
             scopeLabel = `All ${this.getMonthName(this.selectedMonth)}s`;
         }
 
-        // Filtered Dispatches for Lower Detail Register
+        // Filtered Dispatches for Lower Detail Register (Filtered by Month, Year, Species, Destination, Search)
         const filteredDispatches = this.dispatches.filter(d => {
+            if (this.dispatchFilterYear !== "ALL") {
+                const y = (d.harvest_date || "").slice(0, 4);
+                if (y !== this.dispatchFilterYear) return false;
+            }
+            if (this.dispatchFilterMonth !== "ALL") {
+                const m = (d.harvest_date || "").slice(5, 7);
+                if (m !== this.dispatchFilterMonth) return false;
+            }
             if (this.filterSpecies !== "ALL" && d.species !== this.filterSpecies) return false;
             if (this.filterDestination !== "ALL" && d.buyer_type !== this.filterDestination) return false;
             if (this.searchQuery) {
@@ -116,6 +129,14 @@ export class PlHarvestReportPage {
 
         // Filtered Runs for Lower Master Log
         const filteredRuns = this.allRuns.filter(r => {
+            if (this.dispatchFilterYear !== "ALL") {
+                const y = (r.stock_date || "").slice(0, 4);
+                if (y !== this.dispatchFilterYear) return false;
+            }
+            if (this.dispatchFilterMonth !== "ALL") {
+                const m = (r.stock_date || "").slice(5, 7);
+                if (m !== this.dispatchFilterMonth) return false;
+            }
             if (this.filterSpecies !== "ALL" && r.species !== this.filterSpecies) return false;
             if (this.searchQuery) {
                 const q = this.searchQuery.toLowerCase();
@@ -137,6 +158,8 @@ export class PlHarvestReportPage {
         const displayRollup = this.selectedMonth === "ALL"
             ? monthlyRollup
             : monthlyRollup.filter(m => m.monthNum === this.selectedMonth);
+
+        const dispatchScopeLabel = `${this.dispatchFilterMonth !== "ALL" ? this.getMonthName(this.dispatchFilterMonth) + " " : ""}${this.dispatchFilterYear === "ALL" ? "All Years" : this.dispatchFilterYear}`;
 
         this.container.innerHTML = `
             <div class="hatchery-report-page">
@@ -215,7 +238,7 @@ export class PlHarvestReportPage {
                         </div>
                     </div>
 
-                    <!-- Master Filter Bar -->
+                    <!-- Master Filter Bar for Executive Summary -->
                     <div class="hatchery-filter-bar">
                         <div class="filter-group">
                             <label for="ops-filter-year" class="filter-label">Year:</label>
@@ -290,10 +313,6 @@ export class PlHarvestReportPage {
                                         ? m.harvestTanksList.join(", ") 
                                         : "—";
 
-                                    const flushListStr = m.flushedTanksList && m.flushedTanksList.length > 0
-                                        ? m.flushedTanksList.join(", ")
-                                        : "None";
-
                                     return `
                                         <tr>
                                             <td>
@@ -364,6 +383,36 @@ export class PlHarvestReportPage {
                         </button>
                     </div>
 
+                    <!-- Year & Month filters for the Register (Default: Current Month) -->
+                    <div class="filter-group">
+                        <label for="filter-dispatch-year" class="filter-label">Year:</label>
+                        <select id="filter-dispatch-year" class="hatchery-select">
+                            <option value="ALL" ${this.dispatchFilterYear === 'ALL' ? 'selected' : ''}>All Years</option>
+                            <option value="2026" ${this.dispatchFilterYear === '2026' ? 'selected' : ''}>2026</option>
+                            <option value="2025" ${this.dispatchFilterYear === '2025' ? 'selected' : ''}>2025</option>
+                            <option value="2024" ${this.dispatchFilterYear === '2024' ? 'selected' : ''}>2024</option>
+                        </select>
+                    </div>
+
+                    <div class="filter-group">
+                        <label for="filter-dispatch-month" class="filter-label">Month:</label>
+                        <select id="filter-dispatch-month" class="hatchery-select">
+                            <option value="ALL" ${this.dispatchFilterMonth === 'ALL' ? 'selected' : ''}>All Months</option>
+                            <option value="01" ${this.dispatchFilterMonth === '01' ? 'selected' : ''}>01 - January</option>
+                            <option value="02" ${this.dispatchFilterMonth === '02' ? 'selected' : ''}>02 - February</option>
+                            <option value="03" ${this.dispatchFilterMonth === '03' ? 'selected' : ''}>03 - March</option>
+                            <option value="04" ${this.dispatchFilterMonth === '04' ? 'selected' : ''}>04 - April</option>
+                            <option value="05" ${this.dispatchFilterMonth === '05' ? 'selected' : ''}>05 - May</option>
+                            <option value="06" ${this.dispatchFilterMonth === '06' ? 'selected' : ''}>06 - June</option>
+                            <option value="07" ${this.dispatchFilterMonth === '07' ? 'selected' : ''}>07 - July</option>
+                            <option value="08" ${this.dispatchFilterMonth === '08' ? 'selected' : ''}>08 - August</option>
+                            <option value="09" ${this.dispatchFilterMonth === '09' ? 'selected' : ''}>09 - September</option>
+                            <option value="10" ${this.dispatchFilterMonth === '10' ? 'selected' : ''}>10 - October</option>
+                            <option value="11" ${this.dispatchFilterMonth === '11' ? 'selected' : ''}>11 - November</option>
+                            <option value="12" ${this.dispatchFilterMonth === '12' ? 'selected' : ''}>12 - December</option>
+                        </select>
+                    </div>
+
                     <div class="filter-group">
                         <label for="filter-species-select" class="filter-label">Species:</label>
                         <select id="filter-species-select" class="hatchery-select">
@@ -400,8 +449,17 @@ export class PlHarvestReportPage {
                 ${this.activeViewTab === 'dispatches' ? `
                     <section class="report-section-glass">
                         <div class="section-title-row">
-                            <h3 class="section-title">🦐 PL Harvest &amp; Dispatch Register</h3>
-                            <span class="section-subtag">Showing ${filteredDispatches.length} of ${this.dispatches.length} dispatches</span>
+                            <div class="title-with-badge">
+                                <h3 class="section-title">🦐 PL Harvest &amp; Dispatch Register</h3>
+                                <span class="section-subtag">
+                                    Showing ${filteredDispatches.length} dispatches for <strong>${dispatchScopeLabel}</strong>
+                                </span>
+                            </div>
+
+                            <button class="hatchery-nav-btn secondary" id="btn-export-dispatches-csv" title="Export filtered dispatches to CSV">
+                                <span class="btn-icon">📥</span>
+                                <span>Export Dispatches CSV</span>
+                            </button>
                         </div>
 
                         <div class="table-responsive">
@@ -448,7 +506,7 @@ export class PlHarvestReportPage {
                                             </tr>
                                         `;
                                     }).join('') : `
-                                        <tr><td colspan="9" class="text-center text-muted">No harvest dispatches match the selected filters.</td></tr>
+                                        <tr><td colspan="9" class="text-center text-muted py-4">No harvest dispatches found for ${dispatchScopeLabel}.</td></tr>
                                     `}
                                 </tbody>
                             </table>
@@ -457,8 +515,17 @@ export class PlHarvestReportPage {
                 ` : `
                     <section class="report-section-glass">
                         <div class="section-title-row">
-                            <h3 class="section-title">📋 Tank Culture Runs Master Log</h3>
-                            <span class="section-subtag">Showing ${filteredRuns.length} of ${this.allRuns.length} runs</span>
+                            <div class="title-with-badge">
+                                <h3 class="section-title">📋 Tank Culture Runs Master Log</h3>
+                                <span class="section-subtag">
+                                    Showing ${filteredRuns.length} runs for <strong>${dispatchScopeLabel}</strong>
+                                </span>
+                            </div>
+
+                            <button class="hatchery-nav-btn secondary" id="btn-export-runs-csv" title="Export filtered runs to CSV">
+                                <span class="btn-icon">📥</span>
+                                <span>Export Runs CSV</span>
+                            </button>
                         </div>
 
                         <div class="table-responsive">
@@ -498,7 +565,7 @@ export class PlHarvestReportPage {
                                             </td>
                                         </tr>
                                     `).join('') : `
-                                        <tr><td colspan="11" class="text-center text-muted">No runs matched the selected filters.</td></tr>
+                                        <tr><td colspan="11" class="text-center text-muted py-4">No runs matched the selected filters for ${dispatchScopeLabel}.</td></tr>
                                     `}
                                 </tbody>
                             </table>
@@ -508,10 +575,10 @@ export class PlHarvestReportPage {
             </div>
         `;
 
-        this.bindEvents();
+        this.bindEvents(filteredDispatches, filteredRuns);
     }
 
-    bindEvents() {
+    bindEvents(filteredDispatches = [], filteredRuns = []) {
         const btnBack = document.getElementById("btn-back-to-map");
         if (btnBack) {
             btnBack.addEventListener("click", () => {
@@ -522,6 +589,22 @@ export class PlHarvestReportPage {
         const btnExport = document.getElementById("btn-export-pl-csv");
         if (btnExport) {
             btnExport.addEventListener("click", () => this.exportCsv());
+        }
+
+        // Export Dispatches button
+        const btnExportDispatches = document.getElementById("btn-export-dispatches-csv");
+        if (btnExportDispatches) {
+            btnExportDispatches.addEventListener("click", () => {
+                this.exportDispatchesCsv(filteredDispatches);
+            });
+        }
+
+        // Export Runs button
+        const btnExportRuns = document.getElementById("btn-export-runs-csv");
+        if (btnExportRuns) {
+            btnExportRuns.addEventListener("click", () => {
+                this.exportRunsCsv(filteredRuns);
+            });
         }
 
         // Master Filters for Monthly Summary
@@ -545,6 +628,23 @@ export class PlHarvestReportPage {
         if (opsSpeciesSelect) {
             opsSpeciesSelect.addEventListener("change", (e) => {
                 this.selectedSpecies = e.target.value;
+                this.render();
+            });
+        }
+
+        // Filters for PL Harvest & Dispatch Register (Month & Year)
+        const dispatchYearSelect = document.getElementById("filter-dispatch-year");
+        if (dispatchYearSelect) {
+            dispatchYearSelect.addEventListener("change", (e) => {
+                this.dispatchFilterYear = e.target.value;
+                this.render();
+            });
+        }
+
+        const dispatchMonthSelect = document.getElementById("filter-dispatch-month");
+        if (dispatchMonthSelect) {
+            dispatchMonthSelect.addEventListener("change", (e) => {
+                this.dispatchFilterMonth = e.target.value;
                 this.render();
             });
         }
@@ -647,6 +747,84 @@ export class PlHarvestReportPage {
 
         this._downloadCsv(headers, rows, `TPH_Monthly_Production_Distribution_Summary_${this.selectedYear}.csv`);
         Toast.success("Exported Monthly Production & Distribution Summary CSV!");
+    }
+
+    exportDispatchesCsv(dispatchesToExport = []) {
+        if (!dispatchesToExport || dispatchesToExport.length === 0) {
+            Toast.warning("No dispatches match the selected filter.");
+            return;
+        }
+
+        const headers = [
+            "Tank",
+            "Harvest Date",
+            "Stage",
+            "Quantity (k)",
+            "Destination / Buyer",
+            "Destination Type",
+            "Linked Ponds",
+            "DO Number",
+            "Lot Number",
+            "Nauplii Source",
+            "Reported SR %"
+        ];
+
+        const rows = dispatchesToExport.map(d => [
+            d.tank_code,
+            d.harvest_date,
+            `PL ${d.pl_stage}`,
+            d.qty_k || "0",
+            d.buyer,
+            d.buyer_type,
+            (d.linked_ponds || []).join("; "),
+            d.do_number || "",
+            d.lot_no || "",
+            d.source_code || "",
+            d.sr_reported_pct !== null && d.sr_reported_pct !== undefined ? `${d.sr_reported_pct}%` : ""
+        ]);
+
+        const periodStr = `${this.dispatchFilterYear}_${this.dispatchFilterMonth}`;
+        this._downloadCsv(headers, rows, `TPH_PL_Harvest_Dispatches_${periodStr}.csv`);
+        Toast.success(`Exported ${dispatchesToExport.length} dispatches to CSV!`);
+    }
+
+    exportRunsCsv(runsToExport = []) {
+        if (!runsToExport || runsToExport.length === 0) {
+            Toast.warning("No runs match the selected filter.");
+            return;
+        }
+
+        const headers = [
+            "Tank",
+            "Stock Date",
+            "Species",
+            "Source",
+            "Stocked (k)",
+            "Status",
+            "First Harvest",
+            "Last Harvest",
+            "Harvested (k)",
+            "Flushed (k)",
+            "SR %"
+        ];
+
+        const rows = runsToExport.map(r => [
+            r.tank_code,
+            r.stock_date,
+            r.species,
+            r.source_code,
+            r.nauplii_stocked_k || "",
+            r.status,
+            r.first_harvest_date || "",
+            r.last_harvest_date || "",
+            r.harvested_total_k || "0",
+            r.flushed_total_k || "0",
+            r.sr_pct !== null && r.sr_pct !== undefined ? `${r.sr_pct}%` : ""
+        ]);
+
+        const periodStr = `${this.dispatchFilterYear}_${this.dispatchFilterMonth}`;
+        this._downloadCsv(headers, rows, `TPH_Tank_Runs_${periodStr}.csv`);
+        Toast.success(`Exported ${runsToExport.length} runs to CSV!`);
     }
 
     _downloadCsv(headers, rows, filename) {
