@@ -91,13 +91,33 @@ def post_rpc_ingest(table_name, rows, dry_run=False, chunk_size=50):
 
 def reconcile_pond_links(events, commercial, dry_run=False, chunk_size=50):
     print("\n[STAGE 6/7] Reconciling PL harvest lots to growout ponds (SGO shipments)...")
-    sgo_pairs = [(e, c) for e, c in zip(events, commercial) if c.get("buyer") == "SGO"]
-    print(f"  [INFO] Total SGO Harvest Shipments eligible for Growout Linkage: {len(sgo_pairs)}")
     
-    if not sgo_pairs:
+    # 1. Key commercial records by (tank_code, stock_date, event_date, occurrence_no)
+    comm_map = {}
+    for c in commercial:
+        key = (c.get("tank_code"), c.get("stock_date"), c.get("event_date"), c.get("occurrence_no"))
+        comm_map[key] = c
+
+    # 2. Filter eligible harvest events for farm growout linkage:
+    # Internal farm shipments to SGO often left Buyer blank/None in hatchery logs.
+    # Exclude only explicit non-SGO destinations (KGO, EXTERNAL).
+    eligible_events = []
+    for e in events:
+        if e.get("event_type") != "HARVEST":
+            continue
+        key = (e.get("tank_code"), e.get("stock_date"), e.get("event_date"), e.get("occurrence_no"))
+        c = comm_map.get(key, {})
+        buyer = (c.get("buyer") or "").strip().upper()
+        if buyer in ("KGO", "EXTERNAL") or c.get("external_buyer"):
+            continue
+        eligible_events.append((e, c))
+
+    print(f"  [INFO] Total SGO & Internal Harvest Shipments eligible for Growout Linkage: {len(eligible_events)}")
+    
+    if not eligible_events:
         return []
 
-    # Fetch farm pond stocking batches from Supabase
+    # 3. Fetch farm pond stocking batches from Supabase (2024-2026)
     batches = []
     offset = 0
     limit = 1000
@@ -115,9 +135,11 @@ def reconcile_pond_links(events, commercial, dry_run=False, chunk_size=50):
             print(f"  [WARN] Could not fetch pond stocking batches: {ex}")
             break
 
+    # 4. Parse multi-tank strings in stocking batches (e.g. 'C11,C14', 'A11,A12,A13')
     parsed_batches = []
     for b in batches:
         t_raw = b.get("stck_tank")
+        src = (b.get("stck_source") or "").upper()
         if t_raw:
             matches = re.findall(r"([A-D])\s*[-_]?\s*(1[0-6]|0?[1-9])(?![0-9])", str(t_raw), re.I)
             tanks = {f"{blk.upper()}{int(n):02d}" for blk, n in matches}
@@ -126,17 +148,21 @@ def reconcile_pond_links(events, commercial, dry_run=False, chunk_size=50):
                 "stck_date": b["stck_date"],
                 "tanks": tanks,
                 "pcs": b.get("stck_pcs"),
-                "tank_raw": t_raw
+                "tank_raw": t_raw,
+                "source": src
             })
 
+    # 5. Perform reconciliation
     pond_links = []
     seen_links = set()
 
-    for e, c in sgo_pairs:
+    for e, c in eligible_events:
         t_code = e["tank_code"]
         r_stock_date = e["stock_date"]
         e_date = datetime.date.fromisoformat(e["event_date"])
-        
+        lot = e.get("lot_no") or "Lot N/A"
+        q_val = e.get("qty_k", 0)
+
         seen_candidates = {}
         for pb in parsed_batches:
             if t_code in pb["tanks"]:
@@ -145,36 +171,22 @@ def reconcile_pond_links(events, commercial, dry_run=False, chunk_size=50):
                     key = (pb["pond_index"], pb["stck_date"])
                     seen_candidates[key] = pb
 
-        if len(seen_candidates) == 1:
-            for (p_idx, p_date), pb in seen_candidates.items():
-                link_key = (t_code, r_stock_date, p_idx, p_date)
-                if link_key not in seen_links:
-                    seen_links.add(link_key)
-                    pond_links.append({
-                        "tank_code": t_code,
-                        "run_stock_date": r_stock_date,
-                        "pond_index": p_idx,
-                        "pond_stck_date": p_date,
-                        "status": "LINKED",
-                        "match_method": "AUTO",
-                        "confidence": 1.0,
-                        "review_notes": f"Matched DO shipment {e['qty_k']}k to farm batch {pb['tank_raw']}"
-                    })
-        elif len(seen_candidates) > 1:
-            for (p_idx, p_date), pb in seen_candidates.items():
-                link_key = (t_code, r_stock_date, p_idx, p_date)
-                if link_key not in seen_links:
-                    seen_links.add(link_key)
-                    pond_links.append({
-                        "tank_code": t_code,
-                        "run_stock_date": r_stock_date,
-                        "pond_index": p_idx,
-                        "pond_stck_date": p_date,
-                        "status": "LINKED",
-                        "match_method": "AUTO_SPLIT",
-                        "confidence": 0.9,
-                        "review_notes": f"Tank shared across multiple ponds on {p_date}"
-                    })
+        for (p_idx, p_date), pb in seen_candidates.items():
+            link_key = (t_code, r_stock_date, p_idx, p_date)
+            if link_key not in seen_links:
+                seen_links.add(link_key)
+                match_method = "AUTO" if len(seen_candidates) == 1 else "AUTO_SPLIT"
+                t_raw_val = pb["tank_raw"]
+                pond_links.append({
+                    "tank_code": t_code,
+                    "run_stock_date": r_stock_date,
+                    "pond_index": p_idx,
+                    "pond_stck_date": p_date,
+                    "status": "LINKED",
+                    "match_method": match_method,
+                    "confidence": 1.0 if match_method == "AUTO" else 0.95,
+                    "review_notes": f"Matched harvest {q_val}k ({lot}) to farm {t_raw_val}"
+                })
 
     print(f"  [SUMMARY] Generated {len(pond_links)} confirmed pond traceability links.")
     post_rpc_ingest("hatchery_pond_links", pond_links, dry_run=dry_run, chunk_size=chunk_size)

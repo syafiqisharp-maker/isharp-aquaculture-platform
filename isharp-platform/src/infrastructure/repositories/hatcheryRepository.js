@@ -63,6 +63,94 @@ export class HatcheryRepository {
     }
 
     /**
+     * Retrieves all individual PL Harvest Dispatches with Tank Numbers, Destinations, and Linked Ponds
+     * @param {number} limit
+     * @returns {Promise<Array<object>>}
+     */
+    static async getHarvestDispatches(limit = 1200) {
+        try {
+            const [events, commercial, links, runs] = await Promise.all([
+                supabase.request(`hatchery_run_events?event_type=eq.HARVEST&order=event_date.desc&limit=${limit}`),
+                supabase.request(`hatchery_run_commercial?event_type=eq.HARVEST&limit=${limit}`),
+                supabase.request(`hatchery_pond_links?select=tank_code,run_stock_date,pond_index,pond_stck_date&limit=2500`),
+                supabase.request(`hatchery_tank_runs?select=tank_code,stock_date,species,source_code&limit=1500`)
+            ]);
+
+            const commMap = new Map();
+            if (Array.isArray(commercial)) {
+                commercial.forEach(c => {
+                    const k = `${c.tank_code}_${c.stock_date}_${c.event_date}_${c.occurrence_no}`;
+                    commMap.set(k, c);
+                });
+            }
+
+            const linksMap = new Map();
+            if (Array.isArray(links)) {
+                links.forEach(l => {
+                    const k = `${l.tank_code}_${l.run_stock_date}`;
+                    if (!linksMap.has(k)) linksMap.set(k, []);
+                    linksMap.get(k).push(l);
+                });
+            }
+
+            const runsMap = new Map();
+            if (Array.isArray(runs)) {
+                runs.forEach(r => {
+                    runsMap.set(`${r.tank_code}_${r.stock_date}`, r);
+                });
+            }
+
+            if (!Array.isArray(events)) return [];
+
+            return events.map(e => {
+                const commKey = `${e.tank_code}_${e.stock_date}_${e.event_date}_${e.occurrence_no}`;
+                const c = commMap.get(commKey) || {};
+                const r = runsMap.get(`${e.tank_code}_${e.stock_date}`) || {};
+                
+                // Match linked ponds close to harvest date
+                const runLinks = linksMap.get(`${e.tank_code}_${e.stock_date}`) || [];
+                const eDate = new Date(e.event_date);
+                const matchedPonds = runLinks.filter(l => {
+                    const pDate = new Date(l.pond_stck_date);
+                    const diffDays = Math.abs((pDate - eDate) / (1000 * 60 * 60 * 24));
+                    return diffDays <= 1.5;
+                }).map(l => l.pond_index);
+
+                const rawBuyer = (c.buyer || "").trim().toUpperCase();
+                let displayBuyer = "SGO (Setiu Farm)";
+                let buyerType = "SGO";
+                if (rawBuyer === "KGO") {
+                    displayBuyer = "KGO (Kedah Farm)";
+                    buyerType = "KGO";
+                } else if (rawBuyer === "EXTERNAL" || c.external_buyer) {
+                    displayBuyer = c.external_buyer ? `External: ${c.external_buyer}` : "External Buyer";
+                    buyerType = "EXTERNAL";
+                }
+
+                return {
+                    tank_code: e.tank_code,
+                    stock_date: e.stock_date,
+                    harvest_date: e.event_date,
+                    pl_stage: e.pl_stage,
+                    qty_k: e.qty_k,
+                    sr_reported_pct: e.sr_reported_pct,
+                    lot_no: e.lot_no,
+                    buyer: displayBuyer,
+                    buyer_type: buyerType,
+                    do_number: c.do_number,
+                    external_buyer: c.external_buyer,
+                    species: r.species || "VAN",
+                    source_code: r.source_code || "—",
+                    linked_ponds: Array.from(new Set(matchedPonds))
+                };
+            });
+        } catch (err) {
+            console.error("HatcheryRepository.getHarvestDispatches failed:", err);
+            return [];
+        }
+    }
+
+    /**
      * Retrieves all PL culture runs with traceability data
      * @returns {Promise<Array<object>>}
      */

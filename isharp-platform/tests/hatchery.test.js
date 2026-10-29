@@ -18,6 +18,7 @@ test("HatcheryRepository: exposes all required API methods", () => {
     assert.equal(typeof HatcheryRepository.getTankMap, "function", "getTankMap must be a function");
     assert.equal(typeof HatcheryRepository.getTankHistory, "function", "getTankHistory must be a function");
     assert.equal(typeof HatcheryRepository.getPlMonthlyRollup, "function", "getPlMonthlyRollup must be a function");
+    assert.equal(typeof HatcheryRepository.getHarvestDispatches, "function", "getHarvestDispatches must be a function");
     assert.equal(typeof HatcheryRepository.getAllTankRuns, "function", "getAllTankRuns must be a function");
     assert.equal(typeof HatcheryRepository.getBroodstockBatches, "function", "getBroodstockBatches must be a function");
     assert.equal(typeof HatcheryRepository.getBroodstockDailyRecords, "function", "getBroodstockDailyRecords must be a function");
@@ -68,12 +69,16 @@ test("Hatchery Domain: Decision 20 strictly enforces HR-A display across telemet
 });
 
 test("Hatchery Traceability: parses comma-delimited multi-tank strings", () => {
-    const rawRef = "C11, C14";
-    const matches = Array.from(rawRef.matchAll(/\b([A-Da-d])(1[0-6]|0?[1-9])\b/g)).map(m => {
-        const blk = m[1].toUpperCase();
-        const num = String(parseInt(m[2], 10)).padStart(2, '0');
-        return `${blk}${num}`;
-    });
+    const parseTanks = (rawRef) => {
+        return Array.from(rawRef.matchAll(/([A-Da-d])\s*[-_]?\s*(1[0-6]|0?[1-9])(?![0-9])/g)).map(m => {
+            const blk = m[1].toUpperCase();
+            const num = String(parseInt(m[2], 10)).padStart(2, '0');
+            return `${blk}${num}`;
+        });
+    };
 
-    assert.deepEqual(matches, ["C11", "C14"], "Must extract both C11 and C14 without greedy truncations");
+    assert.deepEqual(parseTanks("C11, C14"), ["C11", "C14"], "Must extract both C11 and C14");
+    assert.deepEqual(parseTanks("A11,A12,A13"), ["A11", "A12", "A13"], "Must extract 3-tank batch A11, A12, A13");
+    assert.deepEqual(parseTanks("C5,C7,C8"), ["C5", "C7", "C8"].map(t => `${t[0]}0${t[1]}`), "Must extract C05, C07, C08");
+    assert.deepEqual(parseTanks("B1,B2,B3"), ["B01", "B02", "B03"], "Must pad single digits B1,B2,B3 to B01,B02,B03");
 });
