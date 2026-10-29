@@ -1230,8 +1230,24 @@
     border-radius: 4px;
 }
 
+.spawn-block-tag.block-a,
 .spawn-block-tag.sha { background: rgba(2, 132, 199, 0.12); color: #0369a1; }
+.spawn-block-tag.block-b,
 .spawn-block-tag.shb { background: rgba(139, 92, 246, 0.12); color: #6d28d9; }
+
+.leftover-pop-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.2rem 0.55rem;
+    font-size: 0.76rem;
+    font-family: var(--font-mono, monospace);
+    font-weight: 600;
+    border-radius: 4px;
+    background: rgba(15, 23, 42, 0.04);
+    color: #0f172a;
+    border: 1px solid #e2e8f0;
+}
 
 /* Responsive Adjustments */
 @media (max-width: 1024px) {

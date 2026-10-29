@@ -64,6 +64,35 @@ export class BroodstockReportPage {
 
         const currentBatch = this.batches.find(b => b.batch_code === this.selectedBatchCode) || this.batches[0] || {};
 
+        // Permanent Spawn Block (Broodstock batches do not move once stocked in the block)
+        const rawBlock = this.dailyRecords.find(d => d.spawn_block)?.spawn_block || "";
+        const isBlockB = rawBlock.toUpperCase().includes("SHB") || 
+            ["STL", "SK", "AP3", "AP 1/2024"].some(k => (currentBatch.batch_code || "").includes(k));
+        const blockName = isBlockB ? "Block B (SHB)" : "Block A (SHA)";
+        const blockBadgeClass = isBlockB ? "block-b" : "block-a";
+
+        // Arrived population (from Row 24: B24 Female & C24 Male)
+        const arrivedF = currentBatch.arrived_pop_female;
+        const arrivedM = currentBatch.arrived_pop_male;
+        const totalArrived = (arrivedF != null || arrivedM != null) 
+            ? ((Number(arrivedF) || 0) + (Number(arrivedM) || 0)) 
+            : null;
+
+        // Current Leftover Population: from latest non-zero daily record (Col K & L, or Col B & C)
+        const popRecords = this.dailyRecords.filter(d => 
+            (d.mat_pop_female != null && d.mat_pop_female > 0) || 
+            (d.quar_pop_female != null && d.quar_pop_female > 0)
+        );
+        const latestPopRec = popRecords.length > 0 ? popRecords[popRecords.length - 1] : null;
+        const currentLeftoverF = latestPopRec ? (latestPopRec.mat_pop_female ?? latestPopRec.quar_pop_female) : null;
+        const currentLeftoverM = latestPopRec ? (latestPopRec.mat_pop_male ?? latestPopRec.quar_pop_male) : null;
+        const currentLeftoverTotal = (currentLeftoverF != null || currentLeftoverM != null) 
+            ? ((Number(currentLeftoverF) || 0) + (Number(currentLeftoverM) || 0)) 
+            : null;
+        const currentSurvivalPct = (totalArrived && currentLeftoverTotal) 
+            ? ((currentLeftoverTotal / totalArrived) * 100).toFixed(1) + '%' 
+            : null;
+
         // Aggregate statistics for selected batch
         const totalGrossNaupliiK = this.dailyRecords.reduce((sum, d) => sum + (Number(d.nauplii_gross_k) || 0), 0);
         const totalSpawns = this.dailyRecords.reduce((sum, d) => sum + (Number(d.spawning_count) || 0), 0);
@@ -117,6 +146,7 @@ export class BroodstockReportPage {
                     <div class="passport-header">
                         <div class="passport-code-group">
                             <span class="passport-badge">BATCH PASSPORT</span>
+                            <span class="spawn-block-tag ${blockBadgeClass}">● ${blockName}</span>
                             <h2 class="passport-code">${escapeHtml(currentBatch.batch_code || '—')}</h2>
                             <span class="passport-species">${escapeHtml(currentBatch.species || 'L.Vannamei')}</span>
                         </div>
@@ -136,8 +166,20 @@ export class BroodstockReportPage {
                             <span class="pstat-val font-bold text-primary">${currentBatch.arrival_date ? 'DOC ' + calculateBroodstockDOC(currentBatch.arrival_date, new Date()) : '—'}</span>
                         </div>
                         <div class="passport-stat">
+                            <span class="pstat-label">Maturation Block</span>
+                            <span class="pstat-val font-bold ${isBlockB ? 'text-amber' : 'text-cyan'}">${blockName}</span>
+                        </div>
+                        <div class="passport-stat">
                             <span class="pstat-label">Arrived Population</span>
-                            <span class="pstat-val">♀ ${currentBatch.arrived_pop_female || '—'} | ♂ ${currentBatch.arrived_pop_male || '—'}</span>
+                            <span class="pstat-val">♀ ${arrivedF != null ? arrivedF : '—'} | ♂ ${arrivedM != null ? arrivedM : '—'} ${totalArrived ? `<small class="text-muted">(${totalArrived} tails)</small>` : ''}</span>
+                        </div>
+                        <div class="passport-stat">
+                            <span class="pstat-label">Current Leftover</span>
+                            <span class="pstat-val font-bold ${currentLeftoverTotal ? 'text-success' : ''}">
+                                ${currentLeftoverTotal != null 
+                                    ? `♀ ${currentLeftoverF} | ♂ ${currentLeftoverM} <small class="text-muted">(${currentLeftoverTotal} tails • ${currentSurvivalPct})</small>` 
+                                    : '—'}
+                            </span>
                         </div>
                         <div class="passport-stat">
                             <span class="pstat-label">Initial Female ABW</span>
@@ -202,7 +244,7 @@ export class BroodstockReportPage {
                                 <tr>
                                     <th>Date</th>
                                     <th>DOC</th>
-                                    <th>DOP</th>
+                                    <th>Leftover Pop (♀ / ♂)</th>
                                     <th>Spawns</th>
                                     <th>Eggs (k)</th>
                                     <th>Fertilization %</th>
@@ -210,7 +252,6 @@ export class BroodstockReportPage {
                                     <th>Hatching Rate (HR-A)</th>
                                     <th>TPH Stocking (k)</th>
                                     <th>Target Tanks</th>
-                                    <th>Spawn Block</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -218,11 +259,24 @@ export class BroodstockReportPage {
                                     const rowDoc = (d.doc !== null && d.doc !== undefined)
                                         ? d.doc
                                         : (currentBatch.arrival_date ? calculateBroodstockDOC(currentBatch.arrival_date, d.rec_date) : null);
+
+                                    const femaleLeft = d.mat_pop_female ?? d.quar_pop_female;
+                                    const maleLeft = d.mat_pop_male ?? d.quar_pop_male;
+                                    let leftoverHtml = '—';
+                                    if (femaleLeft != null && maleLeft != null) {
+                                        const tot = Number(femaleLeft) + Number(maleLeft);
+                                        leftoverHtml = `<span class="leftover-pop-pill">♀ ${femaleLeft} | ♂ ${maleLeft} <small class="text-muted">(${tot})</small></span>`;
+                                    } else if (femaleLeft != null) {
+                                        leftoverHtml = `<span class="leftover-pop-pill">♀ ${femaleLeft}</span>`;
+                                    } else if (maleLeft != null) {
+                                        leftoverHtml = `<span class="leftover-pop-pill">♂ ${maleLeft}</span>`;
+                                    }
+
                                     return `
                                     <tr>
                                         <td><strong>${d.rec_date}</strong></td>
                                         <td>${rowDoc !== null ? 'DOC ' + rowDoc : '—'}</td>
-                                        <td>${d.dop !== null ? 'DOP ' + d.dop : '—'}</td>
+                                        <td>${leftoverHtml}</td>
                                         <td>${d.spawning_count || '0'}</td>
                                         <td>${d.eggs_k ? Number(d.eggs_k).toLocaleString() + 'k' : '—'}</td>
                                         <td>${d.fertilization_rate_pct !== null && d.fertilization_rate_pct !== undefined ? d.fertilization_rate_pct + '%' : '—'}</td>
@@ -234,13 +288,10 @@ export class BroodstockReportPage {
                                         <td>
                                             ${d.distribution_tank_list ? `<span class="tank-target-pill">${escapeHtml(d.distribution_tank_list)}</span>` : '—'}
                                         </td>
-                                        <td>
-                                            <span class="spawn-block-tag ${d.spawn_block ? d.spawn_block.toLowerCase() : ''}">${d.spawn_block || '—'}</span>
-                                        </td>
                                     </tr>
                                     `;
                                 }).join('') : `
-                                    <tr><td colspan="11" class="text-center text-muted">No daily records found for this batch.</td></tr>
+                                    <tr><td colspan="10" class="text-center text-muted">No daily records found for this batch.</td></tr>
                                 `}
                             </tbody>
                         </table>
@@ -280,24 +331,31 @@ export class BroodstockReportPage {
         }
 
         const currentBatch = this.batches.find(b => b.batch_code === this.selectedBatchCode);
-        const headers = ["Batch", "Date", "DOC", "DOP", "Spawning Count", "Eggs (k)", "Fertilization %", "Nauplii Gross (k)", "HR-A %", "Distribution TPH (k)", "Tanks", "Spawn Block"];
+        const headers = ["Batch", "Date", "DOC", "Leftover Female", "Leftover Male", "Leftover Total", "Spawning Count", "Eggs (k)", "Fertilization %", "Nauplii Gross (k)", "HR-A %", "Distribution TPH (k)", "Tanks"];
         const rows = this.dailyRecords.map(d => {
             const rowDoc = (d.doc !== null && d.doc !== undefined)
                 ? d.doc
                 : (currentBatch?.arrival_date ? calculateBroodstockDOC(currentBatch.arrival_date, d.rec_date) : "");
+            const femaleLeft = d.mat_pop_female ?? d.quar_pop_female;
+            const maleLeft = d.mat_pop_male ?? d.quar_pop_male;
+            const totalLeft = (femaleLeft != null || maleLeft != null) 
+                ? ((Number(femaleLeft) || 0) + (Number(maleLeft) || 0)) 
+                : "";
+
             return [
                 d.batch_code,
                 d.rec_date,
                 rowDoc !== null ? rowDoc : "",
-                d.dop !== null ? d.dop : "",
+                femaleLeft != null ? femaleLeft : "",
+                maleLeft != null ? maleLeft : "",
+                totalLeft,
                 d.spawning_count || "0",
                 d.eggs_k || "",
                 d.fertilization_rate_pct !== null ? d.fertilization_rate_pct : "",
                 d.nauplii_gross_k || "",
                 d.hr_a_pct !== null ? d.hr_a_pct : "",
                 d.distribution_tph_k || "",
-                d.distribution_tank_list || "",
-                d.spawn_block || ""
+                d.distribution_tank_list || ""
             ];
         });
 

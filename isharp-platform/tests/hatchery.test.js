@@ -105,3 +105,39 @@ test("Broodstock Biometrics: calculateBroodstockDOC strictly implements 0-based 
     assert.equal(calculateBroodstockDOC(""), 0, "empty arrivalDate returns 0");
     assert.equal(calculateBroodstockDOC(undefined), 0, "undefined arrivalDate returns 0");
 });
+
+test("Broodstock UI Contracts: Daily Monitoring Table and Batch Passport structure", () => {
+    // 1. Table header contracts
+    const tableHeaders = [
+        "Date", "DOC", "Leftover Pop (♀ / ♂)", "Spawns", "Eggs (k)",
+        "Fertilization %", "Nauplii Gross (k)", "Hatching Rate (HR-A)", "TPH Stocking (k)", "Target Tanks"
+    ];
+
+    assert.equal(tableHeaders.length, 10, "Daily table must have exactly 10 columns");
+    assert.ok(tableHeaders.includes("Leftover Pop (♀ / ♂)"), "Table must include Leftover Pop column");
+    assert.ok(!tableHeaders.includes("DOP"), "Table must NOT include legacy DOP column");
+    assert.ok(!tableHeaders.includes("Spawn Block"), "Table must NOT include Spawn Block column");
+
+    // 2. CSV Export contracts
+    const csvHeaders = [
+        "Batch", "Date", "DOC", "Leftover Female", "Leftover Male", "Leftover Total",
+        "Spawning Count", "Eggs (k)", "Fertilization %", "Nauplii Gross (k)", "HR-A %", "Distribution TPH (k)", "Tanks"
+    ];
+    assert.ok(!csvHeaders.includes("DOP"), "CSV must NOT include DOP");
+    assert.ok(!csvHeaders.includes("Spawn Block"), "CSV must NOT include Spawn Block");
+    assert.ok(csvHeaders.includes("Leftover Female"), "CSV must include Leftover Female");
+    assert.ok(csvHeaders.includes("Leftover Male"), "CSV must include Leftover Male");
+    assert.ok(csvHeaders.includes("Leftover Total"), "CSV must include Leftover Total");
+
+    // 3. Batch Passport permanent block resolution
+    const resolveBlock = (spawnBlock, batchCode) => {
+        const raw = (spawnBlock || "").toUpperCase();
+        const isBlockB = raw.includes("SHB") || ["STL", "SK", "AP3", "AP 1/2024"].some(k => (batchCode || "").includes(k));
+        return isBlockB ? "Block B (SHB)" : "Block A (SHA)";
+    };
+
+    assert.equal(resolveBlock("SHA", "S1/2026"), "Block A (SHA)");
+    assert.equal(resolveBlock("SHB", "STL 1/2026"), "Block B (SHB)");
+    assert.equal(resolveBlock("", "S1/2026"), "Block A (SHA)");
+    assert.equal(resolveBlock("", "STL 1/2026"), "Block B (SHB)");
+});

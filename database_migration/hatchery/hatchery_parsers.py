@@ -94,9 +94,10 @@ def parse_batch_sheet(ws, sheet_name):
     abw_female = clean_float(raw_rows[14][1]) if len(raw_rows[14]) > 1 else None
     abw_male = clean_float(raw_rows[15][1]) if len(raw_rows[15]) > 1 else None
 
-    # Induk Datang Summary (Row 22, 0-indexed: row 21)
-    arrived_pop_f = clean_int(raw_rows[21][1]) if len(raw_rows[21]) > 1 else None
-    arrived_pop_m = clean_int(raw_rows[21][2]) if len(raw_rows[21]) > 2 else None
+    # Arrived Population (Row 24, 0-indexed: row 23: Cells B24 & C24)
+    # Note: Row 24 is the arrival day count. Rows below it are daily remaining counts, not new arrivals.
+    arrived_pop_f = clean_int(raw_rows[23][1]) if len(raw_rows) > 23 and len(raw_rows[23]) > 1 else None
+    arrived_pop_m = clean_int(raw_rows[23][2]) if len(raw_rows) > 23 and len(raw_rows[23]) > 2 else None
 
     batch_meta = {
         "batch_code": batch_code,
@@ -156,6 +157,8 @@ def parse_batch_sheet(ws, sheet_name):
         daily_rec = {
             "batch_code": batch_code,
             "rec_date": rec_date,
+            "quar_pop_female": clean_int(cell_val('B')),
+            "quar_pop_male": clean_int(cell_val('C')),
             "mat_pop_female": clean_int(cell_val('K')),
             "mat_pop_male": clean_int(cell_val('L')),
             "mat_mort_female": clean_int(cell_val('M')),
