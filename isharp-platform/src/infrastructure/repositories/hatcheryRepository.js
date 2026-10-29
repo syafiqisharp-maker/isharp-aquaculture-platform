@@ -151,10 +151,25 @@ export class HatcheryRepository {
     }
 
     /**
+     * Retrieves all PL tank flush events (discards/terminations)
+     * @param {number} limit
+     * @returns {Promise<Array<object>>}
+     */
+    static async getFlushEvents(limit = 600) {
+        try {
+            const data = await supabase.request(`hatchery_run_events?event_type=eq.FLUSH&order=event_date.desc&limit=${limit}`);
+            return Array.isArray(data) ? data : [];
+        } catch (err) {
+            console.error("HatcheryRepository.getFlushEvents failed:", err);
+            return [];
+        }
+    }
+
+    /**
      * Retrieves all PL culture runs with traceability data
      * @returns {Promise<Array<object>>}
      */
-    static async getAllTankRuns(limit = 500) {
+    static async getAllTankRuns(limit = 1500) {
         try {
             const data = await supabase.request(`hatchery_tank_runs?order=stock_date.desc&limit=${limit}`);
             return Array.isArray(data) ? data : [];

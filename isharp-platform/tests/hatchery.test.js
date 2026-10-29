@@ -4,6 +4,11 @@ import { DOM_IDS } from "../src/config/domContracts.js";
 import { getStockingTabHtml } from "../src/modules/dbms/templates/stockingTabTemplate.js";
 import { HatcheryRepository } from "../src/infrastructure/repositories/hatcheryRepository.js";
 import { calculateBroodstockDOC } from "../src/domain/biometrics.js";
+import {
+    aggregateMonthlyHatcheryRollup,
+    aggregateDailyHatcheryOperations,
+    calculateHatcheryKpiStats
+} from "../src/domain/hatcheryAnalytics.js";
 
 test("Hatchery Contracts: DOM_IDS contains Stocking Tab Hatchery Origin contract", () => {
     assert.ok(DOM_IDS.STOCKING.HATCHERY_ORIGIN, "HATCHERY_ORIGIN contract must exist");
@@ -141,3 +146,111 @@ test("Broodstock UI Contracts: Daily Monitoring Table and Batch Passport structu
     assert.equal(resolveBlock("", "S1/2026"), "Block A (SHA)");
     assert.equal(resolveBlock("", "STL 1/2026"), "Block B (SHB)");
 });
+
+test("Hatchery Domain: aggregateMonthlyHatcheryRollup computes production ledger metrics", () => {
+    const mockRuns = [
+        { tank_code: "C01", stock_date: "2026-10-01", nauplii_stocked_k: 2000, species: "VAN" },
+        { tank_code: "C02", stock_date: "2026-10-02", nauplii_stocked_k: 2000, species: "VAN" },
+        { tank_code: "C03", stock_date: "2026-09-15", nauplii_stocked_k: 1500, species: "MON" }
+    ];
+    const mockDispatches = [
+        { tank_code: "C01", harvest_date: "2026-10-22", qty_k: 1500, pl_stage: 10, buyer_type: "SGO", species: "VAN" },
+        { tank_code: "C02", harvest_date: "2026-10-23", qty_k: 1200, pl_stage: 11, buyer_type: "EXTERNAL", species: "VAN" }
+    ];
+    const mockFlushes = [
+        { tank_code: "C04", event_date: "2026-10-05", qty_k: 500, species: "VAN" }
+    ];
+
+    // Filtered by year 2026
+    const rollup = aggregateMonthlyHatcheryRollup(mockRuns, mockDispatches, mockFlushes, "2026", "ALL");
+    assert.equal(rollup.length, 2, "Should return 2 distinct months (2026-10 and 2026-09)");
+
+    const oct = rollup.find(m => m.monthKey === "2026-10");
+    assert.ok(oct, "October 2026 must be present");
+    assert.equal(oct.stockedTanksCount, 2, "2 tanks stocked in October");
+    assert.equal(oct.naupliiStockedK, 4000, "4000k nauplii stocked in October");
+    assert.equal(oct.harvestedTanksCount, 2, "2 tanks harvested in October");
+    assert.equal(oct.plHarvestedK, 2700, "2700k PL harvested in October");
+    assert.equal(oct.sgoHarvestK, 1500, "1500k SGO dispatches");
+    assert.equal(oct.externalHarvestK, 1200, "1200k external dispatches");
+    assert.equal(oct.flushedTanksCount, 1, "1 tank flushed in October");
+    assert.equal(oct.naupliiFlushedK, 500, "500k flushed in October");
+    assert.equal(oct.overallSrPct, 67.5, "SR% = (2700 / 4000) * 100 = 67.5%");
+    assert.equal(oct.avgPlStage, 10.5, "Avg stage = (10 + 11) / 2 = 10.5");
+    assert.equal(oct.species, "L.Vannamei", "Species should be Vannamei");
+
+    // Filter by Species
+    const monRollup = aggregateMonthlyHatcheryRollup(mockRuns, mockDispatches, mockFlushes, "2026", "MON");
+    assert.equal(monRollup.length, 1, "Only September has Monodon");
+    assert.equal(monRollup[0].monthKey, "2026-09");
+    assert.equal(monRollup[0].species, "P.Monodon");
+});
+
+test("Hatchery Domain: aggregateDailyHatcheryOperations builds unified day-by-day operational timeline", () => {
+    const mockRuns = [
+        { tank_code: "C11", stock_date: "2026-10-01", nauplii_stocked_k: 2800, species: "VAN" },
+        { tank_code: "C12", stock_date: "2026-10-01", nauplii_stocked_k: 2800, species: "VAN" }
+    ];
+    const mockDispatches = [
+        { tank_code: "A01", harvest_date: "2026-10-01", qty_k: 1200, pl_stage: 10, linked_ponds: ["2091701.31"], species: "VAN" },
+        { tank_code: "A02", harvest_date: "2026-10-01", qty_k: 1100, pl_stage: 10, linked_ponds: ["2091701.32"], species: "VAN" },
+        { tank_code: "A03", harvest_date: "2026-10-15", qty_k: 1400, pl_stage: 11, linked_ponds: ["2091701.33"], species: "VAN" }
+    ];
+    const mockFlushes = [
+        { tank_code: "D08", event_date: "2026-10-01", qty_k: 800, species: "VAN" }
+    ];
+
+    const timeline = aggregateDailyHatcheryOperations(mockRuns, mockDispatches, mockFlushes, "2026-10", "ALL");
+    assert.equal(timeline.length, 2, "Must aggregate exactly 2 active operational days (Oct 1 and Oct 15)");
+
+    const day1 = timeline[0];
+    assert.equal(day1.date, "2026-10-01");
+    assert.equal(day1.stockingsCount, 2, "2 stocking runs on Oct 1");
+    assert.equal(day1.totalStockedK, 5600, "5,600k nauplii stocked on Oct 1");
+    assert.deepEqual(day1.stockTanks, ["C11", "C12"], "Stock tanks must be C11 and C12");
+
+    assert.equal(day1.harvestsCount, 2, "2 harvest dispatches on Oct 1");
+    assert.equal(day1.totalHarvestedK, 2300, "2,300k PL harvested on Oct 1");
+    assert.deepEqual(day1.harvestTanks, ["A01", "A02"], "Harvest tanks must be A01 and A02");
+    assert.deepEqual(day1.linkedPonds, ["2091701.31", "2091701.32"], "Linked ponds must be properly merged and sorted");
+    assert.equal(day1.avgStage, "10.0", "Avg PL stage must be 10.0");
+
+    assert.equal(day1.flushesCount, 1, "1 flush on Oct 1");
+    assert.equal(day1.totalFlushedK, 800, "800k flushed on Oct 1");
+    assert.deepEqual(day1.flushTanks, ["D08"], "Flush tank must be D08");
+
+    const day15 = timeline[1];
+    assert.equal(day15.date, "2026-10-15");
+    assert.equal(day15.stockingsCount, 0, "0 stockings on Oct 15");
+    assert.equal(day15.harvestsCount, 1, "1 harvest on Oct 15");
+    assert.equal(day15.totalHarvestedK, 1400);
+});
+
+test("Hatchery Domain: calculateHatcheryKpiStats reacts to period and species filters", () => {
+    const mockRuns = [
+        { stock_date: "2026-10-01", nauplii_stocked_k: 5000, species: "VAN" },
+        { stock_date: "2026-09-01", nauplii_stocked_k: 4000, species: "MON" }
+    ];
+    const mockDispatches = [
+        { harvest_date: "2026-10-20", qty_k: 3500, sr_reported_pct: 70, species: "VAN" },
+        { harvest_date: "2026-09-20", qty_k: 2400, sr_reported_pct: 60, species: "MON" }
+    ];
+    const mockFlushes = [
+        { event_date: "2026-10-05", qty_k: 500, species: "VAN" }
+    ];
+
+    // Filter: October 2026
+    const octStats = calculateHatcheryKpiStats(mockRuns, mockDispatches, mockFlushes, "2026", "10", "ALL");
+    assert.equal(octStats.totalHarvestedK, 3500, "Harvested in Oct: 3500k");
+    assert.equal(octStats.totalStockedK, 5000, "Stocked in Oct: 5000k");
+    assert.equal(octStats.totalFlushedK, 500, "Flushed in Oct: 500k");
+    assert.equal(octStats.totalDispatchesCount, 1, "1 dispatch in Oct");
+    assert.equal(octStats.avgSr, "70.0%", "Average reported SR in Oct is 70.0%");
+
+    // Filter: Full Year 2026
+    const all2026 = calculateHatcheryKpiStats(mockRuns, mockDispatches, mockFlushes, "2026", "ALL", "ALL");
+    assert.equal(all2026.totalHarvestedK, 5900, "Total 2026 harvest: 3500 + 2400 = 5900k");
+    assert.equal(all2026.totalDispatchesCount, 2, "2 dispatches across 2026");
+    assert.equal(all2026.avgSr, "65.0%", "Average reported SR across 2026 is (70 + 60) / 2 = 65.0%");
+});
+

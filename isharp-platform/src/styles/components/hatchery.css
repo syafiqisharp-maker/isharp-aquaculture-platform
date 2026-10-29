@@ -1384,3 +1384,258 @@
     color: #64748b;
     margin-top: 0.2rem;
 }
+
+/* ==============================================================================
+   PL Harvest Operations Monitor & Daily Timeline Styles
+   ============================================================================== */
+
+.ops-monitor-section {
+    margin-bottom: 2rem;
+}
+
+.hatchery-cadence-toggle {
+    display: inline-flex;
+    align-items: center;
+    background: rgba(224, 242, 254, 0.45);
+    padding: 0.25rem;
+    border-radius: 12px;
+    border: 1px solid rgba(186, 230, 253, 0.6);
+    gap: 0.35rem;
+}
+
+.hatchery-cadence-btn {
+    padding: 0.45rem 0.95rem;
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: #0369a1;
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    white-space: nowrap;
+}
+
+.hatchery-cadence-btn:hover {
+    background: rgba(255, 255, 255, 0.6);
+    color: #0284c7;
+}
+
+.hatchery-cadence-btn.active {
+    background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
+    color: #ffffff;
+    box-shadow: 0 4px 12px rgba(2, 132, 199, 0.25);
+    border-color: rgba(2, 132, 199, 0.4);
+}
+
+.hatchery-filter-bar {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 1.25rem;
+    padding: 0.85rem 1.25rem;
+    margin-bottom: 1.25rem;
+    background: rgba(248, 250, 252, 0.85);
+    border: 1px solid rgba(226, 232, 240, 0.9);
+    border-radius: 12px;
+}
+
+.filter-scope-display {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+}
+
+.active-scope-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.35rem 0.75rem;
+    background: rgba(2, 132, 199, 0.08);
+    border: 1px solid rgba(2, 132, 199, 0.2);
+    border-radius: 999px;
+    font-size: 0.76rem;
+    color: #0369a1;
+}
+
+/* Daily Operations Timeline */
+.ops-timeline-table td {
+    vertical-align: middle;
+}
+
+.daily-date-cell {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+}
+
+.day-tag {
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.activity-pill-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+}
+
+.daily-op-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.2rem 0.5rem;
+    border-radius: 6px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    line-height: 1.2;
+    white-space: nowrap;
+}
+
+.daily-op-pill.stocking {
+    background: rgba(16, 185, 129, 0.12);
+    color: #047857;
+    border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.daily-op-pill.harvest {
+    background: rgba(2, 132, 199, 0.12);
+    color: #0284c7;
+    border: 1px solid rgba(2, 132, 199, 0.3);
+}
+
+.daily-op-pill.flush {
+    background: rgba(245, 158, 11, 0.12);
+    color: #b45309;
+    border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.op-event-cell {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+}
+
+.op-qty-main {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 0.9rem;
+    display: flex;
+    align-items: baseline;
+    gap: 0.35rem;
+}
+
+.op-tank-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+}
+
+.tank-code-badge.stock {
+    background: rgba(16, 185, 129, 0.12);
+    color: #065f46;
+    border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.tank-code-badge.harvest {
+    background: rgba(2, 132, 199, 0.12);
+    color: #0369a1;
+    border: 1px solid rgba(2, 132, 199, 0.3);
+}
+
+.tank-code-badge.flush {
+    background: rgba(245, 158, 11, 0.12);
+    color: #92400e;
+    border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.daily-balance-cell {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+}
+
+/* SR Badges */
+.sr-badge {
+    display: inline-block;
+    padding: 0.2rem 0.55rem;
+    border-radius: 6px;
+    font-weight: 700;
+    font-size: 0.78rem;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+.sr-badge.good {
+    background: rgba(16, 185, 129, 0.12);
+    color: #047857;
+    border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.sr-badge.medium {
+    background: rgba(245, 158, 11, 0.12);
+    color: #b45309;
+    border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.sr-badge.low {
+    background: rgba(239, 68, 68, 0.12);
+    color: #b91c1c;
+    border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+/* Drill-Down Button in Monthly Table */
+.btn-ops-drilldown {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.35rem 0.75rem;
+    border-radius: 8px;
+    background: rgba(2, 132, 199, 0.08);
+    color: #0284c7;
+    font-size: 0.76rem;
+    font-weight: 600;
+    border: 1px solid rgba(2, 132, 199, 0.25);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+}
+
+.btn-ops-drilldown:hover {
+    background: #0284c7;
+    color: #ffffff;
+    box-shadow: 0 2px 8px rgba(2, 132, 199, 0.3);
+}
+
+/* Empty Prompt */
+.hatchery-empty-prompt {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    padding: 2.5rem 1.5rem;
+    background: rgba(248, 250, 252, 0.6);
+    border: 1px dashed #cbd5e1;
+    border-radius: 16px;
+    gap: 0.85rem;
+    margin: 1rem 0;
+}
+
+.prompt-icon {
+    font-size: 2.25rem;
+}
+
+.prompt-text h4 {
+    margin: 0 0 0.35rem 0;
+    font-size: 1.05rem;
+    color: #0f172a;
+}
+
+.prompt-text p {
+    margin: 0;
+    font-size: 0.85rem;
+    color: #64748b;
+    max-width: 480px;
+}
+
