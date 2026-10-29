@@ -8,6 +8,7 @@
 import { HatcheryRepository } from "../../infrastructure/repositories/hatcheryRepository.js";
 import { escapeHtml } from "../../utils/formatters.js";
 import { Toast } from "../../components/Toast.js";
+import { calculateBroodstockDOC } from "../../domain/biometrics.js";
 
 export class BroodstockReportPage {
     constructor(containerEl, onNavigate) {
@@ -131,6 +132,10 @@ export class BroodstockReportPage {
                             <span class="pstat-val">${currentBatch.arrival_date || '—'} ${currentBatch.arrival_time ? '• ' + currentBatch.arrival_time : ''}</span>
                         </div>
                         <div class="passport-stat">
+                            <span class="pstat-label">Batch Age</span>
+                            <span class="pstat-val font-bold text-primary">${currentBatch.arrival_date ? 'DOC ' + calculateBroodstockDOC(currentBatch.arrival_date, new Date()) : '—'}</span>
+                        </div>
+                        <div class="passport-stat">
                             <span class="pstat-label">Arrived Population</span>
                             <span class="pstat-val">♀ ${currentBatch.arrived_pop_female || '—'} | ♂ ${currentBatch.arrived_pop_male || '—'}</span>
                         </div>
@@ -209,10 +214,14 @@ export class BroodstockReportPage {
                                 </tr>
                             </thead>
                             <tbody>
-                                ${this.dailyRecords.length > 0 ? this.dailyRecords.map(d => `
+                                ${this.dailyRecords.length > 0 ? this.dailyRecords.map(d => {
+                                    const rowDoc = (d.doc !== null && d.doc !== undefined)
+                                        ? d.doc
+                                        : (currentBatch.arrival_date ? calculateBroodstockDOC(currentBatch.arrival_date, d.rec_date) : null);
+                                    return `
                                     <tr>
                                         <td><strong>${d.rec_date}</strong></td>
-                                        <td>${d.doc !== null ? 'DOC ' + d.doc : '—'}</td>
+                                        <td>${rowDoc !== null ? 'DOC ' + rowDoc : '—'}</td>
                                         <td>${d.dop !== null ? 'DOP ' + d.dop : '—'}</td>
                                         <td>${d.spawning_count || '0'}</td>
                                         <td>${d.eggs_k ? Number(d.eggs_k).toLocaleString() + 'k' : '—'}</td>
@@ -229,7 +238,8 @@ export class BroodstockReportPage {
                                             <span class="spawn-block-tag ${d.spawn_block ? d.spawn_block.toLowerCase() : ''}">${d.spawn_block || '—'}</span>
                                         </td>
                                     </tr>
-                                `).join('') : `
+                                    `;
+                                }).join('') : `
                                     <tr><td colspan="11" class="text-center text-muted">No daily records found for this batch.</td></tr>
                                 `}
                             </tbody>
@@ -269,21 +279,27 @@ export class BroodstockReportPage {
             return;
         }
 
+        const currentBatch = this.batches.find(b => b.batch_code === this.selectedBatchCode);
         const headers = ["Batch", "Date", "DOC", "DOP", "Spawning Count", "Eggs (k)", "Fertilization %", "Nauplii Gross (k)", "HR-A %", "Distribution TPH (k)", "Tanks", "Spawn Block"];
-        const rows = this.dailyRecords.map(d => [
-            d.batch_code,
-            d.rec_date,
-            d.doc !== null ? d.doc : "",
-            d.dop !== null ? d.dop : "",
-            d.spawning_count || "0",
-            d.eggs_k || "",
-            d.fertilization_rate_pct !== null ? d.fertilization_rate_pct : "",
-            d.nauplii_gross_k || "",
-            d.hr_a_pct !== null ? d.hr_a_pct : "",
-            d.distribution_tph_k || "",
-            d.distribution_tank_list || "",
-            d.spawn_block || ""
-        ]);
+        const rows = this.dailyRecords.map(d => {
+            const rowDoc = (d.doc !== null && d.doc !== undefined)
+                ? d.doc
+                : (currentBatch?.arrival_date ? calculateBroodstockDOC(currentBatch.arrival_date, d.rec_date) : "");
+            return [
+                d.batch_code,
+                d.rec_date,
+                rowDoc !== null ? rowDoc : "",
+                d.dop !== null ? d.dop : "",
+                d.spawning_count || "0",
+                d.eggs_k || "",
+                d.fertilization_rate_pct !== null ? d.fertilization_rate_pct : "",
+                d.nauplii_gross_k || "",
+                d.hr_a_pct !== null ? d.hr_a_pct : "",
+                d.distribution_tph_k || "",
+                d.distribution_tank_list || "",
+                d.spawn_block || ""
+            ];
+        });
 
         const csvContent = "\uFEFF" + [headers.join(","), ...rows.map(row => row.map(v => `"${String(v).replace(/"/g, '""')}"`).join(","))].join("\r\n");
         const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });

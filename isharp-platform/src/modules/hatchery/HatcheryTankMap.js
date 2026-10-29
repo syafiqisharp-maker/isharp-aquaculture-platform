@@ -154,7 +154,7 @@ export class HatcheryTankMap {
                             </div>
                             <div class="mat-stat">
                                 <span class="mat-stat-label">Broodstock DOC</span>
-                                <span class="mat-stat-val">${this.matBlockA?.doc !== null ? 'DOC ' + this.matBlockA.doc : 'N/A'}</span>
+                                <span class="mat-stat-val">${this.matBlockA?.doc !== null && this.matBlockA?.doc !== undefined ? 'DOC ' + this.matBlockA.doc : 'N/A'}</span>
                             </div>
                             <div class="mat-stat">
                                 <span class="mat-stat-label">Hatching Rate (HR-A)</span>
@@ -182,7 +182,7 @@ export class HatcheryTankMap {
                             </div>
                             <div class="mat-stat">
                                 <span class="mat-stat-label">Broodstock DOC</span>
-                                <span class="mat-stat-val">${this.matBlockB?.doc !== null ? 'DOC ' + this.matBlockB.doc : 'N/A'}</span>
+                                <span class="mat-stat-val">${this.matBlockB?.doc !== null && this.matBlockB?.doc !== undefined ? 'DOC ' + this.matBlockB.doc : 'N/A'}</span>
                             </div>
                             <div class="mat-stat">
                                 <span class="mat-stat-label">Hatching Rate (HR-A)</span>

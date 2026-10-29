@@ -141,6 +141,18 @@ def parse_batch_sheet(ws, sheet_name):
             idx = col_idx(col_letter) - 1
             return row[idx] if idx < len(row) else None
 
+        # Robust 0-based DOC calculation (Option 1): rec_date - arrival_date
+        calc_doc = None
+        if arrival_date and rec_date:
+            try:
+                d_arr = datetime.date.fromisoformat(arrival_date)
+                d_rec = datetime.date.fromisoformat(rec_date)
+                calc_doc = max(0, (d_rec - d_arr).days)
+            except Exception:
+                calc_doc = None
+        if calc_doc is None:
+            calc_doc = clean_int(cell_val('BA')) or 0
+
         daily_rec = {
             "batch_code": batch_code,
             "rec_date": rec_date,
@@ -163,7 +175,7 @@ def parse_batch_sheet(ws, sheet_name):
             "nauplii_transfer_k": clean_float(cell_val('AJ')),
             "nauplii_allowance_k": clean_float(cell_val('AK')),
             "nauplii_stocking_k": clean_float(cell_val('AL')),
-            "doc": clean_int(cell_val('BA')),
+            "doc": calc_doc,
             "dop": clean_int(cell_val('BB')),
             "stocking_target_date": clean_date(cell_val('BC')),
             "distribution_tph_k": clean_float(cell_val('BD')),

@@ -204,7 +204,7 @@ export class StockingTab {
                                 <div class="trace-col">
                                     <span class="trace-label">Broodstock Batch</span>
                                     <div class="trace-val-main font-mono font-bold">${orig.broodstock_batch || '—'}</div>
-                                    <div class="trace-sub">${orig.broodstock_doc != null ? 'DOC ' + orig.broodstock_doc : '—'}</div>
+                                    <div class="trace-sub">${orig.broodstock_doc != null ? 'DOC ' + orig.broodstock_doc + ' at Spawn' : '—'}</div>
                                 </div>
                                 <div class="trace-col">
                                     <span class="trace-label">Hatching Rate (HR-A)</span>

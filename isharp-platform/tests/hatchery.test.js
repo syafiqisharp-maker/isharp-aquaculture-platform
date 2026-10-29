@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { DOM_IDS } from "../src/config/domContracts.js";
 import { getStockingTabHtml } from "../src/modules/dbms/templates/stockingTabTemplate.js";
 import { HatcheryRepository } from "../src/infrastructure/repositories/hatcheryRepository.js";
+import { calculateBroodstockDOC } from "../src/domain/biometrics.js";
 
 test("Hatchery Contracts: DOM_IDS contains Stocking Tab Hatchery Origin contract", () => {
     assert.ok(DOM_IDS.STOCKING.HATCHERY_ORIGIN, "HATCHERY_ORIGIN contract must exist");
@@ -81,4 +82,26 @@ test("Hatchery Traceability: parses comma-delimited multi-tank strings", () => {
     assert.deepEqual(parseTanks("A11,A12,A13"), ["A11", "A12", "A13"], "Must extract 3-tank batch A11, A12, A13");
     assert.deepEqual(parseTanks("C5,C7,C8"), ["C5", "C7", "C8"].map(t => `${t[0]}0${t[1]}`), "Must extract C05, C07, C08");
     assert.deepEqual(parseTanks("B1,B2,B3"), ["B01", "B02", "B03"], "Must pad single digits B1,B2,B3 to B01,B02,B03");
+});
+
+test("Broodstock Biometrics: calculateBroodstockDOC strictly implements 0-based arrival convention (Option 1)", () => {
+    // Exact arrival day = DOC 0
+    assert.equal(calculateBroodstockDOC("2026-03-17", "2026-03-17"), 0, "Arrival day must be DOC 0");
+    
+    // 1 day after arrival = DOC 1
+    assert.equal(calculateBroodstockDOC("2026-03-17", "2026-03-18"), 1, "Next day after arrival must be DOC 1");
+    
+    // Spawning on 2026-04-15 = DOC 29
+    assert.equal(calculateBroodstockDOC("2026-03-17", "2026-04-15"), 29, "29 days after arrival must be DOC 29");
+
+    // Extended culture on 2026-06-25 = DOC 100
+    assert.equal(calculateBroodstockDOC("2026-03-17", "2026-06-25"), 100, "100 days after arrival must be DOC 100");
+
+    // Clamps negative difference to 0
+    assert.equal(calculateBroodstockDOC("2026-03-17", "2026-03-01"), 0, "Pre-arrival dates clamp to 0");
+
+    // Edge cases: null or invalid inputs return 0 gracefully
+    assert.equal(calculateBroodstockDOC(null), 0, "null arrivalDate returns 0");
+    assert.equal(calculateBroodstockDOC(""), 0, "empty arrivalDate returns 0");
+    assert.equal(calculateBroodstockDOC(undefined), 0, "undefined arrivalDate returns 0");
 });

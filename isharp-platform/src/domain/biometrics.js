@@ -41,6 +41,18 @@ export function calculateDOC(stckDate, referenceDate = new Date()) {
 }
 
 /**
+ * Calculates Day of Culture (DOC) for Broodstock given an arrival date and target record/spawning date.
+ * Strictly implements Option 1 (0-based): arrival date = DOC 0, 1 day after = DOC 1.
+ * @param {string|Date} arrivalDate
+ * @param {string|Date} [referenceDate]
+ * @returns {number}
+ */
+export function calculateBroodstockDOC(arrivalDate, referenceDate = new Date()) {
+    if (!arrivalDate) return 0;
+    return calculateDOC(arrivalDate, referenceDate);
+}
+
+/**
  * Calculates estimated Pond Biomass in Kilograms.
  * Formula: (Stocked Pcs * Survival % * ABW in grams) / 1000 / 100
  * @param {number} stockedPcs 

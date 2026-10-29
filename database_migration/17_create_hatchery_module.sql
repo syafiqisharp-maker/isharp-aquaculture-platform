@@ -729,7 +729,7 @@ SELECT
     bb.batch_code AS broodstock_batch,
     bb.supplier AS broodstock_supplier,
     bb.arrival_date AS broodstock_arrival_date,
-    bd.doc AS broodstock_doc_at_stocking,
+    COALESCE(bd.doc, (bd.rec_date - bb.arrival_date)::integer, 0) AS broodstock_doc_at_stocking,
     bd.hr_a_pct AS hr_a_pct,               -- Visualized HR
     bd.hr_b_pct AS hr_b_pct,               -- Stored secondary metric
     bd.fertilization_rate_pct,
@@ -801,7 +801,7 @@ SELECT
     bb.batch_code AS broodstock_batch,
     bb.supplier AS broodstock_supplier,
     bb.arrival_date AS broodstock_arrival_date,
-    bd.doc AS broodstock_doc,
+    COALESCE(bd.doc, (bd.rec_date - bb.arrival_date)::integer, 0) AS broodstock_doc,
     bd.hr_a_pct AS display_hr_pct,
     bd.hr_b_pct AS stored_hr_b_pct,
     bd.nauplii_gross_k AS batch_nauplii_gross_k,
