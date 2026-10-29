@@ -1,6 +1,6 @@
 /**
  * iSHARP Platform — Hatchery Operations & Production Domain Analytics
- * Pure functions for aggregating monthly performance ledgers and daily operational timelines.
+ * Pure functions for aggregating monthly executive performance ledgers and operational metrics.
  */
 
 /**
@@ -32,6 +32,7 @@ export function aggregateMonthlyHatcheryRollup(runs = [], dispatches = [], flush
                 sgoHarvestK: 0,
                 externalHarvestK: 0,
                 stages: [],
+                srList: [],
                 speciesSet: new Set()
             });
         }
@@ -67,6 +68,9 @@ export function aggregateMonthlyHatcheryRollup(runs = [], dispatches = [], flush
         const qty = Number(d.qty_k) || 0;
         m.plHarvestedK += qty;
         if (d.pl_stage) m.stages.push(Number(d.pl_stage));
+        if (d.sr_reported_pct !== null && d.sr_reported_pct !== undefined && !isNaN(d.sr_reported_pct)) {
+            m.srList.push(Number(d.sr_reported_pct));
+        }
         m.speciesSet.add(dSpecies);
 
         if (d.buyer_type === "EXTERNAL") {
@@ -96,9 +100,9 @@ export function aggregateMonthlyHatcheryRollup(runs = [], dispatches = [], flush
         const harvestedCount = m.harvestedTanks.size;
         const flushedCount = m.flushedTanks.size;
 
-        const srPct = m.naupliiStockedK > 0 
-            ? ((m.plHarvestedK / m.naupliiStockedK) * 100) 
-            : null;
+        const avgReportedSr = m.srList.length > 0 
+            ? (m.srList.reduce((sum, val) => sum + val, 0) / m.srList.length)
+            : (m.naupliiStockedK > 0 ? ((m.plHarvestedK / m.naupliiStockedK) * 100) : null);
 
         const avgStage = m.stages.length > 0 
             ? (m.stages.reduce((sum, val) => sum + val, 0) / m.stages.length) 
@@ -108,6 +112,13 @@ export function aggregateMonthlyHatcheryRollup(runs = [], dispatches = [], flush
             ? "P.Monodon" 
             : (m.speciesSet.has("MON") && m.speciesSet.has("VAN") ? "Mixed (VAN/MON)" : "L.Vannamei");
 
+        const totalHarvest = Math.round(m.plHarvestedK);
+        const sgoHarvest = Math.round(m.sgoHarvestK);
+        const externalHarvest = Math.round(m.externalHarvestK);
+
+        const sgoPct = totalHarvest > 0 ? Number(((sgoHarvest / totalHarvest) * 100).toFixed(1)) : 0;
+        const externalPct = totalHarvest > 0 ? Number(((externalHarvest / totalHarvest) * 100).toFixed(1)) : 0;
+
         return {
             monthKey: m.monthKey,
             year: m.year,
@@ -116,114 +127,21 @@ export function aggregateMonthlyHatcheryRollup(runs = [], dispatches = [], flush
             stockedTanksCount: stockedCount,
             naupliiStockedK: Math.round(m.naupliiStockedK),
             harvestedTanksCount: harvestedCount,
-            plHarvestedK: Math.round(m.plHarvestedK),
+            harvestTanksList: Array.from(m.harvestedTanks).sort(),
+            plHarvestedK: totalHarvest,
             flushedTanksCount: flushedCount,
+            flushedTanksList: Array.from(m.flushedTanks).sort(),
             naupliiFlushedK: Math.round(m.naupliiFlushedK),
-            overallSrPct: srPct !== null ? Number(srPct.toFixed(1)) : null,
+            overallSrPct: avgReportedSr !== null ? Number(avgReportedSr.toFixed(1)) : null,
             avgPlStage: avgStage !== null ? Number(avgStage.toFixed(1)) : null,
-            sgoHarvestK: Math.round(m.sgoHarvestK),
-            externalHarvestK: Math.round(m.externalHarvestK)
+            sgoHarvestK: sgoHarvest,
+            externalHarvestK: externalHarvest,
+            sgoPct,
+            externalPct
         };
     });
 
     return results.sort((a, b) => b.monthKey.localeCompare(a.monthKey));
-}
-
-/**
- * Aggregates day-by-day operational timeline for a specific month.
- * Unifies Stocking, Harvesting, and Flushing into a single daily cadence.
- *
- * @param {Array<object>} runs
- * @param {Array<object>} dispatches
- * @param {Array<object>} flushes
- * @param {string} targetMonthKey "YYYY-MM" e.g. "2026-10"
- * @param {string} [filterSpecies="ALL"]
- * @returns {Array<object>} Array of daily operational summaries sorted by date asc
- */
-export function aggregateDailyHatcheryOperations(runs = [], dispatches = [], flushes = [], targetMonthKey, filterSpecies = "ALL") {
-    if (!targetMonthKey) return [];
-
-    const dailyMap = new Map();
-
-    const getOrCreateDay = (dateStr) => {
-        if (!dailyMap.has(dateStr)) {
-            dailyMap.set(dateStr, {
-                date: dateStr,
-                monthKey: targetMonthKey,
-                stockings: [],
-                harvests: [],
-                flushes: [],
-                totalStockedK: 0,
-                totalHarvestedK: 0,
-                totalFlushedK: 0
-            });
-        }
-        return dailyMap.get(dateStr);
-    };
-
-    // 1. Stocking Events
-    runs.forEach(r => {
-        if (!r.stock_date || !r.stock_date.startsWith(targetMonthKey)) return;
-        const rSpecies = (r.species || "VAN").toUpperCase().includes("MON") ? "MON" : "VAN";
-        if (filterSpecies !== "ALL" && rSpecies !== filterSpecies) return;
-
-        const day = getOrCreateDay(r.stock_date);
-        day.stockings.push(r);
-        day.totalStockedK += Number(r.nauplii_stocked_k) || 0;
-    });
-
-    // 2. Harvest Dispatches
-    dispatches.forEach(d => {
-        if (!d.harvest_date || !d.harvest_date.startsWith(targetMonthKey)) return;
-        const dSpecies = (d.species || "VAN").toUpperCase().includes("MON") ? "MON" : "VAN";
-        if (filterSpecies !== "ALL" && dSpecies !== filterSpecies) return;
-
-        const day = getOrCreateDay(d.harvest_date);
-        day.harvests.push(d);
-        day.totalHarvestedK += Number(d.qty_k) || 0;
-    });
-
-    // 3. Flush Events
-    flushes.forEach(f => {
-        if (!f.event_date || !f.event_date.startsWith(targetMonthKey)) return;
-        const fSpecies = (f.species || "VAN").toUpperCase().includes("MON") ? "MON" : "VAN";
-        if (filterSpecies !== "ALL" && fSpecies !== filterSpecies) return;
-
-        const day = getOrCreateDay(f.event_date);
-        day.flushes.push(f);
-        day.totalFlushedK += Number(f.qty_k) || 0;
-    });
-
-    const days = Array.from(dailyMap.values()).map(d => {
-        const uniqueStockTanks = Array.from(new Set(d.stockings.map(s => s.tank_code))).sort();
-        const uniqueHarvestTanks = Array.from(new Set(d.harvests.map(h => h.tank_code))).sort();
-        const uniqueFlushTanks = Array.from(new Set(d.flushes.map(f => f.tank_code))).sort();
-        const linkedPonds = Array.from(new Set(d.harvests.flatMap(h => h.linked_ponds || []))).sort();
-
-        // Calculate average harvest stage for the day
-        const stages = d.harvests.map(h => Number(h.pl_stage)).filter(s => !isNaN(s) && s > 0);
-        const avgStage = stages.length > 0 ? (stages.reduce((a, b) => a + b, 0) / stages.length).toFixed(1) : null;
-
-        return {
-            date: d.date,
-            monthKey: d.monthKey,
-            stockingsCount: d.stockings.length,
-            harvestsCount: d.harvests.length,
-            flushesCount: d.flushes.length,
-            totalStockedK: Math.round(d.totalStockedK),
-            totalHarvestedK: Math.round(d.totalHarvestedK),
-            totalFlushedK: Math.round(d.totalFlushedK),
-            stockTanks: uniqueStockTanks,
-            harvestTanks: uniqueHarvestTanks,
-            flushTanks: uniqueFlushTanks,
-            linkedPonds,
-            avgStage,
-            hasActivity: (d.stockings.length + d.harvests.length + d.flushes.length) > 0
-        };
-    });
-
-    // Sort ascending by date (Day 1 -> Day 31)
-    return days.sort((a, b) => a.date.localeCompare(b.date));
 }
 
 /**
@@ -259,6 +177,8 @@ export function calculateHatcheryKpiStats(runs = [], dispatches = [], flushes = 
     const filteredFlushes = flushes.filter(f => matchesPeriod(f.event_date) && matchesSpecies(f.species));
 
     const totalHarvestedK = filteredDispatches.reduce((sum, d) => sum + (Number(d.qty_k) || 0), 0);
+    const totalSgoK = filteredDispatches.filter(d => d.buyer_type !== "EXTERNAL").reduce((sum, d) => sum + (Number(d.qty_k) || 0), 0);
+    const totalExternalK = filteredDispatches.filter(d => d.buyer_type === "EXTERNAL").reduce((sum, d) => sum + (Number(d.qty_k) || 0), 0);
     const totalFlushedK = filteredFlushes.reduce((sum, f) => sum + (Number(f.qty_k) || 0), 0);
     const totalStockedK = filteredRuns.reduce((sum, r) => sum + (Number(r.nauplii_stocked_k) || 0), 0);
 
@@ -267,8 +187,15 @@ export function calculateHatcheryKpiStats(runs = [], dispatches = [], flushes = 
         ? (srDispatches.reduce((sum, d) => sum + Number(d.sr_reported_pct), 0) / srDispatches.length).toFixed(1) 
         : (totalStockedK > 0 && totalHarvestedK > 0 ? ((totalHarvestedK / totalStockedK) * 100).toFixed(1) : "—");
 
+    const sgoPct = totalHarvestedK > 0 ? ((totalSgoK / totalHarvestedK) * 100).toFixed(1) : "0.0";
+    const externalPct = totalHarvestedK > 0 ? ((totalExternalK / totalHarvestedK) * 100).toFixed(1) : "0.0";
+
     return {
         totalHarvestedK: Math.round(totalHarvestedK),
+        totalSgoK: Math.round(totalSgoK),
+        totalExternalK: Math.round(totalExternalK),
+        sgoPct,
+        externalPct,
         totalFlushedK: Math.round(totalFlushedK),
         totalStockedK: Math.round(totalStockedK),
         totalDispatchesCount: filteredDispatches.length,

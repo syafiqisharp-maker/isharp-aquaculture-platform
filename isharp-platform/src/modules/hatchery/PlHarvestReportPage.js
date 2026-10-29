@@ -1,7 +1,7 @@
 /**
  * iSHARP DBMS 2.0 — Telaga Putat Hatchery (TPH)
  * PL Harvest & Distribution Report Sub-Page
- * Visualizes daily operations timeline, monthly performance ledger, individual harvest dispatches, and tank culture runs.
+ * Visualizes monthly production & distribution summary, individual harvest dispatches, and tank culture runs.
  */
 
 import { HatcheryRepository } from "../../infrastructure/repositories/hatcheryRepository.js";
@@ -9,16 +9,8 @@ import { escapeHtml } from "../../utils/formatters.js";
 import { Toast } from "../../components/Toast.js";
 import {
     aggregateMonthlyHatcheryRollup,
-    aggregateDailyHatcheryOperations,
     calculateHatcheryKpiStats
 } from "../../domain/hatcheryAnalytics.js";
-
-function getDayOfWeek(dateStr) {
-    if (!dateStr) return "";
-    const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-    const d = new Date(dateStr + "T00:00:00");
-    return isNaN(d.getDay()) ? "" : days[d.getDay()];
-}
 
 export class PlHarvestReportPage {
     constructor(containerEl, onNavigate) {
@@ -29,11 +21,10 @@ export class PlHarvestReportPage {
         this.allRuns = [];
         this.flushes = [];
 
-        // Master Filter & Cadence State (Default: October 2026 Daily Operations)
+        // Master Filter State (Default: Full Year 2026 Executive View)
         this.selectedYear = "2026";
-        this.selectedMonth = "10";
+        this.selectedMonth = "ALL";
         this.selectedSpecies = "ALL";
-        this.cadenceView = "daily"; // "daily" | "monthly"
 
         // Lower Tab & Search State
         this.activeViewTab = "dispatches"; // "dispatches" | "runs"
@@ -71,7 +62,7 @@ export class PlHarvestReportPage {
         this.container.innerHTML = `
             <div class="hatchery-loading-state">
                 <div class="hatchery-loading-spinner"></div>
-                <p>Loading PL Harvest and Operational records...</p>
+                <p>Loading PL Harvest and Production records...</p>
             </div>
         `;
     }
@@ -135,15 +126,14 @@ export class PlHarvestReportPage {
             return true;
         });
 
-        // Determine target month key for Daily Operations
-        const activeYear = this.selectedYear === "ALL" ? "2026" : this.selectedYear;
-        const targetMonthKey = this.selectedMonth !== "ALL" ? `${activeYear}-${this.selectedMonth}` : null;
-        const dailyOps = targetMonthKey 
-            ? aggregateDailyHatcheryOperations(this.allRuns, this.dispatches, this.flushes, targetMonthKey, this.selectedSpecies)
-            : [];
-
-        // Determine monthly rollup
-        const monthlyRollup = aggregateMonthlyHatcheryRollup(this.allRuns, this.dispatches, this.flushes, this.selectedYear, this.selectedSpecies);
+        // Monthly Rollup calculation
+        const monthlyRollup = aggregateMonthlyHatcheryRollup(
+            this.allRuns,
+            this.dispatches,
+            this.flushes,
+            this.selectedYear,
+            this.selectedSpecies
+        );
         const displayRollup = this.selectedMonth === "ALL"
             ? monthlyRollup
             : monthlyRollup.filter(m => m.monthNum === this.selectedMonth);
@@ -158,15 +148,15 @@ export class PlHarvestReportPage {
                             <span>Back to Hatchery Map</span>
                         </button>
                         <div class="report-title-group">
-                            <span class="report-badge">PRODUCTION &amp; OPERATIONS MONITOR</span>
-                            <h1 class="report-title">Post-Larvae (PL) Harvest &amp; Operations Report</h1>
+                            <span class="report-badge">PRODUCTION &amp; DISTRIBUTION</span>
+                            <h1 class="report-title">Post-Larvae (PL) Harvest &amp; Distribution Report</h1>
                         </div>
                     </div>
 
                     <div class="report-header-right">
-                        <button class="hatchery-nav-btn accent" id="btn-export-pl-csv" title="Export current view to CSV">
+                        <button class="hatchery-nav-btn accent" id="btn-export-pl-csv" title="Export Monthly Summary to CSV">
                             <span class="btn-icon">📥</span>
-                            <span>Export CSV</span>
+                            <span>Export Summary CSV</span>
                         </button>
                     </div>
                 </header>
@@ -182,56 +172,46 @@ export class PlHarvestReportPage {
                         </div>
                     </div>
 
+                    <div class="kpi-card-glass kpi-emerald">
+                        <div class="kpi-icon-orbit">🚜</div>
+                        <div class="kpi-body">
+                            <span class="kpi-label">SGO Farm Deliveries</span>
+                            <span class="kpi-value">${(kpiStats.totalSgoK / 1000).toFixed(2)}M <small>PL</small></span>
+                            <span class="kpi-caption">${kpiStats.sgoPct}% sent to Setiu Growout Ponds</span>
+                        </div>
+                    </div>
+
                     <div class="kpi-card-glass kpi-blue">
                         <div class="kpi-icon-orbit">🚚</div>
                         <div class="kpi-body">
-                            <span class="kpi-label">Harvest Dispatches</span>
-                            <span class="kpi-value">${kpiStats.totalDispatchesCount}</span>
-                            <span class="kpi-caption">Farm &amp; external delivery trips</span>
+                            <span class="kpi-label">External Sales</span>
+                            <span class="kpi-value">${(kpiStats.totalExternalK / 1000).toFixed(2)}M <small>PL</small></span>
+                            <span class="kpi-caption">${kpiStats.externalPct}% sold to external buyers</span>
                         </div>
                     </div>
 
                     <div class="kpi-card-glass kpi-purple">
                         <div class="kpi-icon-orbit">📈</div>
                         <div class="kpi-body">
-                            <span class="kpi-label">Average Reported SR%</span>
+                            <span class="kpi-label">Average Harvest SR%</span>
                             <span class="kpi-value">${kpiStats.avgSr}</span>
-                            <span class="kpi-caption">Mean harvest survival rate</span>
-                        </div>
-                    </div>
-
-                    <div class="kpi-card-glass kpi-amber">
-                        <div class="kpi-icon-orbit">⚠️</div>
-                        <div class="kpi-body">
-                            <span class="kpi-label">Total Flushed Discard</span>
-                            <span class="kpi-value">${(kpiStats.totalFlushedK / 1000).toFixed(2)}M <small>PL</small></span>
-                            <span class="kpi-caption">Early Zoea &amp; discard flushes</span>
+                            <span class="kpi-caption">Across ${kpiStats.totalDispatchesCount} logged deliveries</span>
                         </div>
                     </div>
                 </section>
 
-                <!-- Operations Monitor Section (Daily Timeline vs Monthly Ledger) -->
-                <section class="report-section-glass ops-monitor-section">
+                <!-- Monthly Production & Distribution Summary Section -->
+                <section class="report-section-glass">
                     <div class="section-title-row">
                         <div class="title-with-badge">
-                            <h3 class="section-title">
-                                ${this.cadenceView === 'daily' ? '📅 Hatchery Daily Operations Timeline' : '📊 Monthly Production &amp; Harvest Summary'}
-                            </h3>
-                            <span class="section-subtag">
-                                ${this.cadenceView === 'daily' 
-                                    ? `Day-by-day operations (Stocking, Harvest, Flush) for ${scopeLabel}` 
-                                    : `Aggregated monthly performance ledger for ${scopeLabel}`}
-                            </span>
+                            <h3 class="section-title">📊 Monthly Production &amp; Distribution Summary</h3>
+                            <span class="section-subtag">Executive production ledger &amp; destination split (SGO Farm vs External Sales)</span>
                         </div>
 
-                        <!-- Cadence Toggle Buttons -->
-                        <div class="hatchery-cadence-toggle">
-                            <button class="hatchery-cadence-btn ${this.cadenceView === 'daily' ? 'active' : ''}" id="btn-cadence-daily" title="View Daily Operational Timeline">
-                                📅 Daily Operations Timeline
-                            </button>
-                            <button class="hatchery-cadence-btn ${this.cadenceView === 'monthly' ? 'active' : ''}" id="btn-cadence-monthly" title="View Monthly Performance Ledger">
-                                📊 Monthly Performance Ledger
-                            </button>
+                        <div class="filter-scope-display">
+                            <span class="active-scope-badge">
+                                Scope: <strong>${scopeLabel}</strong> • Species: <strong>${this.selectedSpecies === 'ALL' ? 'All Species' : (this.selectedSpecies === 'MON' ? 'P.Monodon' : 'L.Vannamei')}</strong>
+                            </span>
                         </div>
                     </div>
 
@@ -275,200 +255,102 @@ export class PlHarvestReportPage {
                             </select>
                         </div>
 
-                        <div class="filter-scope-display">
-                            <span class="active-scope-badge">
-                                Active Scope: <strong>${scopeLabel}</strong> • Species: <strong>${this.selectedSpecies === 'ALL' ? 'All Species' : (this.selectedSpecies === 'MON' ? 'P.Monodon' : 'L.Vannamei')}</strong>
-                            </span>
+                        <div class="filter-summary-text text-muted text-xs" style="margin-left: auto;">
+                            Showing <strong>${displayRollup.length}</strong> monthly ledger records
                         </div>
                     </div>
 
-                    <!-- Mode B: Daily Operations Timeline -->
-                    ${this.cadenceView === 'daily' ? `
-                        ${this.selectedMonth === 'ALL' ? `
-                            <div class="hatchery-empty-prompt">
-                                <div class="prompt-icon">📅</div>
-                                <div class="prompt-text">
-                                    <h4>Select a Specific Month to View Daily Operations</h4>
-                                    <p>The daily timeline displays day-by-day tank stockings, harvest dispatches, and discards for a single month.</p>
-                                </div>
-                                <button class="hatchery-nav-btn accent" id="btn-jump-october">
-                                    <span>📅 Jump to October 2026 Daily Timeline</span>
-                                </button>
-                            </div>
-                        ` : `
-                            <div class="table-responsive">
-                                <table class="hatchery-table ops-timeline-table">
-                                    <thead>
+                    <!-- Monthly Production Ledger Table -->
+                    <div class="table-responsive">
+                        <table class="hatchery-table ops-monthly-table">
+                            <thead>
+                                <tr>
+                                    <th style="min-width: 110px;">Month</th>
+                                    <th style="min-width: 110px;">Species</th>
+                                    <th style="min-width: 140px;">Tanks Harvested</th>
+                                    <th style="min-width: 150px;">Total PL Produced</th>
+                                    <th style="min-width: 170px;">SGO Farm Deliveries</th>
+                                    <th style="min-width: 160px;">External Sales</th>
+                                    <th style="min-width: 100px;">Avg Stage</th>
+                                    <th style="min-width: 110px;">Harvest SR %</th>
+                                    <th style="min-width: 130px;">Tanks Flushed</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${displayRollup.length > 0 ? displayRollup.map(m => {
+                                    const srVal = m.overallSrPct;
+                                    let srClass = "text-muted";
+                                    if (srVal !== null) {
+                                        if (srVal >= 70) srClass = "sr-badge good";
+                                        else if (srVal >= 50) srClass = "sr-badge medium";
+                                        else srClass = "sr-badge low";
+                                    }
+
+                                    const tankListStr = m.harvestTanksList && m.harvestTanksList.length > 0 
+                                        ? m.harvestTanksList.join(", ") 
+                                        : "—";
+
+                                    const flushListStr = m.flushedTanksList && m.flushedTanksList.length > 0
+                                        ? m.flushedTanksList.join(", ")
+                                        : "None";
+
+                                    return `
                                         <tr>
-                                            <th style="min-width: 120px;">Date</th>
-                                            <th style="min-width: 170px;">Activity Summary</th>
-                                            <th style="min-width: 200px;">Stocking (Nauplii In)</th>
-                                            <th style="min-width: 220px;">Harvest Dispatches (PL Out)</th>
-                                            <th style="min-width: 200px;">Target Farm Pond(s)</th>
-                                            <th style="min-width: 180px;">Flushes &amp; Discards</th>
-                                            <th style="min-width: 140px;">Daily Net Balance</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        ${dailyOps.length > 0 ? dailyOps.map(d => {
-                                            const dayOfWeek = getDayOfWeek(d.date);
-                                            const hasStocking = d.stockingsCount > 0;
-                                            const hasHarvest = d.harvestsCount > 0;
-                                            const hasFlush = d.flushesCount > 0;
-
-                                            const stockingHtml = hasStocking ? `
-                                                <div class="op-event-cell">
-                                                    <div class="op-qty-main text-success">
-                                                        <strong>+${d.totalStockedK.toLocaleString()}k</strong>
-                                                        <small class="text-muted">(${d.stockTanks.length} ${d.stockTanks.length === 1 ? 'Tank' : 'Tanks'})</small>
-                                                    </div>
-                                                    <div class="op-tank-badges">
-                                                        ${d.stockTanks.map(t => `<span class="tank-code-badge stock font-mono font-bold">${t}</span>`).join(' ')}
-                                                    </div>
+                                            <td>
+                                                <strong class="font-mono font-bold text-base">${m.monthKey}</strong>
+                                                <div class="text-xs text-muted">${this.getMonthName(m.monthNum)}</div>
+                                            </td>
+                                            <td>
+                                                <span class="badge ${m.species.includes('Monodon') ? 'badge-neutral' : 'badge-info'}">
+                                                    ${escapeHtml(m.species)}
+                                                </span>
+                                            </td>
+                                            <td>
+                                                <strong>${m.harvestedTanksCount} Tanks</strong>
+                                                <div class="text-xs text-muted" style="max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${tankListStr}">
+                                                    ${tankListStr}
                                                 </div>
-                                            ` : `<span class="text-muted font-mono">—</span>`;
-
-                                            const harvestHtml = hasHarvest ? `
-                                                <div class="op-event-cell">
-                                                    <div class="op-qty-main text-primary">
-                                                        <strong>${d.totalHarvestedK.toLocaleString()}k PL</strong>
-                                                        <small class="text-muted">(${d.harvestTanks.length} ${d.harvestTanks.length === 1 ? 'Tank' : 'Tanks'})</small>
-                                                    </div>
-                                                    <div class="op-tank-badges">
-                                                        ${d.harvestTanks.map(t => `<span class="tank-code-badge harvest font-mono font-bold">${t}</span>`).join(' ')}
-                                                    </div>
-                                                    ${d.avgStage ? `<div class="op-sub-info font-mono text-xs text-muted">Avg Stage: PL ${d.avgStage}</div>` : ''}
+                                            </td>
+                                            <td>
+                                                <strong class="font-mono text-primary text-base">${(m.plHarvestedK / 1000).toFixed(2)}M</strong>
+                                                <div class="font-mono text-xs text-muted">${m.plHarvestedK.toLocaleString()}k PL</div>
+                                            </td>
+                                            <td>
+                                                <div class="dist-cell">
+                                                    <strong class="font-mono text-success">${m.sgoHarvestK.toLocaleString()}k</strong>
+                                                    <span class="badge badge-success text-xs font-mono">${m.sgoPct}%</span>
                                                 </div>
-                                            ` : `<span class="text-muted font-mono">—</span>`;
-
-                                            const pondsHtml = (d.linkedPonds && d.linkedPonds.length > 0)
-                                                ? d.linkedPonds.map(p => `
-                                                    <a href="#/dbms?pond=${encodeURIComponent(p)}" class="spawn-block-tag sha font-mono" title="Jump to Pond ${p} in DBMS" style="text-decoration: none; margin-right: 0.25rem; display: inline-block;">
-                                                        ${p}
-                                                    </a>
-                                                `).join('')
-                                                : (hasHarvest ? `<span class="badge badge-neutral">External / Hatchery Dispatch</span>` : `<span class="text-muted font-mono">—</span>`);
-
-                                            const flushHtml = hasFlush ? `
-                                                <div class="op-event-cell">
-                                                    <div class="op-qty-main text-amber">
-                                                        <strong>⚠️ ${d.totalFlushedK.toLocaleString()}k</strong>
-                                                        <small class="text-muted">(${d.flushTanks.length} ${d.flushTanks.length === 1 ? 'Tank' : 'Tanks'})</small>
-                                                    </div>
-                                                    <div class="op-tank-badges">
-                                                        ${d.flushTanks.map(t => `<span class="tank-code-badge flush font-mono font-bold">${t}</span>`).join(' ')}
-                                                    </div>
+                                                <div class="text-xs text-muted">to Setiu Growout</div>
+                                            </td>
+                                            <td>
+                                                <div class="dist-cell">
+                                                    <strong class="font-mono ${m.externalHarvestK > 0 ? 'text-primary' : 'text-muted'}">${m.externalHarvestK.toLocaleString()}k</strong>
+                                                    ${m.externalHarvestK > 0 ? `<span class="badge badge-info text-xs font-mono">${m.externalPct}%</span>` : ''}
                                                 </div>
-                                            ` : `<span class="text-muted font-mono">—</span>`;
-
-                                            const inQty = d.totalStockedK;
-                                            const outQty = d.totalHarvestedK + d.totalFlushedK;
-
-                                            return `
-                                                <tr class="daily-ops-row">
-                                                    <td>
-                                                        <div class="daily-date-cell">
-                                                            <strong class="font-mono">${d.date}</strong>
-                                                            <span class="day-tag">${dayOfWeek}</span>
-                                                        </div>
-                                                    </td>
-                                                    <td>
-                                                        <div class="activity-pill-group">
-                                                            ${hasStocking ? `<span class="daily-op-pill stocking">📥 Stocking (${d.stockingsCount})</span>` : ''}
-                                                            ${hasHarvest ? `<span class="daily-op-pill harvest">🦐 Harvest (${d.harvestsCount})</span>` : ''}
-                                                            ${hasFlush ? `<span class="daily-op-pill flush">⚠️ Flush (${d.flushesCount})</span>` : ''}
-                                                        </div>
-                                                    </td>
-                                                    <td>${stockingHtml}</td>
-                                                    <td>${harvestHtml}</td>
-                                                    <td>${pondsHtml}</td>
-                                                    <td>${flushHtml}</td>
-                                                    <td>
-                                                        <div class="daily-balance-cell font-mono text-xs">
-                                                            <div>In: <strong class="text-success">+${inQty.toLocaleString()}k</strong></div>
-                                                            <div>Out: <strong class="text-primary">-${outQty.toLocaleString()}k</strong></div>
-                                                        </div>
-                                                    </td>
-                                                </tr>
-                                            `;
-                                        }).join('') : `
-                                            <tr>
-                                                <td colspan="7" class="text-center text-muted py-4">
-                                                    No operational activities (stockings, harvests, or flushes) recorded for ${this.getMonthName(this.selectedMonth)} ${activeYear}.
-                                                </td>
-                                            </tr>
-                                        `}
-                                    </tbody>
-                                </table>
-                            </div>
-                        `}
-                    ` : `
-                        <!-- Mode A: Monthly Performance Ledger -->
-                        <div class="table-responsive">
-                            <table class="hatchery-table ops-monthly-table">
-                                <thead>
-                                    <tr>
-                                        <th>Month</th>
-                                        <th>Species</th>
-                                        <th>Tanks Stocked</th>
-                                        <th>Tanks Harvested</th>
-                                        <th>Overall SR %</th>
-                                        <th>Avg Stage</th>
-                                        <th>Farm vs Ext Split</th>
-                                        <th>Tanks Flushed</th>
-                                        <th>Operational Timeline</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    ${displayRollup.length > 0 ? displayRollup.map(m => {
-                                        const srVal = m.overallSrPct;
-                                        let srClass = "text-muted";
-                                        if (srVal !== null) {
-                                            if (srVal >= 70) srClass = "sr-badge good";
-                                            else if (srVal >= 50) srClass = "sr-badge medium";
-                                            else srClass = "sr-badge low";
-                                        }
-
-                                        return `
-                                            <tr>
-                                                <td><strong class="font-mono font-bold">${m.monthKey}</strong></td>
-                                                <td><span class="badge ${m.species.includes('Monodon') ? 'badge-neutral' : 'badge-info'}">${escapeHtml(m.species)}</span></td>
-                                                <td>
-                                                    <strong>${m.stockedTanksCount} Tanks</strong>
-                                                    <div class="font-mono text-xs text-muted">${m.naupliiStockedK.toLocaleString()}k Nauplii</div>
-                                                </td>
-                                                <td>
-                                                    <strong class="text-primary">${m.harvestedTanksCount} Tanks</strong>
-                                                    <div class="font-mono text-xs text-primary font-bold">${m.plHarvestedK.toLocaleString()}k PL</div>
-                                                </td>
-                                                <td>
-                                                    <span class="${srClass}">${srVal !== null ? srVal + '%' : '—'}</span>
-                                                </td>
-                                                <td>${m.avgPlStage ? `PL ${m.avgPlStage}` : '—'}</td>
-                                                <td>
-                                                    <div class="text-xs">
-                                                        <div>SGO: <strong>${m.sgoHarvestK.toLocaleString()}k</strong></div>
-                                                        <div>Ext: <strong>${m.externalHarvestK.toLocaleString()}k</strong></div>
-                                                    </div>
-                                                </td>
-                                                <td>
-                                                    <strong>${m.flushedTanksCount} Tanks</strong>
+                                                <div class="text-xs text-muted">to External Buyers</div>
+                                            </td>
+                                            <td>
+                                                <span class="font-mono">${m.avgPlStage ? `PL ${m.avgPlStage}` : '—'}</span>
+                                            </td>
+                                            <td>
+                                                <span class="${srClass}">
+                                                    ${srVal !== null ? srVal + '%' : '—'}
+                                                </span>
+                                            </td>
+                                            <td>
+                                                ${m.flushedTanksCount > 0 ? `
+                                                    <strong class="text-amber">${m.flushedTanksCount} Tanks</strong>
                                                     <div class="font-mono text-xs text-amber">${m.naupliiFlushedK.toLocaleString()}k Discard</div>
-                                                </td>
-                                                <td>
-                                                    <button class="btn-ops-drilldown" data-month="${m.monthNum}" data-year="${m.year}" title="Open Daily Operations for ${m.monthKey}">
-                                                        <span>📅 View Daily ↗</span>
-                                                    </button>
-                                                </td>
-                                            </tr>
-                                        `;
-                                    }).join('') : `
-                                        <tr><td colspan="9" class="text-center text-muted py-4">No monthly records match the selected filters.</td></tr>
-                                    `}
-                                </tbody>
-                            </table>
-                        </div>
-                    `}
+                                                ` : `<span class="text-muted font-mono">—</span>`}
+                                            </td>
+                                        </tr>
+                                    `;
+                                }).join('') : `
+                                    <tr><td colspan="9" class="text-center text-muted py-4">No monthly production records found for the selected filter.</td></tr>
+                                `}
+                            </tbody>
+                        </table>
+                    </div>
                 </section>
 
                 <!-- Detailed Register Section (Tabs: PL Dispatches vs Tank Runs) -->
@@ -642,27 +524,7 @@ export class PlHarvestReportPage {
             btnExport.addEventListener("click", () => this.exportCsv());
         }
 
-        // Cadence View Toggle
-        const btnCadenceDaily = document.getElementById("btn-cadence-daily");
-        if (btnCadenceDaily) {
-            btnCadenceDaily.addEventListener("click", () => {
-                this.cadenceView = "daily";
-                if (this.selectedMonth === "ALL") {
-                    this.selectedMonth = "10"; // Default to October when switching to daily
-                }
-                this.render();
-            });
-        }
-
-        const btnCadenceMonthly = document.getElementById("btn-cadence-monthly");
-        if (btnCadenceMonthly) {
-            btnCadenceMonthly.addEventListener("click", () => {
-                this.cadenceView = "monthly";
-                this.render();
-            });
-        }
-
-        // Master Filters
+        // Master Filters for Monthly Summary
         const opsYearSelect = document.getElementById("ops-filter-year");
         if (opsYearSelect) {
             opsYearSelect.addEventListener("change", (e) => {
@@ -686,33 +548,6 @@ export class PlHarvestReportPage {
                 this.render();
             });
         }
-
-        // Jump to October button from prompt
-        const btnJumpOctober = document.getElementById("btn-jump-october");
-        if (btnJumpOctober) {
-            btnJumpOctober.addEventListener("click", () => {
-                this.selectedYear = "2026";
-                this.selectedMonth = "10";
-                this.cadenceView = "daily";
-                this.render();
-            });
-        }
-
-        // Drill-down buttons in Monthly Ledger
-        const drilldownBtns = this.container.querySelectorAll(".btn-ops-drilldown");
-        drilldownBtns.forEach(btn => {
-            btn.addEventListener("click", (e) => {
-                const target = e.currentTarget;
-                const mNum = target.getAttribute("data-month");
-                const mYear = target.getAttribute("data-year");
-                if (mNum && mYear) {
-                    this.selectedYear = mYear;
-                    this.selectedMonth = mNum;
-                    this.cadenceView = "daily";
-                    this.render();
-                }
-            });
-        });
 
         // Lower detail register tabs
         const tabDispatches = document.getElementById("btn-tab-dispatches");
@@ -762,117 +597,56 @@ export class PlHarvestReportPage {
     }
 
     exportCsv() {
-        if (this.cadenceView === "daily" && this.selectedMonth !== "ALL") {
-            const activeYear = this.selectedYear === "ALL" ? "2026" : this.selectedYear;
-            const targetMonthKey = `${activeYear}-${this.selectedMonth}`;
-            const dailyOps = aggregateDailyHatcheryOperations(this.allRuns, this.dispatches, this.flushes, targetMonthKey, this.selectedSpecies);
+        const monthlyRollup = aggregateMonthlyHatcheryRollup(
+            this.allRuns,
+            this.dispatches,
+            this.flushes,
+            this.selectedYear,
+            this.selectedSpecies
+        );
+        const displayRollup = this.selectedMonth === "ALL"
+            ? monthlyRollup
+            : monthlyRollup.filter(m => m.monthNum === this.selectedMonth);
 
-            if (!dailyOps || dailyOps.length === 0) {
-                Toast.warning("No daily operations data available to export.");
-                return;
-            }
-
-            const headers = ["Date", "Day of Week", "Stockings Count", "Stocked Nauplii (k)", "Stock Tanks", "Harvests Count", "Harvested PL (k)", "Avg Stage", "Harvest Tanks", "Linked Ponds", "Flushes Count", "Flushed Nauplii (k)", "Flush Tanks"];
-            const rows = dailyOps.map(d => [
-                d.date,
-                getDayOfWeek(d.date),
-                d.stockingsCount,
-                d.totalStockedK,
-                d.stockTanks.join("; "),
-                d.harvestsCount,
-                d.totalHarvestedK,
-                d.avgStage || "",
-                d.harvestTanks.join("; "),
-                d.linkedPonds.join("; "),
-                d.flushesCount,
-                d.totalFlushedK,
-                d.flushTanks.join("; ")
-            ]);
-
-            this._downloadCsv(headers, rows, `TPH_Daily_Operations_${targetMonthKey}.csv`);
-            Toast.success(`Exported Daily Operations CSV for ${targetMonthKey}!`);
+        if (!displayRollup || displayRollup.length === 0) {
+            Toast.warning("No monthly summary data available to export.");
             return;
         }
 
-        if (this.cadenceView === "monthly") {
-            const monthlyRollup = aggregateMonthlyHatcheryRollup(this.allRuns, this.dispatches, this.flushes, this.selectedYear, this.selectedSpecies);
-            const displayRollup = this.selectedMonth === "ALL"
-                ? monthlyRollup
-                : monthlyRollup.filter(m => m.monthNum === this.selectedMonth);
+        const headers = [
+            "Month",
+            "Species",
+            "Tanks Harvested Count",
+            "Harvested Tanks List",
+            "Total PL Produced (k)",
+            "SGO Farm Deliveries (k)",
+            "SGO Share %",
+            "External Sales (k)",
+            "External Share %",
+            "Avg Harvest Stage",
+            "Harvest SR %",
+            "Tanks Flushed Count",
+            "Nauplii Flushed (k)"
+        ];
 
-            if (!displayRollup || displayRollup.length === 0) {
-                Toast.warning("No monthly summary data available to export.");
-                return;
-            }
+        const rows = displayRollup.map(m => [
+            m.monthKey,
+            m.species,
+            m.harvestedTanksCount,
+            (m.harvestTanksList || []).join("; "),
+            m.plHarvestedK,
+            m.sgoHarvestK,
+            `${m.sgoPct}%`,
+            m.externalHarvestK,
+            `${m.externalPct}%`,
+            m.avgPlStage || "",
+            m.overallSrPct !== null ? `${m.overallSrPct}%` : "",
+            m.flushedTanksCount,
+            m.naupliiFlushedK
+        ]);
 
-            const headers = ["Month", "Species", "Stocked Tanks", "Stocked Nauplii (k)", "Harvested Tanks", "Harvested PL (k)", "Overall SR %", "Avg Stage", "SGO Harvest (k)", "External Harvest (k)", "Flushed Tanks", "Flushed Nauplii (k)"];
-            const rows = displayRollup.map(m => [
-                m.monthKey,
-                m.species,
-                m.stockedTanksCount,
-                m.naupliiStockedK,
-                m.harvestedTanksCount,
-                m.plHarvestedK,
-                m.overallSrPct !== null ? `${m.overallSrPct}%` : "",
-                m.avgPlStage || "",
-                m.sgoHarvestK,
-                m.externalHarvestK,
-                m.flushedTanksCount,
-                m.naupliiFlushedK
-            ]);
-
-            this._downloadCsv(headers, rows, `TPH_Monthly_Production_Summary_${this.selectedYear}.csv`);
-            Toast.success("Exported Monthly Production Summary CSV!");
-            return;
-        }
-
-        // Fallback or explicit lower view
-        if (this.activeViewTab === "dispatches") {
-            if (!this.dispatches || this.dispatches.length === 0) {
-                Toast.warning("No dispatches available to export.");
-                return;
-            }
-
-            const headers = ["Tank", "Harvest Date", "Stage", "Quantity (k)", "Destination/Buyer", "Linked Ponds", "DO Number", "Lot Number", "Nauplii Source", "Reported SR %"];
-            const rows = this.dispatches.map(d => [
-                d.tank_code,
-                d.harvest_date,
-                `PL ${d.pl_stage}`,
-                d.qty_k || "0",
-                d.buyer,
-                (d.linked_ponds || []).join("; "),
-                d.do_number || "",
-                d.lot_no || "",
-                d.source_code || "",
-                d.sr_reported_pct !== null ? `${d.sr_reported_pct}%` : ""
-            ]);
-
-            this._downloadCsv(headers, rows, `TPH_PL_Harvest_Dispatches_${new Date().toISOString().split("T")[0]}.csv`);
-            Toast.success("Exported PL Harvest Dispatches CSV!");
-        } else {
-            if (!this.allRuns || this.allRuns.length === 0) {
-                Toast.warning("No runs available to export.");
-                return;
-            }
-
-            const headers = ["Tank", "Stock Date", "Species", "Source", "Stocked (k)", "Status", "First Harvest", "Last Harvest", "Harvested (k)", "Flushed (k)", "SR %"];
-            const rows = this.allRuns.map(r => [
-                r.tank_code,
-                r.stock_date,
-                r.species,
-                r.source_code,
-                r.nauplii_stocked_k || "",
-                r.status,
-                r.first_harvest_date || "",
-                r.last_harvest_date || "",
-                r.harvested_total_k || "0",
-                r.flushed_total_k || "0",
-                r.sr_pct !== null ? `${r.sr_pct}%` : ""
-            ]);
-
-            this._downloadCsv(headers, rows, `TPH_Tank_Runs_Log_${new Date().toISOString().split("T")[0]}.csv`);
-            Toast.success("Exported Tank Runs CSV!");
-        }
+        this._downloadCsv(headers, rows, `TPH_Monthly_Production_Distribution_Summary_${this.selectedYear}.csv`);
+        Toast.success("Exported Monthly Production & Distribution Summary CSV!");
     }
 
     _downloadCsv(headers, rows, filename) {
