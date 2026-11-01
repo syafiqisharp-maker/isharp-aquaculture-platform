@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>iSHARP Aquaculture Platform — Executive Technical & Security Audit Report</title>
+    <style>
+        :root {
+            --navy: #0f172a;
+            --slate: #334155;
+            --muted: #64748b;
+            --sky: #0284c7;
+            --emerald: #059669;
+            --emerald-bg: #ecfdf5;
+            --amber: #d97706;
+            --border: #cbd5e1;
+            --bg-light: #f8fafc;
+        }
+        * { box-sizing: border-box; }
+        body {
+            font-family: "Segoe UI", -apple-system, BlinkMacSystemFont, Roboto, Helvetica, Arial, sans-serif;
+            color: var(--navy);
+            background: #ffffff;
+            line-height: 1.55;
+            margin: 0;
+            padding: 36px 48px;
+            max-width: 1050px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        .header-banner {
+            border-bottom: 3px solid var(--sky);
+            padding-bottom: 18px;
+            margin-bottom: 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 20px;
+        }
+        .header-title h1 {
+            margin: 0 0 6px 0;
+            font-size: 24px;
+            font-weight: 800;
+            color: var(--navy);
+            letter-spacing: -0.02em;
+        }
+        .header-title p {
+            margin: 0;
+            font-size: 13.5px;
+            color: var(--slate);
+            font-weight: 600;
+        }
+        .status-Stamp {
+            background: var(--emerald-bg);
+            border: 1.5px solid var(--emerald);
+            color: var(--emerald);
+            padding: 8px 14px;
+            border-radius: 8px;
+            font-weight: 800;
+            font-size: 12.5px;
+            text-align: right;
+            white-space: nowrap;
+        }
+        .meta-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 12px;
+            background: var(--bg-light);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 12px 16px;
+            margin-bottom: 24px;
+            font-size: 12.5px;
+        }
+        .meta-item strong {
+            display: block;
+            color: var(--muted);
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+        .meta-item span {
+            font-weight: 700;
+            color: var(--navy);
+        }
+        h2 {
+            font-size: 16.5px;
+            font-weight: 800;
+            color: var(--sky);
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 6px;
+            margin-top: 26px;
+            margin-bottom: 12px;
+        }
+        p, li {
+            font-size: 13.5px;
+            color: var(--slate);
+        }
+        .kpi-row {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 12px;
+            margin: 16px 0 22px 0;
+        }
+        .kpi-card {
+            border: 1px solid var(--border);
+            border-top: 3px solid var(--sky);
+            border-radius: 8px;
+            padding: 12px 14px;
+            background: #fff;
+        }
+        .kpi-card .num {
+            font-size: 20px;
+            font-weight: 800;
+            color: var(--navy);
+        }
+        .kpi-card .lbl {
+            font-size: 11.5px;
+            color: var(--muted);
+            font-weight: 600;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 12px 0 20px 0;
+            font-size: 12.5px;
+        }
+        th {
+            background: var(--navy);
+            color: #ffffff;
+            text-align: left;
+            padding: 9px 11px;
+            font-weight: 700;
+            font-size: 11.5px;
+            text-transform: uppercase;
+        }
+        td {
+            padding: 8px 11px;
+            border-bottom: 1px solid var(--border);
+            color: var(--slate);
+            vertical-align: top;
+        }
+        tr:nth-child(even) td {
+            background: #f8fafc;
+        }
+        .badge-pass {
+            background: #d1fae5;
+            color: #065f46;
+            font-weight: 800;
+            padding: 2px 8px;
+            border-radius: 99px;
+            font-size: 11px;
+            display: inline-block;
+        }
+        .badge-warn {
+            background: #fef3c7;
+            color: #92400e;
+            font-weight: 700;
+            padding: 2px 8px;
+            border-radius: 99px;
+            font-size: 11px;
+            display: inline-block;
+        }
+        .print-btn {
+            background: var(--sky);
+            color: #fff;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-weight: 700;
+            cursor: pointer;
+            font-size: 13px;
+            margin-bottom: 16px;
+        }
+        @media print {
+            body { padding: 12px 18px; }
+            .print-btn { display: none; }
+        }
+    </style>
+</head>
+<body>
+    <button class="print-btn" onclick="window.print()">🖨️ Print / Save as PDF for Management</button>
+
+    <div class="header-banner">
+        <div class="header-title">
+            <h1>EXECUTIVE TECHNICAL &amp; SECURITY AUDIT REPORT</h1>
+            <p>iSHARP Precision Aquaculture Platform • Blue Archipelago Berhad (Setiu Farm &amp; Telaga Putat Hatchery)</p>
+        </div>
+        <div class="status-Stamp">
+            AUDIT STATUS: PASS<br>
+            <span style="font-size:11px; font-weight:600;">PRODUCTION HARDENED</span>
+        </div>
+    </div>
+
+    <div class="meta-grid">
+        <div class="meta-item">
+            <strong>Audit Date</strong>
+            <span>1 November 2026</span>
+        </div>
+        <div class="meta-item">
+            <strong>Prepared By</strong>
+            <span>Syafiq (Platform Lead)</span>
+        </div>
+        <div class="meta-item">
+            <strong>Database Footprint</strong>
+            <span>326,861 Records (39 Tables)</span>
+        </div>
+        <div class="meta-item">
+            <strong>Standards Applied</strong>
+            <span>OWASP ASVS, CIS, ISO 25010</span>
+        </div>
+    </div>
+
+    <h2>1. Executive Summary</h2>
+    <p>
+        A comprehensive <strong>5-Pillar Infrastructure, Cybersecurity, Database, and Disaster Recovery Audit</strong> was conducted across the <strong>iSHARP Aquaculture Platform</strong> (covering Central DBMS 2.0, Mobile Field Operations, Executive Intelligence, 5-Year Production Planner, and the Telaga Putat Hatchery Traceability Module). The audit evaluated live cloud database policies, data synchronization pipelines, software modularity, and backup continuity, followed by immediate engineering remediation of all identified risks.
+    </p>
+
+    <div class="kpi-row">
+        <div class="kpi-card">
+            <div class="num">60–94 ms</div>
+            <div class="lbl">Financial &amp; Commercial Query Speed (32× Faster; 0 Timeouts)</div>
+        </div>
+        <div class="kpi-card">
+            <div class="num">269 / 269</div>
+            <div class="lbl">Automated Aquaculture Math &amp; Security Tests Passing (100%)</div>
+        </div>
+        <div class="kpi-card">
+            <div class="num">100% RLS</div>
+            <div class="lbl">Zero-Trust Row-Level Security Across All 39 Cloud Tables</div>
+        </div>
+        <div class="kpi-card">
+            <div class="num">2-Layer DR</div>
+            <div class="lbl">Automated Google Drive Backups + Browser Offline Failover</div>
+        </div>
+    </div>
+
+    <h2>2. 5-Pillar Audit Scorecard</h2>
+    <table>
+        <thead>
+            <tr>
+                <th style="width:22%;">Audit Pillar</th>
+                <th style="width:20%;">Industry Standard</th>
+                <th style="width:12%;">Pre-Audit</th>
+                <th style="width:14%;">Post-Audit</th>
+                <th>Key Engineering Deliverable</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><strong>1. Database &amp; Cloud Security</strong></td>
+                <td>CIS PostgreSQL &amp; OWASP API Top 10</td>
+                <td><span class="badge-warn">Amber</span></td>
+                <td><span class="badge-pass">PASS (Green)</span></td>
+                <td>Eliminated 3-second statement timeouts on financial/commercial tables via transaction-cached role verification; provisioned cloud <code>qaqc_inspections</code> table with strict write guards.</td>
+            </tr>
+            <tr>
+                <td><strong>2. Data Sync &amp; ETL Pipeline</strong></td>
+                <td>DAMA-DMBOK Data Integrity</td>
+                <td><span class="badge-warn">Yellow</span></td>
+                <td><span class="badge-pass">PASS (Green)</span></td>
+                <td>Enforced natural-key deduplication across Access/Excel syncs; centralized credentials into git-ignored <code>.env.sync</code>; added automatic pre-sync backups before weekly Friday runs.</td>
+            </tr>
+            <tr>
+                <td><strong>3. Codebase Architecture &amp; Scale</strong></td>
+                <td>ISO/IEC 25010 Software Quality</td>
+                <td><span class="badge-warn">Yellow</span></td>
+                <td><span class="badge-pass">PASS (Green)</span></td>
+                <td>Enforced 5-layer Clean Architecture; modularized core biometrics into focused sub-packages; standardized Malaysia (<code>UTC+8</code>) dates and XSS sanitization; 269/269 unit tests passing.</td>
+            </tr>
+            <tr>
+                <td><strong>4. Infrastructure &amp; Supply Chain</strong></td>
+                <td>NIST SSDF &amp; 12-Factor App</td>
+                <td><span class="badge-pass">Green</span></td>
+                <td><span class="badge-pass">PASS (Green)</span></td>
+                <td>Zero third-party runtime npm dependencies (immune to external package supply-chain attacks); strict HTTP Content-Security-Policy (CSP) and HSTS headers active.</td>
+            </tr>
+            <tr>
+                <td><strong>5. Backup &amp; Disaster Recovery</strong></td>
+                <td>Business Continuity (BCP / DR)</td>
+                <td><span class="badge-warn">Action Needed</span></td>
+                <td><span class="badge-pass">PASS (Green)</span></td>
+                <td>Deployed automated Google Drive snapshot engine (with SHA-256 integrity manifests &amp; point-in-time restore) plus browser <code>IndexedDB</code> read/write failover during cloud outages.</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <h2>3. Live Production Verification Benchmarks (Before vs. After)</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Verification Metric (Live Supabase Cloud)</th>
+                <th>Before Hardening</th>
+                <th>After Hardening (Verified)</th>
+                <th>Business Impact</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><strong>Pond Financial Ledger (7,520 cycles) — Viewer/Supervisor</strong></td>
+                <td>Timed out at &gt;3,087 ms (HTTP 500)</td>
+                <td><strong>74 ms – 94 ms (HTTP 200)</strong></td>
+                <td>Instant EBITDA &amp; unit economics loading for management</td>
+            </tr>
+            <tr>
+                <td><strong>Hatchery Commercial Sales (1,025 runs) — Viewer/Supervisor</strong></td>
+                <td>Timed out at &gt;3,074 ms (HTTP 500)</td>
+                <td><strong>60 ms – 94 ms (HTTP 200)</strong></td>
+                <td>Zero lag on TPH Hatchery commercial reporting</td>
+            </tr>
+            <tr>
+                <td><strong>QA/QC Pond Cleaning Inspection Persistence</strong></td>
+                <td>Saved on local tablet only (HTTP 404)</td>
+                <td><strong>Cloud PostgreSQL + Local Cache</strong></td>
+                <td>Cross-device visibility for QA/QC &amp; Farm Management</td>
+            </tr>
+            <tr>
+                <td><strong>Unauthorized Anonymous Write/Delete Attempts</strong></td>
+                <td>Blocked on core tables</td>
+                <td><strong>100% Blocked (HTTP 401)</strong></td>
+                <td>Complete protection against unauthorized data tampering</td>
+            </tr>
+            <tr>
+                <td><strong>Cloud Server Outage / Offline Farm Connectivity</strong></td>
+                <td>Mobile writes queued; reads blocked</td>
+                <td><strong>Full Read + Write Offline Failover</strong></td>
+                <td>Uninterrupted pond viewing &amp; logging during internet drops</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <h2>4. Conclusion &amp; Operational Governance</h2>
+    <p>
+        The <strong>iSHARP Aquaculture Platform</strong> is verified secure, resilient against cloud outages, and architected to scale cleanly as new farm modules are introduced. Automated pre-sync backups now execute prior to every Friday database synchronization, supplemented by 269 automated regression tests protecting all aquaculture and financial calculations.
+    </p>
+</body>
+</html>

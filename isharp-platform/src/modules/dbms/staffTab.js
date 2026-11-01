@@ -10,7 +10,7 @@ import { StaffRepository } from "../../infrastructure/repositories/staffReposito
 import { Toast } from "../../components/Toast.js";
 import { ManagementCalloutModal } from "../../components/ManagementCalloutModal.js";
 import { DOM_IDS } from "../../config/domContracts.js";
-import { supabase } from "../../infrastructure/supabase.js";
+import { escapeHtml } from "../../utils/formatters.js";
 
 export class StaffTab {
     constructor() {
@@ -177,7 +177,7 @@ export class StaffTab {
         }
 
         try {
-            const data = await supabase.request(`pond_initiatives?pond_index=eq.${pond.pond_index}&select=initiative_name`);
+            const data = await StaffRepository.getCycleInitiatives(pond.pond_index);
             this.dom.initiativeListContainer.innerHTML = '';
             
             if (!data || data.length === 0) {
@@ -205,7 +205,7 @@ export class StaffTab {
         div.style.alignItems = "center";
         
         div.innerHTML = `
-            <input type="text" class="form-control initiative-input" placeholder="e.g. Probiotic Trial" value="${val}" style="font-size: 0.82rem; padding: 0.5rem 0.75rem; border: 1px solid #cbd5e1; border-radius: 6px; flex: 1;">
+            <input type="text" class="form-control initiative-input" placeholder="e.g. Probiotic Trial" value="${escapeHtml(val)}" style="font-size: 0.82rem; padding: 0.5rem 0.75rem; border: 1px solid #cbd5e1; border-radius: 6px; flex: 1;">
             <button type="button" class="btn-action btn-danger remove-initiative-btn" style="padding: 0.4rem 0.6rem; border-radius: 4px; font-size: 0.75rem;">🗑️</button>
         `;
 
@@ -336,10 +336,10 @@ export class StaffTab {
             const values = inputs.map(input => input.value.trim()).filter(v => v.length > 0);
 
             // Step 1: Delete existing initiatives for this pond
-            await supabase.request(`pond_initiatives?pond_index=eq.${this.currentPond.pond_index}`, { method: 'DELETE' });
+            await StaffRepository.saveCycleInitiatives(this.currentPond.pond_index, values);
 
             // Step 2: Insert new initiatives if any
-            if (values.length > 0) {
+            if (false && values.length > 0) {
                 const payload = values.map(v => ({
                     pond_index: this.currentPond.pond_index,
                     initiative_name: v
@@ -385,7 +385,7 @@ export class StaffTab {
                         <span>📅 ${r.note_date || 'Historical Log'}</span>
                         <span>👤 ${r.logged_by || 'Field Supervisor'}</span>
                     </div>
-                    <div class="note-bubble-text" style="font-size: 0.8rem; color: #1e293b; line-height: 1.4;">${r.note}</div>
+                    <div class="note-bubble-text" style="font-size: 0.8rem; color: #1e293b; line-height: 1.4;">${escapeHtml(r.note)}</div>
                 </div>
             `).join("");
         } catch (err) {

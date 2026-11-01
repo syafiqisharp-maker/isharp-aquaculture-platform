@@ -9,6 +9,7 @@
  */
 
 import { supabase } from "../supabase.js";
+import { getLocalDateStr } from "../../utils/formatters.js";
 import {
     buildHistoricalFeatures,
     calculateUnitEconomics,
@@ -56,7 +57,7 @@ export class FinanceRepository {
         // Calculate date cutoff (12 months prior to today)
         const cutoffDate = new Date();
         cutoffDate.setMonth(cutoffDate.getMonth() - Math.max(1, months));
-        const cutoffStr = cutoffDate.toISOString().split("T")[0];
+        const cutoffStr = getLocalDateStr(cutoffDate);
 
         // 1. Fetch recent harvest records to identify completed cycles
         // Zero index_no requested
@@ -109,7 +110,7 @@ export class FinanceRepository {
         }
 
         // 2. Batch fetch matching records in chunks of 50 to avoid URL length & timeout limits
-        const batchSize = 50;
+        const batchSize = 25;
         const financeRecords = [];
         const stockRecords = [];
         const feedRecords = [];

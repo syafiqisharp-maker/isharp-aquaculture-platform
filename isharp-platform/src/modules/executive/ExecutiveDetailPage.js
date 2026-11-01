@@ -27,7 +27,7 @@ const METRIC_TABS = [
     { key: METRIC_TYPES.DOC_COMP, label: "DOC Stages", icon: "⏱️" },
     { key: METRIC_TYPES.ACTIVE_PONDS, label: "Active Ponds", icon: "🗺️" },
     { key: METRIC_TYPES.PREP_IDLE, label: "Prep & Idle", icon: "🚜" },
-    { key: METRIC_TYPES.BIOSECURITY, label: "Biosecurity", icon: "🛡️" }
+    { key: METRIC_TYPES.BIOSECURITY, label: "Growth & Survival", icon: "🦐" }
 ];
 
 export class ExecutiveDetailPage {
@@ -37,6 +37,11 @@ export class ExecutiveDetailPage {
 
         this.currentMetric = METRIC_TYPES.HARVEST;
         this.activePondChartMode = "AVG";
+        this.prepChartMode = "TOTAL";
+        this.growthSpecies = "ALL";
+        this.growthChartMode = "ADG";
+        this.growthViewPerspective = "MODULE";
+        this.growthDocCohort = "MID_LATE";
         this.selectedMonth = "ALL";
         this.searchQuery = "";
         this.sortColIndex = null;
@@ -51,7 +56,8 @@ export class ExecutiveDetailPage {
             dailyHarvests: [],
             salesRecords: [],
             stockingBatches: [],
-            samplings: []
+            samplings: [],
+            samplings12M: []
         };
         this.isInitialized = false;
         this.isLoading = false;
@@ -130,8 +136,9 @@ export class ExecutiveDetailPage {
         const needsPonds = !this.dataBundle.activePonds || this.dataBundle.activePonds.length === 0;
         const needsOpCycles = !this.dataBundle.operationalCycles || this.dataBundle.operationalCycles.length === 0;
         const needsSamplings = !this.dataBundle.samplings || this.dataBundle.samplings.length === 0;
+        const needsSamplings12M = !this.dataBundle.samplings12M || this.dataBundle.samplings12M.length === 0;
 
-        if (needsHarvest || needsStocking || needsPonds || needsOpCycles || needsSamplings) {
+        if (needsHarvest || needsStocking || needsPonds || needsOpCycles || needsSamplings || needsSamplings12M) {
             try {
                 const fetches = [];
                 if (needsHarvest) fetches.push(HarvestRepository.get12MonthHarvestData(12));
@@ -146,6 +153,9 @@ export class ExecutiveDetailPage {
                 if (needsSamplings) fetches.push(SamplingRepository.getRecentSamplings(1500));
                 else fetches.push(Promise.resolve(null));
 
+                if (needsSamplings12M) fetches.push(SamplingRepository.get12MonthMatureSamplings(12, 50));
+                else fetches.push(Promise.resolve(null));
+
                 if (needsPonds) {
                     fetches.push(Promise.all([
                         PondRepository.getActiveCycles(),
@@ -157,7 +167,7 @@ export class ExecutiveDetailPage {
                     fetches.push(Promise.resolve(null));
                 }
 
-                const [harvestRes, stockingBatches, opCycles, samplings, pondPack] = await Promise.all(fetches);
+                const [harvestRes, stockingBatches, opCycles, samplings, samplings12M, pondPack] = await Promise.all(fetches);
 
                 if (harvestRes) {
                     this.dataBundle.dailyHarvests = harvestRes.dailyHarvests || [];
@@ -171,6 +181,9 @@ export class ExecutiveDetailPage {
                 }
                 if (samplings) {
                     this.dataBundle.samplings = samplings || [];
+                }
+                if (samplings12M) {
+                    this.dataBundle.samplings12M = samplings12M || [];
                 }
                 if (pondPack) {
                     const [activeCycles, activePonds, issues, dailyProgress] = pondPack;
@@ -264,9 +277,9 @@ export class ExecutiveDetailPage {
                 let badgeClass = "";
                 if (cellStr === "VAN" || cellStr.includes("VANNAMEI")) badgeClass = "badge-sp-van";
                 else if (cellStr === "MON" || cellStr.includes("MONODON")) badgeClass = "badge-sp-mon";
-                else if (cellStr === "RED") badgeClass = "badge-alert-red";
-                else if (cellStr === "YELLOW") badgeClass = "badge-alert-yellow";
-                else if (cellStr === "GREEN") badgeClass = "badge-alert-green";
+                else if (cellStr === "RED" || cellStr.startsWith("Red:")) badgeClass = "badge-alert-red";
+                else if (cellStr === "YELLOW" || cellStr.startsWith("Yellow:")) badgeClass = "badge-alert-yellow";
+                else if (cellStr === "GREEN" || cellStr.includes("Normal") || cellStr.includes("Negative")) badgeClass = "badge-alert-green";
                 else if (cellStr === "READY") badgeClass = "badge-status-ready";
                 else if (cellStr === "CULTURE" || cellStr === "Active Culture") badgeClass = "badge-status-culture";
                 else if (cellStr === "IDLE" || cellStr.includes("Closed")) badgeClass = "badge-status-idle";
@@ -292,7 +305,14 @@ export class ExecutiveDetailPage {
             this.dataBundle,
             this.selectedMonth,
             this.searchQuery,
-            { activePondMode: this.activePondChartMode }
+            {
+                activePondMode: this.activePondChartMode,
+                prepChartMode: this.prepChartMode,
+                growthSpecies: this.growthSpecies,
+                growthChartMode: this.growthChartMode,
+                growthViewPerspective: this.growthViewPerspective,
+                growthDocCohort: this.growthDocCohort
+            }
         );
 
         // Metric Switcher Tabs HTML
@@ -310,6 +330,71 @@ export class ExecutiveDetailPage {
                 <button type="button" class="btn-mode ${this.activePondChartMode === 'AVG' ? 'active' : ''}" data-pond-mode="AVG" title="Show monthly average operational ponds">Average</button>
                 <button type="button" class="btn-mode ${this.activePondChartMode === 'MAX' ? 'active' : ''}" data-pond-mode="MAX" title="Show peak operational capacity">Peak (Max)</button>
                 <button type="button" class="btn-mode ${this.activePondChartMode === 'MIN' ? 'active' : ''}" data-pond-mode="MIN" title="Show lowest operational count">Lowest (Min)</button>
+            </div>
+        ` : '';
+
+        // Preparation & Turnaround Mode Toggle (for PREP_IDLE)
+        const isPrepMetric = this.currentMetric === METRIC_TYPES.PREP_IDLE;
+        const prepModeToggleHtml = isPrepMetric ? `
+            <div class="prep-toggle-container" style="display: inline-flex; align-items: center; gap: 0.6rem; flex-wrap: wrap;">
+                <!-- Group 1: Duration (Days) -->
+                <div class="timeline-mode-toggle" aria-label="Turnaround Stage Duration Mode">
+                    <span class="mode-toggle-label">Duration:</span>
+                    <button type="button" class="btn-mode ${this.prepChartMode === 'TOTAL' ? 'active' : ''}" data-prep-mode="TOTAL" title="Total turnaround days from harvest to stocking">Total</button>
+                    <button type="button" class="btn-mode ${this.prepChartMode === 'IDLE_CLEAN' ? 'active' : ''}" data-prep-mode="IDLE_CLEAN" title="Days from idle drying to cleaning start">Idle ➔ Clean</button>
+                    <button type="button" class="btn-mode ${this.prepChartMode === 'CLEAN_FILL' ? 'active' : ''}" data-prep-mode="CLEAN_FILL" title="Days for cleaning, scraping and repairs">Clean ➔ Fill</button>
+                    <button type="button" class="btn-mode ${this.prepChartMode === 'FILL_STOCK' ? 'active' : ''}" data-prep-mode="FILL_STOCK" title="Days for water treatment and bioassay">Fill ➔ Stock</button>
+                </div>
+                <!-- Group 2: Count of Ponds -->
+                <div class="timeline-mode-toggle" aria-label="Count of Ponds Worked Mode">
+                    <span class="mode-toggle-label">Count of Ponds:</span>
+                    <button type="button" class="btn-mode ${this.prepChartMode === 'COUNT_CLEANED' ? 'active' : ''}" data-prep-mode="COUNT_CLEANED" title="Count of ponds cleaned this month">Cleaned</button>
+                    <button type="button" class="btn-mode ${this.prepChartMode === 'COUNT_REPAIRED' ? 'active' : ''}" data-prep-mode="COUNT_REPAIRED" title="Count of ponds repaired this month">Repaired</button>
+                    <button type="button" class="btn-mode ${this.prepChartMode === 'COUNT_FILLED' ? 'active' : ''}" data-prep-mode="COUNT_FILLED" title="Count of ponds filled with water this month">Water Filled</button>
+                </div>
+            </div>
+        ` : '';
+
+        // Shrimp Health, Growth & Survival Toggle (for BIOSECURITY)
+        const isBioMetric = this.currentMetric === METRIC_TYPES.BIOSECURITY;
+        const bioModeToggleHtml = isBioMetric ? `
+            <div class="bio-toggle-container" style="display: inline-flex; align-items: center; gap: 0.6rem; flex-wrap: wrap;">
+                <!-- Species Filter -->
+                <div class="timeline-mode-toggle" aria-label="Filter by Species">
+                    <span class="mode-toggle-label">Species:</span>
+                    <button type="button" class="btn-mode ${this.growthSpecies === 'ALL' ? 'active' : ''}" data-growth-species="ALL" title="All active culturing ponds">All Species</button>
+                    <button type="button" class="btn-mode ${this.growthSpecies === 'VAN' ? 'active' : ''}" data-growth-species="VAN" title="Penaeus vannamei crops only">Vannamei (VAN)</button>
+                    <button type="button" class="btn-mode ${this.growthSpecies === 'MON' ? 'active' : ''}" data-growth-species="MON" title="Penaeus monodon crops only">Monodon (MON)</button>
+                </div>
+
+                <!-- Rate Metrics -->
+                <div class="timeline-mode-toggle" aria-label="Growth & Survival Metric">
+                    <span class="mode-toggle-label">Rates:</span>
+                    <button type="button" class="btn-mode ${this.growthChartMode === 'ADG' ? 'active' : ''}" data-growth-mode="ADG" title="Average Daily Growth (ABW ÷ DOC in g/day)">Daily Growth (g/d)</button>
+                    <button type="button" class="btn-mode ${this.growthChartMode === 'SR' ? 'active' : ''}" data-growth-mode="SR" title="Average Survival Rate %">Survival %</button>
+                </div>
+
+                <!-- Accountability Pond Counts -->
+                <div class="timeline-mode-toggle" aria-label="Production Flags Mode">
+                    <span class="mode-toggle-label">Count:</span>
+                    <button type="button" class="btn-mode ${this.growthChartMode === 'LAGGING' ? 'active' : ''}" data-growth-mode="LAGGING" title="Ponds behind target growth (<80%)">Behind Target</button>
+                    <button type="button" class="btn-mode ${this.growthChartMode === 'CRITICAL_SR' ? 'active' : ''}" data-growth-mode="CRITICAL_SR" title="Ponds with critical low survival (<60%)">Low Survival (&lt;60%)</button>
+                    <button type="button" class="btn-mode ${this.growthChartMode === 'ALERTS' ? 'active' : ''}" data-growth-mode="ALERTS" title="Active Red & Yellow Lab Alerts">Lab Alerts</button>
+                </div>
+
+                <!-- Honest Sampling Cohort Filter -->
+                <div class="timeline-mode-toggle" aria-label="Filter by DOC Cohort">
+                    <span class="mode-toggle-label">DOC Cohort:</span>
+                    <button type="button" class="btn-mode ${this.growthDocCohort === 'MID_LATE' ? 'active' : ''}" data-growth-cohort="MID_LATE" title="Mid & Late stage crops (DOC ≥ 50d) — Excludes early nursery bias">Mid &amp; Late (DOC ≥ 50d)</button>
+                    <button type="button" class="btn-mode ${this.growthDocCohort === 'LATE_ONLY' ? 'active' : ''}" data-growth-cohort="LATE_ONLY" title="Harvest candidate window only (DOC > 70d)">Late Only (DOC &gt; 70d)</button>
+                </div>
+
+                <!-- View Perspective -->
+                <div class="timeline-mode-toggle" aria-label="View Perspective Mode">
+                    <span class="mode-toggle-label">View:</span>
+                    <button type="button" class="btn-mode ${this.growthViewPerspective === 'MODULE' ? 'active' : ''}" data-growth-perspective="MODULE" title="Compare Module Teams (M01 – M11)">By Module (M01–M11)</button>
+                    <button type="button" class="btn-mode ${this.growthViewPerspective === 'MONTHLY' ? 'active' : ''}" data-growth-perspective="MONTHLY" title="12-Month Rolling Trend">12-Month Trend</button>
+                </div>
             </div>
         ` : '';
 
@@ -377,6 +462,8 @@ export class ExecutiveDetailPage {
                                 <div class="timeline-header-left">
                                     <span class="timeline-headline">📈 ${vm.timelineTitle || "Monthly Operational Pond Capacity (12-Month)"}</span>
                                     ${modeToggleHtml}
+                                    ${prepModeToggleHtml}
+                                    ${bioModeToggleHtml}
                                 </div>
                                 <span class="timeline-interactive-hint">💡 Click any month bar to instantly filter the table below</span>
                             </div>
@@ -449,6 +536,69 @@ export class ExecutiveDetailPage {
             });
         });
 
+        // Preparation & Turnaround Stage Mode Toggle (TOTAL, IDLE_CLEAN, CLEAN_FILL, FILL_STOCK)
+        const prepBtns = this.container.querySelectorAll("[data-prep-mode]");
+        prepBtns.forEach(btn => {
+            btn.addEventListener("click", () => {
+                const mode = btn.getAttribute("data-prep-mode");
+                if (mode && this.prepChartMode !== mode) {
+                    this.prepChartMode = mode;
+                    prepBtns.forEach(b => b.classList.toggle("active", b.getAttribute("data-prep-mode") === mode));
+                    this.refreshContent(true);
+                }
+            });
+        });
+
+        // Shrimp Health, Growth & Survival Mode Toggles
+        const speciesBtns = this.container.querySelectorAll("[data-growth-species]");
+        speciesBtns.forEach(btn => {
+            btn.addEventListener("click", () => {
+                const sp = btn.getAttribute("data-growth-species");
+                if (sp && this.growthSpecies !== sp) {
+                    this.growthSpecies = sp;
+                    speciesBtns.forEach(b => b.classList.toggle("active", b.getAttribute("data-growth-species") === sp));
+                    this.refreshContent(true);
+                }
+            });
+        });
+
+        const growthModeBtns = this.container.querySelectorAll("[data-growth-mode]");
+        growthModeBtns.forEach(btn => {
+            btn.addEventListener("click", () => {
+                const mode = btn.getAttribute("data-growth-mode");
+                if (mode && this.growthChartMode !== mode) {
+                    this.growthChartMode = mode;
+                    growthModeBtns.forEach(b => b.classList.toggle("active", b.getAttribute("data-growth-mode") === mode));
+                    this.refreshContent(true);
+                }
+            });
+        });
+
+        const growthCohortBtns = this.container.querySelectorAll("[data-growth-cohort]");
+        growthCohortBtns.forEach(btn => {
+            btn.addEventListener("click", () => {
+                const cohort = btn.getAttribute("data-growth-cohort");
+                if (cohort && this.growthDocCohort !== cohort) {
+                    this.growthDocCohort = cohort;
+                    growthCohortBtns.forEach(b => b.classList.toggle("active", b.getAttribute("data-growth-cohort") === cohort));
+                    this.refreshContent(true);
+                }
+            });
+        });
+
+        const perspBtns = this.container.querySelectorAll("[data-growth-perspective]");
+        perspBtns.forEach(btn => {
+            btn.addEventListener("click", () => {
+                const p = btn.getAttribute("data-growth-perspective");
+                if (p && this.growthViewPerspective !== p) {
+                    this.growthViewPerspective = p;
+                    this.selectedMonth = "ALL";
+                    this.render();
+                    this.bindEvents();
+                }
+            });
+        });
+
         // Quick Metric Switcher Pills
         const pills = this.container.querySelectorAll("[data-switch-metric]");
         pills.forEach(pill => {
@@ -460,6 +610,12 @@ export class ExecutiveDetailPage {
                     this.searchQuery = "";
                     this.sortColIndex = null;
                     this.sortDirection = null;
+                    this.prepChartMode = "TOTAL";
+                    this.activePondChartMode = "AVG";
+                    this.growthSpecies = "ALL";
+                    this.growthChartMode = "ADG";
+                    this.growthViewPerspective = "MODULE";
+                    this.growthDocCohort = "MID_LATE";
                     window.location.hash = `#/executive-detail?metric=${metric}`;
                     this.render();
                     this.bindEvents();
@@ -504,7 +660,14 @@ export class ExecutiveDetailPage {
                     this.dataBundle,
                     this.selectedMonth,
                     this.searchQuery,
-                    { activePondMode: this.activePondChartMode }
+                    {
+                        activePondMode: this.activePondChartMode,
+                        prepChartMode: this.prepChartMode,
+                        growthSpecies: this.growthSpecies,
+                        growthChartMode: this.growthChartMode,
+                        growthViewPerspective: this.growthViewPerspective,
+                        growthDocCohort: this.growthDocCohort
+                    }
                 );
                 let rowsToExport = vm.tableRows || [];
                 let headersToExport = vm.tableHeaders || [];
@@ -588,12 +751,39 @@ export class ExecutiveDetailPage {
             this.dataBundle,
             this.selectedMonth,
             this.searchQuery,
-            { activePondMode: this.activePondChartMode }
+            {
+                activePondMode: this.activePondChartMode,
+                prepChartMode: this.prepChartMode,
+                growthSpecies: this.growthSpecies,
+                growthChartMode: this.growthChartMode,
+                growthViewPerspective: this.growthViewPerspective,
+                growthDocCohort: this.growthDocCohort
+            }
         );
+
+        // Update summary stat cards
+        const statCards = this.container.querySelectorAll(".exec-detail-stat-card");
+        if (statCards.length > 0 && vm.summaryBadges) {
+            statCards.forEach((card, idx) => {
+                const b = vm.summaryBadges[idx];
+                if (b) {
+                    const l = card.querySelector(".exec-detail-stat-label");
+                    const v = card.querySelector(".exec-detail-stat-val");
+                    const s = card.querySelector(".exec-detail-stat-sub");
+                    if (l) l.textContent = b.label;
+                    if (v) v.textContent = b.value;
+                    if (s) s.textContent = b.sub;
+                }
+            });
+        }
 
         // Update count badge
         const countBadge = this.container.querySelector("#detail-count-display");
         if (countBadge) countBadge.textContent = vm.countDisplay;
+
+        // Update timeline title
+        const headline = this.container.querySelector(".timeline-headline");
+        if (headline && vm.timelineTitle) headline.textContent = `📈 ${vm.timelineTitle}`;
 
         // Update month select value if mismatched
         const selectMonth = this.container.querySelector("#detail-month-select");
@@ -706,15 +896,21 @@ export class ExecutiveDetailPage {
                 ctx.fillStyle = isSelected ? "#0369a1" : "#475569";
                 ctx.font = isSelected ? "bold 11px sans-serif" : "10px sans-serif";
                 ctx.textAlign = "center";
-                ctx.fillText(String(item.value), x + barW / 2, Math.max(14, y - 5));
+                let valText = String(item.value);
+                if (item.unit === "Days") valText = `${item.value}d`;
+                else if (item.unit === "g/day") valText = `${item.value}g/d`;
+                else if (item.unit === "%") valText = `${item.value}%`;
+                ctx.fillText(valText, x + barW / 2, Math.max(14, y - 5));
             }
 
-            // Month X-Axis Label
-            const shortMonth = (item.monthLabel || item.monthKey || "").split(" ")[0];
+            // Month / Module X-Axis Label
+            const shortLabel = (item.monthKey && item.monthKey.startsWith("M"))
+                ? item.monthKey
+                : ((item.monthLabel || item.monthKey || "").split(" ")[0]);
             ctx.fillStyle = isSelected ? "#0284c7" : "#64748b";
             ctx.font = isSelected ? "bold 11px sans-serif" : "10px sans-serif";
             ctx.textAlign = "center";
-            ctx.fillText(shortMonth, x + barW / 2, h - 14);
+            ctx.fillText(shortLabel, x + barW / 2, h - 14);
 
             // Record Hitbox for click interaction
             this.chartBarHitboxes.push({

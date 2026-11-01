@@ -6,7 +6,7 @@
  */
 
 import { HatcheryRepository } from "../../infrastructure/repositories/hatcheryRepository.js";
-import { escapeHtml } from "../../utils/formatters.js";
+import { escapeHtml, getLocalDateStr } from "../../utils/formatters.js";
 import { Toast } from "../../components/Toast.js";
 import { calculateBroodstockDOC } from "../../domain/biometrics.js";
 
@@ -364,7 +364,7 @@ export class BroodstockReportPage {
         const url = URL.createObjectURL(blob);
         const link = document.createElement("a");
         link.setAttribute("href", url);
-        link.setAttribute("download", `TPH_Broodstock_Batch_${this.selectedBatchCode.replace(/[\/\s]/g, '_')}_${new Date().toISOString().split("T")[0]}.csv`);
+        link.setAttribute("download", `TPH_Broodstock_Batch_${this.selectedBatchCode.replace(/[\/\s]/g, '_')}_${getLocalDateStr(new Date())}.csv`);
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);

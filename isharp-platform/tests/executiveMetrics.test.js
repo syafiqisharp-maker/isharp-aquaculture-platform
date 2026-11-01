@@ -376,3 +376,528 @@ describe("ExecutiveMetricsPresenter: Table Column Sorting", () => {
         assert.deepEqual(byDateDesc.map(r => r[0]), ["01.01.02", "01.02.01", "01.01.01", "01.01.03"]);
     });
 });
+
+describe("ExecutiveMetricsPresenter: Monthly Turnaround Stages & Preparation Breakdown", () => {
+    const mockCycles = [
+        {
+            pond_index: "2010101.40",
+            pond: "01.01.01",
+            modl: "01",
+            stck_date: "2026-09-20",
+            date_cycle: "2026-08-01",     // Total: 50d
+            date_cleaning: "2026-08-20",  // Idle->Clean: 19d
+            date_filling: "2026-09-01",   // Clean->Fill: 12d
+            date_culture: "2026-09-02"    // Fill->Stock: 19d
+        },
+        {
+            pond_index: "2010102.40",
+            pond: "01.01.02",
+            modl: "01",
+            stck_date: "2026-09-25",
+            date_cycle: "2026-08-05",     // Total: 51d
+            date_cleaning: "2026-08-26",  // Idle->Clean: 21d
+            date_repair: "2026-09-05",    // Clean->Fill: 10d (fallback to repair)
+            date_culture: "2026-09-06"    // Fill->Stock: 20d
+        },
+        {
+            pond_index: "2010103.40",
+            pond: "01.01.03",
+            modl: "01",
+            stck_date: "2026-08-15",
+            date_cycle: "2026-06-15",     // Total: 61d
+            date_cleaning: "2026-07-10",  // Idle->Clean: 25d
+            date_filling: "2026-07-25"    // Clean->Fill: 15d, Fill->Stock: 21d
+        }
+    ];
+
+    const mockActivePonds = [
+        {
+            pondCode: "02.03.01",
+            isActive: false,
+            progressState: "CLEANING",
+            progressDays: 5,
+            speciesLabel: "CLEANING"
+        },
+        {
+            pondCode: "02.03.02",
+            isActive: false,
+            progressState: "READY",
+            progressDays: 2,
+            speciesLabel: "READY"
+        },
+        {
+            pondCode: "02.03.03",
+            isActive: false,
+            progressState: "IDLE",
+            progressDays: 14,
+            speciesLabel: "IDLE"
+        }
+    ];
+
+    test("aggregateMonthlyTurnaroundStages computes accurate averages for TOTAL, IDLE_CLEAN, CLEAN_FILL, and FILL_STOCK", () => {
+        const refDate = new Date("2026-10-15");
+        
+        // Mode: TOTAL
+        const resTotal = ExecutiveMetricsPresenter.aggregateMonthlyTurnaroundStages(mockCycles, refDate, "TOTAL");
+        assert.equal(resTotal.buckets.length, 12);
+        const sepBucket = resTotal.buckets.find(b => b.monthKey === "2026-09");
+        assert.ok(sepBucket);
+        assert.equal(sepBucket.stockedCount, 2);
+        assert.equal(sepBucket.avgTotal, 50.5); // (50 + 51) / 2
+        assert.equal(sepBucket.value, 50.5);
+        assert.equal(sepBucket.unit, "Days");
+
+        // Mode: IDLE_CLEAN
+        const resIdleClean = ExecutiveMetricsPresenter.aggregateMonthlyTurnaroundStages(mockCycles, refDate, "IDLE_CLEAN");
+        const sepIdle = resIdleClean.buckets.find(b => b.monthKey === "2026-09");
+        assert.equal(sepIdle.avgIdleClean, 20); // (19 + 21) / 2
+        assert.equal(sepIdle.value, 20);
+
+        // Mode: CLEAN_FILL
+        const resCleanFill = ExecutiveMetricsPresenter.aggregateMonthlyTurnaroundStages(mockCycles, refDate, "CLEAN_FILL");
+        const sepClean = resCleanFill.buckets.find(b => b.monthKey === "2026-09");
+        assert.equal(sepClean.avgCleanFill, 11); // (12 + 10) / 2
+        assert.equal(sepClean.value, 11);
+
+        // Mode: FILL_STOCK
+        const resFillStock = ExecutiveMetricsPresenter.aggregateMonthlyTurnaroundStages(mockCycles, refDate, "FILL_STOCK");
+        const sepFill = resFillStock.buckets.find(b => b.monthKey === "2026-09");
+        assert.equal(sepFill.avgFillStock, 19); // (19 + 19) / 2
+        assert.equal(sepFill.value, 19);
+
+        // Velocity roll-up summary
+        assert.ok(resTotal.annualAvg > 0);
+        assert.equal(resTotal.fastestMonth, "Sep 2026");
+        assert.equal(resTotal.fastestAvg, 50.5);
+    });
+
+    test("getMetricDrillDownData PREP_IDLE: Live Snapshot ('ALL') returns 5 columns without Preparation Stage", () => {
+        const dataBundle = {
+            activePonds: mockActivePonds,
+            operationalCycles: mockCycles
+        };
+
+        const vm = ExecutiveMetricsPresenter.getMetricDrillDownData(
+            METRIC_TYPES.PREP_IDLE,
+            dataBundle,
+            "ALL"
+        );
+
+        assert.equal(vm.metricType, METRIC_TYPES.PREP_IDLE);
+        assert.equal(vm.title, "Ponds in Preparation & Turnaround Status");
+        assert.equal(vm.timeline.length, 12);
+        assert.ok(vm.monthOptions.length >= 13);
+        assert.equal(vm.monthOptions[0].key, "ALL");
+
+        // Headers must have exactly 5 columns with redundant "Preparation Stage" removed
+        assert.deepEqual(vm.tableHeaders, ["Pond Code", "Module", "Current Status", "Days in Stage", "Target Action"]);
+        assert.equal(vm.tableRows.length, 3);
+        assert.equal(vm.tableRows[0][0], "02.03.01");
+        assert.equal(vm.tableRows[0][2], "CLEANING");
+        assert.equal(vm.tableRows[0][3], "5d");
+
+        // Summary badges
+        assert.equal(vm.summaryBadges.length, 4);
+        assert.ok(vm.summaryBadges[0].label.includes("Turnaround"));
+    });
+
+    test("getMetricDrillDownData PREP_IDLE: Month Selection returns turnaround milestone columns", () => {
+        const dataBundle = {
+            activePonds: mockActivePonds,
+            operationalCycles: mockCycles
+        };
+
+        const vm = ExecutiveMetricsPresenter.getMetricDrillDownData(
+            METRIC_TYPES.PREP_IDLE,
+            dataBundle,
+            "2026-09",
+            "",
+            { prepChartMode: "TOTAL" }
+        );
+
+        // Headers for month view must break down the turnaround pipeline
+        assert.deepEqual(vm.tableHeaders, ["Pond Code", "Module", "Idle ➔ Clean", "Clean ➔ Fill", "Fill ➔ Stock", "Total Turnaround", "Stock Date"]);
+        assert.equal(vm.tableRows.length, 2); // 2 cycles stocked in Sep 2026
+        assert.equal(vm.tableRows[0][0], "01.01.01");
+        assert.equal(vm.tableRows[0][2], "19d");
+        assert.equal(vm.tableRows[0][3], "12d");
+        assert.equal(vm.tableRows[0][4], "19d");
+        assert.equal(vm.tableRows[0][5], "50d");
+        assert.equal(vm.tableRows[0][6], "2026-09-20");
+
+        // CSV export sync
+        assert.equal(vm.csvHeaders.length, 7);
+        assert.equal(vm.csvRows.length, 2);
+        assert.equal(vm.csvRows[0][5], 50);
+    });
+
+    test("getMetricDrillDownData PREP_IDLE: Count of Ponds filters (Cleaned, Repaired, Water Filled)", () => {
+        const dataBundle = {
+            activePonds: mockActivePonds,
+            operationalCycles: mockCycles
+        };
+
+        // Test COUNT_CLEANED in August 2026 (2 cycles cleaned in Aug: 01.01.01 on Aug 20 and 01.01.02 on Aug 26)
+        const vmClean = ExecutiveMetricsPresenter.getMetricDrillDownData(
+            METRIC_TYPES.PREP_IDLE,
+            dataBundle,
+            "2026-08",
+            "",
+            { prepChartMode: "COUNT_CLEANED" }
+        );
+
+        assert.equal(vmClean.timelineTitle, "Monthly Ponds Cleaned (Count)");
+        const augBucket = vmClean.timeline.find(b => b.monthKey === "2026-08");
+        assert.equal(augBucket.value, 2); // 2 ponds cleaned in Aug
+        assert.equal(augBucket.unit, "Ponds");
+
+        assert.deepEqual(vmClean.tableHeaders, ["Pond Code", "Module", "Cleaning Date", "Cycle Start", "Days to Clean", "Status"]);
+        assert.equal(vmClean.tableRows.length, 2);
+        assert.equal(vmClean.tableRows[0][0], "01.01.01");
+        assert.equal(vmClean.tableRows[0][2], "2026-08-20");
+
+        // Test COUNT_FILLED in September 2026 (1 cycle filled in Sep: 01.01.01 on Sep 01)
+        const vmFill = ExecutiveMetricsPresenter.getMetricDrillDownData(
+            METRIC_TYPES.PREP_IDLE,
+            dataBundle,
+            "2026-09",
+            "",
+            { prepChartMode: "COUNT_FILLED" }
+        );
+
+        assert.equal(vmFill.timelineTitle, "Monthly Ponds Water Filled (Count)");
+        const sepFillBucket = vmFill.timeline.find(b => b.monthKey === "2026-09");
+        assert.equal(sepFillBucket.value, 1); // 1 pond filled in Sep
+        assert.deepEqual(vmFill.tableHeaders, ["Pond Code", "Module", "Water Fill Date", "Culture Date", "Stock Date", "Status"]);
+        assert.equal(vmFill.tableRows.length, 1);
+        assert.equal(vmFill.tableRows[0][0], "01.01.01");
+        assert.equal(vmFill.tableRows[0][2], "2026-09-01");
+    });
+});
+
+describe("ExecutiveMetricsPresenter: Shrimp Health, Growth & Survival Performance", () => {
+    const mockPonds = [
+        {
+            pondCode: "01.01.01",
+            pondIndex: "10101",
+            speciesCode: "VAN",
+            speciesLabel: "Vannamei",
+            doc: 60,
+            stckDate: "2026-08-01",
+            isActive: true,
+            progressState: "CULTURE"
+        },
+        {
+            pondCode: "01.02.01",
+            pondIndex: "10201",
+            speciesCode: "VAN",
+            speciesLabel: "Vannamei",
+            doc: 60,
+            stckDate: "2026-08-01",
+            isActive: true,
+            progressState: "CULTURE"
+        },
+        {
+            pondCode: "02.01.01",
+            pondIndex: "20101",
+            speciesCode: "MON",
+            speciesLabel: "Monodon",
+            doc: 70,
+            stckDate: "2026-07-20",
+            isActive: true,
+            progressState: "CULTURE"
+        },
+        {
+            pondCode: "03.01.01",
+            pondIndex: "30101",
+            speciesCode: "VAN",
+            speciesLabel: "Vannamei",
+            doc: 0,
+            isActive: false,
+            progressState: "IDLE"
+        }
+    ];
+
+    const mockSamplings = [
+        {
+            pond_index: "10101",
+            smpl_date: "2026-09-30",
+            smpl_doc: 60,
+            smpl_abw: 12.0, // On track for VAN (standard at 60d is 10.2g, 12.0 / 60 = 0.20 g/d)
+            smpl_surv: 85.0
+        },
+        {
+            pond_index: "10201",
+            smpl_date: "2026-09-30",
+            smpl_doc: 60,
+            smpl_abw: 6.0, // Slow growth for VAN (6.0g vs target 10.2g = 59% < 80%)
+            smpl_surv: 55.0 // Critical low survival (<60%)
+        },
+        {
+            pond_index: "20101",
+            smpl_date: "2026-09-28",
+            smpl_doc: 70,
+            smpl_abw: 11.5, // On track for MON (standard at 70d is 11.2g, 11.5 / 70 = 0.16 g/d)
+            smpl_surv: 78.0
+        }
+    ];
+
+    const mockIssues = [
+        {
+            pond_index: "10201",
+            issue_date: "2026-09-29",
+            issue_category: "EHP Stunting",
+            issue_test: "PCR Assay",
+            issue_flag: "RED",
+            issue_note: "EHP Positive - Slow growth"
+        }
+    ];
+
+    test("aggregateGrowthAndSurvival calculates ADG, survival, target comparison, and species separation", () => {
+        const agg = ExecutiveMetricsPresenter.aggregateGrowthAndSurvival(
+            mockPonds,
+            mockSamplings,
+            mockIssues,
+            { speciesFilter: "ALL", chartMode: "ADG", viewPerspective: "MODULE" }
+        );
+
+        // Only 3 culturing ponds
+        assert.equal(agg.allEnrichedPonds.length, 3);
+        assert.equal(agg.activePool.length, 3);
+
+        // Check overall ADG:
+        // Pond 10101: 12.0 / 60 = 0.20 g/d
+        // Pond 10201: 6.0 / 60 = 0.10 g/d
+        // Pond 20101: 11.5 / 70 = 0.16 g/d
+        // Total = 0.46 / 3 = 0.15 g/d
+        assert.equal(agg.overallAvgAdg, 0.15);
+        // VAN ADG: (0.20 + 0.10) / 2 = 0.15 g/d
+        assert.equal(agg.vanAvgAdg, 0.15);
+        // MON ADG: 0.16 g/d
+        assert.equal(agg.monAvgAdg, 0.16);
+
+        // Check Survival Rates:
+        // (85.0 + 55.0 + 78.0) / 3 = 72.7%
+        assert.equal(agg.overallAvgSr, 72.7);
+        // VAN SR: (85.0 + 55.0) / 2 = 70%
+        assert.equal(agg.vanAvgSr, 70);
+        // MON SR: 78%
+        assert.equal(agg.monAvgSr, 78);
+
+        // Behind target: Pond 10201 is lagging (6.0g vs 10.2g)
+        assert.equal(agg.totalBehind, 1);
+        assert.equal(agg.vanBehind, 1);
+        assert.equal(agg.monBehind, 0);
+
+        // Critical ponds: Pond 10201 has SR 55% (<60%) AND RED issue
+        assert.equal(agg.totalCritical, 1);
+        assert.equal(agg.vanCritical, 1);
+    });
+
+    test("speciesFilter correctly narrows pool to VAN or MON only", () => {
+        const vanAgg = ExecutiveMetricsPresenter.aggregateGrowthAndSurvival(
+            mockPonds,
+            mockSamplings,
+            mockIssues,
+            { speciesFilter: "VAN", chartMode: "ADG", viewPerspective: "MODULE" }
+        );
+        assert.equal(vanAgg.activePool.length, 2);
+        assert.ok(vanAgg.activePool.every(p => p.speciesCode === "VAN"));
+
+        const monAgg = ExecutiveMetricsPresenter.aggregateGrowthAndSurvival(
+            mockPonds,
+            mockSamplings,
+            mockIssues,
+            { speciesFilter: "MON", chartMode: "ADG", viewPerspective: "MODULE" }
+        );
+        assert.equal(monAgg.activePool.length, 1);
+        assert.equal(monAgg.activePool[0].speciesCode, "MON");
+    });
+
+    test("getMetricDrillDownData for BIOSECURITY returns 10-column table and formatted badges", () => {
+        const dataBundle = {
+            activePonds: mockPonds,
+            samplings: mockSamplings,
+            issues: mockIssues
+        };
+
+        const vm = ExecutiveMetricsPresenter.getMetricDrillDownData(
+            METRIC_TYPES.BIOSECURITY,
+            dataBundle,
+            "ALL",
+            "",
+            { growthSpecies: "ALL", growthChartMode: "ADG", growthViewPerspective: "MODULE" }
+        );
+
+        assert.equal(vm.title, "Shrimp Health, Growth & Survival");
+        assert.equal(vm.icon, "🦐");
+        assert.equal(vm.timelineTitle, "Average Daily Growth by Module (g/day)");
+
+        assert.deepEqual(vm.tableHeaders, [
+            "Pond Code",
+            "Module",
+            "Species",
+            "DOC",
+            "Current ABW",
+            "Daily Growth",
+            "Target ABW",
+            "Growth %",
+            "Survival Rate",
+            "Health Status"
+        ]);
+
+        assert.equal(vm.tableRows.length, 3);
+        // Row 1: 01.01.01 (On track)
+        assert.equal(vm.tableRows[0][0], "01.01.01");
+        assert.equal(vm.tableRows[0][2], "VAN");
+        assert.equal(vm.tableRows[0][4], "12.0 g");
+        assert.equal(vm.tableRows[0][5], "0.20 g/d");
+        assert.equal(vm.tableRows[0][6], "10.2 g");
+        assert.equal(vm.tableRows[0][7], "118%");
+        assert.equal(vm.tableRows[0][8], "85.0%");
+        assert.equal(vm.tableRows[0][9], "Normal / Negative");
+
+        // Row 2: 01.02.01 (Behind target with Red Alert)
+        assert.equal(vm.tableRows[1][0], "01.02.01");
+        assert.equal(vm.tableRows[1][5], "0.10 g/d");
+        assert.equal(vm.tableRows[1][7], "59%");
+        assert.equal(vm.tableRows[1][8], "55.0%");
+        assert.ok(vm.tableRows[1][9].includes("Red: EHP Stunting"));
+
+        // Row 3: 02.01.01 (MON pond)
+        assert.equal(vm.tableRows[2][0], "02.01.01");
+        assert.equal(vm.tableRows[2][2], "MON");
+        assert.equal(vm.tableRows[2][5], "0.16 g/d");
+        assert.equal(vm.tableRows[2][6], "11.2 g"); // Monodon standard at 70d
+        assert.equal(vm.tableRows[2][7], "103%");
+        assert.equal(vm.tableRows[2][8], "78.0%");
+    });
+
+    test("calculateQuickGrowthSurvivalSummary formats main executive card display", () => {
+        const samplingsMap = new Map();
+        mockSamplings.forEach(s => samplingsMap.set(s.pond_index, s));
+        const issuesMap = new Map();
+        mockIssues.forEach(i => issuesMap.set(i.pond_index, [i]));
+
+        const summary = ExecutiveMetricsPresenter.calculateQuickGrowthSurvivalSummary(
+            mockPonds,
+            samplingsMap,
+            issuesMap
+        );
+
+        assert.equal(summary.adgDisplay, "0.15");
+        assert.equal(summary.srDisplay, "72.7");
+        assert.ok(summary.subText.includes("Red Alerts"));
+    });
+
+    test("docCohort strictly isolates MID_LATE (>=50d) vs LATE_ONLY (>70d)", () => {
+        const cohortPonds = [
+            { pondCode: "01.01.01", pondIndex: "101", speciesCode: "VAN", doc: 45, isActive: true, progressState: "CULTURE" }, // Nursery (<50d)
+            { pondCode: "01.01.02", pondIndex: "102", speciesCode: "VAN", doc: 60, isActive: true, progressState: "CULTURE" }, // Mid (50-70d)
+            { pondCode: "01.01.03", pondIndex: "103", speciesCode: "VAN", doc: 85, isActive: true, progressState: "CULTURE" }, // Late (>70d)
+        ];
+        const cohortSamplings = [
+            { pond_index: "101", smpl_doc: 45, smpl_abw: 7.0, smpl_surv: 90.0 },
+            { pond_index: "102", smpl_doc: 60, smpl_abw: 12.0, smpl_surv: 80.0 },
+            { pond_index: "103", smpl_doc: 85, smpl_abw: 22.0, smpl_surv: 65.0 }
+        ];
+
+        // MID_LATE (Default) - Includes DOC >= 50, filters out early nursery bias (DOC 45)
+        const midLateAgg = ExecutiveMetricsPresenter.aggregateGrowthAndSurvival(
+            cohortPonds,
+            cohortSamplings,
+            [],
+            { docCohort: "MID_LATE", viewPerspective: "MODULE" }
+        );
+        assert.equal(midLateAgg.minDocThreshold, 50);
+        assert.equal(midLateAgg.activePool.length, 2); // 102 (DOC 60) and 103 (DOC 85)
+        assert.ok(midLateAgg.activePool.every(p => p.doc >= 50));
+
+        // LATE_ONLY - Includes only harvest candidates (DOC > 70)
+        const lateOnlyAgg = ExecutiveMetricsPresenter.aggregateGrowthAndSurvival(
+            cohortPonds,
+            cohortSamplings,
+            [],
+            { docCohort: "LATE_ONLY", viewPerspective: "MODULE" }
+        );
+        assert.equal(lateOnlyAgg.minDocThreshold, 71);
+        assert.equal(lateOnlyAgg.activePool.length, 1); // 103 only (DOC 85)
+        assert.equal(lateOnlyAgg.activePool[0].pondCode, "01.01.03");
+    });
+
+    test("aggregateGrowthAndSurvival 12-Month Trend aggregates mature historical samplings with species separation", () => {
+        const mockCycles12M = [
+            { pond_index: "201.01", pond: "02.01.01", modl: "02", stck_species: "P. VANNAMEI" },
+            { pond_index: "201.02", pond: "02.01.02", modl: "02", stck_species: "P. MONODON" }
+        ];
+        const mockSamplings12M = [
+            // June 2026: VAN collapsed to 45% SR, MON at 75% SR
+            { pond_index: "201.01", smpl_date: "2026-06-15", smpl_doc: 75, smpl_abw: 18.0, smpl_surv: 45.0 },
+            { pond_index: "201.02", smpl_date: "2026-06-20", smpl_doc: 80, smpl_abw: 16.0, smpl_surv: 75.0 },
+            // May 2026: VAN at 70% SR, MON at 80% SR
+            { pond_index: "201.01", smpl_date: "2026-05-10", smpl_doc: 55, smpl_abw: 11.0, smpl_surv: 70.0 },
+            { pond_index: "201.02", smpl_date: "2026-05-15", smpl_doc: 60, smpl_abw: 10.0, smpl_surv: 80.0 },
+            // Early nursery sample (<50d) that must be excluded
+            { pond_index: "201.01", smpl_date: "2026-06-01", smpl_doc: 30, smpl_abw: 3.5, smpl_surv: 95.0 }
+        ];
+
+        // 1. All Species
+        const aggAll = ExecutiveMetricsPresenter.aggregateGrowthAndSurvival(
+            [],
+            [],
+            [],
+            {
+                speciesFilter: "ALL",
+                chartMode: "SR",
+                viewPerspective: "MONTHLY",
+                docCohort: "MID_LATE",
+                samplings12M: mockSamplings12M,
+                operationalCycles: mockCycles12M
+            }
+        );
+
+        assert.equal(aggAll.totalSamplesCount, 4); // Excludes the 30d nursery sample
+        const juneBucket = aggAll.buckets.find(b => b.monthKey === "2026-06");
+        assert.ok(juneBucket);
+        assert.equal(juneBucket.pondCount, 2);
+        assert.equal(juneBucket.avgSr, 60.0); // (45 + 75) / 2
+        assert.equal(juneBucket.value, 60.0);
+
+        // 2. VAN Species Only
+        const aggVan = ExecutiveMetricsPresenter.aggregateGrowthAndSurvival(
+            [],
+            [],
+            [],
+            {
+                speciesFilter: "VAN",
+                chartMode: "SR",
+                viewPerspective: "MONTHLY",
+                docCohort: "MID_LATE",
+                samplings12M: mockSamplings12M,
+                operationalCycles: mockCycles12M
+            }
+        );
+        const juneVanBucket = aggVan.buckets.find(b => b.monthKey === "2026-06");
+        assert.ok(juneVanBucket);
+        assert.equal(juneVanBucket.pondCount, 1);
+        assert.equal(juneVanBucket.avgSr, 45.0); // Exactly reflects VAN collapse!
+        assert.equal(juneVanBucket.criticalCount, 1); // 45% < 60%
+
+        // 3. DrillDown ViewModel for historical month
+        const vmJune = ExecutiveMetricsPresenter.getMetricDrillDownData(
+            METRIC_TYPES.BIOSECURITY,
+            { samplings12M: mockSamplings12M, operationalCycles: mockCycles12M },
+            "2026-06",
+            "",
+            { growthSpecies: "VAN", growthChartMode: "SR", growthViewPerspective: "MONTHLY", growthDocCohort: "MID_LATE" }
+        );
+        assert.equal(vmJune.tableRows.length, 1);
+        assert.equal(vmJune.tableRows[0][0], "02.01.01");
+        assert.equal(vmJune.tableRows[0][2], "VAN");
+        assert.equal(vmJune.tableRows[0][3], "75d");
+        assert.equal(vmJune.tableRows[0][8], "45.0%");
+        assert.ok(vmJune.countDisplay.includes("Jun 2026"));
+        assert.ok(vmJune.countDisplay.includes("45%"));
+    });
+});
+

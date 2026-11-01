@@ -24,8 +24,8 @@ if hasattr(sys.stdout, "reconfigure"):
 if hasattr(sys.stderr, "reconfigure"):
     sys.stderr.reconfigure(encoding="utf-8")
 
-SUPABASE_URL = "https://keappoukeagyzpoxkrru.supabase.co/rest/v1"
-ANON_KEY = "sb_publishable_kObmQ9Ha4NLrl9vQXy5k5w_Ie9-EQ4s"
+from pathlib import Path; sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "database_migration" / "lib")); from isharp_env import SUPABASE_URL as _BASE_URL, SUPABASE_KEY as ANON_KEY; SUPABASE_URL = f"{_BASE_URL}/rest/v1"
+# ANON_KEY loaded via isharp_env.py
 
 HEADERS = {
     "apikey": ANON_KEY,

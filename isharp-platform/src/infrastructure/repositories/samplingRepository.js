@@ -56,6 +56,32 @@ export class SamplingRepository {
     }
 
     /**
+     * Fetches mature biometrics sampling records (DOC >= minDoc) across the past N months.
+     * Uses parallel chunked requests to bypass PostgREST's 1,000-row page limit.
+     * @param {number} [monthsBack=12] 
+     * @param {number} [minDoc=50] Excludes young nursery ponds (<50d) to eliminate artificial high-SR bias
+     * @returns {Promise<Array<object>>}
+     */
+    static async get12MonthMatureSamplings(monthsBack = 12, minDoc = 50) {
+        const now = new Date();
+        const past = new Date(now.getFullYear(), now.getMonth() - (monthsBack + 1), 1);
+        const fromDate = `${past.getFullYear()}-${String(past.getMonth() + 1).padStart(2, '0')}-01`;
+        const baseEndpoint = `biometrics_sampling?select=pond_index,smpl_date,smpl_doc,smpl_abw,smpl_surv,smpl_bms&smpl_date=gte.${fromDate}&smpl_doc=gte.${minDoc}&order=smpl_date.asc&limit=1000`;
+        try {
+            const [p1, p2, p3, p4] = await Promise.all([
+                supabase.request(`${baseEndpoint}&offset=0`),
+                supabase.request(`${baseEndpoint}&offset=1000`),
+                supabase.request(`${baseEndpoint}&offset=2000`),
+                supabase.request(`${baseEndpoint}&offset=3000`)
+            ]);
+            return [...(p1 || []), ...(p2 || []), ...(p3 || []), ...(p4 || [])];
+        } catch (err) {
+            console.warn("Failed to fetch 12-month mature samplings:", err);
+            return [];
+        }
+    }
+
+    /**
      * Inserts or updates a batch of parsed sampling records into biometrics_sampling.
      * Uses on_conflict=pond_index,smpl_date to guarantee idempotency.
      * @param {Array<object>} records 

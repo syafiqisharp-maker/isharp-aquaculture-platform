@@ -18,7 +18,7 @@ import { DOM_IDS, validateContract } from "../../config/domContracts.js";
 import { FinanceRepository } from "../../infrastructure/repositories/financeRepository.js";
 import { estimateEbitda, ESTIMATOR_SPECIES } from "../../domain/ebitdaEstimator.js";
 import { security } from "../../config/security.js";
-import { formatCurrency, formatNumber, formatPercent, escapeHtml } from "../../utils/formatters.js";
+import { formatCurrency, formatNumber, formatPercent, escapeHtml, getLocalDateStr } from "../../utils/formatters.js";
 
 
 export class UtilitiesTab {
@@ -126,7 +126,7 @@ export class UtilitiesTab {
      * Helper to get today's date formatted as YYYY-MM-DD.
      */
     getTodayStr() {
-        return new Date().toISOString().split("T")[0];
+        return getLocalDateStr(new Date());
     }
 
     /**
@@ -144,7 +144,7 @@ export class UtilitiesTab {
     getDateMonthsAgo(months = 24) {
         const d = new Date();
         d.setMonth(d.getMonth() - months);
-        return d.toISOString().split("T")[0];
+        return getLocalDateStr(d);
     }
 
     // =========================================================================

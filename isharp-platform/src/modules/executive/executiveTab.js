@@ -104,12 +104,12 @@ export class ExecutiveView {
                             <div class="exec-kpi-sub">Drying, liming &amp; nursery prep</div>
                         </div>
 
-                        <!-- 3. Pathogen Biosecurity -->
-                        <div class="exec-kpi-card" data-metric="BIOSECURITY" role="button" tabindex="0" title="Click to view Pathogen Biosecurity PCR Alerts &amp; timeline">
+                        <!-- 3. Shrimp Growth & Survival -->
+                        <div class="exec-kpi-card" data-metric="BIOSECURITY" role="button" tabindex="0" title="Click to view Shrimp Health, Growth &amp; Survival performance">
                             <span class="exec-kpi-hint">↗</span>
-                            <div class="exec-kpi-title">Pathogen Biosecurity</div>
-                            <div class="exec-kpi-num" id="exec-kpi-health" style="color: #d97706;">Live Monitoring</div>
-                            <div class="exec-kpi-sub">Supabase Lab Telemetry Active</div>
+                            <div class="exec-kpi-title">Shrimp Growth &amp; Survival</div>
+                            <div class="exec-kpi-num" id="exec-kpi-health" style="color: #059669;">—</div>
+                            <div class="exec-kpi-sub" id="exec-kpi-health-sub">Evaluating active crops...</div>
                         </div>
 
                         <!-- 4. Total Harvest -->

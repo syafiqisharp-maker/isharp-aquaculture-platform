@@ -23,15 +23,15 @@ import urllib.error
 import openpyxl
 
 EXCEL_PATH = r"C:\Users\syafiq\My Drive\Syafiq Water Quality Station Project\Pond Operations Management System\Water Quality DB\DATABASE COMBINE MONITORING 2024 - 2026 new.xlsx"
-SUPABASE_URL = "https://keappoukeagyzpoxkrru.supabase.co"
-SUPABASE_KEY = "sb_publishable_kObmQ9Ha4NLrl9vQXy5k5w_Ie9-EQ4s"
+from pathlib import Path; sys.path.insert(0, str(Path(__file__).resolve().parent / "lib")); from isharp_env import SUPABASE_URL, SUPABASE_KEY, EDITOR_PASSCODE
+# SUPABASE_KEY loaded via isharp_env.py
 BATCH_SIZE = 500
 
 HEADERS = {
     "apikey": SUPABASE_KEY,
     "Authorization": f"Bearer {SUPABASE_KEY}",
     "Content-Type": "application/json",
-    "Prefer": "resolution=merge-duplicates"
+    "Prefer": "resolution=merge-duplicates", "x-isharp-passcode": EDITOR_PASSCODE
 }
 
 def safe_float(val):

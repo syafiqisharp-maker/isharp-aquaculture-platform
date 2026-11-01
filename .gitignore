@@ -36,5 +36,9 @@ sync_logs/
 sync.lock
 database_migration/sync_checkpoint.json
 
+# Centralized local sync credentials & automated Google Drive database backups
+.env.sync
+database_migration/backups/
+
 # Local Netlify folder
 .netlify

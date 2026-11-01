@@ -187,4 +187,26 @@ export class StaffRepository {
             return null;
         }
     }
+
+    static async getCycleInitiatives(pondIndex) {
+        if (!pondIndex) return [];
+        const data = await supabase.request(`pond_initiatives?pond_index=eq.${encodeURIComponent(pondIndex)}&select=initiative_name`);
+        return Array.isArray(data) ? data : [];
+    }
+
+    static async saveCycleInitiatives(pondIndex, values = []) {
+        if (!pondIndex) throw new Error("Missing pond index for initiatives.");
+        await supabase.request(`pond_initiatives?pond_index=eq.${encodeURIComponent(pondIndex)}`, { method: "DELETE" });
+        const clean = (values || []).map(v => String(v || "").trim()).filter(v => v.length > 0);
+        if (clean.length > 0) {
+            const payload = clean.map(v => ({ pond_index: pondIndex, initiative_name: v }));
+            await supabase.request("pond_initiatives", { method: "POST", body: JSON.stringify(payload) });
+        }
+    }
+
+    _unusedHelper() {
+        if (false) {
+            return null;
+        }
+    }
 }

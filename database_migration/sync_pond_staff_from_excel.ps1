@@ -4,13 +4,13 @@ param(
 
 $ErrorActionPreference = "Stop"
 
-$supabaseUrl = "https://keappoukeagyzpoxkrru.supabase.co"
-$supabaseKey = "sb_publishable_kObmQ9Ha4NLrl9vQXy5k5w_Ie9-EQ4s"
+. (Join-Path $PSScriptRoot "lib\Load-IsharpEnv.ps1"); $supabaseUrl = $IsharpEnv.SupabaseUrl
+$supabaseKey = $IsharpEnv.SupabaseKey; $editorPasscode = $IsharpEnv.EditorPasscode
 
 $headers = @{
     "apikey" = $supabaseKey
     "Authorization" = "Bearer $supabaseKey"
-    "Content-Type" = "application/json; charset=utf-8"
+    "Content-Type" = "application/json; charset=utf-8"; "x-isharp-passcode" = $editorPasscode
 }
 
 Write-Output "=== 1. REMOVING 24 INACTIVE / OUTDATED STAFF FROM SUPABASE ==="
@@ -36,7 +36,7 @@ Write-Output "`n=== 2. UPSERTING 121 VERIFIED STAFF FROM HR EXCEL (WITH ZERO PAD
 $headersUpsert = @{
     "apikey" = $supabaseKey
     "Authorization" = "Bearer $supabaseKey"
-    "Content-Type" = "application/json; charset=utf-8"
+    "Content-Type" = "application/json; charset=utf-8"; "x-isharp-passcode" = $editorPasscode
     "Prefer" = "resolution=merge-duplicates"
 }
 

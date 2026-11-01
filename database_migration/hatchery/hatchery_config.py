@@ -3,11 +3,11 @@ Telaga Putat Hatchery (TPH) — Ingestion Pipeline Configuration & Normalization
 """
 
 import os
+import sys
+from pathlib import Path
 
-# Supabase Credentials (Read from Environment with fallback to project settings)
-SUPABASE_URL = os.environ.get("SUPABASE_URL", "https://keappoukeagyzpoxkrru.supabase.co")
-SUPABASE_KEY = os.environ.get("SUPABASE_KEY", "sb_publishable_kObmQ9Ha4NLrl9vQXy5k5w_Ie9-EQ4s")
-EDITOR_PASSCODE = os.environ.get("ISHARP_EDITOR_PASSCODE", "mantaray")
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "lib"))
+from isharp_env import SUPABASE_URL, SUPABASE_KEY, EDITOR_PASSCODE
 
 # Master Source Definitions
 SOURCES = [

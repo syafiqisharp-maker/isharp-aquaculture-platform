@@ -4,6 +4,7 @@
  * Revive Reversals, Custom Cycle Creation, and Physical Pond Cycle Registry.
  */
 
+import { getLocalDateStr } from "../../utils/formatters.js";
 import { appState } from "../../state/appState.js";
 import { PondRepository } from "../../infrastructure/repositories/pondRepository.js";
 import { isCycleClosed, parsePondIndex } from "../../domain/rollover.js";
@@ -368,7 +369,7 @@ export class LifecycleTab {
             this.dom.terminateModalPondIndex.textContent = pond.pond_index;
         }
         if (this.dom.terminateDateInput) {
-            this.dom.terminateDateInput.value = new Date().toISOString().split("T")[0];
+            this.dom.terminateDateInput.value = getLocalDateStr(new Date());
         }
         if (this.dom.terminateStatusSelect) {
             this.dom.terminateStatusSelect.value = "NORMAL HARVEST";
@@ -396,7 +397,7 @@ export class LifecycleTab {
         const pond = appState.currentPond;
         if (!pond) return;
 
-        const harvestDate = this.dom.terminateDateInput?.value || new Date().toISOString().split("T")[0];
+        const harvestDate = this.dom.terminateDateInput?.value || getLocalDateStr(new Date());
         const finalStatus = this.dom.terminateStatusSelect?.value || "NORMAL HARVEST";
         const createNext = this.dom.radioRolloverYes ? this.dom.radioRolloverYes.checked : true;
 

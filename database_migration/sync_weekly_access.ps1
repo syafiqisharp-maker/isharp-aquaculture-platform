@@ -7,10 +7,10 @@ param(
 $ErrorActionPreference = "Stop"
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 
-$legacyDbDir = "D:\DB"
-$supabaseUrl = "https://keappoukeagyzpoxkrru.supabase.co"
-$supabaseKey = if ($env:SUPABASE_SERVICE_ROLE_KEY) { $env:SUPABASE_SERVICE_ROLE_KEY } else { "sb_publishable_kObmQ9Ha4NLrl9vQXy5k5w_Ie9-EQ4s" }
-$editorPasscode = if ($env:ISHARP_EDITOR_PASSCODE) { $env:ISHARP_EDITOR_PASSCODE } else { "mantaray" }
+$legacyDbDir = "D:\DB"; . (Join-Path $PSScriptRoot "lib\Load-IsharpEnv.ps1")
+$supabaseUrl = $IsharpEnv.SupabaseUrl
+$supabaseKey = if ($env:SUPABASE_SERVICE_ROLE_KEY) { $env:SUPABASE_SERVICE_ROLE_KEY } else { $IsharpEnv.SupabaseKey }
+$editorPasscode = $IsharpEnv.EditorPasscode
 
 $reconcileCutoff = (Get-Date).AddDays(-$reconcileDays).ToString("yyyy-MM-dd")
 $checkpointPath = Join-Path $PSScriptRoot "sync_checkpoint.json"

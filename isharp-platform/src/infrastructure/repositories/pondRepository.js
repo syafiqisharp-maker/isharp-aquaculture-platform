@@ -5,6 +5,7 @@
 
 import { supabase } from "../supabase.js";
 import { sanitizeIdlePrepDate } from "../../domain/rollover.js";
+import { getLocalDateStr } from "../../utils/formatters.js";
 
 export class PondRepository {
     /**
@@ -177,7 +178,7 @@ export class PondRepository {
         const now = new Date();
         const past = new Date(now.getFullYear(), now.getMonth() - (monthsBack + 1), 1);
         const fromDate = `${past.getFullYear()}-${String(past.getMonth() + 1).padStart(2, '0')}-01`;
-        const endpoint = `view_growout_pond_cycles?select=pond_index,pond,modl,row_no,cycle_no,crop_no,pond_status,pond_active,stck_date,date_close,area,stck_species&stck_date=not.is.null&or=(date_close.gte.${fromDate},date_close.is.null)&order=stck_date.asc&limit=1500`;
+        const endpoint = `view_growout_pond_cycles?select=pond_index,pond,modl,row_no,cycle_no,crop_no,pond_status,pond_active,stck_date,date_close,date_cycle,date_cleaning,date_repair,date_filling,date_culture,date_ready,area,stck_species&or=(date_close.gte.${fromDate},date_close.is.null,stck_date.gte.${fromDate},date_cleaning.gte.${fromDate},date_filling.gte.${fromDate})&order=stck_date.asc.nullslast&limit=1500`;
         try {
             return await supabase.request(endpoint);
         } catch (err) {
@@ -315,7 +316,7 @@ export class PondRepository {
      */
     static async terminateCycle(pondIndex, harvestDate, finalStatus = "NORMAL HARVEST", createNextCycle = true) {
         if (!pondIndex) throw new Error("pondIndex is required for termination.");
-        const dateStr = harvestDate || new Date().toISOString().split("T")[0];
+        const dateStr = harvestDate || getLocalDateStr(new Date());
         try {
             return await supabase.rpc("fn_terminate_cycle", {
                 p_pond_index: pondIndex,

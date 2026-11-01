@@ -38,6 +38,12 @@ export class ExecutiveMetricModal {
         this.currentMetricType = METRIC_TYPES.HARVEST;
         this.dataBundle = {};
         this.selectedMonth = "ALL";
+        this.activePondChartMode = "AVG";
+        this.prepChartMode = "TOTAL";
+        this.growthSpecies = "ALL";
+        this.growthChartMode = "ADG";
+        this.growthViewPerspective = "MODULE";
+        this.growthDocCohort = "MID_LATE";
         this.searchQuery = "";
         this.sortColIndex = null;
         this.sortDirection = null; // null | 'asc' | 'desc'
@@ -63,6 +69,12 @@ export class ExecutiveMetricModal {
         this.currentMetricType = metricType;
         this.dataBundle = dataBundle;
         this.selectedMonth = "ALL";
+        this.activePondChartMode = "AVG";
+        this.prepChartMode = "TOTAL";
+        this.growthSpecies = "ALL";
+        this.growthChartMode = "ADG";
+        this.growthViewPerspective = "MODULE";
+        this.growthDocCohort = "MID_LATE";
         this.searchQuery = "";
         this.sortColIndex = null;
         this.sortDirection = null;
@@ -154,9 +166,9 @@ export class ExecutiveMetricModal {
                 let badgeClass = "";
                 if (cellStr === "VAN" || cellStr.includes("VANNAMEI")) badgeClass = "badge-sp-van";
                 else if (cellStr === "MON" || cellStr.includes("MONODON")) badgeClass = "badge-sp-mon";
-                else if (cellStr === "RED") badgeClass = "badge-alert-red";
-                else if (cellStr === "YELLOW") badgeClass = "badge-alert-yellow";
-                else if (cellStr === "GREEN") badgeClass = "badge-alert-green";
+                else if (cellStr === "RED" || cellStr.startsWith("Red:")) badgeClass = "badge-alert-red";
+                else if (cellStr === "YELLOW" || cellStr.startsWith("Yellow:")) badgeClass = "badge-alert-yellow";
+                else if (cellStr === "GREEN" || cellStr.includes("Normal") || cellStr.includes("Negative")) badgeClass = "badge-alert-green";
                 else if (cellStr === "READY") badgeClass = "badge-status-ready";
                 else if (cellStr === "CULTURE" || cellStr === "Active Culture") badgeClass = "badge-status-culture";
                 else if (cellStr === "IDLE" || cellStr.includes("Closed")) badgeClass = "badge-status-idle";
@@ -179,7 +191,15 @@ export class ExecutiveMetricModal {
             this.currentMetricType,
             this.dataBundle,
             this.selectedMonth,
-            this.searchQuery
+            this.searchQuery,
+            {
+                activePondMode: this.activePondChartMode,
+                prepChartMode: this.prepChartMode,
+                growthSpecies: this.growthSpecies,
+                growthChartMode: this.growthChartMode,
+                growthViewPerspective: this.growthViewPerspective,
+                growthDocCohort: this.growthDocCohort
+            }
         );
 
         const summaryBadgesHtml = (vm.summaryBadges || []).map(b => `
@@ -198,6 +218,57 @@ export class ExecutiveMetricModal {
         const tableRowsHtml = this.buildTableRowsHtml(vm.tableRows || [], (vm.tableHeaders || []).length);
 
         const hasTimeline = (vm.timeline || []).length > 0;
+        const isPrepMetric = this.currentMetricType === METRIC_TYPES.PREP_IDLE;
+        const prepModeToggleHtml = isPrepMetric ? `
+            <div class="prep-toggle-container" style="display: inline-flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+                <div class="timeline-mode-toggle" aria-label="Turnaround Stage Duration Mode">
+                    <span class="mode-toggle-label">Duration:</span>
+                    <button type="button" class="btn-mode ${this.prepChartMode === 'TOTAL' ? 'active' : ''}" data-prep-mode="TOTAL">Total</button>
+                    <button type="button" class="btn-mode ${this.prepChartMode === 'IDLE_CLEAN' ? 'active' : ''}" data-prep-mode="IDLE_CLEAN">Idle➔Clean</button>
+                    <button type="button" class="btn-mode ${this.prepChartMode === 'CLEAN_FILL' ? 'active' : ''}" data-prep-mode="CLEAN_FILL">Clean➔Fill</button>
+                    <button type="button" class="btn-mode ${this.prepChartMode === 'FILL_STOCK' ? 'active' : ''}" data-prep-mode="FILL_STOCK">Fill➔Stock</button>
+                </div>
+                <div class="timeline-mode-toggle" aria-label="Count of Ponds Worked Mode">
+                    <span class="mode-toggle-label">Count of Ponds:</span>
+                    <button type="button" class="btn-mode ${this.prepChartMode === 'COUNT_CLEANED' ? 'active' : ''}" data-prep-mode="COUNT_CLEANED">Cleaned</button>
+                    <button type="button" class="btn-mode ${this.prepChartMode === 'COUNT_REPAIRED' ? 'active' : ''}" data-prep-mode="COUNT_REPAIRED">Repaired</button>
+                    <button type="button" class="btn-mode ${this.prepChartMode === 'COUNT_FILLED' ? 'active' : ''}" data-prep-mode="COUNT_FILLED">Water Filled</button>
+                </div>
+            </div>
+        ` : '';
+
+        const isBioMetric = this.currentMetricType === METRIC_TYPES.BIOSECURITY;
+        const bioModeToggleHtml = isBioMetric ? `
+            <div class="bio-toggle-container" style="display: inline-flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+                <div class="timeline-mode-toggle" aria-label="Filter by Species">
+                    <span class="mode-toggle-label">Species:</span>
+                    <button type="button" class="btn-mode ${this.growthSpecies === 'ALL' ? 'active' : ''}" data-growth-species="ALL">All Species</button>
+                    <button type="button" class="btn-mode ${this.growthSpecies === 'VAN' ? 'active' : ''}" data-growth-species="VAN">VAN</button>
+                    <button type="button" class="btn-mode ${this.growthSpecies === 'MON' ? 'active' : ''}" data-growth-species="MON">MON</button>
+                </div>
+                <div class="timeline-mode-toggle" aria-label="Growth & Survival Metric">
+                    <span class="mode-toggle-label">Rates:</span>
+                    <button type="button" class="btn-mode ${this.growthChartMode === 'ADG' ? 'active' : ''}" data-growth-mode="ADG">Daily Growth</button>
+                    <button type="button" class="btn-mode ${this.growthChartMode === 'SR' ? 'active' : ''}" data-growth-mode="SR">Survival %</button>
+                </div>
+                <div class="timeline-mode-toggle" aria-label="Flags Mode">
+                    <span class="mode-toggle-label">Count:</span>
+                    <button type="button" class="btn-mode ${this.growthChartMode === 'LAGGING' ? 'active' : ''}" data-growth-mode="LAGGING">Behind Target</button>
+                    <button type="button" class="btn-mode ${this.growthChartMode === 'CRITICAL_SR' ? 'active' : ''}" data-growth-mode="CRITICAL_SR">Low SR</button>
+                    <button type="button" class="btn-mode ${this.growthChartMode === 'ALERTS' ? 'active' : ''}" data-growth-mode="ALERTS">Alerts</button>
+                </div>
+                <div class="timeline-mode-toggle" aria-label="Filter by DOC Cohort">
+                    <span class="mode-toggle-label">DOC:</span>
+                    <button type="button" class="btn-mode ${this.growthDocCohort === 'MID_LATE' ? 'active' : ''}" data-growth-cohort="MID_LATE" title="Mid & Late stage crops (DOC ≥ 50d)">Mid &amp; Late (&ge;50d)</button>
+                    <button type="button" class="btn-mode ${this.growthDocCohort === 'LATE_ONLY' ? 'active' : ''}" data-growth-cohort="LATE_ONLY" title="Harvest candidate window only (DOC > 70d)">Late Only (&gt;70d)</button>
+                </div>
+                <div class="timeline-mode-toggle" aria-label="Perspective Mode">
+                    <span class="mode-toggle-label">View:</span>
+                    <button type="button" class="btn-mode ${this.growthViewPerspective === 'MODULE' ? 'active' : ''}" data-growth-perspective="MODULE">By Module</button>
+                    <button type="button" class="btn-mode ${this.growthViewPerspective === 'MONTHLY' ? 'active' : ''}" data-growth-perspective="MONTHLY">12-Month</button>
+                </div>
+            </div>
+        ` : '';
 
         this.container.innerHTML = `
             <div class="exec-metric-modal-dialog" role="dialog" aria-modal="true" aria-labelledby="modal-metric-title">
@@ -223,7 +294,11 @@ export class ExecutiveMetricModal {
                 ${hasTimeline ? `
                     <section class="drilldown-timeline-panel">
                         <div class="timeline-panel-header">
-                            <span class="timeline-title">📈 ${vm.timelineTitle || "Monthly Operational Pond Capacity (12-Month)"}</span>
+                            <div style="display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap;">
+                                <span class="timeline-title">📈 ${vm.timelineTitle || "Monthly Operational Pond Capacity (12-Month)"}</span>
+                                ${prepModeToggleHtml}
+                                ${bioModeToggleHtml}
+                            </div>
                             <span class="timeline-hint">💡 Click any bar to instantly filter the table below</span>
                         </div>
                         <div class="timeline-canvas-wrapper">
@@ -313,6 +388,69 @@ export class ExecutiveMetricModal {
             });
         }
 
+        // Preparation Mode Toggle (Duration vs Count)
+        const prepBtns = this.container.querySelectorAll("[data-prep-mode]");
+        prepBtns.forEach(btn => {
+            btn.addEventListener("click", () => {
+                const mode = btn.getAttribute("data-prep-mode");
+                if (mode && this.prepChartMode !== mode) {
+                    this.prepChartMode = mode;
+                    prepBtns.forEach(b => b.classList.toggle("active", b.getAttribute("data-prep-mode") === mode));
+                    this.refreshContent(true);
+                }
+            });
+        });
+
+        // Growth & Survival Mode Toggles
+        const speciesBtns = this.container.querySelectorAll("[data-growth-species]");
+        speciesBtns.forEach(btn => {
+            btn.addEventListener("click", () => {
+                const sp = btn.getAttribute("data-growth-species");
+                if (sp && this.growthSpecies !== sp) {
+                    this.growthSpecies = sp;
+                    speciesBtns.forEach(b => b.classList.toggle("active", b.getAttribute("data-growth-species") === sp));
+                    this.refreshContent(true);
+                }
+            });
+        });
+
+        const growthModeBtns = this.container.querySelectorAll("[data-growth-mode]");
+        growthModeBtns.forEach(btn => {
+            btn.addEventListener("click", () => {
+                const mode = btn.getAttribute("data-growth-mode");
+                if (mode && this.growthChartMode !== mode) {
+                    this.growthChartMode = mode;
+                    growthModeBtns.forEach(b => b.classList.toggle("active", b.getAttribute("data-growth-mode") === mode));
+                    this.refreshContent(true);
+                }
+            });
+        });
+
+        const growthCohortBtns = this.container.querySelectorAll("[data-growth-cohort]");
+        growthCohortBtns.forEach(btn => {
+            btn.addEventListener("click", () => {
+                const cohort = btn.getAttribute("data-growth-cohort");
+                if (cohort && this.growthDocCohort !== cohort) {
+                    this.growthDocCohort = cohort;
+                    growthCohortBtns.forEach(b => b.classList.toggle("active", b.getAttribute("data-growth-cohort") === cohort));
+                    this.refreshContent(true);
+                }
+            });
+        });
+
+        const perspBtns = this.container.querySelectorAll("[data-growth-perspective]");
+        perspBtns.forEach(btn => {
+            btn.addEventListener("click", () => {
+                const p = btn.getAttribute("data-growth-perspective");
+                if (p && this.growthViewPerspective !== p) {
+                    this.growthViewPerspective = p;
+                    this.selectedMonth = "ALL";
+                    this.render();
+                    this.bindEvents();
+                }
+            });
+        });
+
         // Search Input
         const searchInput = this.container.querySelector("#metric-search-input");
         if (searchInput) {
@@ -338,7 +476,15 @@ export class ExecutiveMetricModal {
                     this.currentMetricType,
                     this.dataBundle,
                     this.selectedMonth,
-                    this.searchQuery
+                    this.searchQuery,
+                    {
+                        activePondMode: this.activePondChartMode,
+                        prepChartMode: this.prepChartMode,
+                        growthSpecies: this.growthSpecies,
+                        growthChartMode: this.growthChartMode,
+                        growthViewPerspective: this.growthViewPerspective,
+                        growthDocCohort: this.growthDocCohort
+                    }
                 );
                 let rowsToExport = vm.tableRows || [];
                 let headersToExport = vm.tableHeaders || [];
@@ -421,12 +567,24 @@ export class ExecutiveMetricModal {
             this.currentMetricType,
             this.dataBundle,
             this.selectedMonth,
-            this.searchQuery
+            this.searchQuery,
+            {
+                activePondMode: this.activePondChartMode,
+                prepChartMode: this.prepChartMode,
+                growthSpecies: this.growthSpecies,
+                growthChartMode: this.growthChartMode,
+                growthViewPerspective: this.growthViewPerspective,
+                growthDocCohort: this.growthDocCohort
+            }
         );
 
         // Update count display
         const countEl = this.container.querySelector("#drilldown-count-display");
         if (countEl) countEl.textContent = vm.countDisplay;
+
+        // Update timeline title
+        const headline = this.container.querySelector(".timeline-title");
+        if (headline && vm.timelineTitle) headline.textContent = `📈 ${vm.timelineTitle}`;
 
         // Update month select
         const monthSelect = this.container.querySelector("#metric-month-select");
@@ -539,15 +697,21 @@ export class ExecutiveMetricModal {
                 ctx.fillStyle = isSelected ? "#0369a1" : "#475569";
                 ctx.font = isSelected ? "bold 10px sans-serif" : "9px sans-serif";
                 ctx.textAlign = "center";
-                ctx.fillText(String(item.value), x + barW / 2, Math.max(12, y - 5));
+                let valText = String(item.value);
+                if (item.unit === "Days") valText = `${item.value}d`;
+                else if (item.unit === "g/day") valText = `${item.value}g/d`;
+                else if (item.unit === "%") valText = `${item.value}%`;
+                ctx.fillText(valText, x + barW / 2, Math.max(12, y - 5));
             }
 
-            // Month X-Axis Label
-            const shortMonth = (item.monthLabel || item.monthKey || "").split(" ")[0];
+            // Month / Module X-Axis Label
+            const shortLabel = (item.monthKey && item.monthKey.startsWith("M"))
+                ? item.monthKey
+                : ((item.monthLabel || item.monthKey || "").split(" ")[0]);
             ctx.fillStyle = isSelected ? "#0284c7" : "#64748b";
             ctx.font = isSelected ? "bold 10px sans-serif" : "9px sans-serif";
             ctx.textAlign = "center";
-            ctx.fillText(shortMonth, x + barW / 2, h - 14);
+            ctx.fillText(shortLabel, x + barW / 2, h - 14);
 
             // Record Hitbox for click interaction (entire vertical column)
             this.chartBarHitboxes.push({

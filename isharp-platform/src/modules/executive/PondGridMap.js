@@ -50,7 +50,9 @@ export class PondGridMap {
         this.activeCycleMap = new Map();     // normalized pond_code (e.g. "04.08.02") -> stocking record
         this.dailyProgressMap = new Map();   // normalized pond_code -> daily progress record
         this.issuesMap = new Map();          // pond_index -> array of issues
+        this.samplingsMap = new Map();       // pond_index -> latest sampling record
         this.issues = [];                    // raw issues array
+        this.samplings = [];                 // raw samplings array
         this.allEvaluatedPonds = [];         // 216 evaluated ponds cache
         this.selectedPond = null;
         this.isLoading = false;
@@ -339,7 +341,7 @@ export class PondGridMap {
                     try {
                         const parsed = JSON.parse(cached);
                         if (Date.now() - parsed.timestamp < CACHE_TTL_MS) {
-                            this.populateFromData(parsed.activeCycles, parsed.activePonds, parsed.issues, parsed.dailyProgress || []);
+                            this.populateFromData(parsed.activeCycles, parsed.activePonds, parsed.issues, parsed.dailyProgress || [], parsed.samplings || []);
                             this.renderGrid();
                             this.isLoading = false;
                             if (this.dom.btnRefresh) {
@@ -354,12 +356,13 @@ export class PondGridMap {
                 }
             }
 
-            // Batch fetch non-closed cycles, gatekeeper, issues, and daily progress
-            const [activeCycles, activePonds, issues, dailyProgress] = await Promise.all([
+            // Batch fetch non-closed cycles, gatekeeper, issues, daily progress, and recent samplings
+            const [activeCycles, activePonds, issues, dailyProgress, samplings] = await Promise.all([
                 PondRepository.getActiveCycles(),
                 PondRepository.getActiveOperationalPonds(),
                 LabRepository.getAllRecentIssues(1000),
-                PondRepository.getDailyPondProgress()
+                PondRepository.getDailyPondProgress(),
+                SamplingRepository.getRecentSamplings(1000)
             ]);
 
             // Save to session cache
@@ -369,13 +372,14 @@ export class PondGridMap {
                     activeCycles,
                     activePonds,
                     issues,
-                    dailyProgress
+                    dailyProgress,
+                    samplings: samplings || []
                 }));
             } catch (e) {
                 console.warn("Could not cache farm map state in sessionStorage", e);
             }
 
-            this.populateFromData(activeCycles, activePonds, issues, dailyProgress);
+            this.populateFromData(activeCycles, activePonds, issues, dailyProgress, samplings || []);
             this.renderGrid();
             Toast.success("Farm biosecurity & daily progress map updated across all 9 modules.");
         } catch (err) {
@@ -393,11 +397,22 @@ export class PondGridMap {
     /**
      * Ingests cycles, gatekeeper active ponds, issues, and daily progress into fast lookup tables.
      */
-    populateFromData(cycles = [], activePonds = [], issues = [], dailyProgress = []) {
+    populateFromData(cycles = [], activePonds = [], issues = [], dailyProgress = [], samplings = []) {
         this.activeCycleMap.clear();
         this.issuesMap.clear();
         this.dailyProgressMap.clear();
+        this.samplingsMap.clear();
         this.issues = issues || [];
+        this.samplings = samplings || [];
+
+        // 0. Map latest samplings by pond_index
+        (samplings || []).forEach(s => {
+            if (!s.pond_index) return;
+            const idx = String(s.pond_index);
+            if (!this.samplingsMap.has(idx)) {
+                this.samplingsMap.set(idx, s);
+            }
+        });
 
         // 1. Map issues by pond_index
         (issues || []).forEach(issue => {
@@ -707,13 +722,21 @@ export class PondGridMap {
         }
 
         const elHealth = document.getElementById("exec-kpi-health");
+        const elHealthSub = document.getElementById("exec-kpi-health-sub");
         if (elHealth) {
-            if (red > 0) {
-                elHealth.innerHTML = `<span style="color: #ef4444;">${red} Red Alerts</span>`;
-            } else if (yellow > 0) {
-                elHealth.innerHTML = `<span style="color: #d97706;">${yellow} Warnings</span>`;
+            if (this.allEvaluatedPonds && this.allEvaluatedPonds.length > 0) {
+                const growthSummary = ExecutiveMetricsPresenter.calculateQuickGrowthSurvivalSummary(
+                    this.allEvaluatedPonds,
+                    this.samplingsMap || new Map(),
+                    this.issuesMap || new Map()
+                );
+                elHealth.innerHTML = `<span style="color: #059669;">${growthSummary.adgDisplay}</span> <span class="unit">g/d</span> • <span style="color: #0284c7;">${growthSummary.srDisplay}</span><span class="unit">% SR</span>`;
+                if (elHealthSub) {
+                    elHealthSub.textContent = growthSummary.subText;
+                }
             } else {
-                elHealth.innerHTML = `<span style="color: #10b981;">All Clean</span>`;
+                elHealth.innerHTML = `—`;
+                if (elHealthSub) elHealthSub.textContent = "Loading crops...";
             }
         }
 

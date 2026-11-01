@@ -23,13 +23,13 @@
 
 param(
     [string]$excelPath = "",
-    [string]$supabaseUrl = "https://keappoukeagyzpoxkrru.supabase.co",
-    [string]$supabaseKey = "sb_publishable_kObmQ9Ha4NLrl9vQXy5k5w_Ie9-EQ4s",
-    [string]$editorPasscode = "mantaray"
+    [string]$supabaseUrl = "default",
+    [string]$supabaseKey = "default",
+    [string]$editorPasscode = "default"
 )
 
 $ErrorActionPreference = "Stop"
-[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; . (Join-Path $PSScriptRoot "lib\Load-IsharpEnv.ps1"); if ($supabaseUrl -eq "default") { $supabaseUrl = $IsharpEnv.SupabaseUrl }; if ($supabaseKey -eq "default") { $supabaseKey = $IsharpEnv.SupabaseKey }; if ($editorPasscode -eq "default") { $editorPasscode = $IsharpEnv.EditorPasscode }
 
 Write-Output "=========================================================="
 Write-Output "  iSHARP DAILY POND PROGRESS SYNC (Excel -> Supabase)"

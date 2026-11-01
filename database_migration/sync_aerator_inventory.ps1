@@ -1,12 +1,12 @@
 $dbPath = "C:\Users\syafiq\My Drive\Syafiq Water Quality Station Project\Pond Operations Management System\Legacy Access DB\Bab SGo (r41) 26.09.18.accdb"
-$supabaseUrl = "https://keappoukeagyzpoxkrru.supabase.co"
-$supabaseKey = "sb_publishable_kObmQ9Ha4NLrl9vQXy5k5w_Ie9-EQ4s"
+. (Join-Path $PSScriptRoot "lib\Load-IsharpEnv.ps1"); $supabaseUrl = $IsharpEnv.SupabaseUrl
+$supabaseKey = $IsharpEnv.SupabaseKey; $editorPasscode = $IsharpEnv.EditorPasscode
 
 $headers = @{
     "apikey" = $supabaseKey
     "Authorization" = "Bearer $supabaseKey"
     "Content-Type" = "application/json; charset=utf-8"
-    "Prefer" = "resolution=merge-duplicates"
+    "Prefer" = "resolution=merge-duplicates"; "x-isharp-passcode" = $editorPasscode
 }
 
 $connStr = "Provider=Microsoft.ACE.OLEDB.16.0;Data Source=$dbPath;Persist Security Info=False;"
