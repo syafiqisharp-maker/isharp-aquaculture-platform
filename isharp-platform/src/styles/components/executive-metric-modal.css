@@ -1,0 +1,552 @@
+/**
+ * iSHARP DBMS 2.0 — Executive Metric Drilldown Modal Styles
+ * Modern Aero / Glassmorphism dialog with interactive canvas timeline and high-density table.
+ */
+
+.exec-metric-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(15, 23, 42, 0.65);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    z-index: 10000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1.25rem;
+    box-sizing: border-box;
+    animation: fadeInModal 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes fadeInModal {
+    from { opacity: 0; transform: scale(0.98); }
+    to { opacity: 1; transform: scale(1); }
+}
+
+.exec-metric-modal-dialog {
+    background: #ffffff;
+    border: 1px solid rgba(226, 232, 240, 0.9);
+    border-radius: 14px;
+    width: 100%;
+    max-width: 1050px;
+    max-height: 92vh;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.35);
+    overflow: hidden;
+    position: relative;
+}
+
+/* Header */
+.metric-modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1rem 1.5rem;
+    background: linear-gradient(180deg, #f8fafc 0%, #ffffff 100%);
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.metric-modal-header-left {
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+}
+
+.metric-modal-icon {
+    font-size: 1.75rem;
+    line-height: 1;
+}
+
+.metric-modal-title {
+    margin: 0;
+    font-size: 1.15rem;
+    font-weight: 800;
+    color: #0f172a;
+    letter-spacing: -0.02em;
+}
+
+.metric-modal-sub {
+    margin: 0.15rem 0 0 0;
+    font-size: 0.78rem;
+    color: #64748b;
+    font-weight: 500;
+}
+
+.btn-metric-modal-close {
+    background: #f1f5f9;
+    border: 1px solid #e2e8f0;
+    color: #64748b;
+    border-radius: 50%;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.95rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.btn-metric-modal-close:hover {
+    background: #e2e8f0;
+    color: #0f172a;
+    transform: scale(1.05);
+}
+
+/* KPI Summary Badges Strip */
+.drilldown-stat-strip {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 0.75rem;
+    padding: 0.85rem 1.5rem;
+    background: #f8fafc;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.drilldown-stat-card {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 0.6rem 0.85rem;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+}
+
+.drilldown-stat-label {
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: #64748b;
+    letter-spacing: 0.04em;
+    margin-bottom: 0.2rem;
+}
+
+.drilldown-stat-val {
+    font-size: 1.35rem;
+    font-weight: 900;
+    color: #0284c7;
+    font-family: 'JetBrains Mono', monospace;
+    line-height: 1.1;
+}
+
+.drilldown-stat-sub {
+    font-size: 0.72rem;
+    color: #94a3b8;
+    margin-top: 0.2rem;
+}
+
+/* Timeline Canvas Panel */
+.drilldown-timeline-panel {
+    padding: 0.85rem 1.5rem 0.6rem 1.5rem;
+    background: #ffffff;
+    border-bottom: 1px solid #f1f5f9;
+}
+
+.timeline-panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 0.5rem;
+}
+
+.timeline-title {
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: #334155;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.timeline-hint {
+    font-size: 0.72rem;
+    color: #0284c7;
+    font-weight: 600;
+}
+
+.timeline-canvas-wrapper {
+    width: 100%;
+    height: 180px;
+    position: relative;
+    background: #fafafa;
+    border-radius: 8px;
+    border: 1px solid #f1f5f9;
+    overflow: hidden;
+}
+
+.drilldown-timeline-canvas {
+    width: 100%;
+    height: 100%;
+    display: block;
+    cursor: pointer;
+}
+
+/* Controls Toolbar */
+.drilldown-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    padding: 0.75rem 1.5rem;
+    background: #ffffff;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.toolbar-left {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.toolbar-control-group {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.toolbar-label {
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: #475569;
+}
+
+.toolbar-select {
+    padding: 0.4rem 0.75rem;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #0f172a;
+    background: #f8fafc;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    outline: none;
+    cursor: pointer;
+}
+
+.toolbar-select:focus {
+    border-color: #0284c7;
+    box-shadow: 0 0 0 2px rgba(2, 132, 199, 0.15);
+}
+
+.toolbar-search-box {
+    display: flex;
+    align-items: center;
+    position: relative;
+}
+
+.search-icon {
+    position: absolute;
+    left: 0.55rem;
+    font-size: 0.8rem;
+    color: #94a3b8;
+    pointer-events: none;
+}
+
+.toolbar-input {
+    padding: 0.4rem 1.75rem 0.4rem 1.85rem;
+    font-size: 0.8rem;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    background: #f8fafc;
+    color: #0f172a;
+    width: 220px;
+    outline: none;
+    transition: width 0.2s ease, border-color 0.2s ease;
+}
+
+.toolbar-input:focus {
+    width: 260px;
+    border-color: #0284c7;
+    background: #ffffff;
+    box-shadow: 0 0 0 2px rgba(2, 132, 199, 0.15);
+}
+
+.btn-clear-search {
+    position: absolute;
+    right: 0.4rem;
+    background: none;
+    border: none;
+    color: #94a3b8;
+    cursor: pointer;
+    font-size: 0.75rem;
+    font-weight: 700;
+    padding: 0.2rem;
+}
+
+.btn-clear-search:hover {
+    color: #0f172a;
+}
+
+.toolbar-right {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.toolbar-count-badge {
+    font-size: 0.76rem;
+    font-weight: 600;
+    color: #64748b;
+    background: #f1f5f9;
+    padding: 0.3rem 0.65rem;
+    border-radius: 9999px;
+}
+
+.btn-action-csv {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.4rem 0.85rem;
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: #059669;
+    background: #ecfdf5;
+    border: 1px solid #a7f3d0;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.btn-action-csv:hover {
+    background: #d1fae5;
+    border-color: #6ee7b7;
+    transform: translateY(-1px);
+}
+
+/* Scrollable Table Section */
+.drilldown-table-container {
+    flex: 1 1 auto;
+    overflow-y: auto;
+    max-height: calc(92vh - 380px);
+    background: #ffffff;
+}
+
+.drilldown-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.8rem;
+    text-align: left;
+}
+
+.drilldown-table thead th {
+    position: sticky;
+    top: 0;
+    background: #f8fafc;
+    color: #475569;
+    font-weight: 700;
+    font-size: 0.74rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    padding: 0.65rem 0.85rem;
+    border-bottom: 1px solid #cbd5e1;
+    z-index: 2;
+    white-space: nowrap;
+}
+
+.drilldown-table thead th.sortable-th {
+    cursor: pointer;
+    user-select: none;
+    transition: background 0.15s ease, color 0.15s ease;
+}
+
+.drilldown-table thead th.sortable-th:hover {
+    background: #e2e8f0;
+    color: #0f172a;
+}
+
+.drilldown-table thead th.sortable-th:focus-visible {
+    outline: 2px solid #0284c7;
+    outline-offset: -2px;
+}
+
+.drilldown-table thead th .th-content {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.drilldown-table thead th .th-sort-icon {
+    font-size: 0.7rem;
+    color: #94a3b8;
+    transition: color 0.15s ease;
+    opacity: 0.6;
+}
+
+.drilldown-table thead th.sortable-th:hover .th-sort-icon {
+    opacity: 1;
+    color: #475569;
+}
+
+.drilldown-table thead th.sorted-asc,
+.drilldown-table thead th.sorted-desc {
+    background: #f0f9ff;
+    color: #0369a1;
+}
+
+.drilldown-table thead th.sorted-asc .th-sort-icon,
+.drilldown-table thead th.sorted-desc .th-sort-icon {
+    color: #0284c7;
+    font-weight: 900;
+    opacity: 1;
+}
+
+.drilldown-table tbody td {
+    padding: 0.6rem 0.85rem;
+    border-bottom: 1px solid #f1f5f9;
+    color: #1e293b;
+    white-space: nowrap;
+}
+
+.drilldown-table tbody tr:hover {
+    background: #f8fafc;
+}
+
+.drilldown-empty-cell {
+    text-align: center;
+    padding: 3rem 1rem !important;
+    color: #94a3b8;
+    font-size: 0.85rem;
+    font-style: italic;
+}
+
+/* Badges */
+.drilldown-badge {
+    display: inline-block;
+    padding: 0.18rem 0.55rem;
+    border-radius: 9999px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+}
+
+.badge-sp-van {
+    background: #e0f2fe;
+    color: #0369a1;
+}
+
+.badge-sp-mon {
+    background: #dcfce7;
+    color: #15803d;
+}
+
+.badge-alert-red {
+    background: #fee2e2;
+    color: #b91c1c;
+}
+
+.badge-alert-yellow {
+    background: #fef3c7;
+    color: #b45309;
+}
+
+.badge-alert-green {
+    background: #d1fae5;
+    color: #047857;
+}
+
+.badge-status-ready {
+    background: #ecfdf5;
+    color: #059669;
+    font-weight: 800;
+}
+
+.badge-status-culture {
+    background: #e0f2fe;
+    color: #0284c7;
+}
+
+.badge-status-idle {
+    background: #f1f5f9;
+    color: #64748b;
+}
+
+.badge-stage-finishing {
+    background: #ffedd5;
+    color: #c2410c;
+}
+
+.badge-stage-mid {
+    background: #e0f2fe;
+    color: #0369a1;
+}
+
+.badge-stage-early {
+    background: #f0fdf4;
+    color: #166534;
+}
+
+/* Modal Footer */
+.metric-modal-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.75rem 1.5rem;
+    background: #f8fafc;
+    border-top: 1px solid #e2e8f0;
+}
+
+.footer-left-info {
+    font-size: 0.72rem;
+    color: #94a3b8;
+    font-weight: 500;
+}
+
+.btn-modal-dismiss {
+    padding: 0.45rem 1.25rem;
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: #475569;
+    background: #ffffff;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.btn-modal-dismiss:hover {
+    background: #f1f5f9;
+    color: #0f172a;
+}
+
+/* Mobile Virtual Landscape (270° orientation) Adjustments */
+@media screen and (max-width: 768px) {
+    .exec-metric-modal-overlay {
+        padding: 0.5rem;
+    }
+    .exec-metric-modal-dialog {
+        max-height: 98vh;
+        border-radius: 8px;
+    }
+    .metric-modal-header {
+        padding: 0.75rem 1rem;
+    }
+    .drilldown-stat-strip {
+        padding: 0.5rem 1rem;
+        grid-template-columns: repeat(2, 1fr);
+    }
+    .drilldown-timeline-panel {
+        padding: 0.5rem 1rem;
+    }
+    .drilldown-toolbar {
+        padding: 0.5rem 1rem;
+        flex-direction: column;
+        align-items: stretch;
+    }
+    .toolbar-left {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    .toolbar-input {
+        width: 100%;
+    }
+    .toolbar-input:focus {
+        width: 100%;
+    }
+    .drilldown-table-container {
+        max-height: calc(98vh - 420px);
+    }
+}

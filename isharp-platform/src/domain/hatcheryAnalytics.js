@@ -15,14 +15,18 @@
  * @returns {Array<object>} Monthly performance summaries sorted by monthKey desc
  */
 export function aggregateMonthlyHatcheryRollup(runs = [], dispatches = [], flushes = [], filterYear = "ALL", filterSpecies = "ALL") {
-    const monthMap = new Map();
+    const entryMap = new Map();
 
-    const getOrCreateMonth = (mKey) => {
-        if (!monthMap.has(mKey)) {
-            monthMap.set(mKey, {
+    const getOrCreateEntry = (mKey, speciesCode) => {
+        const compositeKey = `${mKey}__${speciesCode}`;
+        if (!entryMap.has(compositeKey)) {
+            entryMap.set(compositeKey, {
+                compositeKey,
                 monthKey: mKey,
                 year: mKey.slice(0, 4),
                 monthNum: mKey.slice(5, 7),
+                speciesCode,
+                species: speciesCode === "MON" ? "P.Monodon" : "L.Vannamei",
                 stockedTanks: new Set(),
                 naupliiStockedK: 0,
                 harvestedTanks: new Set(),
@@ -32,11 +36,10 @@ export function aggregateMonthlyHatcheryRollup(runs = [], dispatches = [], flush
                 sgoHarvestK: 0,
                 externalHarvestK: 0,
                 stages: [],
-                srList: [],
-                speciesSet: new Set()
+                srList: []
             });
         }
-        return monthMap.get(mKey);
+        return entryMap.get(compositeKey);
     };
 
     // 1. Process Stocking Runs
@@ -48,10 +51,9 @@ export function aggregateMonthlyHatcheryRollup(runs = [], dispatches = [], flush
         if (filterSpecies !== "ALL" && rSpecies !== filterSpecies) return;
 
         const mKey = r.stock_date.slice(0, 7);
-        const m = getOrCreateMonth(mKey);
-        m.stockedTanks.add(r.tank_code);
-        m.naupliiStockedK += Number(r.nauplii_stocked_k) || 0;
-        m.speciesSet.add(rSpecies);
+        const entry = getOrCreateEntry(mKey, rSpecies);
+        entry.stockedTanks.add(r.tank_code);
+        entry.naupliiStockedK += Number(r.nauplii_stocked_k) || 0;
     });
 
     // 2. Process Harvest Dispatches
@@ -63,20 +65,19 @@ export function aggregateMonthlyHatcheryRollup(runs = [], dispatches = [], flush
         if (filterSpecies !== "ALL" && dSpecies !== filterSpecies) return;
 
         const mKey = d.harvest_date.slice(0, 7);
-        const m = getOrCreateMonth(mKey);
-        m.harvestedTanks.add(d.tank_code);
+        const entry = getOrCreateEntry(mKey, dSpecies);
+        entry.harvestedTanks.add(d.tank_code);
         const qty = Number(d.qty_k) || 0;
-        m.plHarvestedK += qty;
-        if (d.pl_stage) m.stages.push(Number(d.pl_stage));
+        entry.plHarvestedK += qty;
+        if (d.pl_stage) entry.stages.push(Number(d.pl_stage));
         if (d.sr_reported_pct !== null && d.sr_reported_pct !== undefined && !isNaN(d.sr_reported_pct)) {
-            m.srList.push(Number(d.sr_reported_pct));
+            entry.srList.push(Number(d.sr_reported_pct));
         }
-        m.speciesSet.add(dSpecies);
 
         if (d.buyer_type === "EXTERNAL") {
-            m.externalHarvestK += qty;
+            entry.externalHarvestK += qty;
         } else {
-            m.sgoHarvestK += qty;
+            entry.sgoHarvestK += qty;
         }
     });
 
@@ -89,13 +90,13 @@ export function aggregateMonthlyHatcheryRollup(runs = [], dispatches = [], flush
         if (filterSpecies !== "ALL" && fSpecies !== filterSpecies) return;
 
         const mKey = f.event_date.slice(0, 7);
-        const m = getOrCreateMonth(mKey);
-        m.flushedTanks.add(f.tank_code);
-        m.naupliiFlushedK += Number(f.qty_k) || 0;
+        const entry = getOrCreateEntry(mKey, fSpecies);
+        entry.flushedTanks.add(f.tank_code);
+        entry.naupliiFlushedK += Number(f.qty_k) || 0;
     });
 
     // 4. Transform into finalized analytical records
-    const results = Array.from(monthMap.values()).map(m => {
+    const results = Array.from(entryMap.values()).map(m => {
         const stockedCount = m.stockedTanks.size;
         const harvestedCount = m.harvestedTanks.size;
         const flushedCount = m.flushedTanks.size;
@@ -108,10 +109,6 @@ export function aggregateMonthlyHatcheryRollup(runs = [], dispatches = [], flush
             ? (m.stages.reduce((sum, val) => sum + val, 0) / m.stages.length) 
             : null;
 
-        const dominantSpecies = m.speciesSet.has("MON") && !m.speciesSet.has("VAN") 
-            ? "P.Monodon" 
-            : (m.speciesSet.has("MON") && m.speciesSet.has("VAN") ? "Mixed (VAN/MON)" : "L.Vannamei");
-
         const totalHarvest = Math.round(m.plHarvestedK);
         const sgoHarvest = Math.round(m.sgoHarvestK);
         const externalHarvest = Math.round(m.externalHarvestK);
@@ -123,7 +120,8 @@ export function aggregateMonthlyHatcheryRollup(runs = [], dispatches = [], flush
             monthKey: m.monthKey,
             year: m.year,
             monthNum: m.monthNum,
-            species: dominantSpecies,
+            species: m.species,
+            speciesCode: m.speciesCode,
             stockedTanksCount: stockedCount,
             naupliiStockedK: Math.round(m.naupliiStockedK),
             harvestedTanksCount: harvestedCount,
@@ -141,7 +139,11 @@ export function aggregateMonthlyHatcheryRollup(runs = [], dispatches = [], flush
         };
     });
 
-    return results.sort((a, b) => b.monthKey.localeCompare(a.monthKey));
+    return results.sort((a, b) => {
+        const monthCmp = b.monthKey.localeCompare(a.monthKey);
+        if (monthCmp !== 0) return monthCmp;
+        return a.speciesCode === "VAN" ? -1 : 1;
+    });
 }
 
 /**

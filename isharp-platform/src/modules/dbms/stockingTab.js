@@ -161,6 +161,7 @@ export class StockingTab {
 
             if (origins && origins.length > 0) {
                 this.dom.containerHatcheryOrigin.innerHTML = origins.map(orig => {
+                    const isExternal = (orig.hatchery_origin || "").toUpperCase() === "EXTERNAL";
                     const srPct = orig.hatchery_tank_sr_pct !== null && orig.hatchery_tank_sr_pct !== undefined 
                         ? `${Number(orig.hatchery_tank_sr_pct).toFixed(1)}%` 
                         : "—";
@@ -171,6 +172,18 @@ export class StockingTab {
                     const hrPct = orig.display_hr_pct !== null && orig.display_hr_pct !== undefined 
                         ? `${Number(orig.display_hr_pct).toFixed(1)}%` 
                         : "—";
+
+                    const batchDisplay = orig.broodstock_batch || (isExternal ? "External Purchase" : "—");
+                    const batchSub = orig.broodstock_doc != null 
+                        ? `DOC ${orig.broodstock_doc} at Spawn` 
+                        : (isExternal ? "Non-Local Spawn" : "—");
+
+                    const hrDisplay = hrPct !== "—" 
+                        ? hrPct 
+                        : (isExternal ? "External N/A" : "—");
+                    const hrSub = orig.spawn_block 
+                        ? `Spawn: ${orig.spawn_block}` 
+                        : (isExternal ? "Direct Nauplii" : "—");
 
                     return `
                         <div class="hatchery-trace-card">
@@ -203,13 +216,13 @@ export class StockingTab {
                                 </div>
                                 <div class="trace-col">
                                     <span class="trace-label">Broodstock Batch</span>
-                                    <div class="trace-val-main font-mono font-bold">${orig.broodstock_batch || '—'}</div>
-                                    <div class="trace-sub">${orig.broodstock_doc != null ? 'DOC ' + orig.broodstock_doc + ' at Spawn' : '—'}</div>
+                                    <div class="trace-val-main font-mono font-bold">${batchDisplay}</div>
+                                    <div class="trace-sub">${batchSub}</div>
                                 </div>
                                 <div class="trace-col">
                                     <span class="trace-label">Hatching Rate (HR-A)</span>
-                                    <div class="trace-val-main font-mono text-info font-bold">${hrPct}</div>
-                                    <div class="trace-sub">${orig.spawn_block ? 'Spawn: ' + orig.spawn_block : '—'}</div>
+                                    <div class="trace-val-main font-mono text-info font-bold">${hrDisplay}</div>
+                                    <div class="trace-sub">${hrSub}</div>
                                 </div>
                             </div>
                         </div>

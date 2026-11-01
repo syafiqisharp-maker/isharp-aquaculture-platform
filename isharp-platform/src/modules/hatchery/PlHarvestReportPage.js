@@ -159,6 +159,18 @@ export class PlHarvestReportPage {
             ? monthlyRollup
             : monthlyRollup.filter(m => m.monthNum === this.selectedMonth);
 
+        // Group rollup records by month so multi-species months share the month cell
+        const monthGroups = [];
+        const monthGroupMap = new Map();
+        displayRollup.forEach(item => {
+            if (!monthGroupMap.has(item.monthKey)) {
+                const grp = { monthKey: item.monthKey, monthNum: item.monthNum, items: [] };
+                monthGroupMap.set(item.monthKey, grp);
+                monthGroups.push(grp);
+            }
+            monthGroupMap.get(item.monthKey).items.push(item);
+        });
+
         const dispatchScopeLabel = `${this.dispatchFilterMonth !== "ALL" ? this.getMonthName(this.dispatchFilterMonth) + " " : ""}${this.dispatchFilterYear === "ALL" ? "All Years" : this.dispatchFilterYear}`;
 
         this.container.innerHTML = `
@@ -300,70 +312,80 @@ export class PlHarvestReportPage {
                                 </tr>
                             </thead>
                             <tbody>
-                                ${displayRollup.length > 0 ? displayRollup.map(m => {
-                                    const srVal = m.overallSrPct;
-                                    let srClass = "text-muted";
-                                    if (srVal !== null) {
-                                        if (srVal >= 70) srClass = "sr-badge good";
-                                        else if (srVal >= 50) srClass = "sr-badge medium";
-                                        else srClass = "sr-badge low";
-                                    }
+                                ${monthGroups.length > 0 ? monthGroups.map(grp => {
+                                    const rowSpan = grp.items.length;
+                                    return grp.items.map((m, idx) => {
+                                        const isFirst = idx === 0;
+                                        const srVal = m.overallSrPct;
+                                        let srClass = "text-muted";
+                                        if (srVal !== null) {
+                                            if (srVal >= 70) srClass = "sr-badge good";
+                                            else if (srVal >= 50) srClass = "sr-badge medium";
+                                            else srClass = "sr-badge low";
+                                        }
 
-                                    const tankListStr = m.harvestTanksList && m.harvestTanksList.length > 0 
-                                        ? m.harvestTanksList.join(", ") 
-                                        : "—";
+                                        const tankListStr = m.harvestTanksList && m.harvestTanksList.length > 0 
+                                            ? m.harvestTanksList.join(", ") 
+                                            : "—";
 
-                                    return `
-                                        <tr>
-                                            <td>
-                                                <strong class="font-mono font-bold text-base">${m.monthKey}</strong>
-                                                <div class="text-xs text-muted">${this.getMonthName(m.monthNum)}</div>
-                                            </td>
-                                            <td>
-                                                <span class="badge ${m.species.includes('Monodon') ? 'badge-neutral' : 'badge-info'}">
-                                                    ${escapeHtml(m.species)}
-                                                </span>
-                                            </td>
-                                            <td>
-                                                <strong>${m.harvestedTanksCount} Tanks</strong>
-                                                <div class="text-xs text-muted" style="max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${tankListStr}">
-                                                    ${tankListStr}
-                                                </div>
-                                            </td>
-                                            <td>
-                                                <strong class="font-mono text-primary text-base">${(m.plHarvestedK / 1000).toFixed(2)}M</strong>
-                                                <div class="font-mono text-xs text-muted">${m.plHarvestedK.toLocaleString()}k PL</div>
-                                            </td>
-                                            <td>
-                                                <div class="dist-cell">
-                                                    <strong class="font-mono text-success">${m.sgoHarvestK.toLocaleString()}k</strong>
-                                                    <span class="badge badge-success text-xs font-mono">${m.sgoPct}%</span>
-                                                </div>
-                                                <div class="text-xs text-muted">to Setiu Growout</div>
-                                            </td>
-                                            <td>
-                                                <div class="dist-cell">
-                                                    <strong class="font-mono ${m.externalHarvestK > 0 ? 'text-primary' : 'text-muted'}">${m.externalHarvestK.toLocaleString()}k</strong>
-                                                    ${m.externalHarvestK > 0 ? `<span class="badge badge-info text-xs font-mono">${m.externalPct}%</span>` : ''}
-                                                </div>
-                                                <div class="text-xs text-muted">to External Buyers</div>
-                                            </td>
-                                            <td>
-                                                <span class="font-mono">${m.avgPlStage ? `PL ${m.avgPlStage}` : '—'}</span>
-                                            </td>
-                                            <td>
-                                                <span class="${srClass}">
-                                                    ${srVal !== null ? srVal + '%' : '—'}
-                                                </span>
-                                            </td>
-                                            <td>
-                                                ${m.flushedTanksCount > 0 ? `
-                                                    <strong class="text-amber">${m.flushedTanksCount} Tanks</strong>
-                                                    <div class="font-mono text-xs text-amber">${m.naupliiFlushedK.toLocaleString()}k Discard</div>
-                                                ` : `<span class="text-muted font-mono">—</span>`}
-                                            </td>
-                                        </tr>
-                                    `;
+                                        const rowClass = rowSpan > 1 
+                                            ? (isFirst ? "multi-species-first" : "multi-species-sub") 
+                                            : "";
+
+                                        return `
+                                            <tr class="${rowClass}">
+                                                ${isFirst ? `
+                                                    <td rowspan="${rowSpan}" class="month-merged-cell">
+                                                        <strong class="font-mono font-bold text-base">${m.monthKey}</strong>
+                                                        <div class="text-xs text-muted">${this.getMonthName(m.monthNum)}</div>
+                                                    </td>
+                                                ` : ''}
+                                                <td>
+                                                    <span class="badge ${m.species.includes('Monodon') ? 'badge-neutral' : 'badge-info'}">
+                                                        ${escapeHtml(m.species)}
+                                                    </span>
+                                                </td>
+                                                <td>
+                                                    <strong>${m.harvestedTanksCount} Tanks</strong>
+                                                    <div class="text-xs text-muted" style="max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${tankListStr}">
+                                                        ${tankListStr}
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <strong class="font-mono text-primary text-base">${(m.plHarvestedK / 1000).toFixed(2)}M</strong>
+                                                    <div class="font-mono text-xs text-muted">${m.plHarvestedK.toLocaleString()}k PL</div>
+                                                </td>
+                                                <td>
+                                                    <div class="dist-cell">
+                                                        <strong class="font-mono text-success">${m.sgoHarvestK.toLocaleString()}k</strong>
+                                                        <span class="badge badge-success text-xs font-mono">${m.sgoPct}%</span>
+                                                    </div>
+                                                    <div class="text-xs text-muted">to Setiu Growout</div>
+                                                </td>
+                                                <td>
+                                                    <div class="dist-cell">
+                                                        <strong class="font-mono ${m.externalHarvestK > 0 ? 'text-primary' : 'text-muted'}">${m.externalHarvestK.toLocaleString()}k</strong>
+                                                        ${m.externalHarvestK > 0 ? `<span class="badge badge-info text-xs font-mono">${m.externalPct}%</span>` : ''}
+                                                    </div>
+                                                    <div class="text-xs text-muted">to External Buyers</div>
+                                                </td>
+                                                <td>
+                                                    <span class="font-mono">${m.avgPlStage ? `PL ${m.avgPlStage}` : '—'}</span>
+                                                </td>
+                                                <td>
+                                                    <span class="${srClass}">
+                                                        ${srVal !== null ? srVal + '%' : '—'}
+                                                    </span>
+                                                </td>
+                                                <td>
+                                                    ${m.flushedTanksCount > 0 ? `
+                                                        <strong class="text-amber">${m.flushedTanksCount} Tanks</strong>
+                                                        <div class="font-mono text-xs text-amber">${m.naupliiFlushedK.toLocaleString()}k Discard</div>
+                                                    ` : `<span class="text-muted font-mono">—</span>`}
+                                                </td>
+                                            </tr>
+                                        `;
+                                    }).join('');
                                 }).join('') : `
                                     <tr><td colspan="9" class="text-center text-muted py-4">No monthly production records found for the selected filter.</td></tr>
                                 `}

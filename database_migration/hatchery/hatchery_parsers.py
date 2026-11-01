@@ -192,10 +192,12 @@ def parse_batch_sheet(ws, sheet_name):
         dist_tanks_raw = daily_rec["distribution_tank_list"]
 
         if dist_tanks_raw and stck_target and dist_tph and dist_tph > 0:
-            ignored_tokens = ("NO STOCKING", "QUARANTINE", "NO SOURCING", "0")
-            if not any(token in dist_tanks_raw.upper() for token in ignored_tokens):
+            ignored_tokens = ("NO STOCKING", "QUARANTINE", "NO SOURCING")
+            is_ignored_phrase = any(token in dist_tanks_raw.upper() for token in ignored_tokens)
+            is_empty_or_zero = dist_tanks_raw.strip() in ("0", "-", "—", "")
+            if not is_ignored_phrase and not is_empty_or_zero:
                 matches = re.findall(r"([A-D])\s*[-_]?\s*(1[0-6]|0?[1-9])(?![0-9])", dist_tanks_raw, re.I)
-                tank_codes = [f"{b.upper()}{int(n):02d}" for b, n in matches]
+                tank_codes = list(dict.fromkeys(f"{b.upper()}{int(n):02d}" for b, n in matches))
                 if tank_codes:
                     share_k = round(dist_tph / len(tank_codes), 2)
                     for t_code in tank_codes:
@@ -285,7 +287,8 @@ def parse_summary_sheet1(ws):
             })
 
         stocking_vals = [clean_float(item[1][5]) for item in row_items if clean_float(item[1][5]) is not None]
-        nauplii_stocked_k = stocking_vals[0] if stocking_vals else None
+        # In Sheet1, runs with multiple dispatches log proportionate stocking in each row; sum them to get total run stocking
+        nauplii_stocked_k = round(sum(stocking_vals), 2) if stocking_vals else None
 
         has_culture = False
         harvest_dates = []

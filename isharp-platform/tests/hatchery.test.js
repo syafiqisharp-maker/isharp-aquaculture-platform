@@ -188,6 +188,61 @@ test("Hatchery Domain: aggregateMonthlyHatcheryRollup computes production ledger
     assert.equal(monRollup[0].species, "P.Monodon");
 });
 
+test("Hatchery Domain: aggregateMonthlyHatcheryRollup separates Monodon and Vannamei in the same month", () => {
+    // Both Vannamei and Monodon stocked & harvested in April 2026 (2026-04)
+    const mockRuns = [
+        { tank_code: "A01", stock_date: "2026-04-01", nauplii_stocked_k: 3000, species: "VAN" },
+        { tank_code: "A02", stock_date: "2026-04-02", nauplii_stocked_k: 3000, species: "VAN" },
+        { tank_code: "B01", stock_date: "2026-04-05", nauplii_stocked_k: 2000, species: "MON" }
+    ];
+    const mockDispatches = [
+        { tank_code: "A01", harvest_date: "2026-04-20", qty_k: 2100, pl_stage: 12, buyer_type: "SGO", species: "VAN" },
+        { tank_code: "A02", harvest_date: "2026-04-21", qty_k: 1900, pl_stage: 12, buyer_type: "EXTERNAL", species: "VAN" },
+        { tank_code: "B01", harvest_date: "2026-04-25", qty_k: 1200, pl_stage: 15, buyer_type: "SGO", species: "MON" }
+    ];
+    const mockFlushes = [
+        { tank_code: "A03", event_date: "2026-04-10", qty_k: 400, species: "VAN" },
+        { tank_code: "B02", event_date: "2026-04-12", qty_k: 300, species: "MON" }
+    ];
+
+    const rollup = aggregateMonthlyHatcheryRollup(mockRuns, mockDispatches, mockFlushes, "2026", "ALL");
+    
+    // April 2026 must produce exactly 2 distinct rows: one for Vannamei and one for Monodon
+    assert.equal(rollup.length, 2, "April 2026 with both species must return 2 distinct rows");
+
+    const vanRow = rollup.find(r => r.speciesCode === "VAN");
+    const monRow = rollup.find(r => r.speciesCode === "MON");
+
+    assert.ok(vanRow, "Vannamei row must exist for 2026-04");
+    assert.ok(monRow, "Monodon row must exist for 2026-04");
+
+    // Both rows must share the exact same monthKey
+    assert.equal(vanRow.monthKey, "2026-04");
+    assert.equal(monRow.monthKey, "2026-04");
+
+    // Vannamei metrics
+    assert.equal(vanRow.species, "L.Vannamei");
+    assert.equal(vanRow.stockedTanksCount, 2);
+    assert.equal(vanRow.naupliiStockedK, 6000);
+    assert.equal(vanRow.harvestedTanksCount, 2);
+    assert.equal(vanRow.plHarvestedK, 4000);
+    assert.equal(vanRow.sgoHarvestK, 2100);
+    assert.equal(vanRow.externalHarvestK, 1900);
+    assert.equal(vanRow.flushedTanksCount, 1);
+    assert.equal(vanRow.naupliiFlushedK, 400);
+
+    // Monodon metrics (strictly separated)
+    assert.equal(monRow.species, "P.Monodon");
+    assert.equal(monRow.stockedTanksCount, 1);
+    assert.equal(monRow.naupliiStockedK, 2000);
+    assert.equal(monRow.harvestedTanksCount, 1);
+    assert.equal(monRow.plHarvestedK, 1200);
+    assert.equal(monRow.sgoHarvestK, 1200);
+    assert.equal(monRow.externalHarvestK, 0);
+    assert.equal(monRow.flushedTanksCount, 1);
+    assert.equal(monRow.naupliiFlushedK, 300);
+});
+
 test("Hatchery Domain: calculateHatcheryKpiStats reacts to period and species filters", () => {
     const mockRuns = [
         { stock_date: "2026-10-01", nauplii_stocked_k: 5000, species: "VAN" },

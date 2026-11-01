@@ -13,6 +13,7 @@ export class ViewRouter {
         this.views = {
             portal: document.getElementById("view-portal"),
             executive: document.getElementById("view-executive"),
+            "executive-detail": document.getElementById("view-executive-detail"),
             "field-ops": document.getElementById("view-field-ops"),
             dbms: document.getElementById("view-dbms"),
             simulation: document.getElementById("view-simulation"),
@@ -24,6 +25,7 @@ export class ViewRouter {
         this.viewScrollPositions = {
             portal: 0,
             executive: 0,
+            "executive-detail": 0,
             "field-ops": 0,
             dbms: 0,
             simulation: 0,
@@ -66,7 +68,7 @@ export class ViewRouter {
                                    btnText.includes("prev") ||
                                    btnText.includes("return") ||
                                    btnText.includes("216") ||
-                                   (targetView === "executive" && this.currentView === "dbms") ||
+                                   (targetView === "executive" && (this.currentView === "dbms" || this.currentView === "executive-detail")) ||
                                    targetView === "portal";
                     if (isBack) {
                         this.isNavigatingBack = true;
@@ -212,6 +214,8 @@ export class ViewRouter {
 
         if (hash === "#/executive" || hash === "#executive") {
             targetView = "executive";
+        } else if (hash.startsWith("#/executive-detail") || hash.startsWith("#executive-detail")) {
+            targetView = "executive-detail";
         } else if (hash === "#/field-ops" || hash === "#field-ops") {
             targetView = "field-ops";
         } else if (hash === "#/dbms" || hash === "#dbms") {
@@ -274,11 +278,17 @@ export class ViewRouter {
             hatcheryView.ensureInitialized?.();
             hatcheryView.handleRoute?.();
         }
+
+        const execDetailPage = window.app?.executiveDetailPage || window.__isharpApp?.executiveDetailPage;
+        if (targetView === "executive-detail" && execDetailPage) {
+            execDetailPage.ensureInitialized?.();
+            execDetailPage.handleRoute?.();
+        }
     }
 
     navigate(viewName) {
         if (viewName === "qaqc") viewName = "lab-qaqc";
-        if (!["portal", "executive", "field-ops", "dbms", "simulation", "lab-qaqc", "hatchery"].includes(viewName)) {
+        if (!["portal", "executive", "executive-detail", "field-ops", "dbms", "simulation", "lab-qaqc", "hatchery"].includes(viewName)) {
             viewName = "portal";
         }
         window.location.hash = `#/${viewName}`;

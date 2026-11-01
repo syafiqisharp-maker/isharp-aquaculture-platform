@@ -14,6 +14,7 @@ import { resolveHybridPondState, POND_PROGRESS_STATES } from "../../domain/biome
 import { Toast } from "../../components/Toast.js";
 import { getFarmMapShellHtml, renderPondTileHtml } from "./templates/pondGridCellTemplate.js";
 import { getDrawerHtml, getDrawerSamplingHtml } from "./templates/pondDrawerTemplate.js";
+import { ExecutiveMetricsPresenter } from "./ExecutiveMetricsPresenter.js";
 
 const CACHE_KEY = "isharp_farm_map_cache_v3";
 const CACHE_TTL_MS = 5 * 60 * 1000; // 5-minute session cache
@@ -49,6 +50,8 @@ export class PondGridMap {
         this.activeCycleMap = new Map();     // normalized pond_code (e.g. "04.08.02") -> stocking record
         this.dailyProgressMap = new Map();   // normalized pond_code -> daily progress record
         this.issuesMap = new Map();          // pond_index -> array of issues
+        this.issues = [];                    // raw issues array
+        this.allEvaluatedPonds = [];         // 216 evaluated ponds cache
         this.selectedPond = null;
         this.isLoading = false;
 
@@ -394,6 +397,7 @@ export class PondGridMap {
         this.activeCycleMap.clear();
         this.issuesMap.clear();
         this.dailyProgressMap.clear();
+        this.issues = issues || [];
 
         // 1. Map issues by pond_index
         (issues || []).forEach(issue => {
@@ -462,6 +466,7 @@ export class PondGridMap {
         if (!this.dom.gridMount) return;
 
         // Reset progress counters
+        this.allEvaluatedPonds = [];
         this.progressCounts = {
             ALL: 0,
             CULTURE: 0,
@@ -544,6 +549,7 @@ export class PondGridMap {
             const cycle = this.activeCycleMap.get(pondCode);
 
             const pondData = this.evaluatePondState(pondCode, cycle);
+            this.allEvaluatedPonds.push(pondData);
 
             // Accumulate progress stage counts
             this.progressCounts.ALL = (this.progressCounts.ALL || 0) + 1;
@@ -708,6 +714,34 @@ export class PondGridMap {
                 elHealth.innerHTML = `<span style="color: #d97706;">${yellow} Warnings</span>`;
             } else {
                 elHealth.innerHTML = `<span style="color: #10b981;">All Clean</span>`;
+            }
+        }
+
+        // Update Species Composition and DOC Composition cards from 216 evaluated ponds
+        if (this.allEvaluatedPonds && this.allEvaluatedPonds.length > 0) {
+            const spComp = ExecutiveMetricsPresenter.calculateSpeciesComposition(this.allEvaluatedPonds);
+            const elSpecies = document.getElementById("exec-kpi-species");
+            const elSpeciesSub = document.getElementById("exec-kpi-species-sub");
+            const barVan = document.getElementById("exec-kpi-bar-van");
+            const barMon = document.getElementById("exec-kpi-bar-mon");
+
+            if (elSpecies) {
+                elSpecies.innerHTML = `<span style="color: #0284c7;">${spComp.vanPercent}%</span> <span class="unit">VAN</span> • <span style="color: #059669;">${spComp.monPercent}%</span> <span class="unit">MON</span>`;
+            }
+            if (elSpeciesSub) {
+                elSpeciesSub.textContent = `${spComp.vanCount} VAN Ponds • ${spComp.monCount} MON Ponds`;
+            }
+            if (barVan) barVan.style.width = `${spComp.vanPercent}%`;
+            if (barMon) barMon.style.width = `${spComp.monPercent}%`;
+
+            const docComp = ExecutiveMetricsPresenter.calculateDocComposition(this.allEvaluatedPonds);
+            const elDoc = document.getElementById("exec-kpi-doc");
+            const elDocSub = document.getElementById("exec-kpi-doc-sub");
+            if (elDoc) {
+                elDoc.innerHTML = `<span style="color: #0284c7;">VAN: ${docComp.van.midPct || 0}% Mid</span> • <span style="color: #059669;">MON: ${docComp.mon.finishingPct || 0}% Fin</span>`;
+            }
+            if (elDocSub) {
+                elDocSub.textContent = `Avg DOC: VAN ${docComp.van.avgDoc}d • MON ${docComp.mon.avgDoc}d (Farm: ${docComp.overall.avgDoc}d)`;
             }
         }
     }

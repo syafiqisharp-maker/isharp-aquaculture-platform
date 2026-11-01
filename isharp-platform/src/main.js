@@ -20,6 +20,7 @@ import { DbmsView } from "./modules/dbms/dbmsView.js";
 import { SimulationPage } from "./modules/simulation/SimulationPage.js";
 import { QaqcView } from "./modules/qaqc/qaqcView.js";
 import { HatcheryView } from "./modules/hatchery/hatcheryView.js";
+import { ExecutiveDetailPage } from "./modules/executive/ExecutiveDetailPage.js";
 
 // Tab Modules (System 2: iSHARP DBMS)
 import { MasterTab } from "./modules/dbms/masterTab.js";
@@ -52,6 +53,7 @@ class App {
             this.simulationPage = new SimulationPage("view-simulation");
             this.qaqcView = new QaqcView("view-lab-qaqc");
             this.hatcheryView = new HatcheryView("view-hatchery");
+            this.executiveDetailPage = new ExecutiveDetailPage("view-executive-detail");
             this.router = new ViewRouter();
             this.landingPage.setRouter(this.router);
 

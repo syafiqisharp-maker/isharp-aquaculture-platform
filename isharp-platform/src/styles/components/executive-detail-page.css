@@ -1,0 +1,555 @@
+/**
+ * iSHARP DBMS 2.0 — Executive Metric Detail Page Styles
+ * Full-viewport enterprise layout with high-readability table, sticky header, and interactive canvas timeline.
+ */
+
+.exec-detail-page-layout {
+    width: 100%;
+    min-height: 100vh;
+    background: #f8fafc;
+    display: flex;
+    flex-direction: column;
+    color: #0f172a;
+    box-sizing: border-box;
+}
+
+/* 1. Header Bar */
+.exec-detail-header {
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.85rem 1.5rem;
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border-bottom: 1px solid #e2e8f0;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+}
+
+.exec-detail-header-left {
+    display: flex;
+    align-items: center;
+    gap: 1.25rem;
+}
+
+.btn-detail-back {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.45rem 0.95rem;
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: #0284c7;
+    background: #f0f9ff;
+    border: 1px solid #bae6fd;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.btn-detail-back:hover {
+    background: #e0f2fe;
+    border-color: #7dd3fc;
+    color: #0369a1;
+    transform: translateX(-2px);
+}
+
+.exec-detail-title-group {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.exec-detail-icon {
+    font-size: 1.85rem;
+    line-height: 1;
+}
+
+.exec-detail-title {
+    font-size: 1.25rem;
+    font-weight: 800;
+    color: #0f172a;
+    letter-spacing: -0.02em;
+    line-height: 1.2;
+}
+
+.exec-detail-sub {
+    font-size: 0.76rem;
+    color: #64748b;
+    font-weight: 500;
+}
+
+/* Metric Quick Switcher Tabs */
+.exec-detail-switcher {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    background: #f1f5f9;
+    padding: 0.25rem;
+    border-radius: 10px;
+    overflow-x: auto;
+}
+
+.btn-metric-pill {
+    padding: 0.35rem 0.75rem;
+    font-size: 0.76rem;
+    font-weight: 700;
+    color: #475569;
+    background: transparent;
+    border: none;
+    border-radius: 7px;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.15s ease;
+}
+
+.btn-metric-pill:hover {
+    color: #0f172a;
+    background: rgba(255, 255, 255, 0.6);
+}
+
+.btn-metric-pill.active {
+    color: #0284c7;
+    background: #ffffff;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+/* 2. Main Content Body */
+.exec-detail-body {
+    flex: 1 1 auto;
+    padding: 1.25rem 1.75rem 2.5rem 1.75rem;
+    max-width: 1600px;
+    width: 100%;
+    margin: 0 auto;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+}
+
+/* KPI Summary Cards Strip */
+.exec-detail-stat-strip {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 1rem;
+}
+
+.exec-detail-stat-card {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    padding: 0.85rem 1.25rem;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+    position: relative;
+    overflow: hidden;
+}
+
+.exec-detail-stat-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, #38bdf8, #10b981);
+}
+
+.exec-detail-stat-label {
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: #64748b;
+    letter-spacing: 0.04em;
+    margin-bottom: 0.25rem;
+}
+
+.exec-detail-stat-val {
+    font-size: 1.65rem;
+    font-weight: 900;
+    color: #0284c7;
+    font-family: 'JetBrains Mono', monospace;
+    line-height: 1.15;
+}
+
+.exec-detail-stat-sub {
+    font-size: 0.74rem;
+    color: #94a3b8;
+    margin-top: 0.25rem;
+    font-weight: 500;
+}
+
+/* 3. Timeline Chart Section */
+.exec-detail-timeline-panel {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 1rem 1.5rem;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+}
+
+.exec-detail-timeline-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 0.75rem;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.timeline-header-left {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.timeline-headline {
+    font-size: 0.82rem;
+    font-weight: 800;
+    color: #1e293b;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.timeline-mode-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    background: #f1f5f9;
+    padding: 0.18rem 0.25rem;
+    border-radius: 8px;
+    border: 1px solid #e2e8f0;
+}
+
+.mode-toggle-label {
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    padding: 0 0.4rem 0 0.25rem;
+}
+
+.btn-mode {
+    font-size: 0.72rem;
+    font-weight: 700;
+    padding: 0.2rem 0.6rem;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    background: transparent;
+    color: #64748b;
+    transition: all 0.15s ease;
+}
+
+.btn-mode:hover {
+    color: #0f172a;
+    background: #e2e8f0;
+}
+
+.btn-mode.active {
+    background: #ffffff;
+    color: #0284c7;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.timeline-interactive-hint {
+    font-size: 0.74rem;
+    color: #0284c7;
+    font-weight: 600;
+    background: #f0f9ff;
+    padding: 0.25rem 0.65rem;
+    border-radius: 9999px;
+    border: 1px solid #bae6fd;
+}
+
+.exec-detail-canvas-box {
+    width: 100%;
+    height: 180px;
+    background: #fafafa;
+    border-radius: 8px;
+    border: 1px solid #f1f5f9;
+    overflow: hidden;
+    position: relative;
+}
+
+.exec-detail-canvas {
+    width: 100%;
+    height: 100%;
+    display: block;
+    cursor: pointer;
+}
+
+/* 4. Controls Toolbar */
+.exec-detail-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 1rem;
+    background: #ffffff;
+    padding: 0.85rem 1.25rem;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+}
+
+.detail-toolbar-left {
+    display: flex;
+    align-items: center;
+    gap: 1.25rem;
+    flex-wrap: wrap;
+}
+
+.detail-control-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.detail-toolbar-label {
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: #475569;
+}
+
+.detail-toolbar-select {
+    padding: 0.45rem 0.85rem;
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: #0f172a;
+    background: #f8fafc;
+    border: 1px solid #cbd5e1;
+    border-radius: 7px;
+    outline: none;
+    cursor: pointer;
+}
+
+.detail-toolbar-select:focus {
+    border-color: #0284c7;
+    box-shadow: 0 0 0 2px rgba(2, 132, 199, 0.15);
+}
+
+.detail-search-box {
+    display: flex;
+    align-items: center;
+    position: relative;
+}
+
+.detail-search-icon {
+    position: absolute;
+    left: 0.65rem;
+    font-size: 0.82rem;
+    color: #94a3b8;
+    pointer-events: none;
+}
+
+.detail-search-input {
+    padding: 0.45rem 1.75rem 0.45rem 2rem;
+    font-size: 0.82rem;
+    border: 1px solid #cbd5e1;
+    border-radius: 7px;
+    background: #f8fafc;
+    color: #0f172a;
+    width: 260px;
+    outline: none;
+    transition: width 0.2s ease, border-color 0.2s ease;
+}
+
+.detail-search-input:focus {
+    width: 320px;
+    border-color: #0284c7;
+    background: #ffffff;
+    box-shadow: 0 0 0 2px rgba(2, 132, 199, 0.15);
+}
+
+.btn-detail-clear-search {
+    position: absolute;
+    right: 0.45rem;
+    background: none;
+    border: none;
+    color: #94a3b8;
+    cursor: pointer;
+    font-size: 0.75rem;
+    font-weight: 700;
+    padding: 0.2rem;
+}
+
+.btn-detail-clear-search:hover {
+    color: #0f172a;
+}
+
+.detail-toolbar-right {
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+}
+
+.detail-count-badge {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: #64748b;
+    background: #f1f5f9;
+    padding: 0.35rem 0.75rem;
+    border-radius: 9999px;
+    border: 1px solid #e2e8f0;
+}
+
+.btn-detail-csv {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.45rem 1rem;
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: #059669;
+    background: #ecfdf5;
+    border: 1px solid #a7f3d0;
+    border-radius: 7px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.btn-detail-csv:hover {
+    background: #d1fae5;
+    border-color: #6ee7b7;
+    transform: translateY(-1px);
+}
+
+/* 5. Full-Viewport High-Readability Data Table */
+.exec-detail-table-card {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+.exec-detail-table-wrapper {
+    overflow-x: auto;
+    max-height: calc(100vh - 420px);
+    min-height: 380px;
+}
+
+.exec-detail-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.84rem;
+    text-align: left;
+}
+
+.exec-detail-table thead th {
+    position: sticky;
+    top: 0;
+    background: #f8fafc;
+    color: #475569;
+    font-weight: 800;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 0.85rem 1rem;
+    border-bottom: 1px solid #cbd5e1;
+    z-index: 2;
+    white-space: nowrap;
+}
+
+.exec-detail-table thead th.sortable-th {
+    cursor: pointer;
+    user-select: none;
+    transition: background 0.15s ease, color 0.15s ease;
+}
+
+.exec-detail-table thead th.sortable-th:hover {
+    background: #e2e8f0;
+    color: #0f172a;
+}
+
+.exec-detail-table thead th.sortable-th:focus-visible {
+    outline: 2px solid #0284c7;
+    outline-offset: -2px;
+}
+
+.exec-detail-table thead th .th-content {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+}
+
+.exec-detail-table thead th .th-sort-icon {
+    font-size: 0.72rem;
+    color: #94a3b8;
+    transition: color 0.15s ease, transform 0.15s ease;
+    opacity: 0.6;
+}
+
+.exec-detail-table thead th.sortable-th:hover .th-sort-icon {
+    opacity: 1;
+    color: #475569;
+}
+
+.exec-detail-table thead th.sorted-asc,
+.exec-detail-table thead th.sorted-desc {
+    background: #f0f9ff;
+    color: #0369a1;
+}
+
+.exec-detail-table thead th.sorted-asc .th-sort-icon,
+.exec-detail-table thead th.sorted-desc .th-sort-icon {
+    color: #0284c7;
+    font-weight: 900;
+    opacity: 1;
+}
+
+.exec-detail-table tbody td {
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid #f1f5f9;
+    color: #0f172a;
+    white-space: nowrap;
+    font-weight: 500;
+}
+
+.exec-detail-table tbody tr:hover {
+    background: #f8fafc;
+}
+
+.exec-detail-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+.exec-detail-empty-cell {
+    text-align: center;
+    padding: 4rem 1rem !important;
+    color: #94a3b8;
+    font-size: 0.9rem;
+    font-style: italic;
+}
+
+/* Responsive Overrides */
+@media screen and (max-width: 900px) {
+    .exec-detail-header {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 0.75rem;
+        padding: 0.75rem 1rem;
+    }
+    .exec-detail-header-left {
+        justify-content: space-between;
+    }
+    .exec-detail-body {
+        padding: 1rem 0.75rem;
+    }
+    .detail-search-input {
+        width: 100%;
+    }
+    .detail-search-input:focus {
+        width: 100%;
+    }
+}

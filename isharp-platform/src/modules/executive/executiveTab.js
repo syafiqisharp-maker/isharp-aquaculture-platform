@@ -8,11 +8,22 @@ import { PondGridMap } from "./PondGridMap.js";
 import { ExecutiveBiomassView } from "./ExecutiveBiomassView.js";
 import { ManagementCalloutModal } from "../../components/ManagementCalloutModal.js";
 import { Toast } from "../../components/Toast.js";
+import { ExecutiveMetricModal } from "./ExecutiveMetricModal.js";
+import { ExecutiveMetricsPresenter, METRIC_TYPES, formatNumber, formatMonthLabel } from "./ExecutiveMetricsPresenter.js";
+import { PondRepository } from "../../infrastructure/repositories/pondRepository.js";
+import { HarvestRepository } from "../../infrastructure/repositories/harvestRepository.js";
+import { SamplingRepository } from "../../infrastructure/repositories/samplingRepository.js";
 
 export class ExecutiveView {
     constructor(containerId = "view-executive") {
         this.container = document.getElementById(containerId);
         if (!this.container) return;
+
+        this.rawDailyHarvests = [];
+        this.rawSalesRecords = [];
+        this.rawStockingBatches = [];
+        this.rawOperationalCycles = [];
+        this.rawSamplings = [];
 
         this.render();
         this.bindEvents();
@@ -25,6 +36,9 @@ export class ExecutiveView {
 
         // Listen for cycles change to update KPI strip
         appState.subscribe("cyclesLoaded", (cycles) => this.updateKPIs(cycles));
+
+        // Load farm harvest and stocking metrics asynchronously
+        this.loadExecutiveMetrics();
     }
 
 
@@ -72,24 +86,66 @@ export class ExecutiveView {
                 <!-- Executive Content Body -->
                 <main class="exec-content-body">
                     
-                    <!-- KPI Quick Strip -->
+                    <!-- KPI Quick Strip (7 Interactive Hero Cards) -->
                     <section class="exec-kpi-strip" aria-label="Executive KPIs">
-                        <div class="exec-kpi-card">
+                        <!-- 1. Active Production Ponds -->
+                        <div class="exec-kpi-card" data-metric="ACTIVE_PONDS" role="button" tabindex="0" title="Click to view Active Production Ponds breakdown &amp; timeline">
+                            <span class="exec-kpi-hint">↗</span>
                             <div class="exec-kpi-title">Active Production Ponds</div>
-                            <div class="exec-kpi-num" id="exec-kpi-active" style="color: #059669;">137 <span style="font-size: 0.9rem; color: #64748b; font-weight: 500;">/ 216</span></div>
+                            <div class="exec-kpi-num" id="exec-kpi-active" style="color: #059669;">137 <span class="unit">/ 216</span></div>
                             <div class="exec-kpi-sub">Culturing across 9 Modules</div>
                         </div>
 
-                        <div class="exec-kpi-card">
+                        <!-- 2. Ponds in Preparation / Idle -->
+                        <div class="exec-kpi-card" data-metric="PREP_IDLE" role="button" tabindex="0" title="Click to view Turnaround &amp; Idle Ponds breakdown">
+                            <span class="exec-kpi-hint">↗</span>
                             <div class="exec-kpi-title">Ponds in Preparation / Idle</div>
-                            <div class="exec-kpi-num" id="exec-kpi-idle" style="color: #0284c7;">71 <span style="font-size: 0.9rem; color: #64748b; font-weight: 500;">Ponds</span></div>
+                            <div class="exec-kpi-num" id="exec-kpi-idle" style="color: #0284c7;">71 <span class="unit">Ponds</span></div>
                             <div class="exec-kpi-sub">Drying, liming &amp; nursery prep</div>
                         </div>
 
-                        <div class="exec-kpi-card">
+                        <!-- 3. Pathogen Biosecurity -->
+                        <div class="exec-kpi-card" data-metric="BIOSECURITY" role="button" tabindex="0" title="Click to view Pathogen Biosecurity PCR Alerts &amp; timeline">
+                            <span class="exec-kpi-hint">↗</span>
                             <div class="exec-kpi-title">Pathogen Biosecurity</div>
                             <div class="exec-kpi-num" id="exec-kpi-health" style="color: #d97706;">Live Monitoring</div>
                             <div class="exec-kpi-sub">Supabase Lab Telemetry Active</div>
+                        </div>
+
+                        <!-- 4. Total Harvest -->
+                        <div class="exec-kpi-card" data-metric="HARVEST" role="button" tabindex="0" title="Click to view 12-Month Harvest Timeline &amp; Logs">
+                            <span class="exec-kpi-hint">↗</span>
+                            <div class="exec-kpi-title">Total Harvest</div>
+                            <div class="exec-kpi-num" id="exec-kpi-harvest" style="color: #059669;">— <span class="unit">MT YTD</span></div>
+                            <div class="exec-kpi-sub" id="exec-kpi-harvest-sub">Loading harvest ledgers...</div>
+                        </div>
+
+                        <!-- 5. Total Stocking + Fries -->
+                        <div class="exec-kpi-card" data-metric="STOCKING" role="button" tabindex="0" title="Click to view 12-Month Stocking Timeline &amp; Batches">
+                            <span class="exec-kpi-hint">↗</span>
+                            <div class="exec-kpi-title">Total Stocking + Fries</div>
+                            <div class="exec-kpi-num" id="exec-kpi-stocking" style="color: #0284c7;">— <span class="unit">M YTD</span></div>
+                            <div class="exec-kpi-sub" id="exec-kpi-stocking-sub">Loading hatchery dispatches...</div>
+                        </div>
+
+                        <!-- 6. Percent of Species Composition -->
+                        <div class="exec-kpi-card" data-metric="SPECIES_COMP" role="button" tabindex="0" title="Click to view Species Allocation &amp; Ponds">
+                            <span class="exec-kpi-hint">↗</span>
+                            <div class="exec-kpi-title">Species Composition</div>
+                            <div class="exec-kpi-num" id="exec-kpi-species" style="font-size: 1.45rem;">—</div>
+                            <div class="exec-kpi-bar">
+                                <div class="exec-kpi-bar-van" id="exec-kpi-bar-van" style="width: 50%;"></div>
+                                <div class="exec-kpi-bar-mon" id="exec-kpi-bar-mon" style="width: 50%;"></div>
+                            </div>
+                            <div class="exec-kpi-sub" id="exec-kpi-species-sub">Evaluating active crops...</div>
+                        </div>
+
+                        <!-- 7. Percent of DOC Composition based on Species -->
+                        <div class="exec-kpi-card" data-metric="DOC_COMP" role="button" tabindex="0" title="Click to view DOC Stage Distribution &amp; Cohorts">
+                            <span class="exec-kpi-hint">↗</span>
+                            <div class="exec-kpi-title">DOC Composition by Species</div>
+                            <div class="exec-kpi-num" id="exec-kpi-doc" style="font-size: 1.25rem;">—</div>
+                            <div class="exec-kpi-sub" id="exec-kpi-doc-sub">Evaluating age cohorts...</div>
                         </div>
                     </section>
 
@@ -163,8 +219,91 @@ export class ExecutiveView {
             });
         }
 
+        // Bind Navigation to Dedicated Executive Metric Detail Page on Hero KPI Cards
+        const cards = this.container.querySelectorAll(".exec-kpi-card[data-metric]");
+        cards.forEach(card => {
+            const handleTrigger = () => {
+                const metric = card.getAttribute("data-metric");
+                if (metric) {
+                    window.location.hash = `#/executive-detail?metric=${metric}`;
+                }
+            };
+
+            card.addEventListener("click", handleTrigger);
+            card.addEventListener("keydown", (e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    handleTrigger();
+                }
+            });
+        });
+
         // Initialize natural touch & gesture scrolling for mobile horizontal view
         this.initMobileTouchScroll();
+    }
+
+    /**
+     * Gathers unified operational data bundle for drilldown modal.
+     * @returns {object}
+     */
+    getDataBundle() {
+        return {
+            activePonds: this.gridMap ? (this.gridMap.allEvaluatedPonds || []) : [],
+            activeCycles: this.gridMap && this.gridMap.activeCycleMap ? Array.from(this.gridMap.activeCycleMap.values()) : [],
+            dailyProgress: this.gridMap && this.gridMap.dailyProgressMap ? Array.from(this.gridMap.dailyProgressMap.values()) : [],
+            issues: this.gridMap ? (this.gridMap.issues || []) : [],
+            dailyHarvests: this.rawDailyHarvests || [],
+            salesRecords: this.rawSalesRecords || [],
+            stockingBatches: this.rawStockingBatches || [],
+            operationalCycles: this.rawOperationalCycles || [],
+            samplings: this.rawSamplings || []
+        };
+    }
+
+    /**
+     * Loads 12-month farm harvest logs and stocking batches to populate executive cards.
+     */
+    async loadExecutiveMetrics() {
+        try {
+            const [harvestRes, stockingBatches, opCycles, samplings] = await Promise.all([
+                HarvestRepository.get12MonthHarvestData(12),
+                PondRepository.get12MonthStockingBatches(12),
+                PondRepository.get12MonthOperationalCycles(12),
+                SamplingRepository.getRecentSamplings(1500)
+            ]);
+
+            this.rawDailyHarvests = harvestRes?.dailyHarvests || [];
+            this.rawSalesRecords = harvestRes?.salesRecords || [];
+            this.rawStockingBatches = stockingBatches || [];
+            this.rawOperationalCycles = opCycles || [];
+            this.rawSamplings = samplings || [];
+
+            // 1. Update Total Harvest Card
+            const harvestAgg = ExecutiveMetricsPresenter.aggregateMonthlyHarvest(this.rawDailyHarvests, this.rawSalesRecords);
+            const elHarv = document.getElementById("exec-kpi-harvest");
+            const elHarvSub = document.getElementById("exec-kpi-harvest-sub");
+            if (elHarv) {
+                elHarv.innerHTML = `${formatNumber(harvestAgg.ytdTonnage, 1)} <span class="unit">MT YTD</span>`;
+            }
+            if (elHarvSub) {
+                const curMonthName = formatMonthLabel(harvestAgg.currentMonthKey).split(" ")[0];
+                elHarvSub.textContent = `${formatNumber(harvestAgg.mtdTonnage, 1)} MT in ${curMonthName} • ${formatNumber(harvestAgg.rolling12Tonnage, 1)} MT 12M`;
+            }
+
+            // 2. Update Total Stocking Card
+            const stockAgg = ExecutiveMetricsPresenter.aggregateMonthlyStocking(this.rawStockingBatches);
+            const elStock = document.getElementById("exec-kpi-stocking");
+            const elStockSub = document.getElementById("exec-kpi-stocking-sub");
+            if (elStock) {
+                elStock.innerHTML = `${formatNumber(stockAgg.ytdMillion, 2)} <span class="unit">M YTD</span>`;
+            }
+            if (elStockSub) {
+                const curMonthName = formatMonthLabel(stockAgg.currentMonthKey).split(" ")[0];
+                elStockSub.textContent = `${formatNumber(stockAgg.mtdMillion, 2)}M in ${curMonthName} • ${formatNumber(stockAgg.ytdBatches)} Batches`;
+            }
+        } catch (err) {
+            console.warn("Could not load farm harvest/stocking metrics:", err);
+        }
     }
 
     /**

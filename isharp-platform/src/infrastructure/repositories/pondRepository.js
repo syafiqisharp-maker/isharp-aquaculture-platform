@@ -50,18 +50,21 @@ export class PondRepository {
         // Normalize schema fields for consistent UI consumption
         return (records || []).map(r => {
             const isProd = (r.pond_status || "").toUpperCase() === "PRODUCTION";
+            const isClose = (r.pond_status || "").toUpperCase() === "CLOSE";
+            const isStocked = isProd || isClose || Boolean(r.stck_date || r.stck_pcs);
             return {
                 ...r,
                 status: r.pond_status || "PRODUCTION",
                 active: r.pond_active || "ACTIVE",
                 module: r.modl || "MODULE 1",
-                species: r.stck_species || (isProd ? "P. VANNAMEi" : "—"),
-                genetic_line: r.bs_line || (isProd ? "Standard" : "—"),
-                pl_origin: r.stck_source || (isProd ? "Hatchery" : "—"),
-                stck_size: isProd ? r.stck_size : null,
-                stck_tank: isProd ? r.stck_tank : null,
-                stck_netto: isProd ? (r.stck_pcs || 0) : 0,
-                stck_total: isProd ? (r.stck_total || (parseFloat(r.stck_pcs || 0) + parseFloat(r.stck_allow || 0))) : 0,
+                species: r.stck_species || (isStocked ? "P. VANNAMEi" : "—"),
+                genetic_line: r.bs_line || (isStocked ? "Standard" : "—"),
+                pl_origin: r.stck_source || (isStocked ? "Hatchery" : "—"),
+                stck_size: isStocked ? r.stck_size : null,
+                stck_tank: isStocked ? r.stck_tank : null,
+                stck_netto: isStocked ? (r.stck_pcs || 0) : 0,
+                stck_allow: isStocked ? (r.stck_allow !== undefined && r.stck_allow !== null ? r.stck_allow : 0) : 0,
+                stck_total: isStocked ? (r.stck_total || (parseFloat(r.stck_pcs || 0) + parseFloat(r.stck_allow || 0))) : 0,
                 batch_count: r.batch_count || 0
             };
         });
@@ -76,18 +79,21 @@ export class PondRepository {
         const records = await supabase.request(endpoint);
         return (records || []).map(r => {
             const isProd = (r.pond_status || "").toUpperCase() === "PRODUCTION";
+            const isClose = (r.pond_status || "").toUpperCase() === "CLOSE";
+            const isStocked = isProd || isClose || Boolean(r.stck_date || r.stck_pcs);
             return {
                 ...r,
                 status: r.pond_status || "PRODUCTION",
                 active: r.pond_active || "ACTIVE",
                 module: r.modl || "MODULE 1",
-                species: r.stck_species || (isProd ? "P. VANNAMEi" : "—"),
-                genetic_line: r.bs_line || (isProd ? "Standard" : "—"),
-                pl_origin: r.stck_source || (isProd ? "Hatchery" : "—"),
-                stck_size: isProd ? r.stck_size : null,
-                stck_tank: isProd ? r.stck_tank : null,
-                stck_netto: isProd ? (r.stck_pcs || 0) : 0,
-                stck_total: isProd ? (r.stck_total || (parseFloat(r.stck_pcs || 0) + parseFloat(r.stck_allow || 0))) : 0,
+                species: r.stck_species || (isStocked ? "P. VANNAMEi" : "—"),
+                genetic_line: r.bs_line || (isStocked ? "Standard" : "—"),
+                pl_origin: r.stck_source || (isStocked ? "Hatchery" : "—"),
+                stck_size: isStocked ? r.stck_size : null,
+                stck_tank: isStocked ? r.stck_tank : null,
+                stck_netto: isStocked ? (r.stck_pcs || 0) : 0,
+                stck_allow: isStocked ? (r.stck_allow !== undefined && r.stck_allow !== null ? r.stck_allow : 0) : 0,
+                stck_total: isStocked ? (r.stck_total || (parseFloat(r.stck_pcs || 0) + parseFloat(r.stck_allow || 0))) : 0,
                 batch_count: r.batch_count || 0
             };
         });
@@ -105,6 +111,8 @@ export class PondRepository {
         if (!res || res.length === 0) return null;
         const r = res[0];
         const isProd = (r.pond_status || "").toUpperCase() === "PRODUCTION";
+        const isClose = (r.pond_status || "").toUpperCase() === "CLOSE";
+        const isStocked = isProd || isClose || Boolean(r.stck_date || r.stck_pcs);
         const isIdle = (r.pond_status || "").toUpperCase() === "IDLE";
         
         // Idle pond rule: if pond is IDLE, preparation dates must not reflect previous cycle events.
@@ -116,14 +124,14 @@ export class PondRepository {
             status: r.pond_status || "PRODUCTION",
             active: r.pond_active || "ACTIVE",
             module: r.modl || "MODULE 1",
-            species: r.stck_species || (isProd ? "P. VANNAMEi" : "—"),
-            genetic_line: r.bs_line || (isProd ? "Standard" : "—"),
-            pl_origin: r.stck_source || (isProd ? "Hatchery" : "—"),
-            stck_netto: isProd ? (r.stck_pcs || 0) : 0,
-            stck_size: isProd ? r.stck_size : null,
-            stck_tank: isProd ? r.stck_tank : null,
-            stck_allow: isProd ? (r.stck_allow || 0) : 0,
-            stck_total: isProd ? (r.stck_total || (parseFloat(r.stck_pcs || 0) + parseFloat(r.stck_allow || 0))) : 0,
+            species: r.stck_species || (isStocked ? "P. VANNAMEi" : "—"),
+            genetic_line: r.bs_line || (isStocked ? "Standard" : "—"),
+            pl_origin: r.stck_source || (isStocked ? "Hatchery" : "—"),
+            stck_netto: isStocked ? (r.stck_pcs || 0) : 0,
+            stck_size: isStocked ? r.stck_size : null,
+            stck_tank: isStocked ? r.stck_tank : null,
+            stck_allow: isStocked ? (r.stck_allow !== undefined && r.stck_allow !== null ? r.stck_allow : 0) : 0,
+            stck_total: isStocked ? (r.stck_total || (parseFloat(r.stck_pcs || 0) + parseFloat(r.stck_allow || 0))) : 0,
             date_cleaning: sanitizePrepDate(r.date_cleaning),
             date_repair: sanitizePrepDate(r.date_repair),
             date_filling: sanitizePrepDate(r.date_filling),
@@ -142,6 +150,42 @@ export class PondRepository {
      * @param {string} pondIndex 
      * @returns {Promise<Array<object>>}
      */
+    /**
+     * Fetches farm-wide stocking batches for the past N months.
+     * @param {number} [monthsBack=12]
+     * @returns {Promise<Array<object>>}
+     */
+    static async get12MonthStockingBatches(monthsBack = 12) {
+        const now = new Date();
+        const past = new Date(now.getFullYear(), now.getMonth() - (monthsBack + 1), 1);
+        const fromDate = `${past.getFullYear()}-${String(past.getMonth() + 1).padStart(2, '0')}-01`;
+        const endpoint = `pond_stocking_batches?select=id,pond_index,stck_date,stck_species,stck_pcs,stck_allow,stck_total,stck_source,stck_tank,stck_size&stck_date=gte.${fromDate}&order=stck_date.asc&limit=5000`;
+        try {
+            return await supabase.request(endpoint);
+        } catch (err) {
+            console.warn("Could not fetch 12-month stocking batches:", err);
+            return [];
+        }
+    }
+
+    /**
+     * Fetches farm-wide operational cycles active during the past N months.
+     * @param {number} [monthsBack=12]
+     * @returns {Promise<Array<object>>}
+     */
+    static async get12MonthOperationalCycles(monthsBack = 12) {
+        const now = new Date();
+        const past = new Date(now.getFullYear(), now.getMonth() - (monthsBack + 1), 1);
+        const fromDate = `${past.getFullYear()}-${String(past.getMonth() + 1).padStart(2, '0')}-01`;
+        const endpoint = `view_growout_pond_cycles?select=pond_index,pond,modl,row_no,cycle_no,crop_no,pond_status,pond_active,stck_date,date_close,area,stck_species&stck_date=not.is.null&or=(date_close.gte.${fromDate},date_close.is.null)&order=stck_date.asc&limit=1500`;
+        try {
+            return await supabase.request(endpoint);
+        } catch (err) {
+            console.warn("Could not fetch 12-month operational cycles:", err);
+            return [];
+        }
+    }
+
     static async getStockingBatches(pondIndex) {
         if (!pondIndex) return [];
         const endpoint = `pond_stocking_batches?pond_index=eq.${encodeURIComponent(pondIndex)}&order=stck_date.asc`;

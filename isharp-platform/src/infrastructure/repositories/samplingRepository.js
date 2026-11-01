@@ -41,6 +41,21 @@ export class SamplingRepository {
     }
 
     /**
+     * Fetches recent biometrics sampling records across all ponds, ordered latest first.
+     * @param {number} [limit=1500] 
+     * @returns {Promise<Array<object>>}
+     */
+    static async getRecentSamplings(limit = 1500) {
+        try {
+            const endpoint = `biometrics_sampling?select=pond_index,smpl_date,smpl_doc,smpl_abw,smpl_surv,smpl_bms&order=smpl_date.desc&limit=${limit}`;
+            return await supabase.request(endpoint) || [];
+        } catch (err) {
+            console.warn("Failed to fetch recent samplings:", err);
+            return [];
+        }
+    }
+
+    /**
      * Inserts or updates a batch of parsed sampling records into biometrics_sampling.
      * Uses on_conflict=pond_index,smpl_date to guarantee idempotency.
      * @param {Array<object>} records 

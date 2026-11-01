@@ -44,6 +44,8 @@
 
 /* 14. Executive Portal & 216-Pond Interactive Farm Map */
 @import "./components/farm-map.css";
+@import "./components/executive-metric-modal.css";
+@import "./components/executive-detail-page.css";
 
 /* 15. Executive Production & Biomass Intelligence (Sleek Pastel Theme) */
 @import "./components/biomass-intelligence.css";
