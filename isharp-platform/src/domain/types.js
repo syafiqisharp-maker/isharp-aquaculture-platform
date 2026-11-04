@@ -84,7 +84,8 @@
  * @property {number} [smpl_bms] Estimated total pond biomass in kilograms
  * @property {number} [smpl_tfed] Cumulative feed consumed up to this date in kilograms
  * @property {number} [smpl_fcr] Feed Conversion Ratio (kg feed / kg biomass gain)
- * @property {number} [smpl_srv] Estimated population survival percentage (SR)
+ * @property {number} [smpl_surv] Estimated population survival percentage (SR)
+ * @property {number} [smpl_srv] Legacy alias for survival percentage (SR)
  */
 
 /**

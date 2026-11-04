@@ -9,7 +9,7 @@ import {
     buildPondProgressTimeline
 } from '../src/domain/biometrics.js';
 import { getFarmMapShellHtml, renderPondTileHtml } from '../src/modules/executive/templates/pondGridCellTemplate.js';
-import { getDrawerHtml } from '../src/modules/executive/templates/pondDrawerTemplate.js';
+import { getDrawerHtml, getDrawerSamplingHtml } from '../src/modules/executive/templates/pondDrawerTemplate.js';
 
 test('Pond Progress: normalizePondProgressState', async (t) => {
     await t.test('normalizes raw Excel codes and template strings correctly', () => {
@@ -523,5 +523,15 @@ test('Pond Progress: UI Template Contract Verification', async (t) => {
         assert.ok(drawerHtml.includes('Current • 48 DOC'));
         assert.ok(drawerHtml.includes('Turnaround (Harvest → Stocking):'));
         assert.ok(drawerHtml.includes('43 days'));
+        const samplingHtml = getDrawerSamplingHtml({
+            smpl_abw: 16.0,
+            smpl_bms: 3487.08,
+            smpl_surv: 87.2,
+            smpl_date: '2026-10-26'
+        });
+        assert.ok(samplingHtml.includes('16.00 g'));
+        assert.ok(samplingHtml.includes('3,487.08 kg'));
+        assert.ok(samplingHtml.includes('87.2%'));
+        assert.ok(samplingHtml.includes('2026-10-26'));
     });
 });

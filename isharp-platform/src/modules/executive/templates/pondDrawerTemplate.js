@@ -6,7 +6,7 @@
  * Clean Coding Standard: Pure HTML template functions.
  */
 
-import { calculateDOC, buildPondProgressTimeline } from "../../../domain/biometrics.js";
+import { calculateDOC, buildPondProgressTimeline, getLatestSurvivalRate } from "../../../domain/biometrics.js";
 import { formatNumber } from "../../../utils/formatters.js";
 
 /**
@@ -215,7 +215,8 @@ export function getDrawerSamplingHtml(latest, cycle) {
 
     const abwVal = latest.smpl_abw ? `${parseFloat(latest.smpl_abw).toFixed(2)} g` : "—";
     const bmsVal = latest.smpl_bms ? `${Number(latest.smpl_bms).toLocaleString()} kg` : "—";
-    const survVal = latest.smpl_srv ? `${parseFloat(latest.smpl_srv).toFixed(1)}%` : "—";
+    const sr = getLatestSurvivalRate(latest);
+    const survVal = sr !== null ? `${sr.toFixed(1)}%` : "—";
     const dateVal = latest.smpl_date || "Recent";
 
     return `
