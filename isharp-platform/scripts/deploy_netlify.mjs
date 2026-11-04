@@ -62,21 +62,20 @@ const zipBuffer = fs.readFileSync(zipFile);
 console.log(`🚀 Uploading ${(zipBuffer.length / (1024 * 1024)).toFixed(2)} MB to Netlify (Site ID: ${SITE_ID})...`);
 
 try {
-    const res = await fetch(`https://api.netlify.com/api/v1/sites/${SITE_ID}/deploys`, {
-        method: "POST",
-        headers: {
-            "Authorization": `Bearer ${token}`,
-            "Content-Type": "application/zip"
-        },
-        body: zipBuffer
-    });
+    const normalizedZipPath = zipFile.replace(/\\/g, "/");
+    const curlCmd = `curl.exe -s -S -X POST "https://api.netlify.com/api/v1/sites/${SITE_ID}/deploys" ` +
+        `-H "Authorization: Bearer ${token}" ` +
+        `-H "Content-Type: application/zip" ` +
+        `--data-binary @"${normalizedZipPath}" ` +
+        `--connect-timeout 60 --max-time 300`;
 
-    if (!res.ok) {
-        const errText = await res.text();
-        throw new Error(`Netlify API returned HTTP ${res.status}: ${errText}`);
+    const resJsonStr = execSync(curlCmd, { maxBuffer: 15 * 1024 * 1024 }).toString();
+    const deploy = JSON.parse(resJsonStr);
+
+    if (!deploy.id) {
+        throw new Error(`Netlify deployment failed: ${resJsonStr}`);
     }
 
-    const deploy = await res.json();
     console.log("✅ Production deploy completed successfully!");
     console.log(`   Deploy ID:   ${deploy.id}`);
     console.log(`   Live URL:    ${deploy.ssl_url || deploy.url}`);
