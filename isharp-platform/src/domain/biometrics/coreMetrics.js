@@ -175,3 +175,56 @@ export function getEffectiveBiomassGain(pond, latestSampling, harvestSummary) {
         hasPartial: false
     };
 }
+
+/**
+ * Single source of truth for species-differentiated culture stage definitions across iSHARP DBMS 2.0.
+ * - Vannamei (VAN): Early (<30d), Mid (30–60d), Finishing (>60d), Extended (>90d)
+ * - Monodon (MON): Early (<50d), Mid (50–90d), Finishing (>90d), Extended (>120d)
+ */
+export const CULTURE_STAGE_DEFINITIONS = {
+    VAN: {
+        EARLY: { code: "EARLY", label: "Early (<30d)", minDoc: 0, maxDoc: 29 },
+        MID: { code: "MID", label: "Mid (30–60d)", minDoc: 30, maxDoc: 60 },
+        FINISHING: { code: "FINISHING", label: "Finishing (>60d)", minDoc: 61, maxDoc: 999 },
+        EXTENDED: { code: "EXTENDED", label: "Extended (>90d)", minDoc: 91, maxDoc: 999 }
+    },
+    MON: {
+        EARLY: { code: "EARLY", label: "Early (<50d)", minDoc: 0, maxDoc: 49 },
+        MID: { code: "MID", label: "Mid (50–90d)", minDoc: 50, maxDoc: 90 },
+        FINISHING: { code: "FINISHING", label: "Finishing (>90d)", minDoc: 91, maxDoc: 999 },
+        EXTENDED: { code: "EXTENDED", label: "Extended (>120d)", minDoc: 121, maxDoc: 999 }
+    }
+};
+
+/**
+ * Resolves the culture stage code and metadata for a given pond based on species and DOC.
+ * @param {number} doc Days of culture
+ * @param {string} [species="VAN"] Species code or label ("VAN" | "MON")
+ * @returns {{ stageCode: "EARLY"|"MID"|"FINISHING", stageLabel: string, isFinishing: boolean, isExtended: boolean }}
+ */
+export function getCultureStage(doc, species = "VAN") {
+    const d = Math.max(0, Number(doc) || 0);
+    const isMon = String(species || "").toUpperCase().includes("MON");
+
+    if (isMon) {
+        if (d < 50) return { stageCode: "EARLY", stageLabel: "Early (< 50d)", isFinishing: false, isExtended: false };
+        if (d <= 90) return { stageCode: "MID", stageLabel: "Mid (50–90d)", isFinishing: false, isExtended: false };
+        const isExt = d > 120;
+        return {
+            stageCode: "FINISHING",
+            stageLabel: isExt ? "Extended (> 120d)" : "Finishing (> 90d)",
+            isFinishing: true,
+            isExtended: isExt
+        };
+    } else {
+        if (d < 30) return { stageCode: "EARLY", stageLabel: "Early (< 30d)", isFinishing: false, isExtended: false };
+        if (d <= 60) return { stageCode: "MID", stageLabel: "Mid (30–60d)", isFinishing: false, isExtended: false };
+        const isExt = d > 90;
+        return {
+            stageCode: "FINISHING",
+            stageLabel: isExt ? "Extended (> 90d)" : "Finishing (> 60d)",
+            isFinishing: true,
+            isExtended: isExt
+        };
+    }
+}

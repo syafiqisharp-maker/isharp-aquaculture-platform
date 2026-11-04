@@ -3,15 +3,32 @@
    ========================================================================== */
 
 /* --------------------------------------------------------------------------
+   0. ROTATE VIEW TOGGLE BUTTON (Hidden on Desktop, Active on Mobile Portrait)
+   -------------------------------------------------------------------------- */
+.btn-exec-rotate-view {
+    display: none;
+    align-items: center;
+    gap: 0.28rem;
+    border-color: #38bdf8 !important;
+    color: #0284c7 !important;
+    background: #f0f9ff !important;
+}
+
+/* --------------------------------------------------------------------------
    1. MOBILE PHONE PORTRAIT ROTATION MATRIX (< 768px in Portrait)
    Forces virtual landscape by rotating container 270° with 100dvh width
+   unless user explicitly toggles .mobile-portrait-mode
    -------------------------------------------------------------------------- */
 @media screen and (max-width: 768px) and (orientation: portrait) {
-    body:has(#view-executive.active-view) {
+    .btn-exec-rotate-view {
+        display: inline-flex !important;
+    }
+
+    body:has(#view-executive.active-view:not(.mobile-portrait-mode)) {
         overflow: hidden !important;
     }
 
-    #view-executive.active-view {
+    #view-executive.active-view:not(.mobile-portrait-mode) {
         position: fixed !important;
         top: 0 !important;
         left: 0 !important;
@@ -25,7 +42,7 @@
         padding: 0 !important;
     }
 
-    #view-executive.active-view .executive-view-layout {
+    #view-executive.active-view:not(.mobile-portrait-mode) .executive-view-layout {
         position: absolute !important;
         top: 0 !important;
         left: 0 !important;
@@ -44,7 +61,7 @@
     }
 
     /* Dedicated Non-Scrolling Viewport Overlay for Detail Drawer in Virtual Landscape */
-    #view-executive.active-view .exec-drawer-viewport {
+    #view-executive.active-view:not(.mobile-portrait-mode) .exec-drawer-viewport {
         position: absolute !important;
         top: 0 !important;
         left: 0 !important;
@@ -55,6 +72,42 @@
         transform-origin: 0 0 !important;
         transform: rotate(270deg) translateX(-100%) !important;
         overflow: hidden !important;
+        pointer-events: none !important;
+        z-index: 10000 !important;
+    }
+
+    /* ----------------------------------------------------------------------
+       1B. USER-SELECTED UPRIGHT PORTRAIT MODE (.mobile-portrait-mode)
+       Restores upright orientation and natural vertical scrolling on mobile
+       ---------------------------------------------------------------------- */
+    body:has(#view-executive.active-view.mobile-portrait-mode) {
+        overflow: auto !important;
+    }
+
+    #view-executive.active-view.mobile-portrait-mode {
+        position: relative !important;
+        width: 100% !important;
+        height: auto !important;
+        min-height: 100dvh !important;
+        overflow: visible !important;
+    }
+
+    #view-executive.active-view.mobile-portrait-mode .executive-view-layout {
+        position: relative !important;
+        width: 100% !important;
+        height: auto !important;
+        min-height: 100dvh !important;
+        transform: none !important;
+        overflow: visible !important;
+    }
+
+    #view-executive.active-view.mobile-portrait-mode .exec-drawer-viewport {
+        position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
+        width: 100% !important;
+        height: 100% !important;
+        transform: none !important;
         pointer-events: none !important;
         z-index: 10000 !important;
     }
@@ -429,5 +482,51 @@
     .exec-pipeline-tabs .tab-pill {
         padding: 0.22rem 0.5rem !important;
         font-size: 0.68rem !important;
+    }
+}
+
+/* --------------------------------------------------------------------------
+   4. MOBILE PORTRAIT MODE COMPONENT ERGONOMICS (< 768px in Upright Portrait)
+   Adapts header, KPI cards, 12-pond rows (6x2 sub-grid), and detail drawer
+   -------------------------------------------------------------------------- */
+@media screen and (max-width: 768px) and (orientation: portrait) {
+    #view-executive.active-view.mobile-portrait-mode .exec-header {
+        flex-wrap: wrap !important;
+        padding: 0.55rem 0.75rem !important;
+        gap: 0.45rem !important;
+    }
+
+    #view-executive.active-view.mobile-portrait-mode .exec-header-left {
+        width: 100% !important;
+        justify-content: space-between !important;
+    }
+
+    #view-executive.active-view.mobile-portrait-mode .exec-header-right {
+        width: 100% !important;
+        flex-wrap: wrap !important;
+        justify-content: flex-start !important;
+        gap: 0.35rem !important;
+    }
+
+    #view-executive.active-view.mobile-portrait-mode .exec-kpi-strip {
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    }
+
+    #view-executive.active-view.mobile-portrait-mode .farm-row-ponds {
+        grid-template-columns: repeat(6, minmax(0, 1fr)) !important;
+        gap: 3px !important;
+    }
+
+    #view-executive.active-view.mobile-portrait-mode .pond-detail-drawer {
+        width: 360px !important;
+        max-width: 88vw !important;
+    }
+
+    #view-executive.active-view.mobile-portrait-mode .exec-kpi-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    }
+
+    #view-executive.active-view.mobile-portrait-mode .exec-biomass-analytics-grid {
+        grid-template-columns: 1fr !important;
     }
 }

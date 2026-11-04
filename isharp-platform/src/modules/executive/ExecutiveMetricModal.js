@@ -38,6 +38,10 @@ export class ExecutiveMetricModal {
         this.currentMetricType = METRIC_TYPES.HARVEST;
         this.dataBundle = {};
         this.selectedMonth = "ALL";
+        this.harvestChartMode = "TONNAGE";
+        this.harvestSpecies = "ALL";
+        this.stockingChartMode = "MILLION";
+        this.stockingSpecies = "ALL";
         this.activePondChartMode = "AVG";
         this.prepChartMode = "TOTAL";
         this.growthSpecies = "ALL";
@@ -69,6 +73,10 @@ export class ExecutiveMetricModal {
         this.currentMetricType = metricType;
         this.dataBundle = dataBundle;
         this.selectedMonth = "ALL";
+        this.harvestChartMode = "TONNAGE";
+        this.harvestSpecies = "ALL";
+        this.stockingChartMode = "MILLION";
+        this.stockingSpecies = "ALL";
         this.activePondChartMode = "AVG";
         this.prepChartMode = "TOTAL";
         this.growthSpecies = "ALL";
@@ -175,6 +183,8 @@ export class ExecutiveMetricModal {
                 else if (cellStr === "FINISHING") badgeClass = "badge-stage-finishing";
                 else if (cellStr === "MID") badgeClass = "badge-stage-mid";
                 else if (cellStr === "EARLY") badgeClass = "badge-stage-early";
+                else if (cellStr === "DAILY EXCEL (PENDING SYNC)" || cellStr === "HARVESTED (MID-WEEK)" || cellStr === "Pending DBMS Sync") badgeClass = "badge-alert-yellow";
+                else if (cellStr === "SUPABASE DBMS") badgeClass = "badge-alert-green";
 
                 if (badgeClass) {
                     return `<td><span class="drilldown-badge ${badgeClass}">${cellStr}</span></td>`;
@@ -193,6 +203,10 @@ export class ExecutiveMetricModal {
             this.selectedMonth,
             this.searchQuery,
             {
+                harvestChartMode: this.harvestChartMode,
+                harvestSpecies: this.harvestSpecies,
+                stockingChartMode: this.stockingChartMode,
+                stockingSpecies: this.stockingSpecies,
                 activePondMode: this.activePondChartMode,
                 prepChartMode: this.prepChartMode,
                 growthSpecies: this.growthSpecies,
@@ -218,6 +232,38 @@ export class ExecutiveMetricModal {
         const tableRowsHtml = this.buildTableRowsHtml(vm.tableRows || [], (vm.tableHeaders || []).length);
 
         const hasTimeline = (vm.timeline || []).length > 0;
+        const isHarvestMetric = this.currentMetricType === METRIC_TYPES.HARVEST;
+        const harvestModeToggleHtml = isHarvestMetric ? `
+            <div class="harvest-toggle-container" style="display: inline-flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+                <div class="timeline-mode-toggle" aria-label="Harvest Chart Mode">
+                    <span class="mode-toggle-label">Metric:</span>
+                    <button type="button" class="btn-mode ${this.harvestChartMode === 'TONNAGE' ? 'active' : ''}" data-harvest-mode="TONNAGE">Biomass (MT)</button>
+                    <button type="button" class="btn-mode ${this.harvestChartMode === 'PONDS' ? 'active' : ''}" data-harvest-mode="PONDS">Harvested Ponds</button>
+                </div>
+                <div class="timeline-mode-toggle" aria-label="Harvest Species Filter">
+                    <span class="mode-toggle-label">Species:</span>
+                    <button type="button" class="btn-mode ${this.harvestSpecies === 'ALL' ? 'active' : ''}" data-harvest-species="ALL">Both (VAN vs MON)</button>
+                    <button type="button" class="btn-mode ${this.harvestSpecies === 'VAN' ? 'active' : ''}" data-harvest-species="VAN">VAN</button>
+                    <button type="button" class="btn-mode ${this.harvestSpecies === 'MON' ? 'active' : ''}" data-harvest-species="MON">MON</button>
+                </div>
+            </div>
+        ` : '';
+        const isStockingMetric = this.currentMetricType === METRIC_TYPES.STOCKING;
+        const stockingModeToggleHtml = isStockingMetric ? `
+            <div class="stocking-toggle-container" style="display: inline-flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+                <div class="timeline-mode-toggle" aria-label="Stocking Chart Mode">
+                    <span class="mode-toggle-label">Metric:</span>
+                    <button type="button" class="btn-mode ${this.stockingChartMode === 'MILLION' ? 'active' : ''}" data-stocking-mode="MILLION">Fry Volume (M)</button>
+                    <button type="button" class="btn-mode ${this.stockingChartMode === 'PONDS' ? 'active' : ''}" data-stocking-mode="PONDS">Stocked Ponds</button>
+                </div>
+                <div class="timeline-mode-toggle" aria-label="Stocking Species Filter">
+                    <span class="mode-toggle-label">Species:</span>
+                    <button type="button" class="btn-mode ${this.stockingSpecies === 'ALL' ? 'active' : ''}" data-stocking-species="ALL">Both (VAN vs MON)</button>
+                    <button type="button" class="btn-mode ${this.stockingSpecies === 'VAN' ? 'active' : ''}" data-stocking-species="VAN">VAN</button>
+                    <button type="button" class="btn-mode ${this.stockingSpecies === 'MON' ? 'active' : ''}" data-stocking-species="MON">MON</button>
+                </div>
+            </div>
+        ` : '';
         const isPrepMetric = this.currentMetricType === METRIC_TYPES.PREP_IDLE;
         const prepModeToggleHtml = isPrepMetric ? `
             <div class="prep-toggle-container" style="display: inline-flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
@@ -242,7 +288,7 @@ export class ExecutiveMetricModal {
             <div class="bio-toggle-container" style="display: inline-flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
                 <div class="timeline-mode-toggle" aria-label="Filter by Species">
                     <span class="mode-toggle-label">Species:</span>
-                    <button type="button" class="btn-mode ${this.growthSpecies === 'ALL' ? 'active' : ''}" data-growth-species="ALL">All Species</button>
+                    <button type="button" class="btn-mode ${this.growthSpecies === 'ALL' ? 'active' : ''}" data-growth-species="ALL">Both (VAN vs MON)</button>
                     <button type="button" class="btn-mode ${this.growthSpecies === 'VAN' ? 'active' : ''}" data-growth-species="VAN">VAN</button>
                     <button type="button" class="btn-mode ${this.growthSpecies === 'MON' ? 'active' : ''}" data-growth-species="MON">MON</button>
                 </div>
@@ -296,6 +342,8 @@ export class ExecutiveMetricModal {
                         <div class="timeline-panel-header">
                             <div style="display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap;">
                                 <span class="timeline-title">📈 ${vm.timelineTitle || "Monthly Operational Pond Capacity (12-Month)"}</span>
+                                ${harvestModeToggleHtml}
+                                ${stockingModeToggleHtml}
                                 ${prepModeToggleHtml}
                                 ${bioModeToggleHtml}
                             </div>
@@ -387,6 +435,58 @@ export class ExecutiveMetricModal {
                 this.refreshContent();
             });
         }
+
+        // Harvest Mode Toggle (Biomass MT vs Harvested Ponds)
+        const harvestModeBtns = this.container.querySelectorAll("[data-harvest-mode]");
+        harvestModeBtns.forEach(btn => {
+            btn.addEventListener("click", () => {
+                const mode = btn.getAttribute("data-harvest-mode");
+                if (mode && this.harvestChartMode !== mode) {
+                    this.harvestChartMode = mode;
+                    harvestModeBtns.forEach(b => b.classList.toggle("active", b.getAttribute("data-harvest-mode") === mode));
+                    this.refreshContent(true);
+                }
+            });
+        });
+
+        // Harvest Species Filter Toggle (ALL, VAN, MON)
+        const harvestSpBtns = this.container.querySelectorAll("[data-harvest-species]");
+        harvestSpBtns.forEach(btn => {
+            btn.addEventListener("click", () => {
+                const sp = btn.getAttribute("data-harvest-species");
+                if (sp && this.harvestSpecies !== sp) {
+                    this.harvestSpecies = sp;
+                    harvestSpBtns.forEach(b => b.classList.toggle("active", b.getAttribute("data-harvest-species") === sp));
+                    this.refreshContent(true);
+                }
+            });
+        });
+
+        // Stocking Mode Toggle (MILLION, PONDS)
+        const stockingModeBtns = this.container.querySelectorAll("[data-stocking-mode]");
+        stockingModeBtns.forEach(btn => {
+            btn.addEventListener("click", () => {
+                const mode = btn.getAttribute("data-stocking-mode");
+                if (mode && this.stockingChartMode !== mode) {
+                    this.stockingChartMode = mode;
+                    stockingModeBtns.forEach(b => b.classList.toggle("active", b.getAttribute("data-stocking-mode") === mode));
+                    this.refreshContent(true);
+                }
+            });
+        });
+
+        // Stocking Species Filter Toggle (ALL, VAN, MON)
+        const stockingSpBtns = this.container.querySelectorAll("[data-stocking-species]");
+        stockingSpBtns.forEach(btn => {
+            btn.addEventListener("click", () => {
+                const sp = btn.getAttribute("data-stocking-species");
+                if (sp && this.stockingSpecies !== sp) {
+                    this.stockingSpecies = sp;
+                    stockingSpBtns.forEach(b => b.classList.toggle("active", b.getAttribute("data-stocking-species") === sp));
+                    this.refreshContent(true);
+                }
+            });
+        });
 
         // Preparation Mode Toggle (Duration vs Count)
         const prepBtns = this.container.querySelectorAll("[data-prep-mode]");
@@ -549,10 +649,47 @@ export class ExecutiveMetricModal {
                 ));
 
                 if (hit) {
-                    if (this.selectedMonth === hit.monthKey) {
-                        this.selectedMonth = "ALL"; // Toggle off back to all
+                    if (hit.species && (hit.species === "VAN" || hit.species === "MON")) {
+                        if (this.currentMetricType === METRIC_TYPES.BIOSECURITY) {
+                            const isSameMonthAndSpecies = this.selectedMonth === hit.monthKey && this.growthSpecies === hit.species;
+                            if (isSameMonthAndSpecies) {
+                                this.selectedMonth = "ALL";
+                                this.growthSpecies = "ALL";
+                            } else {
+                                this.selectedMonth = hit.monthKey;
+                                this.growthSpecies = hit.species;
+                            }
+                            const growthSpBtns = this.container.querySelectorAll("[data-growth-species]");
+                            growthSpBtns.forEach(b => b.classList.toggle("active", b.getAttribute("data-growth-species") === this.growthSpecies));
+                        } else if (this.currentMetricType === METRIC_TYPES.STOCKING) {
+                            const isSameMonthAndSpecies = this.selectedMonth === hit.monthKey && this.stockingSpecies === hit.species;
+                            if (isSameMonthAndSpecies) {
+                                this.selectedMonth = "ALL";
+                                this.stockingSpecies = "ALL";
+                            } else {
+                                this.selectedMonth = hit.monthKey;
+                                this.stockingSpecies = hit.species;
+                            }
+                            const stockingSpBtns = this.container.querySelectorAll("[data-stocking-species]");
+                            stockingSpBtns.forEach(b => b.classList.toggle("active", b.getAttribute("data-stocking-species") === this.stockingSpecies));
+                        } else {
+                            const isSameMonthAndSpecies = this.selectedMonth === hit.monthKey && this.harvestSpecies === hit.species;
+                            if (isSameMonthAndSpecies) {
+                                this.selectedMonth = "ALL";
+                                this.harvestSpecies = "ALL";
+                            } else {
+                                this.selectedMonth = hit.monthKey;
+                                this.harvestSpecies = hit.species;
+                            }
+                            const harvestSpBtns = this.container.querySelectorAll("[data-harvest-species]");
+                            harvestSpBtns.forEach(b => b.classList.toggle("active", b.getAttribute("data-harvest-species") === this.harvestSpecies));
+                        }
                     } else {
-                        this.selectedMonth = hit.monthKey;
+                        if (this.selectedMonth === hit.monthKey) {
+                            this.selectedMonth = "ALL"; // Toggle off back to all
+                        } else {
+                            this.selectedMonth = hit.monthKey;
+                        }
                     }
                     this.sortColIndex = null;
                     this.sortDirection = null;
@@ -569,6 +706,10 @@ export class ExecutiveMetricModal {
             this.selectedMonth,
             this.searchQuery,
             {
+                harvestChartMode: this.harvestChartMode,
+                harvestSpecies: this.harvestSpecies,
+                stockingChartMode: this.stockingChartMode,
+                stockingSpecies: this.stockingSpecies,
                 activePondMode: this.activePondChartMode,
                 prepChartMode: this.prepChartMode,
                 growthSpecies: this.growthSpecies,
@@ -623,7 +764,7 @@ export class ExecutiveMetricModal {
         const dpr = window.devicePixelRatio || 1;
         const rect = canvas.getBoundingClientRect();
         const w = rect.width || canvas.parentElement?.clientWidth || 700;
-        const h = 180;
+        const h = 192;
 
         canvas.width = w * dpr;
         canvas.height = h * dpr;
@@ -636,16 +777,42 @@ export class ExecutiveMetricModal {
             return;
         }
 
-        const values = timeline.map(t => Number(t.value) || 0);
-        const maxVal = Math.max(1, Math.max(...values));
-        const padding = { left: 45, right: 25, top: 25, bottom: 35 };
+        const firstItem = timeline[0] || {};
+        const unit = firstItem.unit || "";
+        const chartMode = firstItem.chartMode || "";
+        const benchmarkVal = firstItem.benchmarkVal !== undefined ? firstItem.benchmarkVal : null;
+        const benchmarkLabel = firstItem.benchmarkLabel || "";
+        const farmAvgVal = firstItem.farmAvgVal !== undefined ? firstItem.farmAvgVal : null;
+
+        const values = [];
+        timeline.forEach(t => {
+            if (t.isDualSpecies && (!t.speciesFilter || t.speciesFilter === "ALL")) {
+                values.push(Number(t.vanValue) || 0, Number(t.monValue) || 0);
+            } else {
+                values.push(Number(t.value) || 0);
+            }
+        });
+        if (benchmarkVal !== null && benchmarkVal > 0) values.push(Number(benchmarkVal) * 1.12);
+        if (farmAvgVal !== null && farmAvgVal > 0) values.push(Number(farmAvgVal) * 1.1);
+
+        let rawMax = Math.max(...values, 0);
+        let maxVal = 1;
+        if (unit === "g/day") {
+            maxVal = Math.max(0.35, Math.ceil((rawMax + 0.04) * 20) / 20);
+        } else if (unit === "%") {
+            maxVal = Math.max(100, Math.ceil(rawMax / 10) * 10);
+        } else {
+            maxVal = Math.max(1, Math.ceil(rawMax * 1.12));
+        }
+
+        const padding = { left: 48, right: 28, top: 30, bottom: 42 };
         const plotW = w - padding.left - padding.right;
         const plotH = h - padding.top - padding.bottom;
 
         ctx.clearRect(0, 0, w, h);
 
-        // Gridlines
-        ctx.strokeStyle = "rgba(226, 232, 240, 0.7)";
+        // Gridlines with decimal-aware Y-axis labels
+        ctx.strokeStyle = "rgba(226, 232, 240, 0.75)";
         ctx.lineWidth = 1;
         for (let i = 0; i <= 3; i++) {
             const y = padding.top + (plotH / 3) * i;
@@ -654,73 +821,248 @@ export class ExecutiveMetricModal {
             ctx.lineTo(w - padding.right, y);
             ctx.stroke();
 
-            const val = Math.round(maxVal - (maxVal / 3) * i);
+            const rawTick = maxVal - (maxVal / 3) * i;
+            let tickLabel = "";
+            if (unit === "g/day") {
+                tickLabel = rawTick === 0 ? "0" : rawTick.toFixed(2);
+            } else if (unit === "%") {
+                tickLabel = `${Math.round(rawTick)}%`;
+            } else {
+                tickLabel = String(Math.round(rawTick));
+            }
             ctx.fillStyle = "#94a3b8";
             ctx.font = "10px ui-monospace, monospace";
             ctx.textAlign = "right";
-            ctx.fillText(String(val), padding.left - 6, y + 3);
+            ctx.fillText(tickLabel, padding.left - 6, y + 3);
         }
 
         const stepX = plotW / timeline.length;
         const barW = Math.max(14, stepX * 0.52);
 
-        timeline.forEach((item, idx) => {
-            const x = padding.left + stepX * idx + (stepX - barW) / 2;
-            const barH = maxVal > 0 ? (item.value / maxVal) * plotH : 0;
-            const y = padding.top + (plotH - barH);
-
-            const isSelected = this.selectedMonth === item.monthKey;
-
-            // Bar background / fill
-            if (isSelected) {
-                ctx.fillStyle = "#0284c7"; // Primary selected blue
-            } else if (item.value > 0) {
-                ctx.fillStyle = "#38bdf8"; // Sky light
-            } else {
-                ctx.fillStyle = "#e2e8f0"; // Empty neutral
-            }
-
-            // Rounded top bar
-            const radius = Math.min(4, barW / 2);
+        const drawRoundedTopBar = (bx, by, bw, bh, fillStyle) => {
+            if (bh <= 0) return;
+            ctx.fillStyle = fillStyle;
+            const r = Math.min(4, bw / 2, bh / 2);
             ctx.beginPath();
-            ctx.moveTo(x, y + radius);
-            ctx.quadraticCurveTo(x, y, x + radius, y);
-            ctx.lineTo(x + barW - radius, y);
-            ctx.quadraticCurveTo(x + barW, y, x + barW, y + radius);
-            ctx.lineTo(x + barW, padding.top + plotH);
-            ctx.lineTo(x, padding.top + plotH);
+            ctx.moveTo(bx, by + r);
+            ctx.quadraticCurveTo(bx, by, bx + r, by);
+            ctx.lineTo(bx + bw - r, by);
+            ctx.quadraticCurveTo(bx + bw, by, bx + bw, by + r);
+            ctx.lineTo(bx + bw, padding.top + plotH);
+            ctx.lineTo(bx, padding.top + plotH);
             ctx.closePath();
             ctx.fill();
+        };
 
-            // Value label above bar
-            if (item.value > 0) {
-                ctx.fillStyle = isSelected ? "#0369a1" : "#475569";
-                ctx.font = isSelected ? "bold 10px sans-serif" : "9px sans-serif";
-                ctx.textAlign = "center";
-                let valText = String(item.value);
-                if (item.unit === "Days") valText = `${item.value}d`;
-                else if (item.unit === "g/day") valText = `${item.value}g/d`;
-                else if (item.unit === "%") valText = `${item.value}%`;
-                ctx.fillText(valText, x + barW / 2, Math.max(12, y - 5));
+        const formatBarVal = (val, itemUnit, compact = false) => {
+            if (itemUnit === "g/day") return compact ? Number(val).toFixed(2) : `${Number(val).toFixed(2)}g/d`;
+            if (itemUnit === "%") return `${Math.round(Number(val))}%`;
+            if (itemUnit === "Days") return `${val}d`;
+            return String(val);
+        };
+
+        timeline.forEach((item, idx) => {
+            const isSelected = this.selectedMonth === item.monthKey;
+            const isDualAll = Boolean(item.isDualSpecies && (!item.speciesFilter || item.speciesFilter === "ALL"));
+            const centerX = padding.left + stepX * idx + stepX / 2;
+
+            if (isDualAll) {
+                const groupW = Math.max(20, Math.min(46, stepX * 0.72));
+                const gap = Math.max(2, Math.round(groupW * 0.1));
+                const singleW = Math.max(8, Math.floor((groupW - gap) / 2));
+                const groupX = padding.left + stepX * idx + (stepX - (singleW * 2 + gap)) / 2;
+
+                const vanVal = Number(item.vanValue) || 0;
+                const monVal = Number(item.monValue) || 0;
+                const vanH = maxVal > 0 ? (vanVal / maxVal) * plotH : 0;
+                const monH = maxVal > 0 ? (monVal / maxVal) * plotH : 0;
+                const vanY = padding.top + (plotH - vanH);
+                const monY = padding.top + (plotH - monH);
+                const vanX = groupX;
+                const monX = groupX + singleW + gap;
+
+                if (isSelected) {
+                    ctx.fillStyle = "rgba(2, 132, 199, 0.08)";
+                    ctx.fillRect(padding.left + stepX * idx + 2, padding.top - 10, stepX - 4, plotH + 14);
+                }
+
+                if (vanVal <= 0 && monVal <= 0) {
+                    drawRoundedTopBar(vanX, padding.top + plotH - 3, singleW, 3, "#e2e8f0");
+                    drawRoundedTopBar(monX, padding.top + plotH - 3, singleW, 3, "#e2e8f0");
+                } else {
+                    if (vanVal > 0) {
+                        drawRoundedTopBar(vanX, vanY, singleW, Math.max(3, vanH), isSelected ? "#0369a1" : "#0284c7");
+                        ctx.fillStyle = isSelected ? "#0369a1" : "#0284c7";
+                        ctx.font = isSelected ? "bold 9px sans-serif" : "8.5px sans-serif";
+                        ctx.textAlign = "center";
+                        ctx.fillText(formatBarVal(vanVal, item.unit, true), vanX + singleW / 2, Math.max(12, vanY - 4));
+                    } else {
+                        drawRoundedTopBar(vanX, padding.top + plotH - 2, singleW, 2, "#e2e8f0");
+                    }
+
+                    if (monVal > 0) {
+                        drawRoundedTopBar(monX, monY, singleW, Math.max(3, monH), isSelected ? "#047857" : "#10b981");
+                        ctx.fillStyle = isSelected ? "#047857" : "#059669";
+                        ctx.font = isSelected ? "bold 9px sans-serif" : "8.5px sans-serif";
+                        ctx.textAlign = "center";
+                        ctx.fillText(formatBarVal(monVal, item.unit, true), monX + singleW / 2, Math.max(12, monY - 4));
+                    } else {
+                        drawRoundedTopBar(monX, padding.top + plotH - 2, singleW, 2, "#e2e8f0");
+                    }
+                }
+
+                // Risk indicator dot at top of group if module/month has red alerts or critical SR
+                if ((item.alertsCount > 0 || item.criticalCount > 0) && (item.chartMode === "ADG" || item.chartMode === "SR")) {
+                    const topBarY = Math.min(vanVal > 0 ? vanY : padding.top + plotH, monVal > 0 ? monY : padding.top + plotH);
+                    ctx.fillStyle = item.criticalCount > 0 ? "#ef4444" : "#f59e0b";
+                    ctx.beginPath();
+                    ctx.arc(centerX, Math.max(8, topBarY - 14), 3, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+
+                const midX = padding.left + stepX * idx + stepX / 2;
+                this.chartBarHitboxes.push({
+                    monthKey: item.monthKey,
+                    species: "VAN",
+                    x: padding.left + stepX * idx,
+                    y: padding.top,
+                    w: stepX / 2,
+                    h: plotH
+                });
+                this.chartBarHitboxes.push({
+                    monthKey: item.monthKey,
+                    species: "MON",
+                    x: midX,
+                    y: padding.top,
+                    w: stepX / 2,
+                    h: plotH
+                });
+                this.chartBarHitboxes.push({
+                    monthKey: item.monthKey,
+                    species: null,
+                    x: padding.left + stepX * idx,
+                    y: padding.top + plotH,
+                    w: stepX,
+                    h: padding.bottom
+                });
+            } else {
+                const x = padding.left + stepX * idx + (stepX - barW) / 2;
+                const barH = maxVal > 0 ? (item.value / maxVal) * plotH : 0;
+                const y = padding.top + (plotH - barH);
+
+                const isMonOnly = item.isDualSpecies && item.speciesFilter === "MON";
+                let fill = "#e2e8f0";
+                let labelColor = "#475569";
+
+                if (item.value > 0) {
+                    if (item.chartMode === "LAGGING") {
+                        fill = isSelected ? "#d97706" : "#f59e0b";
+                        labelColor = "#b45309";
+                    } else if (item.chartMode === "CRITICAL_SR" || item.chartMode === "ALERTS") {
+                        fill = isSelected ? "#b91c1c" : "#ef4444";
+                        labelColor = "#b91c1c";
+                    } else if (item.chartMode === "SR" && item.value < 60) {
+                        fill = isSelected ? "#b91c1c" : "#ef4444";
+                        labelColor = "#b91c1c";
+                    } else if (item.chartMode === "SR" && item.benchmarkVal && item.value < item.benchmarkVal) {
+                        fill = isSelected ? "#d97706" : "#f59e0b";
+                        labelColor = "#b45309";
+                    } else if (item.chartMode === "ADG" && item.benchmarkVal && item.value < item.benchmarkVal * 0.8) {
+                        fill = isSelected ? "#d97706" : "#f59e0b";
+                        labelColor = "#b45309";
+                    } else if (isSelected) {
+                        fill = isMonOnly ? "#047857" : "#0284c7";
+                        labelColor = isMonOnly ? "#047857" : "#0369a1";
+                    } else {
+                        fill = isMonOnly ? "#10b981" : "#38bdf8";
+                        labelColor = isMonOnly ? "#059669" : "#0369a1";
+                    }
+                }
+
+                drawRoundedTopBar(x, item.value > 0 ? y : (padding.top + plotH - 3), barW, item.value > 0 ? Math.max(3, barH) : 3, fill);
+
+                if (item.value > 0) {
+                    ctx.fillStyle = labelColor;
+                    ctx.font = isSelected ? "bold 10px sans-serif" : "9px sans-serif";
+                    ctx.textAlign = "center";
+                    ctx.fillText(formatBarVal(item.value, item.unit, false), x + barW / 2, Math.max(12, y - 5));
+                }
+
+                this.chartBarHitboxes.push({
+                    monthKey: item.monthKey,
+                    x: padding.left + stepX * idx,
+                    y: padding.top,
+                    w: stepX,
+                    h: plotH + padding.bottom
+                });
             }
 
             // Month / Module X-Axis Label
             const shortLabel = (item.monthKey && item.monthKey.startsWith("M"))
                 ? item.monthKey
                 : ((item.monthLabel || item.monthKey || "").split(" ")[0]);
-            ctx.fillStyle = isSelected ? "#0284c7" : "#64748b";
+            ctx.fillStyle = isSelected ? "#0284c7" : "#475569";
             ctx.font = isSelected ? "bold 10px sans-serif" : "9px sans-serif";
             ctx.textAlign = "center";
-            ctx.fillText(shortLabel, x + barW / 2, h - 14);
+            ctx.fillText(shortLabel, centerX, h - 18);
 
-            // Record Hitbox for click interaction (entire vertical column)
-            this.chartBarHitboxes.push({
-                monthKey: item.monthKey,
-                x: padding.left + stepX * idx,
-                y: padding.top,
-                w: stepX,
-                h: plotH + padding.bottom
-            });
+            // Sampled pond count pill below X-Axis label for BIOSECURITY
+            if (item.pondCount !== undefined && (chartMode === "ADG" || chartMode === "SR" || chartMode === "LAGGING" || chartMode === "CRITICAL_SR" || chartMode === "ALERTS")) {
+                ctx.fillStyle = item.pondCount > 0 ? "#64748b" : "#cbd5e1";
+                ctx.font = "8.5px ui-monospace, monospace";
+                ctx.textAlign = "center";
+                ctx.fillText(`n=${item.pondCount}`, centerX, h - 6);
+            }
         });
+
+        // Draw Benchmark Target & Farm Average Dashed Reference Lines (for ADG & SR modes)
+        if (benchmarkVal !== null && benchmarkVal > 0 && maxVal > 0) {
+            const benchY = padding.top + plotH - (benchmarkVal / maxVal) * plotH;
+            if (benchY >= padding.top - 4 && benchY <= padding.top + plotH) {
+                ctx.save();
+                ctx.setLineDash([5, 4]);
+                ctx.strokeStyle = "rgba(16, 185, 129, 0.85)";
+                ctx.lineWidth = 1.5;
+                ctx.beginPath();
+                ctx.moveTo(padding.left, benchY);
+                ctx.lineTo(w - padding.right, benchY);
+                ctx.stroke();
+
+                if (benchmarkLabel) {
+                    ctx.font = "bold 9px sans-serif";
+                    const textW = ctx.measureText(benchmarkLabel).width;
+                    ctx.fillStyle = "rgba(236, 253, 245, 0.92)";
+                    ctx.fillRect(w - padding.right - textW - 8, Math.max(2, benchY - 12), textW + 6, 11);
+                    ctx.fillStyle = "#047857";
+                    ctx.textAlign = "right";
+                    ctx.fillText(benchmarkLabel, w - padding.right - 5, Math.max(10, benchY - 4));
+                }
+                ctx.restore();
+            }
+        }
+
+        if (farmAvgVal !== null && farmAvgVal > 0 && maxVal > 0) {
+            const avgY = padding.top + plotH - (farmAvgVal / maxVal) * plotH;
+            if (avgY >= padding.top - 4 && avgY <= padding.top + plotH) {
+                ctx.save();
+                ctx.setLineDash([3, 3]);
+                ctx.strokeStyle = "rgba(245, 158, 11, 0.85)";
+                ctx.lineWidth = 1.25;
+                ctx.beginPath();
+                ctx.moveTo(padding.left, avgY);
+                ctx.lineTo(w - padding.right, avgY);
+                ctx.stroke();
+
+                const avgLabel = `Avg: ${formatBarVal(farmAvgVal, unit, false)}`;
+                ctx.font = "bold 9px sans-serif";
+                const textW = ctx.measureText(avgLabel).width;
+                ctx.fillStyle = "rgba(255, 251, 235, 0.92)";
+                ctx.fillRect(padding.left + 4, Math.max(2, avgY - 12), textW + 6, 11);
+                ctx.fillStyle = "#b45309";
+                ctx.textAlign = "left";
+                ctx.fillText(avgLabel, padding.left + 7, Math.max(10, avgY - 4));
+                ctx.restore();
+            }
+        }
     }
 }

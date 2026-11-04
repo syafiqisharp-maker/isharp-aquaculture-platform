@@ -12,7 +12,9 @@ export {
     getLatestSurvivalRate,
     calculateADG,
     getStandardABW,
-    getEffectiveBiomassGain
+    getEffectiveBiomassGain,
+    CULTURE_STAGE_DEFINITIONS,
+    getCultureStage
 } from "./biometrics/coreMetrics.js";
 
 export {

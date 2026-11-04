@@ -75,9 +75,9 @@ export function getFarmMapShellHtml() {
                     <div class="farm-filter-group" id="filter-group-stage">
                         <span class="farm-filter-label">Culture Stage:</span>
                         <button type="button" class="farm-filter-btn active" data-filter-type="stage" data-filter-val="ALL">All</button>
-                        <button type="button" class="farm-filter-btn" data-filter-type="stage" data-filter-val="EARLY">Early (&lt;30)</button>
-                        <button type="button" class="farm-filter-btn" data-filter-type="stage" data-filter-val="MID">Mid (30–70)</button>
-                        <button type="button" class="farm-filter-btn" data-filter-type="stage" data-filter-val="FINISHING">Finishing (&gt;70)</button>
+                        <button type="button" class="farm-filter-btn" data-filter-type="stage" data-filter-val="EARLY">Early</button>
+                        <button type="button" class="farm-filter-btn" data-filter-type="stage" data-filter-val="MID">Mid</button>
+                        <button type="button" class="farm-filter-btn" data-filter-type="stage" data-filter-val="FINISHING">Finishing</button>
                     </div>
                 </div>
             </div>

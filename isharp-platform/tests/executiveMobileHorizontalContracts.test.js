@@ -74,7 +74,7 @@ test("Executive Mobile Horizontal: Executive Biomass view markup includes exec-b
     );
 });
 
-test("Executive Mobile Horizontal: executiveTab.js touch scrolling", () => {
+test("Executive Mobile Horizontal: executiveTab.js touch scrolling & orientation toggle", () => {
     const tabPath = path.resolve(__dirname, "../src/modules/executive/executiveTab.js");
     const content = fs.readFileSync(tabPath, "utf-8");
 
@@ -89,6 +89,43 @@ test("Executive Mobile Horizontal: executiveTab.js touch scrolling", () => {
     assert.ok(
         content.includes("initMobileTouchScroll"),
         "executiveTab.js must initialize mobile touch scroll handler"
+    );
+    assert.ok(
+        content.includes('id="btn-exec-rotate-view"'),
+        "executiveTab.js must include #btn-exec-rotate-view button for switching between Landscape and Portrait"
+    );
+    assert.ok(
+        content.includes("toggleMobileOrientation"),
+        "executiveTab.js must define toggleMobileOrientation method"
+    );
+    assert.ok(
+        content.includes("mobile-portrait-mode"),
+        "executiveTab.js must toggle mobile-portrait-mode class"
+    );
+});
+
+test("Executive Mobile Horizontal: Portrait mode override rules in CSS and PondGridMap", () => {
+    const cssPath = path.resolve(__dirname, "../src/styles/components/executive-mobile-landscape.css");
+    const cssContent = fs.readFileSync(cssPath, "utf-8");
+
+    assert.ok(
+        cssContent.includes(".btn-exec-rotate-view"),
+        "executive-mobile-landscape.css must style .btn-exec-rotate-view"
+    );
+    assert.ok(
+        cssContent.includes(":not(.mobile-portrait-mode)"),
+        "executive-mobile-landscape.css must scope 270deg virtual landscape rotation to :not(.mobile-portrait-mode)"
+    );
+    assert.ok(
+        cssContent.includes("#view-executive.active-view.mobile-portrait-mode"),
+        "executive-mobile-landscape.css must define upright portrait rules for .mobile-portrait-mode"
+    );
+
+    const gridMapPath = path.resolve(__dirname, "../src/modules/executive/PondGridMap.js");
+    const gridMapContent = fs.readFileSync(gridMapPath, "utf-8");
+    assert.ok(
+        gridMapContent.includes("mobile-portrait-mode"),
+        "PondGridMap.js must bypass 270deg touch scroll remapping when mobile-portrait-mode is active"
     );
 });
 

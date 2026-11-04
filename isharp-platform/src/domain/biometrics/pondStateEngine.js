@@ -6,7 +6,7 @@
  */
 
 import { isCycleClosed } from "../rollover.js";
-import { calculateDOC } from "./coreMetrics.js";
+import { calculateDOC, getCultureStage } from "./coreMetrics.js";
 
 export function getOperationalPondState(cycle, referenceDate = new Date()) {
     if (!cycle) {
@@ -220,7 +220,7 @@ export function resolveHybridPondState(pondCode, cycle, dailyRecord, pondIssues 
             speciesBadgeClass: "sp-new",
             health: "GREEN",
             healthDescription: "Newly Stocked (Daily Tracker) — Pending Friday DBMS Sync",
-            stageCode: doc > 70 ? "FINISHING" : (doc >= 30 ? "MID" : "EARLY"),
+            stageCode: getCultureStage(doc, dailyRecord.species || "VAN").stageCode,
             cssClass: "risk-green",
             progressState: "CULTURE",
             progressLabel: "Culture",
@@ -263,9 +263,7 @@ export function resolveHybridPondState(pondCode, cycle, dailyRecord, pondIssues 
     }
 
     if (opState.isStocked) {
-        let stageCode = "EARLY";
-        if (opState.doc >= 30 && opState.doc <= 70) stageCode = "MID";
-        else if (opState.doc > 70) stageCode = "FINISHING";
+        const { stageCode } = getCultureStage(opState.doc, opState.speciesLabel);
 
         let health = "GREEN";
         let healthDesc = "Clean Biosecurity";

@@ -8,7 +8,9 @@ import {
     getStandardABW,
     getEffectiveBiomassGain,
     getLatestSurvivalRate,
-    getOperationalPondState
+    getOperationalPondState,
+    getCultureStage,
+    CULTURE_STAGE_DEFINITIONS
 } from '../src/domain/biometrics.js';
 import { 
     calculateTotalActiveHP, 
@@ -410,6 +412,84 @@ test('Domain: getOperationalPondState (Operational Status SSOT)', async (t) => {
         assert.equal(res.isClosed, true);
         assert.equal(res.isProduction, false);
         assert.equal(res.statusLabel, 'CLOSE');
+    });
+});
+
+test('Domain: getCultureStage & CULTURE_STAGE_DEFINITIONS (Species SSOT)', async (t) => {
+    await t.test('verifies Vannamei (VAN) culture stages and extended thresholds', () => {
+        // Early (< 30d)
+        const early0 = getCultureStage(0, 'VAN');
+        assert.equal(early0.stageCode, 'EARLY');
+        assert.equal(early0.isFinishing, false);
+        assert.equal(early0.isExtended, false);
+
+        const early29 = getCultureStage(29, 'VAN');
+        assert.equal(early29.stageCode, 'EARLY');
+
+        // Mid (30–60d)
+        const mid30 = getCultureStage(30, 'VAN');
+        assert.equal(mid30.stageCode, 'MID');
+        assert.equal(mid30.isFinishing, false);
+        assert.equal(mid30.isExtended, false);
+
+        const mid60 = getCultureStage(60, 'VAN');
+        assert.equal(mid60.stageCode, 'MID');
+
+        // Finishing (> 60d)
+        const fin61 = getCultureStage(61, 'VAN');
+        assert.equal(fin61.stageCode, 'FINISHING');
+        assert.equal(fin61.isFinishing, true);
+        assert.equal(fin61.isExtended, false);
+
+        const fin90 = getCultureStage(90, 'VAN');
+        assert.equal(fin90.stageCode, 'FINISHING');
+        assert.equal(fin90.isFinishing, true);
+        assert.equal(fin90.isExtended, false);
+
+        // Extended (> 90d)
+        const ext91 = getCultureStage(91, 'VAN');
+        assert.equal(ext91.stageCode, 'FINISHING');
+        assert.equal(ext91.isFinishing, true);
+        assert.equal(ext91.isExtended, true);
+        assert.ok(ext91.stageLabel.includes('Extended'));
+    });
+
+    await t.test('verifies Monodon (MON) culture stages and extended thresholds', () => {
+        // Early (< 50d)
+        const early0 = getCultureStage(0, 'MON');
+        assert.equal(early0.stageCode, 'EARLY');
+        assert.equal(early0.isFinishing, false);
+        assert.equal(early0.isExtended, false);
+
+        const early49 = getCultureStage(49, 'MON');
+        assert.equal(early49.stageCode, 'EARLY');
+
+        // Mid (50–90d)
+        const mid50 = getCultureStage(50, 'MON');
+        assert.equal(mid50.stageCode, 'MID');
+        assert.equal(mid50.isFinishing, false);
+        assert.equal(mid50.isExtended, false);
+
+        const mid90 = getCultureStage(90, 'MON');
+        assert.equal(mid90.stageCode, 'MID');
+
+        // Finishing (> 90d)
+        const fin91 = getCultureStage(91, 'MON');
+        assert.equal(fin91.stageCode, 'FINISHING');
+        assert.equal(fin91.isFinishing, true);
+        assert.equal(fin91.isExtended, false);
+
+        const fin120 = getCultureStage(120, 'MON');
+        assert.equal(fin120.stageCode, 'FINISHING');
+        assert.equal(fin120.isFinishing, true);
+        assert.equal(fin120.isExtended, false);
+
+        // Extended (> 120d)
+        const ext121 = getCultureStage(121, 'MON');
+        assert.equal(ext121.stageCode, 'FINISHING');
+        assert.equal(ext121.isFinishing, true);
+        assert.equal(ext121.isExtended, true);
+        assert.ok(ext121.stageLabel.includes('Extended'));
     });
 });
 

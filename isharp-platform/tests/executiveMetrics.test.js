@@ -112,6 +112,105 @@ describe("ExecutiveMetricsPresenter: Stocking Aggregation", () => {
         assert.equal(octBucket.vanMillion, 2.5);
         assert.equal(octBucket.monMillion, 1.0);
     });
+
+    test("reconciles mid-week Daily Excel stocked ponds with weekly Supabase DBMS stocking batches without double counting", () => {
+        const refDate = new Date(2026, 10, 4); // Nov 4, 2026
+        const mockStockingBatches = [
+            // Pond 01.01.01 Cycle 40 stocked in Oct 2026 with 2 batches (1.2M + 1.3M = 2.5M VAN)
+            { pond_index: "2010101.40", stck_date: "2026-10-10", stck_pcs: 1200000, stck_allow: 50000, stck_total: 1250000, stck_species: "P. VANNAMEI", stck_source: "Blue Hatchery", stck_tank: "T1", stck_size: 10 },
+            { pond_index: "2010101.40", stck_date: "2026-10-10", stck_pcs: 1300000, stck_allow: 50000, stck_total: 1350000, stck_species: "P. VANNAMEI", stck_source: "Blue Hatchery", stck_tank: "T2", stck_size: 10 },
+            // Pond 02.04.01 Cycle 41 stocked in Oct 2026 with 1.0M MON
+            { pond_index: "2020401.41", stck_date: "2026-10-20", stck_pcs: 1000000, stck_allow: 40000, stck_total: 1040000, stck_species: "P. MONODON", stck_source: "Mon Hatchery", stck_tank: "M1", stck_size: 12 }
+        ];
+        const mockDailyProgress = [
+            // Pond 01.01.01 already in Supabase DBMS (must NOT be double counted)
+            { pond: "01.01.01", progress_state: "CULTURE", status_code: "Opr", stocking_date: "2026-10-10", raw_template_status: "CULTURE VAN" },
+            // Pond 03.06.05 newly stocked mid-week on Nov 2, 2026 (MON) -> NOT yet in pond_stocking_batches
+            { pond: "03.06.05", progress_state: "CULTURE", status_code: "Opr", stocking_date: "2026-11-02", map_code: "MON", raw_template_status: "CULTURE MON" },
+            // Pond 09.17.02 newly stocked mid-week on Nov 3, 2026 (VAN) -> NOT yet in pond_stocking_batches
+            { pond: "09.17.02", progress_state: "CULTURE", status_code: "Opr", stocking_date: "2026-11-03", map_code: "VAN", raw_template_status: "CULTURE VAN" },
+            // Pond 04.08.01 is IDLE (not CULTURE), so its old stocking_date must be ignored
+            { pond: "04.08.01", progress_state: "IDLE", status_code: "Hv", stocking_date: "2026-08-01" }
+        ];
+        const mockOpCycles = [
+            { pond_index: "2010101.40", pond: "01.01.01", modl: "Module 01", cycle_no: 40, stck_date: "2026-10-10", stck_species: "P. VANNAMEI" },
+            { pond_index: "2020401.41", pond: "02.04.01", modl: "Module 02", cycle_no: 41, stck_date: "2026-10-20", stck_species: "P. MONODON" }
+        ];
+
+        const agg = ExecutiveMetricsPresenter.aggregateMonthlyStocking(
+            mockStockingBatches,
+            refDate,
+            mockDailyProgress,
+            mockOpCycles
+        );
+
+        // Oct 2026: 3.5M fry across 2 distinct pond cycles (01.01.01 & 02.04.01), 0 pending daily Excel
+        const octBucket = agg.buckets.find(b => b.monthKey === "2026-10");
+        assert.equal(octBucket.millionPcs, 3.5);
+        assert.equal(octBucket.pondCount, 2);
+        assert.equal(octBucket.vanPondCount, 1);
+        assert.equal(octBucket.monPondCount, 1);
+        assert.equal(octBucket.pendingSyncCount, 0);
+
+        // Nov 2026 (MTD): 0M synced fry, but 2 mid-week stocked ponds from Daily Excel (1 VAN + 1 MON)
+        assert.equal(agg.mtdMillion, 0);
+        assert.equal(agg.mtdPonds, 2);
+        assert.equal(agg.mtdVanPonds, 1);
+        assert.equal(agg.mtdMonPonds, 1);
+        assert.equal(agg.mtdPendingPonds, 2);
+
+        // YTD (2026): 3.5M fry (2.5M VAN + 1.0M MON), 4 stocked pond cycles (2 VAN + 2 MON), 5 total batches
+        assert.equal(agg.ytdMillion, 3.5);
+        assert.equal(agg.ytdVanMillion, 2.5);
+        assert.equal(agg.ytdMonMillion, 1.0);
+        assert.equal(agg.ytdPonds, 4);
+        assert.equal(agg.ytdVanPonds, 2);
+        assert.equal(agg.ytdMonPonds, 2);
+        assert.equal(agg.ytdBatches, 5);
+
+        // Verify DrillDown ViewModel for STOCKING
+        const bundle = {
+            stockingBatches: mockStockingBatches,
+            dailyProgress: mockDailyProgress,
+            operationalCycles: mockOpCycles
+        };
+
+        const vmStock = ExecutiveMetricsPresenter.getMetricDrillDownData(
+            METRIC_TYPES.STOCKING,
+            bundle,
+            "2026-11",
+            "",
+            { stockingChartMode: "PONDS", referenceDate: refDate }
+        );
+
+        assert.equal(vmStock.tableHeaders[0], "Pond Name");
+        assert.equal(vmStock.tableHeaders.length, 11);
+        assert.equal(vmStock.csvHeaders[1], "Pond Name");
+        assert.equal(vmStock.tableRows.length, 2);
+        assert.equal(vmStock.tableRows[0][0], "09.17.02");
+        assert.equal(vmStock.tableRows[0][6], "DAILY EXCEL (PENDING SYNC)");
+        assert.equal(vmStock.tableRows[0][8], "Pending DBMS Sync");
+
+        // Verify 4 Hero KPI Cards mirror Total Farm Harvest Intelligence
+        assert.equal(vmStock.summaryBadges.length, 4);
+        assert.equal(vmStock.summaryBadges[0].label, "YTD Stocking (Fry & Ponds)");
+        assert.equal(vmStock.summaryBadges[0].value, "3.50 M • 4 Ponds");
+        assert.equal(vmStock.summaryBadges[0].sub, "Calendar YTD");
+        assert.ok(vmStock.summaryBadges[1].label.startsWith("MTD Stocking"));
+        assert.equal(vmStock.summaryBadges[2].label, "Vannamei (VAN) Stocking YTD");
+        assert.equal(vmStock.summaryBadges[2].value, "2.50 M • 2 Ponds");
+        assert.equal(vmStock.summaryBadges[3].label, "Monodon (MON) Stocking YTD");
+        assert.equal(vmStock.summaryBadges[3].value, "1.00 M • 2 Ponds");
+
+        // Verify Dual-Bar Timeline Point for Nov 2026 in PONDS mode
+        const novPoint = vmStock.timeline.find(t => t.monthKey === "2026-11");
+        assert.ok(novPoint);
+        assert.equal(novPoint.isDualSpecies, true);
+        assert.equal(novPoint.value, 2);
+        assert.equal(novPoint.vanValue, 1);
+        assert.equal(novPoint.monValue, 1);
+        assert.equal(novPoint.unit, "Ponds");
+    });
 });
 
 describe("ExecutiveMetricsPresenter: Species Composition", () => {
@@ -168,14 +267,23 @@ describe("ExecutiveMetricsPresenter: DOC Composition", () => {
         assert.equal(res.van.midPct, 50);
         assert.equal(res.van.finishingPct, 25);
 
-        // MON (2 ponds): 80, 120 -> sum = 200, avg = 100
+        // MON (2 ponds): 80 (Mid: 50–90d), 120 (Finishing: >90d) -> sum = 200, avg = 100
         assert.equal(res.mon.count, 2);
-        assert.equal(res.mon.finishing, 2);
+        assert.equal(res.mon.early, 0);
+        assert.equal(res.mon.mid, 1);
+        assert.equal(res.mon.finishing, 1);
         assert.equal(res.mon.avgDoc, 100);
-        assert.equal(res.mon.finishingPct, 100);
+        assert.equal(res.mon.midPct, 50);
+        assert.equal(res.mon.finishingPct, 50);
 
         // Overall: Farm Total DOC = 420 / 6 = 70
         assert.equal(res.overall.avgDoc, 70);
+        assert.equal(res.overall.early, 1);
+        assert.equal(res.overall.mid, 3);
+        assert.equal(res.overall.finishing, 2);
+        assert.equal(res.overall.earlyPct, 17);
+        assert.equal(res.overall.midPct, 50);
+        assert.equal(res.overall.finishingPct, 33);
     });
 });
 
@@ -191,7 +299,10 @@ describe("ExecutiveMetricsPresenter: DrillDown ViewModel & CSV Data", () => {
         const vmAll = ExecutiveMetricsPresenter.getMetricDrillDownData(METRIC_TYPES.HARVEST, bundle, "ALL", "");
         assert.equal(vmAll.title, "Total Farm Harvest Intelligence");
         assert.equal(vmAll.tableRows.length, 2);
-        assert.equal(vmAll.csvHeaders.length, 9);
+        assert.equal(vmAll.tableHeaders.length, 11);
+        assert.equal(vmAll.tableHeaders[0], "Pond Name");
+        assert.equal(vmAll.csvHeaders.length, 12);
+        assert.equal(vmAll.csvHeaders[1], "Pond Name");
         assert.equal(vmAll.csvRows.length, 2);
 
         // Filter to October 2026
@@ -205,6 +316,107 @@ describe("ExecutiveMetricsPresenter: DrillDown ViewModel & CSV Data", () => {
         assert.equal(vmSearch.tableRows[0][0], "01.01.02");
     });
 
+    test("reconciles mid-week Daily Excel harvests with weekly Supabase DBMS harvests without double counting", () => {
+        const refDate = new Date(2026, 10, 4); // Nov 4, 2026
+        const mockDailyHarvests = [
+            // Pond 01.01.01 Cycle 38 harvested in March 2026
+            { pond_index: "2010101.38", harv_date: "2026-03-15", harv_weight: 4000, harv_status: "FINAL", harv_abw: 20, harv_revenue: 44000 },
+            // Pond 01.01.01 Cycle 39 harvested twice in Oct (1 partial + 1 final) -> counts as 1 cycle in Oct, but 2 total cycles for 01.01.01 in 2026 YTD
+            { pond_index: "2010101.39", harv_date: "2026-10-10", harv_weight: 3000, harv_status: "PARTIAL", harv_abw: 18, harv_revenue: 30000 },
+            { pond_index: "2010101.39", harv_date: "2026-10-25", harv_weight: 5000, harv_status: "FINAL", harv_abw: 21, harv_revenue: 55000 },
+            // Pond 02.03.04 Cycle 40 harvested in Oct
+            { pond_index: "2020304.40", harv_date: "2026-10-28", harv_weight: 6000, harv_status: "FINAL", harv_abw: 22, harv_revenue: 66000 }
+        ];
+
+        const mockDailyProgress = [
+            // Already in Supabase DBMS (Oct 28) -> must NOT be duplicated
+            { pond: "02.03.04", status_code: "Hv", progress_state: "IDLE", last_harvest_date: "2026-10-28" },
+            // Mid-week harvested in Nov 2026 (only in Daily Excel, not yet in Supabase DBMS)
+            { pond: "09.18.12", status_code: "Hv", progress_state: "IDLE", last_harvest_date: "2026-11-03" },
+            { pond: "03.06.05", status_code: "Hv", progress_state: "IDLE", last_harvest_date: "2026-11-03" },
+            // Already re-stocked into active CULTURE -> must NOT be counted as pending harvest
+            { pond: "05.09.01", status_code: "C", progress_state: "CULTURE", last_harvest_date: "2026-08-10" }
+        ];
+
+        const mockOpCycles = [
+            { pond_index: "2091812.41", pond: "09.18.12", modl: "Module 09", stck_date: "2026-08-27", stck_species: "P. VANNAMEI", pond_status: "PRODUCTION" },
+            { pond_index: "2030605.42", pond: "03.06.05", modl: "Module 03", stck_date: "2026-08-24", stck_species: "P. MONODON", pond_status: "PRODUCTION" },
+            { pond_index: "2020304.40", pond: "02.03.04", modl: "Module 02", stck_date: "2026-07-15", stck_species: "P. VANNAMEI", date_close: "2026-10-28", pond_status: "IDLE" }
+        ];
+
+        const agg = ExecutiveMetricsPresenter.aggregateMonthlyHarvest(
+            mockDailyHarvests,
+            [],
+            refDate,
+            mockDailyProgress,
+            mockOpCycles
+        );
+
+        // MTD (Nov 2026): 0.0 MT from DBMS, but 2 mid-week harvested ponds from Daily Excel!
+        assert.equal(agg.mtdTonnage, 0);
+        assert.equal(agg.mtdPonds, 2);
+        assert.equal(agg.mtdPendingPonds, 2);
+
+        // YTD (2026): Mar (4 MT, 1 cycle) + Oct (8 + 6 = 14 MT, 2 cycles) + Nov (0 MT, 2 cycles) = 18 MT, 5 harvested pond cycles
+        assert.equal(agg.ytdTonnage, 18);
+        assert.equal(agg.ytdPonds, 5);
+        assert.equal(agg.ytdPartialCount, 1);
+        assert.equal(agg.ytdPendingPonds, 2);
+        assert.equal(agg.pendingSyncTotal, 2);
+
+        // Check DrillDown ViewModel in TONNAGE vs PONDS chart mode
+        const bundle = {
+            dailyHarvests: mockDailyHarvests,
+            dailyProgress: mockDailyProgress,
+            operationalCycles: mockOpCycles
+        };
+
+        const vmPonds = ExecutiveMetricsPresenter.getMetricDrillDownData(
+            METRIC_TYPES.HARVEST,
+            bundle,
+            "2026-11",
+            "",
+            { harvestChartMode: "PONDS", referenceDate: refDate }
+        );
+        assert.equal(vmPonds.tableRows.length, 2);
+        assert.equal(vmPonds.countDisplay, "2 harvested ponds");
+        assert.equal(vmPonds.tableRows[0][0], "03.06.05");
+        assert.equal(vmPonds.tableRows[0][5], "HARVESTED (MID-WEEK)");
+        assert.equal(vmPonds.tableRows[0][6], "DAILY EXCEL (PENDING SYNC)");
+        assert.equal(vmPonds.tableRows[0][7], "Pending DBMS Sync");
+
+        const novTimelinePoint = vmPonds.timeline.find(t => t.monthKey === "2026-11");
+        assert.ok(novTimelinePoint);
+        assert.equal(novTimelinePoint.value, 2);
+        assert.equal(novTimelinePoint.vanValue, 1);
+        assert.equal(novTimelinePoint.monValue, 1);
+        assert.equal(novTimelinePoint.isDualSpecies, true);
+        assert.equal(novTimelinePoint.unit, "Ponds");
+
+        // Verify Hero Cards: YTD, MTD, Vannamei (VAN) Harvest YTD, Monodon (MON) Harvest YTD (no 12M Rolling or Mid-Week Daily Excel hero card)
+        assert.equal(vmPonds.summaryBadges.length, 4);
+        assert.equal(vmPonds.summaryBadges[0].label, "YTD Harvest (Biomass & Ponds)");
+        assert.equal(vmPonds.summaryBadges[0].value, "18.0 MT • 5 Ponds");
+        assert.equal(vmPonds.summaryBadges[0].sub, "Calendar YTD • 1 Partial Harvests");
+        assert.ok(vmPonds.summaryBadges[1].label.startsWith("MTD Harvest"));
+        assert.equal(vmPonds.summaryBadges[2].label, "Vannamei (VAN) Harvest YTD");
+        assert.equal(vmPonds.summaryBadges[2].value, "18.0 MT • 4 Ponds");
+        assert.equal(vmPonds.summaryBadges[3].label, "Monodon (MON) Harvest YTD");
+        assert.equal(vmPonds.summaryBadges[3].value, "0.0 MT • 1 Ponds");
+
+        // Verify species filtering on table & timeline when harvestSpecies = 'MON'
+        const vmMonOnly = ExecutiveMetricsPresenter.getMetricDrillDownData(
+            METRIC_TYPES.HARVEST,
+            bundle,
+            "2026-11",
+            "",
+            { harvestChartMode: "PONDS", harvestSpecies: "MON", referenceDate: refDate }
+        );
+        assert.equal(vmMonOnly.tableRows.length, 1);
+        assert.equal(vmMonOnly.tableRows[0][0], "03.06.05");
+        assert.equal(vmMonOnly.tableRows[0][4], "MON");
+    });
+
     test("builds valid drilldown model for STOCKING", () => {
         const bundle = {
             stockingBatches: [
@@ -214,25 +426,104 @@ describe("ExecutiveMetricsPresenter: DrillDown ViewModel & CSV Data", () => {
 
         const vm = ExecutiveMetricsPresenter.getMetricDrillDownData(METRIC_TYPES.STOCKING, bundle, "ALL", "");
         assert.equal(vm.title, "Total Post-Larvae & Fry Stocking");
+        assert.equal(vm.tableHeaders[0], "Pond Name");
         assert.equal(vm.tableRows.length, 1);
-        assert.equal(vm.tableRows[0][0], "2010101.40");
+        assert.equal(vm.tableRows[0][0], "01.01.01");
+        assert.equal(vm.tableRows[0][1], "40");
         assert.equal(vm.csvRows.length, 1);
     });
 
-    test("builds valid drilldown model for SPECIES_COMP and DOC_COMP", () => {
+    test("builds valid drilldown model for SPECIES_COMP (YTD-only, zero pond table, visual BI analytics) and DOC_COMP", () => {
+        const refDate = new Date("2026-11-04T10:00:00Z");
         const bundle = {
             activePonds: [
-                { pondCode: "01.01.01", pondIndex: "2010101.39", speciesLabel: "VAN", speciesCode: "VAN", isActive: true, doc: 45, stageCode: "MID", health: "GREEN", progressState: "CULTURE" }
+                { pondCode: "01.01.01", pondIndex: "2010101.40", speciesLabel: "VAN", speciesCode: "VAN", isActive: true, doc: 45, stageCode: "MID", health: "GREEN", progressState: "CULTURE" },
+                { pondCode: "05.09.01", pondIndex: "2050901.41", speciesLabel: "MON", speciesCode: "MON", isActive: true, doc: 60, stageCode: "MID", health: "GREEN", progressState: "CULTURE" }
+            ],
+            stockingBatches: [
+                // 2026 YTD VAN batch (SHT hatchery)
+                { pond_index: "2010101.40", stck_date: "2026-09-15", stck_species: "VAN", stck_source: "SHT", stck_pcs: 450000, stck_size: 15 },
+                // 2026 YTD MON batch (KSK hatchery)
+                { pond_index: "2050901.41", stck_date: "2026-10-05", stck_species: "MON", stck_source: "KSK", stck_pcs: 200000, stck_size: 18 },
+                // 2025 batch (should be strictly excluded from 2026 Calendar YTD!)
+                { pond_index: "2010101.39", stck_date: "2025-12-10", stck_species: "VAN", stck_source: "OLD_2025", stck_pcs: 500000, stck_size: 12 }
+            ],
+            operationalCycles: [
+                { pond_index: "2010101.40", pond: "01.01.01", modl: "01", pond_status: "PRODUCTION", stck_date: "2026-09-15", stck_species: "P. VANNAMEI", stck_source: "SHT", bs_line: "Syaqua", stck_size: 15, stck_pcs: 450000 },
+                { pond_index: "2050901.41", pond: "05.09.01", modl: "05", pond_status: "PRODUCTION", stck_date: "2026-10-05", stck_species: "P. MONODON", stck_source: "KSK", bs_line: "CP THAI", stck_size: 18, stck_pcs: 200000 },
+                // Closed/Harvested VAN cycle in 2026 (SHT hatchery)
+                { pond_index: "2010102.39", pond: "01.01.02", modl: "01", pond_status: "CLOSE", stck_date: "2026-04-01", date_close: "2026-07-10", stck_species: "P. VANNAMEI", stck_source: "SHT", bs_line: "Syaqua", stck_size: 14, stck_pcs: 400000 }
+            ],
+            dailyHarvests: [
+                // 6,000 kg at 20g ABW = 300,000 pcs harvested out of 400,000 stocked -> 75.0% SR; 100d DOC -> 0.20 g/d ADG
+                { pond_index: "2010102.39", harv_date: "2026-07-10", harv_status: "TERMINATION", harv_weight: 6000, harv_abw: 20 }
             ]
         };
 
-        const vmSp = ExecutiveMetricsPresenter.getMetricDrillDownData(METRIC_TYPES.SPECIES_COMP, bundle, "ALL", "");
-        assert.equal(vmSp.title, "Species Composition & Allocation Dynamics");
-        assert.equal(vmSp.tableRows.length, 1);
+        const vmSp = ExecutiveMetricsPresenter.getMetricDrillDownData(
+            METRIC_TYPES.SPECIES_COMP,
+            bundle,
+            "ALL",
+            "",
+            { referenceDate: refDate, speciesCompScope: "YTD", speciesCompMode: "PONDS" }
+        );
+        assert.equal(vmSp.title, "Species Composition, Hatchery Portfolio & Allocation");
+        assert.equal(vmSp.hideDataTable, true);
+        assert.equal(vmSp.tableRows.length, 0);
+        assert.ok(vmSp.visualAnalytics);
+
+        // Verify strictly 2026 YTD months only (no 2025 months)
+        assert.ok(vmSp.timeline.every(t => t.monthKey.startsWith("2026-")));
+        assert.equal(vmSp.visualAnalytics.vanTotalPonds, 2);
+        assert.equal(vmSp.visualAnalytics.monTotalPonds, 1);
+        assert.equal(vmSp.visualAnalytics.vanHatcheries.length, 1);
+        assert.equal(vmSp.visualAnalytics.vanHatcheries[0].source, "SHT");
+        assert.equal(vmSp.visualAnalytics.monHatcheries.length, 1);
+        assert.equal(vmSp.visualAnalytics.monHatcheries[0].source, "KSK");
+        assert.equal(vmSp.visualAnalytics.vanGeneticLines[0].line, "SYAQUA");
+        assert.equal(vmSp.visualAnalytics.monGeneticLines[0].line, "CP THAI");
+        assert.equal(vmSp.visualAnalytics.vanHarvestPerf.length, 1);
+        assert.equal(vmSp.visualAnalytics.vanHarvestPerf[0].source, "SHT");
+        assert.equal(vmSp.visualAnalytics.vanHarvestPerf[0].harvestedPonds, 1);
+        assert.equal(vmSp.visualAnalytics.vanHarvestPerf[0].avgSr, 75.0);
+        assert.equal(vmSp.visualAnalytics.vanHarvestPerf[0].avgAdg, 0.20);
+        assert.equal(vmSp.csvRows.length, 5); // 2 hatcheries + 2 genetic lines + 1 harvested perf row
 
         const vmDoc = ExecutiveMetricsPresenter.getMetricDrillDownData(METRIC_TYPES.DOC_COMP, bundle, "ALL", "");
         assert.equal(vmDoc.title, "DOC & Culture Stage Composition by Species");
-        assert.equal(vmDoc.tableRows.length, 1);
+        assert.equal(vmDoc.tableRows.length, 2);
+        assert.ok(vmDoc.visualAnalytics, "DOC drilldown should produce visualAnalytics bundle");
+        assert.equal(vmDoc.visualAnalytics.overallStats.count, 2);
+        assert.equal(vmDoc.visualAnalytics.overallStats.avgDoc, 53);
+        assert.equal(vmDoc.visualAnalytics.vanStats.count, 1);
+        assert.equal(vmDoc.visualAnalytics.monStats.count, 1);
+        assert.equal(vmDoc.timeline.length, 12, "Should produce 12 10-day age cohort buckets");
+        assert.equal(vmDoc.summaryBadges.length, 4);
+        assert.equal(vmDoc.summaryBadges[1].label, "Finishing Stage");
+
+        // Test filtering by species: VAN only
+        const vmDocVan = ExecutiveMetricsPresenter.getMetricDrillDownData(METRIC_TYPES.DOC_COMP, bundle, "ALL", "", { docSpeciesFilter: "VAN" });
+        assert.equal(vmDocVan.tableRows.length, 1);
+        assert.equal(vmDocVan.tableRows[0][0], "01.01.01");
+        assert.equal(vmDocVan.summaryBadges[0].label, "VAN Crop Age Profile");
+        assert.ok(vmDocVan.summaryBadges[0].value.includes("Avg 45d"));
+        assert.equal(vmDocVan.summaryBadges[1].label, "VAN Finishing Stage (>60d)");
+        assert.ok(vmDocVan.subtitle.includes("Vannamei (VAN)"));
+
+        // Test filtering by species: MON only
+        const vmDocMon = ExecutiveMetricsPresenter.getMetricDrillDownData(METRIC_TYPES.DOC_COMP, bundle, "ALL", "", { docSpeciesFilter: "MON" });
+        assert.equal(vmDocMon.tableRows.length, 1);
+        assert.equal(vmDocMon.tableRows[0][0], "05.09.01");
+        assert.equal(vmDocMon.summaryBadges[0].label, "MON Crop Age Profile");
+        assert.ok(vmDocMon.summaryBadges[0].value.includes("Avg 60d"));
+        assert.equal(vmDocMon.summaryBadges[1].label, "MON Finishing Stage (>90d)");
+        assert.ok(vmDocMon.subtitle.includes("Monodon (MON)"));
+
+        // Test filtering by stage: EARLY (none in bundle) vs MID (2 in bundle)
+        const vmDocEarly = ExecutiveMetricsPresenter.getMetricDrillDownData(METRIC_TYPES.DOC_COMP, bundle, "ALL", "", { docStageFilter: "EARLY" });
+        assert.equal(vmDocEarly.tableRows.length, 0);
+        const vmDocMid = ExecutiveMetricsPresenter.getMetricDrillDownData(METRIC_TYPES.DOC_COMP, bundle, "ALL", "", { docStageFilter: "MID" });
+        assert.equal(vmDocMid.tableRows.length, 2);
     });
 });
 
@@ -692,6 +983,25 @@ describe("ExecutiveMetricsPresenter: Shrimp Health, Growth & Survival Performanc
         // Critical ponds: Pond 10201 has SR 55% (<60%) AND RED issue
         assert.equal(agg.totalCritical, 1);
         assert.equal(agg.vanCritical, 1);
+
+        // Verify Dual-Species Bucket Properties (VAN vs MON, Benchmark, Farm Avg, Sampled Counts)
+        const m01Bucket = agg.buckets.find(b => b.monthKey === "M01");
+        const m02Bucket = agg.buckets.find(b => b.monthKey === "M02");
+        assert.ok(m01Bucket);
+        assert.equal(m01Bucket.isDualSpecies, true);
+        assert.equal(m01Bucket.vanValue, 0.15);
+        assert.equal(m01Bucket.monValue, 0);
+        assert.equal(m01Bucket.pondCount, 2);
+        assert.equal(m01Bucket.vanPondCount, 2);
+        assert.equal(m01Bucket.monPondCount, 0);
+        assert.equal(m01Bucket.benchmarkVal, 0.25);
+        assert.equal(m01Bucket.farmAvgVal, 0.15);
+
+        assert.ok(m02Bucket);
+        assert.equal(m02Bucket.vanValue, 0);
+        assert.equal(m02Bucket.monValue, 0.16);
+        assert.equal(m02Bucket.pondCount, 1);
+        assert.equal(m02Bucket.monPondCount, 1);
     });
 
     test("speciesFilter correctly narrows pool to VAN or MON only", () => {
@@ -862,6 +1172,10 @@ describe("ExecutiveMetricsPresenter: Shrimp Health, Growth & Survival Performanc
         assert.equal(juneBucket.pondCount, 2);
         assert.equal(juneBucket.avgSr, 60.0); // (45 + 75) / 2
         assert.equal(juneBucket.value, 60.0);
+        assert.equal(juneBucket.isDualSpecies, true);
+        assert.equal(juneBucket.vanValue, 45.0);
+        assert.equal(juneBucket.monValue, 75.0);
+        assert.equal(juneBucket.benchmarkVal, 75);
 
         // 2. VAN Species Only
         const aggVan = ExecutiveMetricsPresenter.aggregateGrowthAndSurvival(

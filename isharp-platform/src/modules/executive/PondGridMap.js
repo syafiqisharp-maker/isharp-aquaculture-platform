@@ -164,11 +164,17 @@ export class PondGridMap {
             lastTime = performance.now();
         }, { passive: true });
 
+        const isVirtualLandscape = () => {
+            if (typeof window === "undefined") return false;
+            const execViewEl = document.getElementById("view-executive");
+            const isPortraitOverride = Boolean(execViewEl && execViewEl.classList.contains("mobile-portrait-mode"));
+            return window.innerHeight > window.innerWidth && window.innerWidth <= 768 && !isPortraitOverride;
+        };
+
         this.drawer.addEventListener("touchmove", (e) => {
             if (!isTouching || e.touches.length !== 1) return;
 
-            const isPortrait = window.innerHeight > window.innerWidth && window.innerWidth <= 768;
-            if (!isPortrait) return;
+            if (!isVirtualLandscape()) return;
 
             const bodyEl = this.drawer.querySelector(".drawer-body");
             if (!bodyEl) return;
@@ -220,8 +226,7 @@ export class PondGridMap {
         this.drawer.addEventListener("touchcancel", endTouch, { passive: true });
 
         this.drawer.addEventListener("wheel", (e) => {
-            const isPortrait = window.innerHeight > window.innerWidth && window.innerWidth <= 768;
-            if (isPortrait) {
+            if (isVirtualLandscape()) {
                 const bodyEl = this.drawer.querySelector(".drawer-body");
                 if (bodyEl) {
                     const delta = Math.abs(e.deltaY) >= Math.abs(e.deltaX) ? e.deltaY : e.deltaX;
@@ -697,14 +702,15 @@ export class PondGridMap {
     updateHeaderKPIs(active, idle, red, yellow, green) {
         const elActive = document.getElementById("exec-kpi-active");
         if (elActive) {
-            elActive.innerHTML = `${active} <span style="font-size: 0.9rem; color: #64748b; font-weight: 500;">/ 216</span>`;
+            const utilPct = Math.round((active / 216) * 100);
+            elActive.innerHTML = `${active} <span style="font-size: 0.9rem; color: #64748b; font-weight: 500;">/ 216</span> <span class="unit" style="font-size: 0.82rem; font-weight: 700; color: #059669;">(${utilPct}% in Use)</span>`;
         }
 
         const elIdle = document.getElementById("exec-kpi-idle");
         if (elIdle) {
             elIdle.innerHTML = `${idle} <span style="font-size: 0.9rem; color: #64748b; font-weight: 500;">Ponds</span>`;
             
-            // Dynamic sub-text breaking down In Prep vs Idle
+            // Dynamic sub-text breaking down In Prep vs Empty
             const cardParent = elIdle.closest(".exec-kpi-card");
             if (cardParent) {
                 const sub = cardParent.querySelector(".exec-kpi-sub");
@@ -716,7 +722,7 @@ export class PondGridMap {
                                       (this.progressCounts.CLEANING || 0);
                     const ready = this.progressCounts.READY || 0;
                     const trueIdle = this.progressCounts.IDLE || 0;
-                    sub.textContent = `${prepCount} In Prep (${ready} Ready) • ${trueIdle} Idle`;
+                    sub.textContent = `${prepCount} in preparation (${ready} ready) • ${trueIdle} empty`;
                 }
             }
         }
@@ -730,9 +736,11 @@ export class PondGridMap {
                     this.samplingsMap || new Map(),
                     this.issuesMap || new Map()
                 );
-                elHealth.innerHTML = `<span style="color: #059669;">${growthSummary.adgDisplay}</span> <span class="unit">g/d</span> • <span style="color: #0284c7;">${growthSummary.srDisplay}</span><span class="unit">% SR</span>`;
+                elHealth.innerHTML = `<span style="color: #059669;">${growthSummary.adgDisplay}</span> <span class="unit">g/day</span> • <span style="color: #0284c7;">${growthSummary.srDisplay}</span><span class="unit">% Survival</span>`;
                 if (elHealthSub) {
-                    elHealthSub.textContent = growthSummary.subText;
+                    const redAlerts = growthSummary.redAlertCount !== undefined ? growthSummary.redAlertCount : red;
+                    const lagCount = growthSummary.laggingCount !== undefined ? growthSummary.laggingCount : 51;
+                    elHealthSub.innerHTML = `<span style="color: #dc2626; font-weight: 700;">⚠️ ${redAlerts} Alerts</span> • <span style="color: #d97706; font-weight: 600;">${lagCount} Ponds Below Target</span>`;
                 }
             } else {
                 elHealth.innerHTML = `—`;
@@ -749,22 +757,52 @@ export class PondGridMap {
             const barMon = document.getElementById("exec-kpi-bar-mon");
 
             if (elSpecies) {
-                elSpecies.innerHTML = `<span style="color: #0284c7;">${spComp.vanPercent}%</span> <span class="unit">VAN</span> • <span style="color: #059669;">${spComp.monPercent}%</span> <span class="unit">MON</span>`;
+                elSpecies.innerHTML = `<span style="color: #0284c7; font-weight: 800;">${spComp.vanPercent}%</span> <span class="unit" style="color: #0284c7; font-size: 0.78rem; font-weight: 700;">VAN</span> <span style="opacity: 0.35;">•</span> <span style="color: #059669; font-weight: 800;">${spComp.monPercent}%</span> <span class="unit" style="color: #059669; font-size: 0.78rem; font-weight: 700;">MON</span>`;
             }
             if (elSpeciesSub) {
-                elSpeciesSub.textContent = `${spComp.vanCount} VAN Ponds • ${spComp.monCount} MON Ponds`;
+                const existingHatcheryText = elSpeciesSub.getAttribute("data-hatchery-text");
+                const baseText = `${spComp.vanCount} VAN • ${spComp.monCount} MON Ponds`;
+                elSpeciesSub.textContent = existingHatcheryText ? `${baseText} • ${existingHatcheryText}` : `${baseText} Culturing`;
             }
-            if (barVan) barVan.style.width = `${spComp.vanPercent}%`;
-            if (barMon) barMon.style.width = `${spComp.monPercent}%`;
+            if (barVan) {
+                barVan.style.width = `${spComp.vanPercent}%`;
+                barVan.setAttribute("title", `Vannamei (VAN): ${spComp.vanCount} Ponds (${spComp.vanPercent}%)`);
+            }
+            if (barMon) {
+                barMon.style.width = `${spComp.monPercent}%`;
+                barMon.setAttribute("title", `Monodon (MON): ${spComp.monCount} Ponds (${spComp.monPercent}%)`);
+            }
 
             const docComp = ExecutiveMetricsPresenter.calculateDocComposition(this.allEvaluatedPonds);
             const elDoc = document.getElementById("exec-kpi-doc");
             const elDocSub = document.getElementById("exec-kpi-doc-sub");
+            const barEarly = document.getElementById("exec-kpi-bar-early");
+            const barMid = document.getElementById("exec-kpi-bar-mid");
+            const barFin = document.getElementById("exec-kpi-bar-fin");
+
             if (elDoc) {
-                elDoc.innerHTML = `<span style="color: #0284c7;">VAN: ${docComp.van.midPct || 0}% Mid</span> • <span style="color: #059669;">MON: ${docComp.mon.finishingPct || 0}% Fin</span>`;
-            }
-            if (elDocSub) {
-                elDocSub.textContent = `Avg DOC: VAN ${docComp.van.avgDoc}d • MON ${docComp.mon.avgDoc}d (Farm: ${docComp.overall.avgDoc}d)`;
+                const totalCult = docComp.total || 1;
+                const finPonds = docComp.overall?.finishing ?? ((docComp.van?.finishing || 0) + (docComp.mon?.finishing || 0));
+                const finPct = docComp.overall?.finishingPct ?? Math.round((finPonds / totalCult) * 100);
+                const midPonds = docComp.overall?.mid ?? ((docComp.van?.mid || 0) + (docComp.mon?.mid || 0));
+                const midPct = docComp.overall?.midPct ?? Math.round((midPonds / totalCult) * 100);
+                const earlyPonds = docComp.overall?.early ?? ((docComp.van?.early || 0) + (docComp.mon?.early || 0));
+                const earlyPct = docComp.overall?.earlyPct ?? Math.round((earlyPonds / totalCult) * 100);
+
+                elDoc.innerHTML = `<span style="color: #059669; font-weight: 800;">${finPonds} Finishing</span> <span class="unit" style="font-size: 0.74rem; color: #64748b; font-weight: 700;">(${finPct}%)</span> <span style="opacity: 0.35;">•</span> <span style="color: #d97706; font-weight: 800;">${midPonds} Mid</span> <span class="unit" style="font-size: 0.74rem; color: #64748b; font-weight: 700;">(${midPct}%)</span>`;
+
+                if (barEarly) {
+                    barEarly.style.width = `${earlyPct}%`;
+                    barEarly.setAttribute("title", `Early Stage (<30d VAN / <50d MON): ${earlyPonds} Ponds (${earlyPct}%)`);
+                }
+                if (barMid) {
+                    barMid.style.width = `${midPct}%`;
+                    barMid.setAttribute("title", `Mid Growout (30–60d VAN / 50–90d MON): ${midPonds} Ponds (${midPct}%)`);
+                }
+                if (barFin) {
+                    barFin.style.width = `${finPct}%`;
+                    barFin.setAttribute("title", `Finishing Stage (>60d VAN / >90d MON): ${finPonds} Ponds (${finPct}%)`);
+                }
             }
         }
     }

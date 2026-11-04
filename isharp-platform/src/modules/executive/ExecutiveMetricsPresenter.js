@@ -5,7 +5,7 @@
  * Clean Coding Standard: Pure transformation engine, zero direct DOM manipulation.
  */
 
-import { getStandardABW, getLatestSurvivalRate } from "../../domain/biometrics.js";
+import { getStandardABW, getLatestSurvivalRate, getCultureStage } from "../../domain/biometrics.js";
 
 export const METRIC_TYPES = {
     ACTIVE_PONDS: "ACTIVE_PONDS",
@@ -76,18 +76,79 @@ export function formatNumber(num, decimals = 0) {
     });
 }
 
+/**
+ * Derives canonical pond code ("MM.RR.PP", e.g. "09.18.12") from a pond_index ("2091812.41").
+ * @param {string} pondIndex
+ * @param {string} [fallbackPond=""]
+ * @returns {string}
+ */
+export function derivePondCodeFromIndex(pondIndex, fallbackPond = "") {
+    if (fallbackPond && /^\d{2}\.\d{2}\.\d{2}$/.test(String(fallbackPond).trim())) {
+        return String(fallbackPond).trim();
+    }
+    if (!pondIndex) return fallbackPond || "—";
+    const base = String(pondIndex).trim().split(".")[0];
+    if (/^\d{7}$/.test(base)) {
+        return `${base.slice(1, 3)}.${base.slice(3, 5)}.${base.slice(5, 7)}`;
+    }
+    return fallbackPond || base || String(pondIndex);
+}
+
+/**
+ * Derives module label ("Module 09") from a pond code ("09.18.12") or pond_index ("2091812.41").
+ * @param {string} pondCodeOrIndex
+ * @returns {string}
+ */
+export function deriveModuleFromPond(pondCodeOrIndex) {
+    if (!pondCodeOrIndex) return "—";
+    const str = String(pondCodeOrIndex).trim();
+    if (/^\d{2}\.\d{2}\.\d{2}$/.test(str)) {
+        return `Module ${str.slice(0, 2)}`;
+    }
+    const base = str.split(".")[0];
+    if (/^\d{7}$/.test(base)) {
+        return `Module ${base.slice(1, 3)}`;
+    }
+    return "—";
+}
+
 export class ExecutiveMetricsPresenter {
 
     /**
-     * Aggregates 12-month harvest records into monthly buckets + YTD/MTD totals.
+     * Aggregates 12-month harvest records into monthly buckets + YTD/MTD totals,
+     * reconciling weekly Supabase DBMS (`pond_harvest_daily`) with daily Excel mapping (`pond_daily_progress`).
      * @param {Array<object>} dailyHarvests 
      * @param {Array<object>} [salesRecords=[]]
      * @param {Date} [referenceDate=new Date()]
+     * @param {Array<object>} [dailyProgress=[]]
+     * @param {Array<object>} [operationalCycles=[]]
      */
-    static aggregateMonthlyHarvest(dailyHarvests = [], salesRecords = [], referenceDate = new Date()) {
+    static aggregateMonthlyHarvest(
+        dailyHarvests = [],
+        salesRecords = [],
+        referenceDate = new Date(),
+        dailyProgress = [],
+        operationalCycles = []
+    ) {
         const months = getRolling12Months(12, referenceDate);
         const currentYear = referenceDate.getFullYear();
         const currentMonthKey = toMonthKey(referenceDate);
+
+        // Index operational cycles by pondCode ("09.18.12") and pond_index ("2091812.41")
+        const cycleByIndex = new Map();
+        const latestCycleByPond = new Map();
+        (operationalCycles || []).forEach(c => {
+            if (c.pond_index) cycleByIndex.set(String(c.pond_index), c);
+            const pCode = derivePondCodeFromIndex(c.pond_index, c.pond);
+            if (pCode && pCode !== "—") {
+                const existing = latestCycleByPond.get(pCode);
+                const curStck = String(c.stck_date || "");
+                const extStck = String(existing?.stck_date || "");
+                if (!existing || curStck >= extStck) {
+                    latestCycleByPond.set(pCode, c);
+                }
+            }
+        });
 
         const bucketMap = new Map();
         months.forEach(m => {
@@ -96,98 +157,410 @@ export class ExecutiveMetricsPresenter {
                 monthLabel: formatMonthLabel(m),
                 year: parseInt(m.split("-")[0], 10),
                 tonnage: 0,
+                vanTonnage: 0,
+                monTonnage: 0,
                 partialTons: 0,
                 finalTons: 0,
                 count: 0,
+                partialCount: 0,
+                finalCount: 0,
+                vanCount: 0,
+                monCount: 0,
+                pondSet: new Set(),
+                vanPondSet: new Set(),
+                monPondSet: new Set(),
+                dbmsPondSet: new Set(),
+                pendingSyncSet: new Set(),
                 totalAbwWeight: 0,
                 abwWeightCount: 0,
+                vanAbwWeight: 0,
+                vanAbwWeightCount: 0,
+                monAbwWeight: 0,
+                monAbwWeightCount: 0,
                 revenue: 0,
+                vanRevenue: 0,
+                monRevenue: 0,
                 records: []
             });
         });
 
-        // 1. Process Daily Harvests
+        // Track DBMS harvest dates by pondCode for deduplication against Daily Excel
+        const dbmsHarvestDatesByPond = new Map();
+        const enrichedRecords = [];
+
+        // 1. Process Weekly Supabase DBMS Harvests
         (dailyHarvests || []).forEach(r => {
             const m = toMonthKey(r.harv_date);
             if (!m) return;
 
+            const pondCode = derivePondCodeFromIndex(r.pond_index, r.pond);
+            const cycleInfo = cycleByIndex.get(String(r.pond_index)) || latestCycleByPond.get(pondCode) || null;
+            const cycleNo = r.cycle_no || (r.pond_index && String(r.pond_index).includes(".") ? String(r.pond_index).split(".")[1] : (cycleInfo?.cycle_no || "—"));
+            const modl = r.modl || cycleInfo?.modl || deriveModuleFromPond(pondCode);
+            let species = r.species && r.species !== "UNK" ? r.species : "";
+            if (!species && cycleInfo?.stck_species) {
+                species = String(cycleInfo.stck_species).toUpperCase().includes("MON") ? "MON" : "VAN";
+            }
+            if (!species) species = "VAN";
+            const isMon = String(species).toUpperCase().includes("MON");
+
+            const harvDateStr = String(r.harv_date).slice(0, 10);
+            if (pondCode && pondCode !== "—") {
+                if (!dbmsHarvestDatesByPond.has(pondCode)) {
+                    dbmsHarvestDatesByPond.set(pondCode, []);
+                }
+                dbmsHarvestDatesByPond.get(pondCode).push(harvDateStr);
+            }
+
             const wKg = Number(r.harv_weight) || 0;
             const wTons = wKg / 1000;
-            const isFinal = String(r.harv_status || "").toUpperCase().includes("FINAL") || String(r.harv_status || "").toUpperCase().includes("TERM");
+            const statusUpper = String(r.harv_status || "").toUpperCase();
+            const isFinal = statusUpper.includes("FINAL") || statusUpper.includes("TERM");
+            const isPartial = statusUpper.includes("PARTIAL");
             const abw = Number(r.harv_abw) || 0;
             const rev = Number(r.harv_revenue) || 0;
+
+            const enriched = {
+                ...r,
+                pond: pondCode,
+                cycle_no: String(cycleNo),
+                modl,
+                species: isMon ? "MON" : "VAN",
+                harv_date: harvDateStr,
+                data_source: "SUPABASE DBMS",
+                isPendingSync: false
+            };
+            enrichedRecords.push(enriched);
 
             if (bucketMap.has(m)) {
                 const b = bucketMap.get(m);
                 b.tonnage += wTons;
-                if (isFinal) b.finalTons += wTons;
-                else b.partialTons += wTons;
+                if (isMon) {
+                    b.monTonnage += wTons;
+                    b.monCount += 1;
+                    b.monRevenue += rev;
+                } else {
+                    b.vanTonnage += wTons;
+                    b.vanCount += 1;
+                    b.vanRevenue += rev;
+                }
+                if (isFinal) {
+                    b.finalTons += wTons;
+                    b.finalCount += 1;
+                } else {
+                    b.partialTons += wTons;
+                    if (isPartial) b.partialCount += 1;
+                }
                 b.count += 1;
+                // Key by Harvested Pond Cycle (pond_index) so multiple cycles on the same pond in a year are each counted
+                const cycleKey = r.pond_index ? String(r.pond_index).trim() : ((pondCode && pondCode !== "—") ? pondCode : null);
+                if (cycleKey) {
+                    b.pondSet.add(cycleKey);
+                    b.dbmsPondSet.add(cycleKey);
+                    if (isMon) b.monPondSet.add(cycleKey);
+                    else b.vanPondSet.add(cycleKey);
+                }
                 if (abw > 0) {
                     b.totalAbwWeight += abw * wKg;
                     b.abwWeightCount += wKg;
+                    if (isMon) {
+                        b.monAbwWeight += abw * wKg;
+                        b.monAbwWeightCount += wKg;
+                    } else {
+                        b.vanAbwWeight += abw * wKg;
+                        b.vanAbwWeightCount += wKg;
+                    }
                 }
                 b.revenue += rev;
-                b.records.push(r);
+                b.records.push(enriched);
             }
         });
 
-        // Calculate averages for each bucket
+        // 2. Reconcile Daily Status Excel Mapping (`pond_daily_progress`) for Mid-Week Harvested Ponds
+        (dailyProgress || []).forEach(dp => {
+            if (!dp || !dp.last_harvest_date) return;
+            const progState = String(dp.progress_state || "").toUpperCase();
+            // If pond has already re-entered active CULTURE for a new crop, last_harvest_date is from its previous cycle
+            if (progState === "CULTURE") return;
+
+            const pondCode = String(dp.pond || "").trim();
+            if (!pondCode) return;
+
+            const excelHarvDate = String(dp.last_harvest_date).slice(0, 10);
+            const m = toMonthKey(excelHarvDate);
+            if (!m) return;
+
+            const cycleInfo = latestCycleByPond.get(pondCode) || null;
+            const cycleStckDate = cycleInfo?.stck_date ? String(cycleInfo.stck_date).slice(0, 10) : null;
+
+            // If we have a known stocking date for this pond's latest cycle, ensure the harvest date is after stocking
+            if (cycleStckDate && excelHarvDate < cycleStckDate) {
+                return;
+            }
+
+            // Check if weekly DBMS sync (`pond_harvest_daily`) already logged this pond's harvest
+            const dbmsDates = dbmsHarvestDatesByPond.get(pondCode) || [];
+            const excelTime = Date.parse(excelHarvDate);
+            const alreadyInDbms = dbmsDates.some(dStr => {
+                if (cycleStckDate && dStr >= cycleStckDate) return true;
+                const dTime = Date.parse(dStr);
+                if (!isNaN(excelTime) && !isNaN(dTime)) {
+                    const diffDays = Math.abs(excelTime - dTime) / 86400000;
+                    if (diffDays <= 10) return true;
+                }
+                return dStr >= excelHarvDate;
+            });
+
+            if (alreadyInDbms) return;
+
+            const pondIndex = cycleInfo?.pond_index ? String(cycleInfo.pond_index).trim() : pondCode;
+            const cycleNo = cycleInfo?.pond_index && String(cycleInfo.pond_index).includes(".")
+                ? String(cycleInfo.pond_index).split(".")[1]
+                : (cycleInfo?.cycle_no || "—");
+            const modl = cycleInfo?.modl || deriveModuleFromPond(pondCode);
+            const rawSp = cycleInfo?.stck_species || dp.species_code || "VAN";
+            const isMon = String(rawSp).toUpperCase().includes("MON");
+            const species = isMon ? "MON" : "VAN";
+
+            const syntheticRecord = {
+                pond_index: pondIndex,
+                pond: pondCode,
+                cycle_no: String(cycleNo),
+                modl,
+                harv_date: excelHarvDate,
+                species,
+                harv_status: "HARVESTED (MID-WEEK)",
+                data_source: "DAILY EXCEL (PENDING SYNC)",
+                isPendingSync: true,
+                harv_weight: null,
+                harv_abw: null,
+                harv_revenue: null,
+                status_code: dp.status_code || "Hv",
+                progress_state: progState || "IDLE"
+            };
+
+            enrichedRecords.push(syntheticRecord);
+
+            if (bucketMap.has(m)) {
+                const b = bucketMap.get(m);
+                b.count += 1;
+                b.finalCount += 1;
+                if (isMon) b.monCount += 1;
+                else b.vanCount += 1;
+                b.pondSet.add(pondIndex);
+                if (isMon) b.monPondSet.add(pondIndex);
+                else b.vanPondSet.add(pondIndex);
+                b.pendingSyncSet.add(pondIndex);
+                b.records.push(syntheticRecord);
+            }
+        });
+
+        // Sort combined records by harvest date descending, then pond code ascending
+        enrichedRecords.sort((a, b) => {
+            const dA = String(a.harv_date || "");
+            const dB = String(b.harv_date || "");
+            if (dA !== dB) return dB.localeCompare(dA);
+            return String(a.pond || "").localeCompare(String(b.pond || ""));
+        });
+
+        // Calculate averages and distinct pond counts for each bucket
         const buckets = months.map(m => {
             const b = bucketMap.get(m);
             const avgAbw = b.abwWeightCount > 0 ? (b.totalAbwWeight / b.abwWeightCount) : 0;
+            const vanAvgAbw = b.vanAbwWeightCount > 0 ? (b.vanAbwWeight / b.vanAbwWeightCount) : 0;
+            const monAvgAbw = b.monAbwWeightCount > 0 ? (b.monAbwWeight / b.monAbwWeightCount) : 0;
+            const pondCount = b.pondSet.size;
+            const vanPondCount = b.vanPondSet.size;
+            const monPondCount = b.monPondSet.size;
+            const dbmsPondCount = b.dbmsPondSet.size;
+            const pendingSyncCount = b.pendingSyncSet.size;
             return {
-                ...b,
+                monthKey: b.monthKey,
+                monthLabel: b.monthLabel,
+                year: b.year,
                 tonnage: Math.round(b.tonnage * 100) / 100,
+                vanTonnage: Math.round(b.vanTonnage * 100) / 100,
+                monTonnage: Math.round(b.monTonnage * 100) / 100,
                 partialTons: Math.round(b.partialTons * 100) / 100,
                 finalTons: Math.round(b.finalTons * 100) / 100,
+                count: b.count,
+                partialCount: b.partialCount,
+                finalCount: b.finalCount,
+                vanCount: b.vanCount,
+                monCount: b.monCount,
+                pondCount,
+                vanPondCount,
+                monPondCount,
+                dbmsPondCount,
+                pendingSyncCount,
                 avgAbw: Math.round(avgAbw * 10) / 10,
-                revenue: Math.round(b.revenue)
+                vanAvgAbw: Math.round(vanAvgAbw * 10) / 10,
+                monAvgAbw: Math.round(monAvgAbw * 10) / 10,
+                revenue: Math.round(b.revenue),
+                vanRevenue: Math.round(b.vanRevenue),
+                monRevenue: Math.round(b.monRevenue),
+                records: b.records
             };
         });
 
-        // Compute YTD and MTD
+        // Compute YTD, MTD, and 12M Rolling Biomass + Distinct Harvested Pond Cycles (Total & Species Split)
         let ytdTonnage = 0;
+        let ytdVanTonnage = 0;
+        let ytdMonTonnage = 0;
         let ytdRevenue = 0;
         let ytdCount = 0;
+        let ytdPartialCount = 0;
+        let ytdFinalCount = 0;
+        let ytdVanAbwWeight = 0;
+        let ytdVanAbwWeightCount = 0;
+        let ytdMonAbwWeight = 0;
+        let ytdMonAbwWeightCount = 0;
+
         let mtdTonnage = 0;
+        let mtdVanTonnage = 0;
+        let mtdMonTonnage = 0;
         let mtdRevenue = 0;
+        let mtdCount = 0;
+        let mtdPartialCount = 0;
+
         let rolling12Tonnage = 0;
+        let rolling12VanTonnage = 0;
+        let rolling12MonTonnage = 0;
+        let rolling12Count = 0;
+
+        const ytdPondSet = new Set();
+        const ytdVanPondSet = new Set();
+        const ytdMonPondSet = new Set();
+        const ytdPendingSet = new Set();
+
+        const mtdPondSet = new Set();
+        const mtdVanPondSet = new Set();
+        const mtdMonPondSet = new Set();
+        const mtdPendingSet = new Set();
+
+        const rolling12PondSet = new Set();
+        const rolling12VanPondSet = new Set();
+        const rolling12MonPondSet = new Set();
+        const rolling12PendingSet = new Set();
 
         buckets.forEach(b => {
+            const rawB = bucketMap.get(b.monthKey);
             rolling12Tonnage += b.tonnage;
+            rolling12VanTonnage += b.vanTonnage;
+            rolling12MonTonnage += b.monTonnage;
+            rolling12Count += b.count;
+            rawB.pondSet.forEach(p => rolling12PondSet.add(p));
+            rawB.vanPondSet.forEach(p => rolling12VanPondSet.add(p));
+            rawB.monPondSet.forEach(p => rolling12MonPondSet.add(p));
+            rawB.pendingSyncSet.forEach(p => rolling12PendingSet.add(p));
+
             if (b.year === currentYear) {
                 ytdTonnage += b.tonnage;
+                ytdVanTonnage += b.vanTonnage;
+                ytdMonTonnage += b.monTonnage;
                 ytdRevenue += b.revenue;
                 ytdCount += b.count;
+                ytdPartialCount += b.partialCount;
+                ytdFinalCount += b.finalCount;
+                ytdVanAbwWeight += rawB.vanAbwWeight;
+                ytdVanAbwWeightCount += rawB.vanAbwWeightCount;
+                ytdMonAbwWeight += rawB.monAbwWeight;
+                ytdMonAbwWeightCount += rawB.monAbwWeightCount;
+                rawB.pondSet.forEach(p => ytdPondSet.add(p));
+                rawB.vanPondSet.forEach(p => ytdVanPondSet.add(p));
+                rawB.monPondSet.forEach(p => ytdMonPondSet.add(p));
+                rawB.pendingSyncSet.forEach(p => ytdPendingSet.add(p));
             }
             if (b.monthKey === currentMonthKey) {
                 mtdTonnage += b.tonnage;
+                mtdVanTonnage += b.vanTonnage;
+                mtdMonTonnage += b.monTonnage;
                 mtdRevenue += b.revenue;
+                mtdCount += b.count;
+                mtdPartialCount += b.partialCount;
+                rawB.pondSet.forEach(p => mtdPondSet.add(p));
+                rawB.vanPondSet.forEach(p => mtdVanPondSet.add(p));
+                rawB.monPondSet.forEach(p => mtdMonPondSet.add(p));
+                rawB.pendingSyncSet.forEach(p => mtdPendingSet.add(p));
             }
         });
 
+        const ytdVanAvgAbw = ytdVanAbwWeightCount > 0 ? Math.round((ytdVanAbwWeight / ytdVanAbwWeightCount) * 10) / 10 : 0;
+        const ytdMonAvgAbw = ytdMonAbwWeightCount > 0 ? Math.round((ytdMonAbwWeight / ytdMonAbwWeightCount) * 10) / 10 : 0;
+        const ytdVanSharePct = ytdTonnage > 0 ? Math.round((ytdVanTonnage / ytdTonnage) * 100) : 0;
+        const ytdMonSharePct = ytdTonnage > 0 ? (100 - ytdVanSharePct) : 0;
+
         return {
             buckets,
+            allRecords: enrichedRecords,
             currentMonthKey,
             ytdTonnage: Math.round(ytdTonnage * 10) / 10,
+            ytdVanTonnage: Math.round(ytdVanTonnage * 10) / 10,
+            ytdMonTonnage: Math.round(ytdMonTonnage * 10) / 10,
+            ytdVanSharePct,
+            ytdMonSharePct,
+            ytdVanAvgAbw,
+            ytdMonAvgAbw,
             ytdRevenue: Math.round(ytdRevenue),
             ytdCount,
+            ytdPartialCount,
+            ytdFinalCount,
+            ytdPonds: ytdPondSet.size,
+            ytdVanPonds: ytdVanPondSet.size,
+            ytdMonPonds: ytdMonPondSet.size,
+            ytdPendingPonds: ytdPendingSet.size,
             mtdTonnage: Math.round(mtdTonnage * 10) / 10,
+            mtdVanTonnage: Math.round(mtdVanTonnage * 10) / 10,
+            mtdMonTonnage: Math.round(mtdMonTonnage * 10) / 10,
             mtdRevenue: Math.round(mtdRevenue),
-            rolling12Tonnage: Math.round(rolling12Tonnage * 10) / 10
+            mtdCount,
+            mtdPartialCount,
+            mtdPonds: mtdPondSet.size,
+            mtdVanPonds: mtdVanPondSet.size,
+            mtdMonPonds: mtdMonPondSet.size,
+            mtdPendingPonds: mtdPendingSet.size,
+            rolling12Tonnage: Math.round(rolling12Tonnage * 10) / 10,
+            rolling12VanTonnage: Math.round(rolling12VanTonnage * 10) / 10,
+            rolling12MonTonnage: Math.round(rolling12MonTonnage * 10) / 10,
+            rolling12Count,
+            rolling12Ponds: rolling12PondSet.size,
+            rolling12VanPonds: rolling12VanPondSet.size,
+            rolling12MonPonds: rolling12MonPondSet.size,
+            pendingSyncTotal: rolling12PendingSet.size
         };
     }
 
     /**
-     * Aggregates 12-month stocking batches into monthly buckets + YTD/MTD totals.
+     * Aggregates 12-month stocking batches into monthly buckets + YTD/MTD totals,
+     * reconciling weekly Supabase `pond_stocking_batches` with mid-week `pond_daily_progress`
+     * (from the Daily Status Excel Mapping workbook) so ponds stocked mid-week are counted
+     * and displayed immediately before the weekly DBMS sync runs.
+     *
      * @param {Array<object>} stockingBatches 
      * @param {Date} [referenceDate=new Date()]
+     * @param {Array<object>} [dailyProgress=[]]
+     * @param {Array<object>} [operationalCycles=[]]
      */
-    static aggregateMonthlyStocking(stockingBatches = [], referenceDate = new Date()) {
+    static aggregateMonthlyStocking(stockingBatches = [], referenceDate = new Date(), dailyProgress = [], operationalCycles = []) {
         const months = getRolling12Months(12, referenceDate);
         const currentYear = referenceDate.getFullYear();
         const currentMonthKey = toMonthKey(referenceDate);
+
+        // Build cycle lookup maps by pond_index and latest cycle per physical pond code
+        const cycleByIndex = new Map();
+        const latestCycleByPond = new Map();
+        (operationalCycles || []).forEach(c => {
+            if (c.pond_index) cycleByIndex.set(String(c.pond_index), c);
+            const pCode = derivePondCodeFromIndex(c.pond_index, c.pond);
+            if (pCode && pCode !== "—") {
+                const existing = latestCycleByPond.get(pCode);
+                const curStck = String(c.stck_date || "");
+                const extStck = String(existing?.stck_date || "");
+                if (!existing || curStck >= extStck) {
+                    latestCycleByPond.set(pCode, c);
+                }
+            }
+        });
 
         const bucketMap = new Map();
         months.forEach(m => {
@@ -199,63 +572,299 @@ export class ExecutiveMetricsPresenter {
                 vanPcs: 0,
                 monPcs: 0,
                 batchCount: 0,
+                vanBatches: 0,
+                monBatches: 0,
+                pondSet: new Set(),
+                vanPondSet: new Set(),
+                monPondSet: new Set(),
+                dbmsPondSet: new Set(),
+                pendingSyncSet: new Set(),
                 records: []
             });
         });
 
+        // Track DBMS stocking dates by physical pond code for deduplication against Daily Excel
+        const dbmsStockDatesByPond = new Map();
+        const enrichedRecords = [];
+
+        // 1. Process Weekly Supabase DBMS Stocking Batches (`pond_stocking_batches`)
         (stockingBatches || []).forEach(r => {
             const m = toMonthKey(r.stck_date);
             if (!m) return;
 
+            const pondCode = derivePondCodeFromIndex(r.pond_index, r.pond);
+            const cycleInfo = cycleByIndex.get(String(r.pond_index)) || latestCycleByPond.get(pondCode) || null;
+            const cycleNo = r.cycle_no || (r.pond_index && String(r.pond_index).includes(".") ? String(r.pond_index).split(".")[1] : (cycleInfo?.cycle_no || "—"));
+            const modl = r.modl || cycleInfo?.modl || deriveModuleFromPond(pondCode);
+
+            const rawSp = String(r.stck_species || cycleInfo?.stck_species || "VAN").toUpperCase();
+            const isMon = rawSp.includes("MON");
+            const species = isMon ? "MON" : "VAN";
+
+            const stckDateStr = String(r.stck_date).slice(0, 10);
+            if (pondCode && pondCode !== "—") {
+                if (!dbmsStockDatesByPond.has(pondCode)) {
+                    dbmsStockDatesByPond.set(pondCode, []);
+                }
+                dbmsStockDatesByPond.get(pondCode).push(stckDateStr);
+            }
+
             const pcs = Number(r.stck_pcs) || 0;
-            const sp = String(r.stck_species || "").toUpperCase();
-            const isMon = sp.includes("MON");
+            const allow = Number(r.stck_allow) || 0;
+            const tot = Number(r.stck_total) || (pcs + allow);
+
+            const enriched = {
+                ...r,
+                pond: pondCode,
+                cycle_no: String(cycleNo),
+                modl,
+                species,
+                stck_date: stckDateStr,
+                stck_pcs: pcs,
+                stck_allow: allow,
+                stck_total: tot,
+                data_source: "SUPABASE DBMS",
+                isPendingSync: false
+            };
+            enrichedRecords.push(enriched);
 
             if (bucketMap.has(m)) {
                 const b = bucketMap.get(m);
                 b.totalPcs += pcs;
-                if (isMon) b.monPcs += pcs;
-                else b.vanPcs += pcs;
+                if (isMon) {
+                    b.monPcs += pcs;
+                    b.monBatches += 1;
+                } else {
+                    b.vanPcs += pcs;
+                    b.vanBatches += 1;
+                }
                 b.batchCount += 1;
-                b.records.push(r);
+
+                // Key by Stocked Pond Cycle (pond_index) so multiple cycles on the same pond in a year are each counted
+                const cycleKey = r.pond_index ? String(r.pond_index).trim() : ((pondCode && pondCode !== "—") ? pondCode : null);
+                if (cycleKey) {
+                    b.pondSet.add(cycleKey);
+                    b.dbmsPondSet.add(cycleKey);
+                    if (isMon) b.monPondSet.add(cycleKey);
+                    else b.vanPondSet.add(cycleKey);
+                }
+                b.records.push(enriched);
             }
+        });
+
+        // 2. Reconcile Daily Status Excel Mapping (`pond_daily_progress`) for Mid-Week Stocked Ponds
+        (dailyProgress || []).forEach(dp => {
+            if (!dp || !dp.stocking_date) return;
+            const progState = String(dp.progress_state || "").toUpperCase();
+            const statusCode = String(dp.status_code || "").trim();
+            // Only count as an active newly stocked crop if pond is currently in CULTURE / Opr
+            if (progState !== "CULTURE" && statusCode !== "Opr") return;
+
+            const pondCode = String(dp.pond || "").trim();
+            if (!pondCode) return;
+
+            const excelStckDate = String(dp.stocking_date).slice(0, 10);
+            const m = toMonthKey(excelStckDate);
+            if (!m) return;
+
+            // Check if weekly DBMS sync (`pond_stocking_batches`) already logged this pond's stocking
+            const dbmsDates = dbmsStockDatesByPond.get(pondCode) || [];
+            const excelTime = Date.parse(excelStckDate);
+            const alreadyInDbms = dbmsDates.some(dStr => {
+                if (dStr === excelStckDate) return true;
+                const dTime = Date.parse(dStr);
+                if (!isNaN(excelTime) && !isNaN(dTime)) {
+                    const diffDays = Math.abs(excelTime - dTime) / 86400000;
+                    if (diffDays <= 10) return true;
+                }
+                return dStr >= excelStckDate;
+            });
+
+            if (alreadyInDbms) return;
+
+            const cycleInfo = latestCycleByPond.get(pondCode) || null;
+            const cycleStckDate = cycleInfo?.stck_date ? String(cycleInfo.stck_date).slice(0, 10) : null;
+            const isSameCycleAsLatest = cycleStckDate && Math.abs((Date.parse(excelStckDate) - Date.parse(cycleStckDate)) / 86400000) <= 10;
+
+            const pondIndex = (isSameCycleAsLatest && cycleInfo?.pond_index)
+                ? String(cycleInfo.pond_index).trim()
+                : `${pondCode}#${excelStckDate}`;
+            const cycleNo = (isSameCycleAsLatest && cycleInfo?.pond_index && String(cycleInfo.pond_index).includes("."))
+                ? String(cycleInfo.pond_index).split(".")[1]
+                : (isSameCycleAsLatest && cycleInfo?.cycle_no ? String(cycleInfo.cycle_no) : "Pending");
+            const modl = cycleInfo?.modl || deriveModuleFromPond(pondCode);
+            const rawSp = `${dp.species_code || ""} ${dp.map_code || ""} ${dp.raw_template_status || ""} ${isSameCycleAsLatest ? (cycleInfo?.stck_species || "") : ""}`.toUpperCase();
+            const isMon = rawSp.includes("MON");
+            const species = isMon ? "MON" : "VAN";
+
+            const syntheticRecord = {
+                pond_index: pondIndex,
+                pond: pondCode,
+                cycle_no: String(cycleNo),
+                modl,
+                stck_date: excelStckDate,
+                stck_species: species,
+                species,
+                stck_source: "Daily Excel (Pending Sync)",
+                stck_tank: "—",
+                stck_pcs: null,
+                stck_allow: null,
+                stck_total: null,
+                stck_size: null,
+                data_source: "DAILY EXCEL (PENDING SYNC)",
+                isPendingSync: true
+            };
+
+            enrichedRecords.push(syntheticRecord);
+
+            if (bucketMap.has(m)) {
+                const b = bucketMap.get(m);
+                b.batchCount += 1;
+                if (isMon) b.monBatches += 1;
+                else b.vanBatches += 1;
+                b.pondSet.add(pondIndex);
+                if (isMon) b.monPondSet.add(pondIndex);
+                else b.vanPondSet.add(pondIndex);
+                b.pendingSyncSet.add(pondIndex);
+                b.records.push(syntheticRecord);
+            }
+        });
+
+        // Sort combined records by stock date descending, then pond code ascending
+        enrichedRecords.sort((a, b) => {
+            const dA = String(a.stck_date || "");
+            const dB = String(b.stck_date || "");
+            if (dA !== dB) return dB.localeCompare(dA);
+            return String(a.pond || "").localeCompare(String(b.pond || ""));
         });
 
         const buckets = months.map(m => {
             const b = bucketMap.get(m);
+            const pondCount = b.pondSet.size;
+            const vanPondCount = b.vanPondSet.size;
+            const monPondCount = b.monPondSet.size;
+            const dbmsPondCount = b.dbmsPondSet.size;
+            const pendingSyncCount = b.pendingSyncSet.size;
             return {
-                ...b,
+                monthKey: b.monthKey,
+                monthLabel: b.monthLabel,
+                year: b.year,
+                totalPcs: b.totalPcs,
+                vanPcs: b.vanPcs,
+                monPcs: b.monPcs,
+                batchCount: b.batchCount,
+                vanBatches: b.vanBatches,
+                monBatches: b.monBatches,
+                pondCount,
+                vanPondCount,
+                monPondCount,
+                dbmsPondCount,
+                pendingSyncCount,
                 millionPcs: Math.round((b.totalPcs / 1000000) * 100) / 100,
                 vanMillion: Math.round((b.vanPcs / 1000000) * 100) / 100,
-                monMillion: Math.round((b.monPcs / 1000000) * 100) / 100
+                monMillion: Math.round((b.monPcs / 1000000) * 100) / 100,
+                records: b.records
             };
         });
 
         let ytdPcs = 0;
+        let ytdVanPcs = 0;
+        let ytdMonPcs = 0;
         let ytdBatches = 0;
         let mtdPcs = 0;
+        let mtdVanPcs = 0;
+        let mtdMonPcs = 0;
+        let mtdBatches = 0;
         let rolling12Pcs = 0;
+        let rolling12VanPcs = 0;
+        let rolling12MonPcs = 0;
+
+        const ytdPondSet = new Set();
+        const ytdVanPondSet = new Set();
+        const ytdMonPondSet = new Set();
+        const ytdPendingSet = new Set();
+
+        const mtdPondSet = new Set();
+        const mtdVanPondSet = new Set();
+        const mtdMonPondSet = new Set();
+        const mtdPendingSet = new Set();
+
+        const rolling12PondSet = new Set();
+        const rolling12VanPondSet = new Set();
+        const rolling12MonPondSet = new Set();
+        const rolling12PendingSet = new Set();
 
         buckets.forEach(b => {
+            const rawB = bucketMap.get(b.monthKey);
             rolling12Pcs += b.totalPcs;
+            rolling12VanPcs += b.vanPcs;
+            rolling12MonPcs += b.monPcs;
+            rawB.pondSet.forEach(p => rolling12PondSet.add(p));
+            rawB.vanPondSet.forEach(p => rolling12VanPondSet.add(p));
+            rawB.monPondSet.forEach(p => rolling12MonPondSet.add(p));
+            rawB.pendingSyncSet.forEach(p => rolling12PendingSet.add(p));
+
             if (b.year === currentYear) {
                 ytdPcs += b.totalPcs;
+                ytdVanPcs += b.vanPcs;
+                ytdMonPcs += b.monPcs;
                 ytdBatches += b.batchCount;
+                rawB.pondSet.forEach(p => ytdPondSet.add(p));
+                rawB.vanPondSet.forEach(p => ytdVanPondSet.add(p));
+                rawB.monPondSet.forEach(p => ytdMonPondSet.add(p));
+                rawB.pendingSyncSet.forEach(p => ytdPendingSet.add(p));
             }
             if (b.monthKey === currentMonthKey) {
                 mtdPcs += b.totalPcs;
+                mtdVanPcs += b.vanPcs;
+                mtdMonPcs += b.monPcs;
+                mtdBatches += b.batchCount;
+                rawB.pondSet.forEach(p => mtdPondSet.add(p));
+                rawB.vanPondSet.forEach(p => mtdVanPondSet.add(p));
+                rawB.monPondSet.forEach(p => mtdMonPondSet.add(p));
+                rawB.pendingSyncSet.forEach(p => mtdPendingSet.add(p));
             }
         });
 
+        const ytdMillion = Math.round((ytdPcs / 1000000) * 100) / 100;
+        const ytdVanMillion = Math.round((ytdVanPcs / 1000000) * 100) / 100;
+        const ytdMonMillion = Math.round((ytdMonPcs / 1000000) * 100) / 100;
+        const ytdVanSharePct = ytdPcs > 0 ? Math.round((ytdVanPcs / ytdPcs) * 100) : 0;
+        const ytdMonSharePct = ytdPcs > 0 ? Math.max(0, 100 - ytdVanSharePct) : 0;
+
         return {
             buckets,
+            allRecords: enrichedRecords,
             currentMonthKey,
-            ytdMillion: Math.round((ytdPcs / 1000000) * 100) / 100,
+            ytdMillion,
+            ytdVanMillion,
+            ytdMonMillion,
+            ytdVanSharePct,
+            ytdMonSharePct,
             ytdPcs,
+            ytdVanPcs,
+            ytdMonPcs,
             ytdBatches,
+            ytdPonds: ytdPondSet.size,
+            ytdVanPonds: ytdVanPondSet.size,
+            ytdMonPonds: ytdMonPondSet.size,
+            ytdPendingPonds: ytdPendingSet.size,
             mtdMillion: Math.round((mtdPcs / 1000000) * 100) / 100,
+            mtdVanMillion: Math.round((mtdVanPcs / 1000000) * 100) / 100,
+            mtdMonMillion: Math.round((mtdMonPcs / 1000000) * 100) / 100,
             mtdPcs,
-            rolling12Million: Math.round((rolling12Pcs / 1000000) * 100) / 100
+            mtdBatches,
+            mtdPonds: mtdPondSet.size,
+            mtdVanPonds: mtdVanPondSet.size,
+            mtdMonPonds: mtdMonPondSet.size,
+            mtdPendingPonds: mtdPendingSet.size,
+            rolling12Million: Math.round((rolling12Pcs / 1000000) * 100) / 100,
+            rolling12VanMillion: Math.round((rolling12VanPcs / 1000000) * 100) / 100,
+            rolling12MonMillion: Math.round((rolling12MonPcs / 1000000) * 100) / 100,
+            rolling12Ponds: rolling12PondSet.size,
+            rolling12VanPonds: rolling12VanPondSet.size,
+            rolling12MonPonds: rolling12MonPondSet.size,
+            pendingSyncTotal: rolling12PendingSet.size
         };
     }
 
@@ -558,6 +1167,802 @@ export class ExecutiveMetricsPresenter {
     }
 
     /**
+     * Aggregates Calendar YTD (currentYear only) and Active Culturing Crop species, hatchery origin (`stck_source`),
+     * broodstock genetic line (`bs_line`), PL stocking size (`stck_size`), and Module spatial allocation (`M01`–`M09`).
+     * Strictly uses Calendar Year (YTD) data — zero 12-month lookback into the prior year.
+     *
+     * @param {object} dataBundle { stockingBatches, operationalCycles, activeCycles, activePonds, dailyProgress }
+     * @param {object} [options={}] { scope: "YTD" | "ACTIVE", selectedMonth: "ALL" | "YYYY-MM", chartMode: "PONDS" | "MILLION", speciesFilter: "ALL" | "VAN" | "MON", referenceDate: Date }
+     */
+    static aggregateSpeciesAndHatcheryIntelligence(dataBundle = {}, options = {}) {
+        const refDate = (options && options.referenceDate) || new Date();
+        const currentYear = refDate.getFullYear();
+        const currentMonthIdx = refDate.getMonth(); // 0..11
+        const scope = (options && options.scope) || "YTD"; // "YTD" | "ACTIVE"
+        const selectedMonth = (options && options.selectedMonth) || "ALL";
+        const chartMode = (options && options.chartMode) || "PONDS"; // "PONDS" | "MILLION"
+        const speciesFilter = (options && options.speciesFilter) || "ALL"; // "ALL" | "VAN" | "MON"
+
+        // Build Calendar YTD month keys strictly within currentYear (Jan .. currentMonth)
+        const ytdMonths = [];
+        for (let m = 0; m <= currentMonthIdx; m++) {
+            ytdMonths.push(`${currentYear}-${String(m + 1).padStart(2, "0")}`);
+        }
+
+        const opCycles = (dataBundle.operationalCycles && dataBundle.operationalCycles.length > 0)
+            ? dataBundle.operationalCycles
+            : (dataBundle.activeCycles || []);
+
+        // Index operational cycles by pond_index and latest cycle per physical pond
+        const cycleByIndex = new Map();
+        const latestCycleByPond = new Map();
+        opCycles.forEach(c => {
+            if (c.pond_index) cycleByIndex.set(String(c.pond_index).trim(), c);
+            const pCode = derivePondCodeFromIndex(c.pond_index, c.pond);
+            if (pCode && pCode !== "—") {
+                const existing = latestCycleByPond.get(pCode);
+                const curStck = String(c.stck_date || "");
+                const extStck = String(existing?.stck_date || "");
+                if (!existing || curStck >= extStck) {
+                    latestCycleByPond.set(pCode, c);
+                }
+            }
+        });
+
+        // Build set of currently active culturing pond_index / pondCode
+        const culturingPonds = (dataBundle.activePonds || []).filter(
+            p => p.isActive || String(p.progressState || "").toUpperCase() === "CULTURE"
+        );
+        const activePondCodeSet = new Set();
+        const activePondIndexSet = new Set();
+        culturingPonds.forEach(p => {
+            const pCode = derivePondCodeFromIndex(p.pondIndex, p.pondCode || p.pond);
+            if (pCode && pCode !== "—") activePondCodeSet.add(pCode);
+            if (p.pondIndex) activePondIndexSet.add(String(p.pondIndex).trim());
+        });
+        // Fallback: if activePonds is empty, check opCycles with pond_status === 'PRODUCTION'
+        if (activePondCodeSet.size === 0 && activePondIndexSet.size === 0) {
+            opCycles.forEach(c => {
+                if (String(c.pond_status || "").toUpperCase() === "PRODUCTION") {
+                    const pCode = derivePondCodeFromIndex(c.pond_index, c.pond);
+                    if (pCode && pCode !== "—") activePondCodeSet.add(pCode);
+                    if (c.pond_index) activePondIndexSet.add(String(c.pond_index).trim());
+                }
+            });
+        }
+
+        // Reconcile stocking records via aggregateMonthlyStocking
+        const stockAgg = this.aggregateMonthlyStocking(
+            dataBundle.stockingBatches || [],
+            refDate,
+            dataBundle.dailyProgress || [],
+            opCycles
+        );
+
+        // Strictly filter to Calendar Year (currentYear) records
+        // Plus, if a record wasn't in pond_stocking_batches, also check currentYear cycles in opCycles
+        const ytdRecordList = [];
+        const seenPondIndicesInBatches = new Set();
+
+        (stockAgg.allRecords || []).forEach(r => {
+            const m = toMonthKey(r.stck_date);
+            if (!m) return;
+            const y = parseInt(m.split("-")[0], 10);
+            if (y !== currentYear) return;
+
+            const pondCode = derivePondCodeFromIndex(r.pond_index, r.pond);
+            const cycleInfo = cycleByIndex.get(String(r.pond_index).trim()) || latestCycleByPond.get(pondCode) || null;
+            const cycleKey = r.pond_index ? String(r.pond_index).trim() : pondCode;
+            if (cycleKey) seenPondIndicesInBatches.add(cycleKey);
+
+            const rawSource = String(r.stck_source || cycleInfo?.stck_source || "UNSPECIFIED").trim();
+            const cleanSource = (!rawSource || rawSource.toUpperCase() === "NULL" || rawSource === "—")
+                ? "UNSPECIFIED"
+                : rawSource.toUpperCase();
+
+            const rawLine = String(r.bs_line || cycleInfo?.bs_line || "").trim();
+            const cleanLine = (!rawLine || rawLine.toUpperCase() === "NULL" || rawLine === "—")
+                ? (r.species === "MON" ? "CP THAI" : "SYAQUA")
+                : rawLine.toUpperCase();
+
+            const plSize = Number(r.stck_size || cycleInfo?.stck_size) || null;
+            const pcs = Number(r.stck_pcs) || 0;
+            const isCurrentlyActive = Boolean(
+                (r.pond_index && activePondIndexSet.has(String(r.pond_index).trim())) ||
+                (pondCode && activePondCodeSet.has(pondCode) && (!cycleInfo || String(cycleInfo.pond_status || "").toUpperCase() === "PRODUCTION"))
+            );
+
+            ytdRecordList.push({
+                pond_index: cycleKey,
+                pond: pondCode,
+                modl: r.modl || deriveModuleFromPond(pondCode),
+                monthKey: m,
+                stck_date: r.stck_date,
+                species: r.species === "MON" ? "MON" : "VAN",
+                source: cleanSource,
+                bs_line: cleanLine,
+                plSize,
+                pcs,
+                isPendingSync: Boolean(r.isPendingSync),
+                isCurrentlyActive
+            });
+        });
+
+        // Also include any currentYear cycle from opCycles that had no batch entry in pond_stocking_batches
+        opCycles.forEach(c => {
+            if (!c.stck_date) return;
+            const m = toMonthKey(c.stck_date);
+            if (!m) return;
+            const y = parseInt(m.split("-")[0], 10);
+            if (y !== currentYear) return;
+
+            const pondCode = derivePondCodeFromIndex(c.pond_index, c.pond);
+            const cycleKey = c.pond_index ? String(c.pond_index).trim() : pondCode;
+            if (!cycleKey || seenPondIndicesInBatches.has(cycleKey)) return;
+            seenPondIndicesInBatches.add(cycleKey);
+
+            const isMon = String(c.stck_species || "VAN").toUpperCase().includes("MON");
+            const species = isMon ? "MON" : "VAN";
+            const rawSource = String(c.stck_source || "UNSPECIFIED").trim();
+            const cleanSource = (!rawSource || rawSource.toUpperCase() === "NULL" || rawSource === "—")
+                ? "UNSPECIFIED"
+                : rawSource.toUpperCase();
+            const rawLine = String(c.bs_line || "").trim();
+            const cleanLine = (!rawLine || rawLine.toUpperCase() === "NULL" || rawLine === "—")
+                ? (isMon ? "CP THAI" : "SYAQUA")
+                : rawLine.toUpperCase();
+            const plSize = Number(c.stck_size) || null;
+            const pcs = Number(c.stck_pcs) || 0;
+            const isCurrentlyActive = String(c.pond_status || "").toUpperCase() === "PRODUCTION" || activePondIndexSet.has(cycleKey);
+
+            ytdRecordList.push({
+                pond_index: cycleKey,
+                pond: pondCode,
+                modl: c.modl || deriveModuleFromPond(pondCode),
+                monthKey: m,
+                stck_date: String(c.stck_date).slice(0, 10),
+                species,
+                source: cleanSource,
+                bs_line: cleanLine,
+                plSize,
+                pcs,
+                isPendingSync: false,
+                isCurrentlyActive
+            });
+        });
+
+        // Build Calendar YTD Monthly Timeline Buckets (Jan .. Current Month of currentYear only)
+        const monthBucketMap = new Map();
+        ytdMonths.forEach(m => {
+            monthBucketMap.set(m, {
+                monthKey: m,
+                monthLabel: formatMonthLabel(m),
+                vanPcs: 0,
+                monPcs: 0,
+                totalPcs: 0,
+                vanPondSet: new Set(),
+                monPondSet: new Set(),
+                pondSet: new Set()
+            });
+        });
+
+        const scopeBaseRecords = scope === "ACTIVE"
+            ? ytdRecordList.filter(r => r.isCurrentlyActive)
+            : ytdRecordList;
+
+        scopeBaseRecords.forEach(r => {
+            if (!monthBucketMap.has(r.monthKey)) return;
+            const b = monthBucketMap.get(r.monthKey);
+            b.totalPcs += r.pcs;
+            b.pondSet.add(r.pond_index);
+            if (r.species === "MON") {
+                b.monPcs += r.pcs;
+                b.monPondSet.add(r.pond_index);
+            } else {
+                b.vanPcs += r.pcs;
+                b.vanPondSet.add(r.pond_index);
+            }
+        });
+
+        const ytdTimeline = ytdMonths.map(m => {
+            const b = monthBucketMap.get(m);
+            const vanMillion = Math.round((b.vanPcs / 1000000) * 100) / 100;
+            const monMillion = Math.round((b.monPcs / 1000000) * 100) / 100;
+            const totalMillion = Math.round((b.totalPcs / 1000000) * 100) / 100;
+            const vanPonds = b.vanPondSet.size;
+            const monPonds = b.monPondSet.size;
+            const totalPonds = b.pondSet.size;
+
+            const isPondsMode = chartMode === "PONDS";
+            const vanVal = isPondsMode ? vanPonds : vanMillion;
+            const monVal = isPondsMode ? monPonds : monMillion;
+            const combinedVal = isPondsMode ? totalPonds : totalMillion;
+            const displayVal = speciesFilter === "VAN" ? vanVal : (speciesFilter === "MON" ? monVal : combinedVal);
+
+            return {
+                monthKey: m,
+                monthLabel: b.monthLabel,
+                value: displayVal,
+                vanValue: vanVal,
+                monValue: monVal,
+                vanPonds,
+                monPonds,
+                totalPonds,
+                vanMillion,
+                monMillion,
+                totalMillion,
+                isDualSpecies: true,
+                speciesFilter,
+                unit: isPondsMode ? "Ponds" : "M Fries",
+                subValue: isPondsMode
+                    ? `${vanPonds} VAN • ${monPonds} MON (${totalMillion}M)`
+                    : `${vanMillion}M VAN • ${monMillion}M MON (${totalPonds} Ponds)`,
+                active: selectedMonth === m
+            };
+        });
+
+        // Filter records for the 2x2 Visual BI Grid (by selectedMonth and speciesFilter)
+        const filteredRecords = scopeBaseRecords.filter(r => {
+            if (selectedMonth !== "ALL" && r.monthKey !== selectedMonth) return false;
+            if (speciesFilter === "VAN" && r.species !== "VAN") return false;
+            if (speciesFilter === "MON" && r.species !== "MON") return false;
+            return true;
+        });
+
+        // Helper to build ranked Hatchery list for a species
+        const buildHatcheryBreakdown = (recordsForSp) => {
+            const map = new Map();
+            const totalPondSet = new Set();
+            let totalSpPcs = 0;
+
+            recordsForSp.forEach(r => {
+                totalPondSet.add(r.pond_index);
+                totalSpPcs += r.pcs;
+                const key = r.source || "UNSPECIFIED";
+                if (!map.has(key)) {
+                    map.set(key, {
+                        source: key,
+                        pondSet: new Set(),
+                        pcs: 0,
+                        batches: 0,
+                        plSum: 0,
+                        plCount: 0
+                    });
+                }
+                const entry = map.get(key);
+                entry.pondSet.add(r.pond_index);
+                entry.pcs += r.pcs;
+                entry.batches += 1;
+                if (r.plSize && r.plSize > 0) {
+                    entry.plSum += r.plSize;
+                    entry.plCount += 1;
+                }
+            });
+
+            const totalPonds = totalPondSet.size;
+            const list = Array.from(map.values()).map(item => {
+                const ponds = item.pondSet.size;
+                const millionPcs = Math.round((item.pcs / 1000000) * 100) / 100;
+                const pondSharePct = totalPonds > 0 ? Math.round((ponds / totalPonds) * 100) : 0;
+                const frySharePct = totalSpPcs > 0 ? Math.round((item.pcs / totalSpPcs) * 100) : pondSharePct;
+                const sharePct = chartMode === "PONDS" ? pondSharePct : frySharePct;
+                const avgPlSize = item.plCount > 0 ? Math.round(item.plSum / item.plCount) : null;
+                return {
+                    source: item.source,
+                    ponds,
+                    pcs: item.pcs,
+                    millionPcs,
+                    batches: item.batches,
+                    pondSharePct,
+                    frySharePct,
+                    sharePct,
+                    avgPlSize
+                };
+            });
+
+            list.sort((a, b) => {
+                if (chartMode === "PONDS") {
+                    if (b.ponds !== a.ponds) return b.ponds - a.ponds;
+                    return b.pcs - a.pcs;
+                }
+                if (b.pcs !== a.pcs) return b.pcs - a.pcs;
+                return b.ponds - a.ponds;
+            });
+
+            return {
+                totalPonds,
+                totalMillion: Math.round((totalSpPcs / 1000000) * 100) / 100,
+                items: list
+            };
+        };
+
+        const vanHatcheryStats = buildHatcheryBreakdown(filteredRecords.filter(r => r.species === "VAN"));
+        const monHatcheryStats = buildHatcheryBreakdown(filteredRecords.filter(r => r.species === "MON"));
+
+        // Helper to build Broodstock Genetic Line breakdown
+        const buildGeneticLineBreakdown = (recordsForSp, speciesCode) => {
+            const map = new Map();
+            const totalPondSet = new Set();
+            let totalSpPcs = 0;
+
+            recordsForSp.forEach(r => {
+                totalPondSet.add(r.pond_index);
+                totalSpPcs += r.pcs;
+                const line = r.bs_line || (speciesCode === "MON" ? "CP THAI" : "SYAQUA");
+                if (!map.has(line)) {
+                    map.set(line, { line, species: speciesCode, pondSet: new Set(), pcs: 0 });
+                }
+                const entry = map.get(line);
+                entry.pondSet.add(r.pond_index);
+                entry.pcs += r.pcs;
+            });
+
+            const totalPonds = totalPondSet.size;
+            return Array.from(map.values())
+                .map(item => {
+                    const ponds = item.pondSet.size;
+                    const millionPcs = Math.round((item.pcs / 1000000) * 100) / 100;
+                    const pondSharePct = totalPonds > 0 ? Math.round((ponds / totalPonds) * 100) : 0;
+                    const frySharePct = totalSpPcs > 0 ? Math.round((item.pcs / totalSpPcs) * 100) : pondSharePct;
+                    return {
+                        line: item.line,
+                        species: item.species,
+                        ponds,
+                        millionPcs,
+                        sharePct: chartMode === "PONDS" ? pondSharePct : frySharePct
+                    };
+                })
+                .sort((a, b) => (chartMode === "PONDS" ? (b.ponds - a.ponds) : (b.millionPcs - a.millionPcs)));
+        };
+
+        const vanGeneticLines = buildGeneticLineBreakdown(filteredRecords.filter(r => r.species === "VAN"), "VAN");
+        const monGeneticLines = buildGeneticLineBreakdown(filteredRecords.filter(r => r.species === "MON"), "MON");
+
+        // PL Size Class Distribution (PL 11-13, PL 14-16, PL 17-19, PL 20+)
+        const plBands = [
+            { key: "PL_11_13", label: "PL 11–13", min: 1, max: 13, vanPondSet: new Set(), monPondSet: new Set(), vanPcs: 0, monPcs: 0 },
+            { key: "PL_14_16", label: "PL 14–16", min: 14, max: 16, vanPondSet: new Set(), monPondSet: new Set(), vanPcs: 0, monPcs: 0 },
+            { key: "PL_17_19", label: "PL 17–19", min: 17, max: 19, vanPondSet: new Set(), monPondSet: new Set(), vanPcs: 0, monPcs: 0 },
+            { key: "PL_20_PLUS", label: "PL 20+", min: 20, max: 99, vanPondSet: new Set(), monPondSet: new Set(), vanPcs: 0, monPcs: 0 }
+        ];
+
+        filteredRecords.forEach(r => {
+            if (!r.plSize || r.plSize <= 0) return;
+            const band = plBands.find(b => r.plSize >= b.min && r.plSize <= b.max);
+            if (!band) return;
+            if (r.species === "MON") {
+                band.monPondSet.add(r.pond_index);
+                band.monPcs += r.pcs;
+            } else {
+                band.vanPondSet.add(r.pond_index);
+                band.vanPcs += r.pcs;
+            }
+        });
+
+        const plSizeBuckets = plBands.map(b => ({
+            key: b.key,
+            label: b.label,
+            vanPonds: b.vanPondSet.size,
+            monPonds: b.monPondSet.size,
+            totalPonds: b.vanPondSet.size + b.monPondSet.size,
+            vanMillion: Math.round((b.vanPcs / 1000000) * 100) / 100,
+            monMillion: Math.round((b.monPcs / 1000000) * 100) / 100
+        }));
+
+        // Module Spatial Allocation (M01 - M09)
+        const moduleAllocation = [];
+        for (let m = 1; m <= 9; m++) {
+            const modNumStr = String(m).padStart(2, "0");
+            const modLabel = `Module ${modNumStr}`;
+            const modShort = `M${modNumStr}`;
+
+            if (scope === "ACTIVE" && selectedMonth === "ALL" && culturingPonds.length > 0) {
+                // Live farm 24-pond capacity breakdown per module
+                const modPonds = culturingPonds.filter(p => {
+                    const code = derivePondCodeFromIndex(p.pondIndex, p.pondCode || p.pond);
+                    return code.startsWith(`${modNumStr}.`);
+                });
+                let vanPonds = 0;
+                let monPonds = 0;
+                modPonds.forEach(p => {
+                    const sp = String(p.speciesCode || p.species || p.speciesLabel || "VAN").toUpperCase();
+                    if (sp.includes("MON")) monPonds++;
+                    else vanPonds++;
+                });
+                if (speciesFilter === "VAN") monPonds = 0;
+                if (speciesFilter === "MON") vanPonds = 0;
+                const activeTotal = vanPonds + monPonds;
+                const idlePonds = Math.max(0, 24 - activeTotal);
+                moduleAllocation.push({
+                    moduleKey: modShort,
+                    moduleLabel: modLabel,
+                    vanPonds,
+                    monPonds,
+                    activeTotal,
+                    idlePonds,
+                    capacity: 24,
+                    vanMillion: 0,
+                    monMillion: 0,
+                    vanPct: activeTotal > 0 ? Math.round((vanPonds / activeTotal) * 100) : 0,
+                    monPct: activeTotal > 0 ? Math.round((monPonds / activeTotal) * 100) : 0
+                });
+            } else {
+                const modRecords = filteredRecords.filter(r => {
+                    const mStr = String(r.modl || "").replace(/[^0-9]/g, "").padStart(2, "0");
+                    return mStr === modNumStr;
+                });
+                const vanSet = new Set();
+                const monSet = new Set();
+                let vanPcs = 0;
+                let monPcs = 0;
+                modRecords.forEach(r => {
+                    if (r.species === "MON") {
+                        monSet.add(r.pond_index);
+                        monPcs += r.pcs;
+                    } else {
+                        vanSet.add(r.pond_index);
+                        vanPcs += r.pcs;
+                    }
+                });
+                const vanPonds = vanSet.size;
+                const monPonds = monSet.size;
+                const activeTotal = vanPonds + monPonds;
+                moduleAllocation.push({
+                    moduleKey: modShort,
+                    moduleLabel: modLabel,
+                    vanPonds,
+                    monPonds,
+                    activeTotal,
+                    idlePonds: Math.max(0, 24 - activeTotal),
+                    capacity: 24,
+                    vanMillion: Math.round((vanPcs / 1000000) * 100) / 100,
+                    monMillion: Math.round((monPcs / 1000000) * 100) / 100,
+                    vanPct: activeTotal > 0 ? Math.round((vanPonds / activeTotal) * 100) : 0,
+                    monPct: activeTotal > 0 ? Math.round((monPonds / activeTotal) * 100) : 0
+                });
+            }
+        }
+
+        // Compute Overall YTD Summary Stats (always full YTD for hero cards)
+        const fullYtdVan = buildHatcheryBreakdown(ytdRecordList.filter(r => r.species === "VAN"));
+        const fullYtdMon = buildHatcheryBreakdown(ytdRecordList.filter(r => r.species === "MON"));
+        const fullYtdVanLines = buildGeneticLineBreakdown(ytdRecordList.filter(r => r.species === "VAN"), "VAN");
+        const fullYtdMonLines = buildGeneticLineBreakdown(ytdRecordList.filter(r => r.species === "MON"), "MON");
+
+        const topVanHatchery = fullYtdVan.items[0] || { source: "SHT", ponds: 0, millionPcs: 0, pondSharePct: 0, frySharePct: 0 };
+        const topMonHatchery = fullYtdMon.items[0] || { source: "KSK", ponds: 0, millionPcs: 0, pondSharePct: 0, frySharePct: 0 };
+        const topVanLine = fullYtdVanLines[0] || { line: "SYAQUA", ponds: 0, sharePct: 0 };
+        const topMonLine = fullYtdMonLines[0] || { line: "CP THAI", ponds: 0, sharePct: 0 };
+
+        // ---------------------------------------------------------------------------------
+        // Realized Harvest Performance by Hatchery (2026 Completed / Harvested Pond Cycles)
+        // Uses ONLY harvested ponds (`pond_harvest_daily` + `operationalCycles` / `stockingBatches`)
+        // to compute Final SR % (Min / Avg / Max) and Final ADG g/d (Min / Avg / Max) per hatchery.
+        // ---------------------------------------------------------------------------------
+        const batchMetaByIndex = new Map();
+        (dataBundle.stockingBatches || []).forEach(b => {
+            if (!b || !b.pond_index) return;
+            const idx = String(b.pond_index).trim();
+            if (!batchMetaByIndex.has(idx)) {
+                batchMetaByIndex.set(idx, {
+                    source: b.stck_source,
+                    species: b.stck_species,
+                    stck_date: b.stck_date,
+                    stck_pcs: Number(b.stck_pcs) || 0
+                });
+            } else {
+                const ext = batchMetaByIndex.get(idx);
+                ext.stck_pcs += (Number(b.stck_pcs) || 0);
+                if (!ext.source && b.stck_source) ext.source = b.stck_source;
+                if (!ext.stck_date && b.stck_date) ext.stck_date = b.stck_date;
+            }
+        });
+
+        const harvByCycle = new Map();
+        (dataBundle.dailyHarvests || []).forEach(h => {
+            if (!h || !h.pond_index || !h.harv_date) return;
+            const mKey = toMonthKey(h.harv_date);
+            if (!mKey) return;
+            const hYear = parseInt(mKey.split("-")[0], 10);
+            if (hYear !== currentYear) return;
+
+            const idx = String(h.pond_index).trim();
+            if (!harvByCycle.has(idx)) {
+                harvByCycle.set(idx, {
+                    totalWeightKg: 0,
+                    totalPiecesHarvested: 0,
+                    weightedAbwSum: 0,
+                    weightedAbwKg: 0,
+                    maxHarvDate: "",
+                    maxHarvMonthKey: "",
+                    hasFinal: false
+                });
+            }
+            const entry = harvByCycle.get(idx);
+            const wKg = Number(h.harv_weight) || 0;
+            const abw = Number(h.harv_abw) || 0;
+            entry.totalWeightKg += wKg;
+            if (wKg > 0 && abw > 0) {
+                entry.totalPiecesHarvested += (wKg * 1000) / abw;
+                entry.weightedAbwSum += abw * wKg;
+                entry.weightedAbwKg += wKg;
+            }
+            const dStr = String(h.harv_date).slice(0, 10);
+            if (dStr >= entry.maxHarvDate) {
+                entry.maxHarvDate = dStr;
+                entry.maxHarvMonthKey = mKey;
+            }
+            const st = String(h.harv_status || "").toUpperCase();
+            if (st.includes("TERM") || st.includes("FINAL")) {
+                entry.hasFinal = true;
+            }
+        });
+
+        const harvestedCyclesList = [];
+        for (const [idx, hAgg] of harvByCycle.entries()) {
+            const c = cycleByIndex.get(idx);
+            const bMeta = batchMetaByIndex.get(idx);
+            const stckDateRaw = c?.stck_date || bMeta?.stck_date;
+            const stckPcs = Number(c?.stck_pcs) || Number(bMeta?.stck_pcs) || 0;
+            if (!stckDateRaw || stckPcs <= 0 || hAgg.totalWeightKg <= 0 || hAgg.weightedAbwKg <= 0) continue;
+
+            const isClosed = (c && String(c.pond_status || "").toUpperCase() === "CLOSE") || hAgg.hasFinal || !c;
+            if (!isClosed) continue;
+
+            if (selectedMonth !== "ALL" && hAgg.maxHarvMonthKey !== selectedMonth) continue;
+
+            const rawSp = String(c?.stck_species || bMeta?.species || "VAN").toUpperCase();
+            const isMon = rawSp.includes("MON");
+            const species = isMon ? "MON" : "VAN";
+            if (speciesFilter === "VAN" && species !== "VAN") continue;
+            if (speciesFilter === "MON" && species !== "MON") continue;
+
+            const rawSrc = String(c?.stck_source || bMeta?.source || "UNSPECIFIED").trim();
+            const cleanSrc = (!rawSrc || rawSrc.toUpperCase() === "NULL" || rawSrc === "—")
+                ? "UNSPECIFIED"
+                : rawSrc.toUpperCase();
+
+            const finalSr = (hAgg.totalPiecesHarvested / stckPcs) * 100;
+            const avgHarvAbw = hAgg.weightedAbwSum / hAgg.weightedAbwKg;
+            const closeDate = hAgg.maxHarvDate || String(c?.date_close || "").slice(0, 10);
+            const stckDateStr = String(stckDateRaw).slice(0, 10);
+            const docDays = Math.round((Date.parse(closeDate) - Date.parse(stckDateStr)) / 86400000);
+            if (isNaN(docDays) || docDays <= 20) continue;
+
+            const finalAdg = avgHarvAbw / docDays;
+            harvestedCyclesList.push({
+                pond_index: idx,
+                species,
+                source: cleanSrc,
+                finalSr: (finalSr > 5 && finalSr <= 115) ? Math.min(100, Math.round(finalSr * 10) / 10) : null,
+                finalAdg: (finalAdg > 0.02 && finalAdg <= 0.65) ? Math.round(finalAdg * 100) / 100 : null,
+                harvestKg: Math.round(hAgg.totalWeightKg),
+                avgAbw: Math.round(avgHarvAbw * 10) / 10,
+                docDays
+            });
+        }
+
+        const buildHarvestedPerformanceByHatchery = (spCode) => {
+            const spCycles = harvestedCyclesList.filter(item => item.species === spCode);
+            const map = new Map();
+            spCycles.forEach(item => {
+                if (!map.has(item.source)) {
+                    map.set(item.source, {
+                        source: item.source,
+                        species: spCode,
+                        harvestedPonds: 0,
+                        srs: [],
+                        adgs: [],
+                        totalHarvestKg: 0
+                    });
+                }
+                const g = map.get(item.source);
+                g.harvestedPonds += 1;
+                g.totalHarvestKg += item.harvestKg;
+                if (item.finalSr !== null) g.srs.push(item.finalSr);
+                if (item.finalAdg !== null) g.adgs.push(item.finalAdg);
+            });
+
+            return Array.from(map.values())
+                .filter(g => g.srs.length > 0 || g.adgs.length > 0)
+                .map(g => {
+                    const avgSr = g.srs.length > 0 ? Math.round((g.srs.reduce((a, b) => a + b, 0) / g.srs.length) * 10) / 10 : 0;
+                    const minSr = g.srs.length > 0 ? Math.round(Math.min(...g.srs) * 10) / 10 : 0;
+                    const maxSr = g.srs.length > 0 ? Math.round(Math.max(...g.srs) * 10) / 10 : 0;
+
+                    const avgAdg = g.adgs.length > 0 ? Math.round((g.adgs.reduce((a, b) => a + b, 0) / g.adgs.length) * 100) / 100 : 0;
+                    const minAdg = g.adgs.length > 0 ? Math.round(Math.min(...g.adgs) * 100) / 100 : 0;
+                    const maxAdg = g.adgs.length > 0 ? Math.round(Math.max(...g.adgs) * 100) / 100 : 0;
+
+                    return {
+                        source: g.source,
+                        species: g.species,
+                        harvestedPonds: g.harvestedPonds,
+                        totalTons: Math.round((g.totalHarvestKg / 1000) * 10) / 10,
+                        avgSr,
+                        minSr,
+                        maxSr,
+                        avgAdg,
+                        minAdg,
+                        maxAdg
+                    };
+                })
+                .sort((a, b) => b.harvestedPonds - a.harvestedPonds);
+        };
+
+        const vanHarvestPerf = buildHarvestedPerformanceByHatchery("VAN");
+        const monHarvestPerf = buildHarvestedPerformanceByHatchery("MON");
+
+        return {
+            currentYear,
+            scope,
+            selectedMonth,
+            chartMode,
+            speciesFilter,
+            ytdMonths,
+            ytdTimeline,
+            vanHatcheries: vanHatcheryStats.items,
+            monHatcheries: monHatcheryStats.items,
+            vanTotalPonds: vanHatcheryStats.totalPonds,
+            vanTotalMillion: vanHatcheryStats.totalMillion,
+            monTotalPonds: monHatcheryStats.totalPonds,
+            monTotalMillion: monHatcheryStats.totalMillion,
+            vanGeneticLines,
+            monGeneticLines,
+            plSizeBuckets,
+            moduleAllocation,
+            vanHarvestPerf,
+            monHarvestPerf,
+            fullYtdStats: {
+                vanPonds: fullYtdVan.totalPonds,
+                vanMillion: fullYtdVan.totalMillion,
+                monPonds: fullYtdMon.totalPonds,
+                monMillion: fullYtdMon.totalMillion,
+                totalPonds: fullYtdVan.totalPonds + fullYtdMon.totalPonds,
+                totalMillion: Math.round((fullYtdVan.totalMillion + fullYtdMon.totalMillion) * 100) / 100,
+                topVanHatchery,
+                topMonHatchery,
+                topVanLine,
+                topMonLine
+            }
+        };
+    }
+
+    /**
+     * Renders row HTML for hatchery harvest performance items
+     * with dual-track bars for Final SR % and Final ADG (Min / Avg / Max).
+     * @param {Array<object>} items
+     * @param {string} primaryColor
+     * @param {string} rangeBgColor
+     * @returns {string} HTML string
+     */
+    static renderHatcheryHarvestPerfRowsHtml(items, primaryColor, rangeBgColor) {
+        if (!items || items.length === 0) {
+            return `<div style="padding: 1.25rem; text-align: center; color: #94a3b8; font-size: 0.82rem;">No completed harvested pond cycles recorded in this period.</div>`;
+        }
+        const adgMaxScale = 0.45;
+        return items.map(p => {
+            const srMinPct = Math.max(0, Math.min(100, p.minSr));
+            const srMaxPct = Math.max(srMinPct, Math.min(100, p.maxSr));
+            const srAvgPct = Math.max(0, Math.min(100, p.avgSr));
+            const srSpanW = Math.max(2, srMaxPct - srMinPct);
+
+            const adgMinPct = Math.max(0, Math.min(100, (p.minAdg / adgMaxScale) * 100));
+            const adgMaxPct = Math.max(adgMinPct, Math.min(100, (p.maxAdg / adgMaxScale) * 100));
+            const adgAvgPct = Math.max(0, Math.min(100, (p.avgAdg / adgMaxScale) * 100));
+            const adgSpanW = Math.max(2, adgMaxPct - adgMinPct);
+
+            return `
+                <div style="padding: 0.7rem 0.85rem; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 0.6rem; margin-bottom: 0.65rem;">
+                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.5rem;">
+                        <div style="display: flex; align-items: center; gap: 0.45rem;">
+                            <span style="font-size: 0.84rem; font-weight: 800; color: #0f172a;">${p.source}</span>
+                            <span style="background: #e2e8f0; color: #334155; padding: 0.1rem 0.45rem; border-radius: 999px; font-size: 0.68rem; font-weight: 700;">${p.harvestedPonds} Harvested Ponds</span>
+                        </div>
+                        <span style="font-size: 0.72rem; font-weight: 700; color: #64748b;">${p.totalTons.toFixed(1)} MT Harvested</span>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 0.9rem;">
+                        <!-- Final SR % (Min / Avg / Max) -->
+                        <div>
+                            <div style="display: flex; justify-content: space-between; align-items: baseline; font-size: 0.72rem; margin-bottom: 0.25rem;">
+                                <span style="color: #475569; font-weight: 700;">Final SR %: <strong style="color: ${primaryColor}; font-size: 0.79rem;">Avg ${p.avgSr.toFixed(1)}%</strong></span>
+                                <span style="color: #64748b; font-size: 0.68rem; font-family: ui-monospace, monospace;">Min ${p.minSr.toFixed(1)}% – Max ${p.maxSr.toFixed(1)}%</span>
+                            </div>
+                            <div style="position: relative; height: 10px; background: #e2e8f0; border-radius: 999px; overflow: hidden;">
+                                <!-- Average Bar from 0 to Avg -->
+                                <div style="position: absolute; left: 0; top: 0; height: 100%; width: ${srAvgPct}%; background: ${primaryColor}; opacity: 0.28; border-radius: 999px;"></div>
+                                <!-- Min to Max Range Span -->
+                                <div style="position: absolute; left: ${srMinPct}%; top: 2px; height: 6px; width: ${srSpanW}%; background: ${rangeBgColor}; border-radius: 999px;" title="Min ${p.minSr}% to Max ${p.maxSr}%"></div>
+                                <!-- Avg Marker Pill -->
+                                <div style="position: absolute; left: calc(${srAvgPct}% - 3px); top: 0; width: 6px; height: 10px; background: ${primaryColor}; border: 1.5px solid #ffffff; border-radius: 999px; box-shadow: 0 1px 2px rgba(0,0,0,0.25);" title="Average SR: ${p.avgSr}%"></div>
+                            </div>
+                        </div>
+
+                        <!-- Final ADG g/d (Min / Avg / Max) -->
+                        <div>
+                            <div style="display: flex; justify-content: space-between; align-items: baseline; font-size: 0.72rem; margin-bottom: 0.25rem;">
+                                <span style="color: #475569; font-weight: 700;">Final ADG: <strong style="color: ${primaryColor}; font-size: 0.79rem;">Avg ${p.avgAdg.toFixed(2)} g/d</strong></span>
+                                <span style="color: #64748b; font-size: 0.68rem; font-family: ui-monospace, monospace;">Min ${p.minAdg.toFixed(2)} – Max ${p.maxAdg.toFixed(2)}</span>
+                            </div>
+                            <div style="position: relative; height: 10px; background: #e2e8f0; border-radius: 999px; overflow: hidden;">
+                                <!-- Average Bar from 0 to Avg -->
+                                <div style="position: absolute; left: 0; top: 0; height: 100%; width: ${adgAvgPct}%; background: ${primaryColor}; opacity: 0.28; border-radius: 999px;"></div>
+                                <!-- Min to Max Range Span -->
+                                <div style="position: absolute; left: ${adgMinPct}%; top: 2px; height: 6px; width: ${adgSpanW}%; background: ${rangeBgColor}; border-radius: 999px;" title="Min ${p.minAdg} g/d to Max ${p.maxAdg} g/d"></div>
+                                <!-- Avg Marker Pill -->
+                                <div style="position: absolute; left: calc(${adgAvgPct}% - 3px); top: 0; width: 6px; height: 10px; background: ${primaryColor}; border: 1.5px solid #ffffff; border-radius: 999px; box-shadow: 0 1px 2px rgba(0,0,0,0.25);" title="Average ADG: ${p.avgAdg} g/d"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }).join("");
+    }
+
+    /**
+     * Renders the 2-card grid displaying Realized Final Harvest Performance by Hatchery
+     * (Final SR % and Final ADG g/d with Min / Avg / Max range and average bars)
+     * for both Vannamei and Monodon.
+     * @param {object} intel Result from aggregateSpeciesAndHatcheryIntelligence
+     * @param {object} [options]
+     * @param {boolean} [options.isDashboard=false]
+     * @returns {string} HTML string
+     */
+    static renderHatcheryHarvestPerformanceGrid(intel, options = {}) {
+        const vanItems = intel?.vanHarvestPerf || [];
+        const monItems = intel?.monHarvestPerf || [];
+        const curYear = intel?.currentYear || new Date().getFullYear();
+        const vanCount = vanItems.reduce((a, b) => a + (b.harvestedPonds || 0), 0);
+        const monCount = monItems.reduce((a, b) => a + (b.harvestedPonds || 0), 0);
+        const vanTons = (vanItems.reduce((a, b) => a + (b.totalTons || 0), 0)).toFixed(1);
+        const monTons = (monItems.reduce((a, b) => a + (b.totalTons || 0), 0)).toFixed(1);
+
+        const cardStyle = options.isDashboard
+            ? "padding: 1.15rem 1.25rem; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 0.75rem; box-shadow: 0 1px 3px rgba(0,0,0,0.04);"
+            : "padding: 1.15rem 1.25rem;";
+        const cardClass = options.isDashboard ? "" : "exec-detail-table-card";
+
+        return `
+            <div class="species-harvest-perf-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(380px, 1fr)); gap: 1rem;">
+                <!-- Card 1: Vannamei (VAN) Realized Harvest SR % & ADG by Hatchery -->
+                <div class="${cardClass}" style="${cardStyle}">
+                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.9rem; border-bottom: 1px solid #f1f5f9; padding-bottom: 0.6rem;">
+                        <div>
+                            <div style="font-size: 0.92rem; font-weight: 800; color: #0f172a; display: flex; align-items: center; gap: 0.4rem;">
+                                <span style="width: 10px; height: 10px; border-radius: 3px; background: #0284c7; display: inline-block;"></span>
+                                <span>Vannamei (VAN) Harvested SR % &amp; ADG by Hatchery</span>
+                            </div>
+                            <div style="font-size: 0.73rem; color: #64748b; margin-top: 0.15rem;">Realized Final Harvest Outcomes (${curYear} Harvested Ponds • ${vanTons} MT Total)</div>
+                        </div>
+                        <span class="drilldown-badge badge-sp-van">${vanCount} Harvested Ponds</span>
+                    </div>
+                    <div>
+                        ${ExecutiveMetricsPresenter.renderHatcheryHarvestPerfRowsHtml(vanItems, "#0284c7", "#38bdf8")}
+                    </div>
+                </div>
+
+                <!-- Card 2: Monodon (MON) Realized Harvest SR % & ADG by Hatchery -->
+                <div class="${cardClass}" style="${cardStyle}">
+                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.9rem; border-bottom: 1px solid #f1f5f9; padding-bottom: 0.6rem;">
+                        <div>
+                            <div style="font-size: 0.92rem; font-weight: 800; color: #0f172a; display: flex; align-items: center; gap: 0.4rem;">
+                                <span style="width: 10px; height: 10px; border-radius: 3px; background: #10b981; display: inline-block;"></span>
+                                <span>Monodon (MON) Harvested SR % &amp; ADG by Hatchery</span>
+                            </div>
+                            <div style="font-size: 0.73rem; color: #64748b; margin-top: 0.15rem;">Realized Final Harvest Outcomes (${curYear} Harvested Ponds • ${monTons} MT Total)</div>
+                        </div>
+                        <span class="drilldown-badge badge-sp-mon">${monCount} Harvested Ponds</span>
+                    </div>
+                    <div>
+                        ${ExecutiveMetricsPresenter.renderHatcheryHarvestPerfRowsHtml(monItems, "#059669", "#34d399")}
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    /**
      * Calculates Days of Culture (DOC) stage composition and averages per species.
      * Stages: Early (<30d), Mid (30-70d), Finishing (>70d).
      * @param {Array<object>} activePonds 
@@ -588,10 +1993,11 @@ export class ExecutiveMetricsPresenter {
             target.count++;
             target.totalDoc += doc;
 
-            if (doc < 30) {
+            const stage = getCultureStage(doc, isMon ? "MON" : "VAN");
+            if (stage.stageCode === "EARLY") {
                 target.early++;
                 summary.overall.early++;
-            } else if (doc <= 70) {
+            } else if (stage.stageCode === "MID") {
                 target.mid++;
                 summary.overall.mid++;
             } else {
@@ -625,8 +2031,268 @@ export class ExecutiveMetricsPresenter {
         }
 
         summary.overall.avgDoc = Math.round(farmTotalDoc / total);
+        summary.overall.earlyPct = Math.round((summary.overall.early / total) * 100);
+        summary.overall.midPct = Math.round((summary.overall.mid / total) * 100);
+        summary.overall.finishingPct = Math.round((summary.overall.finishing / total) * 100);
 
         return summary;
+    }
+
+    /**
+     * Aggregates Days of Culture (DOC) and Culture Stage intelligence across active farm crops.
+     * Generates a 10-day age cohort histogram, species stage progression funnels, harvest maturation pipelines,
+     * module synchrony breakdowns, and stage-specific biosecurity cross-tabulations.
+     * 
+     * @param {object} dataBundle { activePonds, activeCycles, dailyProgress, samplings, issues }
+     * @param {object} [options]
+     * @param {string} [options.docSpeciesFilter="ALL"] "ALL" | "VAN" | "MON"
+     * @param {string} [options.docStageFilter="ALL"] "ALL" | "EARLY" | "MID" | "FINISHING" | "EXTENDED"
+     * @param {string} [options.selectedCohort="ALL"] "ALL" | "1-10" | "11-20" ...
+     * @returns {object}
+     */
+    static aggregateDocAndCultureStageIntelligence(dataBundle = {}, options = {}) {
+        const docSpeciesFilter = (options.docSpeciesFilter || options.speciesFilter || "ALL").toUpperCase();
+        const docStageFilter = (options.docStageFilter || options.selectedStage || "ALL").toUpperCase();
+        const selectedCohort = options.selectedCohort || options.selectedMonth || "ALL";
+
+        const rawPonds = (dataBundle.activePonds || []).filter(p => p.isActive || String(p.progressState || "").toUpperCase() === "CULTURE");
+
+        const getSpecies = (p) => {
+            const s = String(p.speciesCode || p.species || p.speciesLabel || "VAN").toUpperCase();
+            return s.includes("MON") ? "MON" : "VAN";
+        };
+
+        const getModule = (p) => {
+            if (p.modl) return String(p.modl).toUpperCase();
+            const code = String(p.pondCode || p.pond || "");
+            const parts = code.split(".");
+            if (parts.length >= 1 && parts[0]) {
+                const num = parseInt(parts[0], 10);
+                if (!isNaN(num)) return `M${String(num).padStart(2, "0")}`;
+            }
+            return "M01";
+        };
+
+        // 1. Process and normalize all culturing ponds
+        const allPonds = rawPonds.map(p => {
+            const doc = Number(p.doc) || Number(p.progressDays) || 0;
+            const sp = getSpecies(p);
+            const modl = getModule(p);
+
+            // Assign 10-day cohort key and label
+            let cohortKey = "110+";
+            let cohortLabel = "> 110d";
+            if (doc <= 10) { cohortKey = "1-10"; cohortLabel = "1–10d"; }
+            else if (doc <= 20) { cohortKey = "11-20"; cohortLabel = "11–20d"; }
+            else if (doc <= 30) { cohortKey = "21-30"; cohortLabel = "21–30d"; }
+            else if (doc <= 40) { cohortKey = "31-40"; cohortLabel = "31–40d"; }
+            else if (doc <= 50) { cohortKey = "41-50"; cohortLabel = "41–50d"; }
+            else if (doc <= 60) { cohortKey = "51-60"; cohortLabel = "51–60d"; }
+            else if (doc <= 70) { cohortKey = "61-70"; cohortLabel = "61–70d"; }
+            else if (doc <= 80) { cohortKey = "71-80"; cohortLabel = "71–80d"; }
+            else if (doc <= 90) { cohortKey = "81-90"; cohortLabel = "81–90d"; }
+            else if (doc <= 100) { cohortKey = "91-100"; cohortLabel = "91–100d"; }
+            else if (doc <= 110) { cohortKey = "101-110"; cohortLabel = "101–110d"; }
+
+            // Stage code: EARLY, MID, FINISHING, EXTENDED
+            const stageInfo = getCultureStage(doc, sp);
+            const stageCode = stageInfo.stageCode;
+            const stageLabel = stageInfo.stageLabel;
+
+            // Projected Harvest Window
+            let harvestWindow = "Growing (> 30d)";
+            let harvestTier = "GROWING"; // "IMMINENT" | "NEAR_TERM" | "APPROACHING" | "GROWING"
+            if (sp === "VAN") {
+                if (doc >= 70) { harvestWindow = "Ready Now (Immediate)"; harvestTier = "IMMINENT"; }
+                else if (doc >= 60) { harvestWindow = "7–14 Days"; harvestTier = "NEAR_TERM"; }
+                else if (doc >= 45) { harvestWindow = "15–30 Days"; harvestTier = "APPROACHING"; }
+            } else { // MON
+                if (doc >= 110) { harvestWindow = "Ready Now (Immediate)"; harvestTier = "IMMINENT"; }
+                else if (doc >= 90) { harvestWindow = "7–14 Days"; harvestTier = "NEAR_TERM"; }
+                else if (doc >= 75) { harvestWindow = "15–30 Days"; harvestTier = "APPROACHING"; }
+            }
+
+            const health = (p.health || "GREEN").toUpperCase();
+
+            return {
+                ...p,
+                pondCode: p.pondCode || p.pond || "—",
+                species: sp,
+                speciesLabel: sp === "MON" ? "Monodon" : "Vannamei",
+                doc,
+                modl,
+                cohortKey,
+                cohortLabel,
+                stageCode,
+                stageLabel,
+                isExtended: stageInfo.isExtended,
+                harvestWindow,
+                harvestTier,
+                health,
+                stckDate: p.stckDate || p.dailyRecord?.stocking_date || p.stocking_date || "—"
+            };
+        });
+
+        // 2. Summary stats & Asymmetry calculations
+        const vanPonds = allPonds.filter(p => p.species === "VAN");
+        const monPonds = allPonds.filter(p => p.species === "MON");
+
+        const calcStats = (items) => {
+            const count = items.length;
+            if (count === 0) return { count: 0, minDoc: 0, avgDoc: 0, maxDoc: 0, early: 0, mid: 0, finishing: 0, extended: 0, earlyPct: 0, midPct: 0, finishingPct: 0, extendedPct: 0 };
+            const docs = items.map(p => p.doc).sort((a, b) => a - b);
+            const totalDoc = docs.reduce((a, b) => a + b, 0);
+
+            let early = 0;
+            let mid = 0;
+            let finishing = 0;
+            let extended = 0;
+
+            items.forEach(p => {
+                const s = getCultureStage(p.doc, p.species);
+                if (s.stageCode === "EARLY") early++;
+                else if (s.stageCode === "MID") mid++;
+                else finishing++;
+
+                if (s.isExtended) extended++;
+            });
+
+            return {
+                count,
+                minDoc: docs[0],
+                avgDoc: Math.round(totalDoc / count),
+                maxDoc: docs[docs.length - 1],
+                early,
+                mid,
+                finishing,
+                extended,
+                earlyPct: Math.round((early / count) * 100),
+                midPct: Math.round((mid / count) * 100),
+                finishingPct: Math.round((finishing / count) * 100),
+                extendedPct: Math.round((extended / count) * 100)
+            };
+        };
+
+        const vanStats = calcStats(vanPonds);
+        const monStats = calcStats(monPonds);
+        const overallStats = calcStats(allPonds);
+
+        // 3. 10-Day Cohort Histogram Timeline (Canvas ready)
+        const cohortBucketsDef = [
+            { key: "1-10", label: "1–10d", zone: "EARLY" },
+            { key: "11-20", label: "11–20d", zone: "EARLY" },
+            { key: "21-30", label: "21–30d", zone: "EARLY" },
+            { key: "31-40", label: "31–40d", zone: "MID" },
+            { key: "41-50", label: "41–50d", zone: "MID" },
+            { key: "51-60", label: "51–60d", zone: "MID" },
+            { key: "61-70", label: "61–70d", zone: "MID" },
+            { key: "71-80", label: "71–80d", zone: "FINISHING" },
+            { key: "81-90", label: "81–90d", zone: "FINISHING" },
+            { key: "91-100", label: "91–100d", zone: "FINISHING" },
+            { key: "101-110", label: "101–110d", zone: "FINISHING" },
+            { key: "110+", label: "> 110d", zone: "FINISHING" }
+        ];
+
+        const cohortTimeline = cohortBucketsDef.map(b => {
+            const inBucket = allPonds.filter(p => p.cohortKey === b.key);
+            const vanCount = inBucket.filter(p => p.species === "VAN").length;
+            const monCount = inBucket.filter(p => p.species === "MON").length;
+            const total = inBucket.length;
+
+            return {
+                monthKey: b.key,
+                monthLabel: b.label,
+                zone: b.zone,
+                isDualSpecies: true,
+                speciesFilter: docSpeciesFilter,
+                vanValue: vanCount,
+                monValue: monCount,
+                value: docSpeciesFilter === "VAN" ? vanCount : (docSpeciesFilter === "MON" ? monCount : total),
+                unit: "Ponds",
+                subValue: `${vanCount} VAN • ${monCount} MON`,
+                active: selectedCohort === b.key
+            };
+        });
+
+        // 4. Target-Aware Harvest Readiness Pipeline Tiers & Stage Risk
+        const targetPonds = docSpeciesFilter === "VAN" ? vanPonds : (docSpeciesFilter === "MON" ? monPonds : allPonds);
+        const targetStats = docSpeciesFilter === "VAN" ? vanStats : (docSpeciesFilter === "MON" ? monStats : overallStats);
+
+        const imminentCandidates = targetPonds.filter(p => p.harvestTier === "IMMINENT");
+        const nearTermCandidates = targetPonds.filter(p => p.harvestTier === "NEAR_TERM");
+        const approachingCandidates = targetPonds.filter(p => p.harvestTier === "APPROACHING");
+
+        // 5. Module Spatial Synchrony (M01 - M09)
+        const modules = ["M01", "M02", "M03", "M04", "M05", "M06", "M07", "M08", "M09"];
+        const moduleSynchrony = modules.map(mId => {
+            const mPonds = targetPonds.filter(p => p.modl === mId);
+            const total = mPonds.length;
+            const early = mPonds.filter(p => p.stageCode === "EARLY").length;
+            const mid = mPonds.filter(p => p.stageCode === "MID").length;
+            const finishing = mPonds.filter(p => p.stageCode === "FINISHING").length;
+            const vanCount = mPonds.filter(p => p.species === "VAN").length;
+            const monCount = mPonds.filter(p => p.species === "MON").length;
+
+            let syncStatus = "Mixed Stages";
+            let syncBadgeClass = "badge-status-culture";
+            if (total === 0) {
+                syncStatus = "Idle / Turnaround";
+                syncBadgeClass = "badge-alert-yellow";
+            } else if (finishing / total >= 0.6) {
+                syncStatus = "Batch Harvest Ready";
+                syncBadgeClass = "badge-status-ready";
+            } else if (mid / total >= 0.6) {
+                syncStatus = "Peak Feeding";
+                syncBadgeClass = "badge-sp-van";
+            } else if (early / total >= 0.6) {
+                syncStatus = "Nursery Acclimation";
+                syncBadgeClass = "badge-sp-mon";
+            }
+
+            return {
+                module: mId,
+                totalActive: total,
+                early,
+                mid,
+                finishing,
+                vanCount,
+                monCount,
+                earlyPct: total > 0 ? Math.round((early / total) * 100) : 0,
+                midPct: total > 0 ? Math.round((mid / total) * 100) : 0,
+                finishingPct: total > 0 ? Math.round((finishing / total) * 100) : 0,
+                syncStatus,
+                syncBadgeClass
+            };
+        });
+
+        // 6. Biosecurity Health & Risk by Stage
+        const stageBiosecurity = {
+            early: { total: targetStats.early, green: 0, yellow: 0, red: 0 },
+            mid: { total: targetStats.mid, green: 0, yellow: 0, red: 0 },
+            finishing: { total: targetStats.finishing, green: 0, yellow: 0, red: 0 }
+        };
+        targetPonds.forEach(p => {
+            const stg = p.stageCode === "EARLY" ? "early" : (p.stageCode === "MID" ? "mid" : "finishing");
+            if (p.health === "RED") stageBiosecurity[stg].red++;
+            else if (p.health === "YELLOW") stageBiosecurity[stg].yellow++;
+            else stageBiosecurity[stg].green++;
+        });
+
+        return {
+            docSpeciesFilter,
+            docStageFilter,
+            selectedCohort,
+            vanStats,
+            monStats,
+            overallStats,
+            cohortTimeline,
+            imminentCandidates,
+            nearTermCandidates,
+            approachingCandidates,
+            moduleSynchrony,
+            stageBiosecurity,
+            allPonds
+        };
     }
 
     /**
@@ -920,46 +2586,98 @@ export class ExecutiveMetricsPresenter {
             const moduleKeys = Array.from({ length: 11 }, (_, i) => `M${String(i + 1).padStart(2, "0")}`);
             buckets = moduleKeys.map(mKey => {
                 const modPonds = liveActivePool.filter(p => p.moduleKey === mKey);
+                const vanModPonds = vanLivePonds.filter(p => p.moduleKey === mKey);
+                const monModPonds = monLivePonds.filter(p => p.moduleKey === mKey);
+
                 const avgAdg = calcAvgAdg(modPonds);
+                const vanAvgAdgMod = calcAvgAdg(vanModPonds);
+                const monAvgAdgMod = calcAvgAdg(monModPonds);
+
                 const avgSr = calcAvgSr(modPonds);
+                const vanAvgSrMod = calcAvgSr(vanModPonds);
+                const monAvgSrMod = calcAvgSr(monModPonds);
+
                 const behindCount = modPonds.filter(p => p.isBehindTarget).length;
+                const vanBehindMod = vanModPonds.filter(p => p.isBehindTarget).length;
+                const monBehindMod = monModPonds.filter(p => p.isBehindTarget).length;
+
                 const criticalCount = modPonds.filter(p => p.isCriticalSr).length;
+                const vanCriticalMod = vanModPonds.filter(p => p.isCriticalSr).length;
+                const monCriticalMod = monModPonds.filter(p => p.isCriticalSr).length;
+
                 const alertsCount = modPonds.filter(p => p.hasAlert).length;
+                const vanAlertsMod = vanModPonds.filter(p => p.hasAlert).length;
+                const monAlertsMod = monModPonds.filter(p => p.hasAlert).length;
 
                 let value = avgAdg;
+                let vanValue = vanAvgAdgMod;
+                let monValue = monAvgAdgMod;
                 let unit = "g/day";
                 let subValue = `${modPonds.length} Ponds • ${avgAdg} g/d`;
+                let benchmarkVal = speciesFilter === "MON" ? 0.22 : 0.25;
+                let benchmarkLabel = speciesFilter === "MON" ? "Target: 0.22g/d" : (speciesFilter === "VAN" ? "Target: 0.25g/d" : "VAN Target: 0.25g/d");
+                let farmAvgVal = speciesFilter === "MON" ? monAvgAdg : (speciesFilter === "VAN" ? vanAvgAdg : overallAvgAdg);
 
                 if (chartMode === "SR") {
                     value = avgSr;
+                    vanValue = vanAvgSrMod;
+                    monValue = monAvgSrMod;
                     unit = "%";
                     subValue = `${modPonds.length} Ponds • ${avgSr}% SR`;
+                    benchmarkVal = speciesFilter === "MON" ? 70 : 75;
+                    benchmarkLabel = speciesFilter === "MON" ? "Target: 70%" : (speciesFilter === "VAN" ? "Target: 75%" : "VAN Target: 75%");
+                    farmAvgVal = speciesFilter === "MON" ? monAvgSr : (speciesFilter === "VAN" ? vanAvgSr : overallAvgSr);
                 } else if (chartMode === "LAGGING") {
                     value = behindCount;
+                    vanValue = vanBehindMod;
+                    monValue = monBehindMod;
                     unit = "Ponds";
                     subValue = `${behindCount} Ponds Behind Target`;
+                    benchmarkVal = null;
+                    benchmarkLabel = "";
+                    farmAvgVal = null;
                 } else if (chartMode === "CRITICAL_SR") {
                     value = criticalCount;
+                    vanValue = vanCriticalMod;
+                    monValue = monCriticalMod;
                     unit = "Ponds";
                     subValue = `${criticalCount} Low Survival Ponds`;
+                    benchmarkVal = null;
+                    benchmarkLabel = "";
+                    farmAvgVal = null;
                 } else if (chartMode === "ALERTS") {
                     value = alertsCount;
+                    vanValue = vanAlertsMod;
+                    monValue = monAlertsMod;
                     unit = "Alerts";
                     subValue = `${alertsCount} Lab Alerts`;
+                    benchmarkVal = null;
+                    benchmarkLabel = "";
+                    farmAvgVal = null;
                 }
 
                 return {
                     monthKey: mKey,
                     monthLabel: `Module ${mKey.replace("M", "")}`,
                     value,
+                    vanValue,
+                    monValue,
+                    isDualSpecies: true,
+                    speciesFilter,
+                    chartMode,
                     unit,
                     subValue,
                     pondCount: modPonds.length,
+                    vanPondCount: vanModPonds.length,
+                    monPondCount: monModPonds.length,
                     avgAdg,
                     avgSr,
                     behindCount,
                     criticalCount,
                     alertsCount,
+                    benchmarkVal,
+                    benchmarkLabel,
+                    farmAvgVal,
                     ponds: modPonds
                 };
             });
@@ -998,48 +2716,99 @@ export class ExecutiveMetricsPresenter {
                     }
                 });
                 const monthPonds = Array.from(monthPondMap.values());
+                const vanMonthPonds = monthPonds.filter(p => p.speciesCode === "VAN");
+                const monMonthPonds = monthPonds.filter(p => p.speciesCode === "MON");
 
                 const avgAdg = calcAvgAdg(monthPonds);
+                const vanAvgAdgMonth = calcAvgAdg(vanMonthPonds);
+                const monAvgAdgMonth = calcAvgAdg(monMonthPonds);
+
                 const avgSr = calcAvgSr(monthPonds);
+                const vanAvgSrMonth = calcAvgSr(vanMonthPonds);
+                const monAvgSrMonth = calcAvgSr(monMonthPonds);
+
                 const behindCount = monthPonds.filter(p => p.isBehindTarget).length;
+                const vanBehindMonth = vanMonthPonds.filter(p => p.isBehindTarget).length;
+                const monBehindMonth = monMonthPonds.filter(p => p.isBehindTarget).length;
+
                 const criticalCount = monthPonds.filter(p => p.isCriticalSr).length;
+                const vanCriticalMonth = vanMonthPonds.filter(p => p.isCriticalSr).length;
+                const monCriticalMonth = monMonthPonds.filter(p => p.isCriticalSr).length;
+
                 const alertsCount = monthPonds.filter(p => p.healthFlag === "RED").length;
+                const vanAlertsMonth = vanMonthPonds.filter(p => p.healthFlag === "RED").length;
+                const monAlertsMonth = monMonthPonds.filter(p => p.healthFlag === "RED").length;
 
                 let value = avgAdg;
+                let vanValue = vanAvgAdgMonth;
+                let monValue = monAvgAdgMonth;
                 let unit = "g/day";
                 let subValue = `${monthPonds.length} Ponds • ${avgAdg} g/d`;
+                let benchmarkVal = speciesFilter === "MON" ? 0.22 : 0.25;
+                let benchmarkLabel = speciesFilter === "MON" ? "Target: 0.22g/d" : (speciesFilter === "VAN" ? "Target: 0.25g/d" : "VAN Target: 0.25g/d");
+                let farmAvgVal = speciesFilter === "MON" ? monAvgAdg : (speciesFilter === "VAN" ? vanAvgAdg : overallAvgAdg);
 
                 if (chartMode === "SR") {
                     value = avgSr;
+                    vanValue = vanAvgSrMonth;
+                    monValue = monAvgSrMonth;
                     unit = "%";
                     subValue = `${monthPonds.length} Ponds • ${avgSr}% SR`;
+                    benchmarkVal = speciesFilter === "MON" ? 70 : 75;
+                    benchmarkLabel = speciesFilter === "MON" ? "Target: 70%" : (speciesFilter === "VAN" ? "Target: 75%" : "VAN Target: 75%");
+                    farmAvgVal = speciesFilter === "MON" ? monAvgSr : (speciesFilter === "VAN" ? vanAvgSr : overallAvgSr);
                 } else if (chartMode === "LAGGING") {
                     value = behindCount;
+                    vanValue = vanBehindMonth;
+                    monValue = monBehindMonth;
                     unit = "Ponds";
                     subValue = `${behindCount} Behind Target`;
+                    benchmarkVal = null;
+                    benchmarkLabel = "";
+                    farmAvgVal = null;
                 } else if (chartMode === "CRITICAL_SR") {
                     value = criticalCount;
+                    vanValue = vanCriticalMonth;
+                    monValue = monCriticalMonth;
                     unit = "Ponds";
                     subValue = `${criticalCount} Low Survival Ponds`;
+                    benchmarkVal = null;
+                    benchmarkLabel = "";
+                    farmAvgVal = null;
                 } else if (chartMode === "ALERTS") {
                     value = alertsCount;
+                    vanValue = vanAlertsMonth;
+                    monValue = monAlertsMonth;
                     unit = "Alerts";
                     subValue = `${alertsCount} Red Alerts`;
+                    benchmarkVal = null;
+                    benchmarkLabel = "";
+                    farmAvgVal = null;
                 }
 
                 return {
                     monthKey: mKey,
                     monthLabel: formatMonthLabel(mKey),
                     value,
+                    vanValue,
+                    monValue,
+                    isDualSpecies: true,
+                    speciesFilter,
+                    chartMode,
                     unit,
                     subValue,
                     pondCount: monthPonds.length,
+                    vanPondCount: vanMonthPonds.length,
+                    monPondCount: monMonthPonds.length,
                     sampleCount: monthSamples.length,
                     avgAdg,
                     avgSr,
                     behindCount,
                     criticalCount,
                     alertsCount,
+                    benchmarkVal,
+                    benchmarkLabel,
+                    farmAvgVal,
                     ponds: monthPonds
                 };
             });
@@ -1186,73 +2955,170 @@ export class ExecutiveMetricsPresenter {
 
         switch (metricType) {
             case METRIC_TYPES.HARVEST: {
-                const harvestAgg = this.aggregateMonthlyHarvest(dataBundle.dailyHarvests || [], dataBundle.salesRecords || []);
-                const timeline = harvestAgg.buckets.map(b => ({
-                    monthKey: b.monthKey,
-                    monthLabel: b.monthLabel,
-                    value: b.tonnage,
-                    unit: "MT",
-                    subValue: `${b.count} Harv • Avg ${b.avgAbw}g`,
-                    active: selectedMonth === b.monthKey
-                }));
+                const refDate = options.referenceDate instanceof Date ? options.referenceDate : new Date();
+                const harvestChartMode = options.harvestChartMode === "PONDS" ? "PONDS" : "TONNAGE";
+                const harvestSpeciesFilter = (options.harvestSpecies === "VAN" || options.harvestSpecies === "MON")
+                    ? options.harvestSpecies
+                    : "ALL";
 
-                const allRecords = dataBundle.dailyHarvests || [];
+                const harvestAgg = this.aggregateMonthlyHarvest(
+                    dataBundle.dailyHarvests || [],
+                    dataBundle.salesRecords || [],
+                    refDate,
+                    dataBundle.dailyProgress || [],
+                    dataBundle.operationalCycles || dataBundle.activeCycles || []
+                );
+
+                const timeline = harvestAgg.buckets.map(b => {
+                    const isPonds = harvestChartMode === "PONDS";
+                    const vanVal = isPonds ? b.vanPondCount : b.vanTonnage;
+                    const monVal = isPonds ? b.monPondCount : b.monTonnage;
+                    let totalVal = isPonds ? b.pondCount : b.tonnage;
+                    if (harvestSpeciesFilter === "VAN") totalVal = vanVal;
+                    else if (harvestSpeciesFilter === "MON") totalVal = monVal;
+
+                    return {
+                        monthKey: b.monthKey,
+                        monthLabel: b.monthLabel,
+                        value: totalVal,
+                        vanValue: vanVal,
+                        monValue: monVal,
+                        speciesFilter: harvestSpeciesFilter,
+                        isDualSpecies: true,
+                        unit: isPonds ? "Ponds" : "MT",
+                        subValue: isPonds
+                            ? `VAN: ${b.vanPondCount} Ponds • MON: ${b.monPondCount} Ponds${b.pendingSyncCount > 0 ? ` (${b.pendingSyncCount} Daily Excel)` : ""}`
+                            : `VAN: ${formatNumber(b.vanTonnage, 1)} MT (${b.vanPondCount}P) • MON: ${formatNumber(b.monTonnage, 1)} MT (${b.monPondCount}P)`,
+                        active: selectedMonth === b.monthKey
+                    };
+                });
+
+                const allRecords = harvestAgg.allRecords || [];
                 const filtered = allRecords.filter(r => {
                     if (selectedMonth !== "ALL") {
                         if (toMonthKey(r.harv_date) !== selectedMonth) return false;
                     }
+                    if (harvestSpeciesFilter !== "ALL") {
+                        const rSp = String(r.species || "VAN").toUpperCase().includes("MON") ? "MON" : "VAN";
+                        if (rSp !== harvestSpeciesFilter) return false;
+                    }
                     if (query) {
-                        const hay = `${r.pond || ""} ${r.pond_index || ""} ${r.harv_status || ""} ${r.species || ""}`.toLowerCase();
+                        const hay = `${r.pond || ""} ${r.pond_index || ""} ${r.modl || ""} ${r.harv_status || ""} ${r.species || ""} ${r.data_source || ""}`.toLowerCase();
                         if (!hay.includes(query)) return false;
                     }
                     return true;
                 });
 
-                const tableHeaders = ["Pond Code", "Cycle No", "Harvest Date", "Species", "Status", "Weight (kg)", "Tonnage (MT)", "ABW (g)", "Est Revenue (RM)"];
+                const tableHeaders = [
+                    "Pond Name",
+                    "Cycle No",
+                    "Module",
+                    "Harvest Date",
+                    "Species",
+                    "Harvest Status",
+                    "Data Source",
+                    "Weight (kg)",
+                    "Tonnage (MT)",
+                    "ABW (g)",
+                    "Est Revenue (RM)"
+                ];
+
                 const tableRows = filtered.map(r => {
-                    const pondCode = r.pond || r.pond_index?.split(".")[0] || r.pond_index || "—";
-                    const cycleNo = r.cycle_no || (r.pond_index?.includes(".") ? r.pond_index.split(".")[1] : "—");
+                    const pondCode = r.pond || derivePondCodeFromIndex(r.pond_index, "");
+                    const cycleNo = r.cycle_no || (r.pond_index && String(r.pond_index).includes(".") ? String(r.pond_index).split(".")[1] : "—");
+                    const modl = r.modl || deriveModuleFromPond(pondCode);
+                    const isPending = Boolean(r.isPendingSync);
                     const wKg = Number(r.harv_weight) || 0;
                     const wMt = Math.round((wKg / 1000) * 100) / 100;
                     const abw = Number(r.harv_abw) || 0;
                     const rev = Number(r.harv_revenue) || 0;
+
                     return [
                         pondCode,
                         cycleNo,
+                        modl,
                         r.harv_date || "—",
                         r.species || "VAN",
                         r.harv_status || "HARVEST",
-                        formatNumber(wKg, 1),
-                        formatNumber(wMt, 2),
-                        abw > 0 ? `${abw} g` : "—",
-                        rev > 0 ? `RM ${formatNumber(rev, 0)}` : "—"
+                        r.data_source || (isPending ? "DAILY EXCEL (PENDING SYNC)" : "SUPABASE DBMS"),
+                        isPending ? "Pending DBMS Sync" : formatNumber(wKg, 1),
+                        isPending ? "Pending DBMS Sync" : formatNumber(wMt, 2),
+                        isPending ? "—" : (abw > 0 ? `${abw} g` : "—"),
+                        isPending ? "Pending DBMS Sync" : (rev > 0 ? `RM ${formatNumber(rev, 0)}` : "—")
                     ];
                 });
 
-                const csvHeaders = ["Pond Index", "Pond Code", "Harvest Date", "Species", "Harvest Status", "Harvest Weight (kg)", "Harvest Tonnage (MT)", "ABW (g)", "Revenue (RM)"];
-                const csvRows = filtered.map(r => [
-                    r.pond_index || "",
-                    r.pond || "",
-                    r.harv_date || "",
-                    r.species || "VAN",
-                    r.harv_status || "",
-                    Number(r.harv_weight) || 0,
-                    Math.round(((Number(r.harv_weight) || 0) / 1000) * 100) / 100,
-                    Number(r.harv_abw) || 0,
-                    Number(r.harv_revenue) || 0
-                ]);
+                const csvHeaders = [
+                    "Pond Index",
+                    "Pond Name",
+                    "Cycle No",
+                    "Module",
+                    "Harvest Date",
+                    "Species",
+                    "Harvest Status",
+                    "Data Source",
+                    "Harvest Weight (kg)",
+                    "Harvest Tonnage (MT)",
+                    "ABW (g)",
+                    "Revenue (RM)"
+                ];
+                const csvRows = filtered.map(r => {
+                    const isPending = Boolean(r.isPendingSync);
+                    return [
+                        r.pond_index || "",
+                        r.pond || derivePondCodeFromIndex(r.pond_index, ""),
+                        r.cycle_no || "",
+                        r.modl || deriveModuleFromPond(r.pond || r.pond_index),
+                        r.harv_date || "",
+                        r.species || "VAN",
+                        r.harv_status || "",
+                        r.data_source || (isPending ? "DAILY EXCEL (PENDING SYNC)" : "SUPABASE DBMS"),
+                        isPending ? "" : (Number(r.harv_weight) || 0),
+                        isPending ? "" : (Math.round(((Number(r.harv_weight) || 0) / 1000) * 100) / 100),
+                        isPending ? "" : (Number(r.harv_abw) || 0),
+                        isPending ? "" : (Number(r.harv_revenue) || 0)
+                    ];
+                });
+
+                const filteredPondCount = new Set(filtered.map(r => r.pond_index || r.pond)).size;
+                const filteredPendingCount = new Set(filtered.filter(r => r.isPendingSync).map(r => r.pond_index || r.pond)).size;
+
+                const curMonthLabel = formatMonthLabel(harvestAgg.currentMonthKey);
+                const mtdSubText = harvestAgg.mtdPendingPonds > 0
+                    ? `${curMonthLabel} • VAN: ${formatNumber(harvestAgg.mtdVanTonnage, 1)} MT (${harvestAgg.mtdVanPonds}P) | MON: ${formatNumber(harvestAgg.mtdMonTonnage, 1)} MT (${harvestAgg.mtdMonPonds}P) • ${harvestAgg.mtdPendingPonds} Daily Excel`
+                    : `${curMonthLabel} • VAN: ${formatNumber(harvestAgg.mtdVanTonnage, 1)} MT (${harvestAgg.mtdVanPonds}P) | MON: ${formatNumber(harvestAgg.mtdMonTonnage, 1)} MT (${harvestAgg.mtdMonPonds}P)`;
+
+                const ytdSubText = `Calendar YTD • ${formatNumber(harvestAgg.ytdPartialCount)} Partial Harvests`;
 
                 return {
                     metricType,
                     title: "Total Farm Harvest Intelligence",
                     icon: "🌾",
-                    subtitle: "12-Month Rolling Harvest Log & Biomass Evacuation Ledgers",
-                    timelineTitle: "Monthly Harvest Production (12-Month)",
+                    subtitle: "Hybrid Weekly Supabase DBMS + Daily Status Excel Mapping Reconciliation (VAN vs MON)",
+                    timelineTitle: harvestChartMode === "PONDS"
+                        ? "Monthly Harvested Ponds: Vannamei vs Monodon (12-Month)"
+                        : "Monthly Harvest Biomass: Vannamei vs Monodon (12-Month MT)",
                     summaryBadges: [
-                        { label: "YTD Harvest", value: `${formatNumber(harvestAgg.ytdTonnage, 1)} MT`, sub: "Calendar Year to Date" },
-                        { label: "Current Month", value: `${formatNumber(harvestAgg.mtdTonnage, 1)} MT`, sub: formatMonthLabel(harvestAgg.currentMonthKey) },
-                        { label: "12M Rolling", value: `${formatNumber(harvestAgg.rolling12Tonnage, 1)} MT`, sub: "Past 12 Months" },
-                        { label: "Total Harvests", value: `${formatNumber(harvestAgg.ytdCount)} events`, sub: "Logged in Supabase" }
+                        {
+                            label: "YTD Harvest (Biomass & Ponds)",
+                            value: `${formatNumber(harvestAgg.ytdTonnage, 1)} MT • ${formatNumber(harvestAgg.ytdPonds)} Ponds`,
+                            sub: ytdSubText
+                        },
+                        {
+                            label: `MTD Harvest (${curMonthLabel})`,
+                            value: `${formatNumber(harvestAgg.mtdTonnage, 1)} MT • ${formatNumber(harvestAgg.mtdPonds)} Ponds`,
+                            sub: mtdSubText
+                        },
+                        {
+                            label: "Vannamei (VAN) Harvest YTD",
+                            value: `${formatNumber(harvestAgg.ytdVanTonnage, 1)} MT • ${formatNumber(harvestAgg.ytdVanPonds)} Ponds`,
+                            sub: `${harvestAgg.ytdVanSharePct}% of YTD Biomass • Avg ABW ${harvestAgg.ytdVanAvgAbw}g • MTD: ${formatNumber(harvestAgg.mtdVanTonnage, 1)} MT (${harvestAgg.mtdVanPonds} Ponds)`
+                        },
+                        {
+                            label: "Monodon (MON) Harvest YTD",
+                            value: `${formatNumber(harvestAgg.ytdMonTonnage, 1)} MT • ${formatNumber(harvestAgg.ytdMonPonds)} Ponds`,
+                            sub: `${harvestAgg.ytdMonSharePct}% of YTD Biomass • Avg ABW ${harvestAgg.ytdMonAvgAbw}g • MTD: ${formatNumber(harvestAgg.mtdMonTonnage, 1)} MT (${harvestAgg.mtdMonPonds} Ponds)`
+                        }
                     ],
                     timeline,
                     monthOptions: [{ key: "ALL", label: "All Months (12M Rolling)" }, ...months12.slice().reverse().map(m => ({ key: m, label: formatMonthLabel(m) }))],
@@ -1260,75 +3126,181 @@ export class ExecutiveMetricsPresenter {
                     tableRows,
                     csvHeaders,
                     csvRows,
-                    countDisplay: `${filtered.length} harvest records`
+                    countDisplay: `${filteredPondCount} harvested ponds`
                 };
             }
 
             case METRIC_TYPES.STOCKING: {
-                const stockAgg = this.aggregateMonthlyStocking(dataBundle.stockingBatches || []);
-                const timeline = stockAgg.buckets.map(b => ({
-                    monthKey: b.monthKey,
-                    monthLabel: b.monthLabel,
-                    value: b.millionPcs,
-                    unit: "M Fries",
-                    subValue: `${b.batchCount} Batches • ${b.vanMillion}M VAN / ${b.monMillion}M MON`,
-                    active: selectedMonth === b.monthKey
-                }));
+                const stockingChartMode = (options && options.stockingChartMode) || "MILLION";
+                const stockingSpeciesFilter = (options && options.stockingSpecies) || "ALL";
+                const refDate = (options && options.referenceDate) || new Date();
+                const opCycles = dataBundle.operationalCycles && dataBundle.operationalCycles.length > 0
+                    ? dataBundle.operationalCycles
+                    : (dataBundle.activeCycles || []);
 
-                const allRecords = dataBundle.stockingBatches || [];
+                const stockAgg = this.aggregateMonthlyStocking(
+                    dataBundle.stockingBatches || [],
+                    refDate,
+                    dataBundle.dailyProgress || [],
+                    opCycles
+                );
+
+                const timeline = stockAgg.buckets.map(b => {
+                    const isPonds = stockingChartMode === "PONDS";
+                    const vanVal = isPonds ? b.vanPondCount : b.vanMillion;
+                    const monVal = isPonds ? b.monPondCount : b.monMillion;
+                    let totalVal = isPonds ? b.pondCount : b.millionPcs;
+                    if (stockingSpeciesFilter === "VAN") totalVal = vanVal;
+                    else if (stockingSpeciesFilter === "MON") totalVal = monVal;
+
+                    return {
+                        monthKey: b.monthKey,
+                        monthLabel: b.monthLabel,
+                        value: totalVal,
+                        vanValue: vanVal,
+                        monValue: monVal,
+                        speciesFilter: stockingSpeciesFilter,
+                        isDualSpecies: true,
+                        pondCount: b.pondCount,
+                        vanPondCount: b.vanPondCount,
+                        monPondCount: b.monPondCount,
+                        unit: isPonds ? "Ponds" : "M Fries",
+                        subValue: isPonds
+                            ? `VAN: ${b.vanPondCount} Ponds • MON: ${b.monPondCount} Ponds${b.pendingSyncCount > 0 ? ` (${b.pendingSyncCount} Daily Excel)` : ""}`
+                            : `VAN: ${formatNumber(b.vanMillion, 2)}M (${b.vanPondCount}P) • MON: ${formatNumber(b.monMillion, 2)}M (${b.monPondCount}P)`,
+                        active: selectedMonth === b.monthKey
+                    };
+                });
+
+                const allRecords = stockAgg.allRecords || [];
                 const filtered = allRecords.filter(r => {
                     if (selectedMonth !== "ALL") {
                         if (toMonthKey(r.stck_date) !== selectedMonth) return false;
                     }
+                    if (stockingSpeciesFilter !== "ALL") {
+                        const rSp = String(r.species || r.stck_species || "VAN").toUpperCase().includes("MON") ? "MON" : "VAN";
+                        if (rSp !== stockingSpeciesFilter) return false;
+                    }
                     if (query) {
-                        const hay = `${r.pond_index || ""} ${r.stck_species || ""} ${r.stck_source || ""} ${r.stck_tank || ""}`.toLowerCase();
+                        const hay = `${r.pond || ""} ${r.pond_index || ""} ${r.modl || ""} ${r.species || ""} ${r.stck_species || ""} ${r.stck_source || ""} ${r.stck_tank || ""} ${r.data_source || ""}`.toLowerCase();
                         if (!hay.includes(query)) return false;
                     }
                     return true;
                 });
 
-                const tableHeaders = ["Pond Index", "Stock Date", "Species", "Source / Hatchery", "Tank", "Stocked (Pcs)", "Allowance", "Total Received", "PL Size"];
+                const tableHeaders = [
+                    "Pond Name",
+                    "Cycle No",
+                    "Module",
+                    "Stock Date",
+                    "Species",
+                    "Hatchery / Source",
+                    "Data Source",
+                    "Tank",
+                    "Stocked (Pcs)",
+                    "Total Received",
+                    "PL Size"
+                ];
+
                 const tableRows = filtered.map(r => {
+                    const pondCode = r.pond || derivePondCodeFromIndex(r.pond_index, "");
+                    const cycleNo = r.cycle_no || (r.pond_index && String(r.pond_index).includes(".") ? String(r.pond_index).split(".")[1] : "—");
+                    const modl = r.modl || deriveModuleFromPond(pondCode);
+                    const isPending = Boolean(r.isPendingSync);
                     const pcs = Number(r.stck_pcs) || 0;
                     const allow = Number(r.stck_allow) || 0;
                     const tot = Number(r.stck_total) || (pcs + allow);
+                    const spCode = String(r.species || r.stck_species || "VAN").toUpperCase().includes("MON") ? "MON" : "VAN";
+
                     return [
-                        r.pond_index || "—",
+                        pondCode,
+                        cycleNo,
+                        modl,
                         r.stck_date || "—",
-                        r.stck_species || "VANNAMEI",
+                        spCode,
                         r.stck_source || "Hatchery",
+                        r.data_source || (isPending ? "DAILY EXCEL (PENDING SYNC)" : "SUPABASE DBMS"),
                         r.stck_tank || "—",
-                        formatNumber(pcs),
-                        allow > 0 ? formatNumber(allow) : "0",
-                        formatNumber(tot),
-                        r.stck_size ? `PL ${r.stck_size}` : "—"
+                        isPending ? "Pending DBMS Sync" : formatNumber(pcs),
+                        isPending ? "Pending DBMS Sync" : formatNumber(tot),
+                        isPending ? "—" : (r.stck_size ? `PL ${r.stck_size}` : "—")
                     ];
                 });
 
-                const csvHeaders = ["Pond Index", "Stock Date", "Species", "Hatchery Source", "Stock Tank", "Stocked Pcs", "Allowance Pcs", "Total Pcs", "PL Size"];
-                const csvRows = filtered.map(r => [
-                    r.pond_index || "",
-                    r.stck_date || "",
-                    r.stck_species || "",
-                    r.stck_source || "",
-                    r.stck_tank || "",
-                    Number(r.stck_pcs) || 0,
-                    Number(r.stck_allow) || 0,
-                    Number(r.stck_total) || 0,
-                    r.stck_size || ""
-                ]);
+                const csvHeaders = [
+                    "Pond Index",
+                    "Pond Name",
+                    "Cycle No",
+                    "Module",
+                    "Stock Date",
+                    "Species",
+                    "Hatchery Source",
+                    "Data Source",
+                    "Stock Tank",
+                    "Stocked Pcs",
+                    "Allowance Pcs",
+                    "Total Pcs",
+                    "PL Size"
+                ];
+                const csvRows = filtered.map(r => {
+                    const isPending = Boolean(r.isPendingSync);
+                    const pondCode = r.pond || derivePondCodeFromIndex(r.pond_index, "");
+                    return [
+                        r.pond_index || "",
+                        pondCode,
+                        r.cycle_no || "",
+                        r.modl || deriveModuleFromPond(pondCode),
+                        r.stck_date || "",
+                        r.species || r.stck_species || "VAN",
+                        r.stck_source || "",
+                        r.data_source || (isPending ? "DAILY EXCEL (PENDING SYNC)" : "SUPABASE DBMS"),
+                        r.stck_tank || "",
+                        isPending ? "" : (Number(r.stck_pcs) || 0),
+                        isPending ? "" : (Number(r.stck_allow) || 0),
+                        isPending ? "" : (Number(r.stck_total) || 0),
+                        isPending ? "" : (r.stck_size || "")
+                    ];
+                });
+
+                const filteredPondCount = new Set(filtered.map(r => r.pond_index || r.pond)).size;
+                const filteredPendingCount = new Set(filtered.filter(r => r.isPendingSync).map(r => r.pond_index || r.pond)).size;
+
+                const curMonthLabel = formatMonthLabel(stockAgg.currentMonthKey);
+                const mtdSubText = stockAgg.mtdPendingPonds > 0
+                    ? `${curMonthLabel} • VAN: ${formatNumber(stockAgg.mtdVanMillion, 2)} M (${stockAgg.mtdVanPonds}P) | MON: ${formatNumber(stockAgg.mtdMonMillion, 2)} M (${stockAgg.mtdMonPonds}P) • ${stockAgg.mtdPendingPonds} Daily Excel`
+                    : `${curMonthLabel} • VAN: ${formatNumber(stockAgg.mtdVanMillion, 2)} M (${stockAgg.mtdVanPonds}P) | MON: ${formatNumber(stockAgg.mtdMonMillion, 2)} M (${stockAgg.mtdMonPonds}P)`;
+
+                const ytdSubText = "Calendar YTD";
 
                 return {
                     metricType,
                     title: "Total Post-Larvae & Fry Stocking",
                     icon: "🦐",
-                    subtitle: "Hatchery Dispatch & Stocking Batches Across Farm Modules",
-                    timelineTitle: "Monthly Stocking Volume (12-Month)",
+                    subtitle: "Hybrid Weekly Supabase DBMS + Daily Status Excel Mapping Reconciliation (VAN vs MON)",
+                    timelineTitle: stockingChartMode === "PONDS"
+                        ? "Monthly Stocked Ponds: Vannamei vs Monodon (12-Month)"
+                        : "Monthly Fry Stocking Volume: Vannamei vs Monodon (12-Month M Fries)",
                     summaryBadges: [
-                        { label: "YTD Stocking", value: `${formatNumber(stockAgg.ytdMillion, 2)} M`, sub: "Million Fries YTD" },
-                        { label: "Current Month", value: `${formatNumber(stockAgg.mtdMillion, 2)} M`, sub: formatMonthLabel(stockAgg.currentMonthKey) },
-                        { label: "12M Rolling", value: `${formatNumber(stockAgg.rolling12Million, 2)} M`, sub: "Past 12 Months" },
-                        { label: "Stocked Batches", value: `${formatNumber(stockAgg.ytdBatches)} batches`, sub: "Verified Single SSOT" }
+                        {
+                            label: "YTD Stocking (Fry & Ponds)",
+                            value: `${formatNumber(stockAgg.ytdMillion, 2)} M • ${formatNumber(stockAgg.ytdPonds)} Ponds`,
+                            sub: ytdSubText
+                        },
+                        {
+                            label: `MTD Stocking (${curMonthLabel})`,
+                            value: `${formatNumber(stockAgg.mtdMillion, 2)} M • ${formatNumber(stockAgg.mtdPonds)} Ponds`,
+                            sub: mtdSubText
+                        },
+                        {
+                            label: "Vannamei (VAN) Stocking YTD",
+                            value: `${formatNumber(stockAgg.ytdVanMillion, 2)} M • ${formatNumber(stockAgg.ytdVanPonds)} Ponds`,
+                            sub: `${stockAgg.ytdVanSharePct}% of YTD Fry • MTD: ${formatNumber(stockAgg.mtdVanMillion, 2)} M (${stockAgg.mtdVanPonds} Ponds)`
+                        },
+                        {
+                            label: "Monodon (MON) Stocking YTD",
+                            value: `${formatNumber(stockAgg.ytdMonMillion, 2)} M • ${formatNumber(stockAgg.ytdMonPonds)} Ponds`,
+                            sub: `${stockAgg.ytdMonSharePct}% of YTD Fry • MTD: ${formatNumber(stockAgg.mtdMonMillion, 2)} M (${stockAgg.mtdMonPonds} Ponds)`
+                        }
                     ],
                     timeline,
                     monthOptions: [{ key: "ALL", label: "All Months (12M Rolling)" }, ...months12.slice().reverse().map(m => ({ key: m, label: formatMonthLabel(m) }))],
@@ -1336,156 +3308,260 @@ export class ExecutiveMetricsPresenter {
                     tableRows,
                     csvHeaders,
                     csvRows,
-                    countDisplay: `${filtered.length} stocking batches`
+                    countDisplay: `${filteredPondCount} stocked ponds (${filtered.length} batches${filteredPendingCount > 0 ? ` • ${filteredPendingCount} daily Excel` : ""})`
                 };
             }
 
             case METRIC_TYPES.SPECIES_COMP: {
-                const culturing = (dataBundle.activePonds || []).filter(p => p.isActive || String(p.progressState || "").toUpperCase() === "CULTURE");
+                const refDate = (options && options.referenceDate) || new Date();
+                const speciesCompScope = (options && options.speciesCompScope) || "YTD";
+                const speciesCompMode = (options && options.speciesCompMode) || "PONDS";
+                const speciesCompSpecies = (options && options.speciesCompSpecies) || "ALL";
+
                 const spComp = this.calculateSpeciesComposition(dataBundle.activePonds || []);
-                const stockAgg = this.aggregateMonthlyStocking(dataBundle.stockingBatches || []);
-
-                const timeline = stockAgg.buckets.map(b => ({
-                    monthKey: b.monthKey,
-                    monthLabel: b.monthLabel,
-                    value: b.millionPcs,
-                    unit: "M Fries",
-                    subValue: `${b.vanMillion}M VAN • ${b.monMillion}M MON`,
-                    active: selectedMonth === b.monthKey
-                }));
-
-                const filtered = culturing.filter(p => {
-                    if (selectedMonth !== "ALL") {
-                        if (toMonthKey(p.stckDate || p.dailyRecord?.stocking_date) !== selectedMonth) return false;
-                    }
-                    if (query) {
-                        const hay = `${p.pondCode || ""} ${p.speciesLabel || ""} ${p.pondIndex || ""}`.toLowerCase();
-                        if (!hay.includes(query)) return false;
-                    }
-                    return true;
+                const intel = this.aggregateSpeciesAndHatcheryIntelligence(dataBundle, {
+                    referenceDate: refDate,
+                    scope: speciesCompScope,
+                    selectedMonth,
+                    chartMode: speciesCompMode,
+                    speciesFilter: speciesCompSpecies
                 });
 
-                const tableHeaders = ["Pond Code", "Pond Index", "Species", "Stock Date", "DOC", "Current Stage", "Biosecurity", "Pond Status"];
-                const tableRows = filtered.map(p => [
-                    p.pondCode || "—",
-                    p.pondIndex || "—",
-                    p.speciesLabel || p.speciesCode || "VAN",
-                    p.stckDate || p.dailyRecord?.stocking_date || "—",
-                    p.docDisplay || `${p.doc || 0}d`,
-                    p.stageCode || "MID",
-                    p.health || "GREEN",
-                    p.progressState || "CULTURE"
-                ]);
+                const ytdStats = intel.fullYtdStats;
+                const ytdVanSharePonds = ytdStats.totalPonds > 0
+                    ? Math.round((ytdStats.vanPonds / ytdStats.totalPonds) * 100)
+                    : 0;
+                const ytdMonSharePonds = ytdStats.totalPonds > 0
+                    ? Math.max(0, 100 - ytdVanSharePonds)
+                    : 0;
 
-                const csvHeaders = ["Pond Code", "Pond Index", "Species", "Stock Date", "DOC", "Stage", "Biosecurity Health"];
-                const csvRows = filtered.map(p => [
-                    p.pondCode || "",
-                    p.pondIndex || "",
-                    p.speciesLabel || p.speciesCode || "",
-                    p.stckDate || p.dailyRecord?.stocking_date || "",
-                    p.doc || 0,
-                    p.stageCode || "",
-                    p.health || ""
-                ]);
+                const topVanH = ytdStats.topVanHatchery;
+                const topMonH = ytdStats.topMonHatchery;
+                const topVanL = ytdStats.topVanLine;
+                const topMonL = ytdStats.topMonLine;
+
+                // CSV Export: Hatchery, Genetic Line & Harvested Outcome Summary (No Pond Table)
+                const csvHeaders = ["Category", "Species", "Source / Line", "Ponds", "Volume / Harvest", "Share / SR (Avg [Min-Max])", "PL / ADG (Avg [Min-Max])"];
+                const csvRows = [
+                    ...intel.vanHatcheries.map(h => ["Hatchery Supply", "VAN", h.source, h.ponds, `${h.millionPcs} M`, `${h.sharePct}%`, h.avgPlSize ? `PL ${h.avgPlSize}` : "—"]),
+                    ...intel.monHatcheries.map(h => ["Hatchery Supply", "MON", h.source, h.ponds, `${h.millionPcs} M`, `${h.sharePct}%`, h.avgPlSize ? `PL ${h.avgPlSize}` : "—"]),
+                    ...intel.vanGeneticLines.map(l => ["Broodstock Line", "VAN", l.line, l.ponds, `${l.millionPcs} M`, `${l.sharePct}%`, "—"]),
+                    ...intel.monGeneticLines.map(l => ["Broodstock Line", "MON", l.line, l.ponds, `${l.millionPcs} M`, `${l.sharePct}%`, "—"]),
+                    ...(intel.vanHarvestPerf || []).map(p => ["Harvested Outcome", "VAN", p.source, p.harvestedPonds, `${p.totalTons} MT`, `${p.avgSr}% [${p.minSr}%-${p.maxSr}%]`, `${p.avgAdg} g/d [${p.minAdg}-${p.maxAdg}]`]),
+                    ...(intel.monHarvestPerf || []).map(p => ["Harvested Outcome", "MON", p.source, p.harvestedPonds, `${p.totalTons} MT`, `${p.avgSr}% [${p.minSr}%-${p.maxSr}%]`, `${p.avgAdg} g/d [${p.minAdg}-${p.maxAdg}]`])
+                ];
+
+                const scopeLabel = selectedMonth !== "ALL"
+                    ? formatMonthLabel(selectedMonth)
+                    : (speciesCompScope === "ACTIVE" ? `Active Culturing Crop (${intel.currentYear})` : `Calendar YTD (${intel.currentYear})`);
 
                 return {
                     metricType,
-                    title: "Species Composition & Allocation Dynamics",
+                    title: "Species Composition, Hatchery Portfolio & Allocation",
                     icon: "🧬",
-                    subtitle: "P. vannamei vs P. monodon Distribution Across Culturing Ponds",
-                    timelineTitle: "Monthly Stocking by Species (12-Month)",
+                    subtitle: `Calendar YTD (${intel.currentYear}) Hatchery Supply Mix, Broodstock Genetic Lines & Spatial Module Allocation`,
+                    timelineTitle: speciesCompMode === "PONDS"
+                        ? `Monthly Stocked Ponds by Species (${intel.currentYear} Calendar YTD)`
+                        : `Monthly Fry Stocking Volume by Species (${intel.currentYear} Calendar YTD • M Fries)`,
                     summaryBadges: [
-                        { label: "Vannamei (VAN)", value: `${spComp.vanPercent}%`, sub: `${spComp.vanCount} Active Ponds` },
-                        { label: "Monodon (MON)", value: `${spComp.monPercent}%`, sub: `${spComp.monCount} Active Ponds` },
-                        { label: "Total Active", value: `${spComp.totalActive} Ponds`, sub: "Currently Culturing" },
-                        { label: "Species Balance", value: `${Math.round(spComp.vanCount / Math.max(1, spComp.monCount) * 10) / 10} : 1`, sub: "VAN to MON Ratio" }
+                        {
+                            label: "Active Farm Species Split",
+                            value: spComp.totalActive > 0 ? `${spComp.vanPercent}% VAN • ${spComp.monPercent}% MON` : `${ytdVanSharePonds}% VAN • ${ytdMonSharePonds}% MON`,
+                            sub: spComp.totalActive > 0
+                                ? `${spComp.vanCount} VAN • ${spComp.monCount} MON Active Ponds`
+                                : `${ytdStats.vanPonds} VAN • ${ytdStats.monPonds} MON YTD Ponds`
+                        },
+                        {
+                            label: `YTD Stocked Allocation (${intel.currentYear})`,
+                            value: `${formatNumber(ytdStats.vanPonds)} VAN • ${formatNumber(ytdStats.monPonds)} MON Ponds`,
+                            sub: `${formatNumber(ytdStats.vanMillion, 2)} M VAN • ${formatNumber(ytdStats.monMillion, 2)} M MON Fry`
+                        },
+                        {
+                            label: "Lead VAN Hatchery & Line (YTD)",
+                            value: `${topVanH.source} (${topVanH.pondSharePct}% Ponds)`,
+                            sub: `${formatNumber(topVanH.ponds)} Ponds (${formatNumber(topVanH.millionPcs, 2)} M) • Line: ${topVanL.line}`
+                        },
+                        {
+                            label: "Lead MON Hatchery & Line (YTD)",
+                            value: `${topMonH.source} (${topMonH.pondSharePct}% Ponds)`,
+                            sub: `${formatNumber(topMonH.ponds)} Ponds (${formatNumber(topMonH.millionPcs, 2)} M) • Line: ${topMonL.line}`
+                        }
                     ],
-                    timeline,
-                    monthOptions: [{ key: "ALL", label: "All Stocking Months" }, ...months12.slice().reverse().map(m => ({ key: m, label: formatMonthLabel(m) }))],
-                    tableHeaders,
-                    tableRows,
+                    timeline: intel.ytdTimeline,
+                    monthOptions: [
+                        { key: "ALL", label: `All YTD Months (${intel.currentYear})` },
+                        ...intel.ytdMonths.slice().reverse().map(m => ({ key: m, label: formatMonthLabel(m) }))
+                    ],
+                    hideDataTable: true,
+                    visualAnalytics: {
+                        ...intel,
+                        scopeLabel
+                    },
+                    tableHeaders: [],
+                    tableRows: [],
                     csvHeaders,
                     csvRows,
-                    countDisplay: `${filtered.length} active ponds displayed`
+                    countDisplay: `${intel.vanTotalPonds + intel.monTotalPonds} stocked ponds (${intel.vanHatcheries.length + intel.monHatcheries.length} hatchery sources • ${scopeLabel})`
                 };
             }
 
             case METRIC_TYPES.DOC_COMP: {
-                const culturing = (dataBundle.activePonds || []).filter(p => p.isActive || String(p.progressState || "").toUpperCase() === "CULTURE");
-                const docComp = this.calculateDocComposition(dataBundle.activePonds || []);
-                const monthsBuckets = getRolling12Months(12).map(m => {
-                    const pondsInMonth = culturing.filter(p => toMonthKey(p.stckDate || p.dailyRecord?.stocking_date) === m);
-                    const avg = pondsInMonth.length > 0 ? Math.round(pondsInMonth.reduce((acc, p) => acc + (p.doc || 0), 0) / pondsInMonth.length) : 0;
-                    return {
-                        monthKey: m,
-                        monthLabel: formatMonthLabel(m),
-                        value: avg,
-                        unit: "avg DOC",
-                        subValue: `${pondsInMonth.length} Stocked Ponds`,
-                        active: selectedMonth === m
-                    };
+                const docIntel = this.aggregateDocAndCultureStageIntelligence(dataBundle, {
+                    ...options,
+                    selectedMonth
                 });
+                const spFilter = docIntel.docSpeciesFilter;
+                const stageFilter = docIntel.docStageFilter;
 
-                const filtered = culturing.filter(p => {
-                    if (selectedMonth !== "ALL") {
-                        if (toMonthKey(p.stckDate || p.dailyRecord?.stocking_date) !== selectedMonth) return false;
+                // Filter ponds based on query, selectedCohort, speciesFilter, and stageFilter
+                let filteredPonds = docIntel.allPonds.filter(p => {
+                    if (spFilter !== "ALL" && p.species !== spFilter) return false;
+                    if (selectedMonth && selectedMonth !== "ALL" && p.cohortKey !== selectedMonth) return false;
+                    if (stageFilter && stageFilter !== "ALL") {
+                        if (stageFilter === "EXTENDED") {
+                            if (!p.isExtended) return false;
+                        } else if (p.stageCode !== stageFilter) {
+                            return false;
+                        }
                     }
                     if (query) {
-                        const hay = `${p.pondCode || ""} ${p.speciesLabel || ""} ${p.stageCode || ""}`.toLowerCase();
+                        const hay = `${p.pondCode} ${p.species} ${p.stageLabel} ${p.modl} ${p.harvestWindow}`.toLowerCase();
                         if (!hay.includes(query)) return false;
                     }
                     return true;
                 });
 
-                const tableHeaders = ["Pond Code", "Species", "Stock Date", "DOC", "Stage", "Stage Range", "Biosecurity", "Readiness Action"];
-                const tableRows = filtered.map(p => {
-                    const doc = Number(p.doc) || 0;
-                    const stage = p.stageCode || (doc > 70 ? "FINISHING" : (doc >= 30 ? "MID" : "EARLY"));
-                    const range = doc < 30 ? "< 30 days" : (doc <= 70 ? "30 - 70 days" : "> 70 days");
-                    const action = doc > 90 ? "Harvest Candidate" : (doc > 70 ? "Biomass Monitoring" : "Feeding & Water Care");
+                const tableHeaders = ["Pond Code", "Species", "DOC", "Culture Stage", "Stock Date", "Projected Harvest Window", "Module", "Biosecurity"];
+                const tableRows = filteredPonds.map(p => {
                     return [
-                        p.pondCode || "—",
-                        p.speciesLabel || p.speciesCode || "VAN",
-                        p.stckDate || p.dailyRecord?.stocking_date || "—",
-                        `${doc}d`,
-                        stage,
-                        range,
-                        p.health || "GREEN",
-                        action
+                        p.pondCode,
+                        p.species === "MON" ? "MON" : "VAN",
+                        `${p.doc}d`,
+                        p.stageCode,
+                        p.stckDate,
+                        p.harvestWindow,
+                        p.modl,
+                        p.health
                     ];
                 });
 
-                const csvHeaders = ["Pond Code", "Species", "Stock Date", "DOC", "Stage Code", "Stage Window", "Health", "Action"];
-                const csvRows = filtered.map(p => [
-                    p.pondCode || "",
-                    p.speciesLabel || p.speciesCode || "",
-                    p.stckDate || p.dailyRecord?.stocking_date || "",
-                    p.doc || 0,
-                    p.stageCode || "",
-                    p.doc < 30 ? "< 30 days" : (p.doc <= 70 ? "30 - 70 days" : "> 70 days"),
-                    p.health || "",
-                    p.doc > 90 ? "Harvest Candidate" : "Growing"
+                const csvHeaders = ["Pond Code", "Species", "DOC", "Stage", "Stock Date", "Harvest Window", "Module", "Biosecurity Health"];
+                const csvRows = filteredPonds.map(p => [
+                    p.pondCode,
+                    p.species,
+                    p.doc,
+                    p.stageCode,
+                    p.stckDate,
+                    p.harvestWindow,
+                    p.modl,
+                    p.health
                 ]);
+
+                const isVanOnly = options.docSpeciesFilter === "VAN";
+                const isMonOnly = options.docSpeciesFilter === "MON";
+
+                let subtitle = `Age Cohort Segments, Growth Stages & Harvest Maturation Pipeline (${docIntel.overallStats.count} Culturing Ponds)`;
+                let timelineTitle = "10-Day Age Cohort Distribution (VAN vs MON Ponds Across Farm)";
+                let summaryBadges = [];
+
+                if (isVanOnly) {
+                    const van = docIntel.vanStats;
+                    const vanFarmShare = docIntel.overallStats.count > 0 ? Math.round((van.count / docIntel.overallStats.count) * 100) : 0;
+                    subtitle = `Vannamei (VAN) Age Cohorts & Maturation Pipeline (${van.count} Culturing Ponds)`;
+                    timelineTitle = "10-Day Age Cohort Distribution (Vannamei Ponds Across Farm)";
+                    summaryBadges = [
+                        {
+                            label: "VAN Crop Age Profile",
+                            value: `Avg ${van.avgDoc}d (Min ${van.minDoc}d – Max ${van.maxDoc}d)`,
+                            sub: `${van.count} Active Vannamei Ponds (${vanFarmShare}% of Farm)`
+                        },
+                        {
+                            label: "VAN Finishing Stage (>60d)",
+                            value: `${van.finishing} Ponds (${van.finishingPct}%)`,
+                            sub: `Commercial harvest window (DOC >60d)${van.extended > 0 ? ` • ${van.extended} Extended (>90d)` : ''}`
+                        },
+                        {
+                            label: "VAN Mid Growout (30–60d)",
+                            value: `${van.mid} Ponds (${van.midPct}%)`,
+                            sub: "Rapid biomass expansion & peak aeration demand"
+                        },
+                        {
+                            label: "VAN Early Stage (<30d)",
+                            value: `${van.early} Ponds (${van.earlyPct}%)`,
+                            sub: "Nursery acclimation & biofloc transition care"
+                        }
+                    ];
+                } else if (isMonOnly) {
+                    const mon = docIntel.monStats;
+                    const monFarmShare = docIntel.overallStats.count > 0 ? Math.round((mon.count / docIntel.overallStats.count) * 100) : 0;
+                    subtitle = `Monodon (MON) Age Cohorts & Maturation Pipeline (${mon.count} Culturing Ponds)`;
+                    timelineTitle = "10-Day Age Cohort Distribution (Monodon Ponds Across Farm)";
+                    summaryBadges = [
+                        {
+                            label: "MON Crop Age Profile",
+                            value: `Avg ${mon.avgDoc}d (Min ${mon.minDoc}d – Max ${mon.maxDoc}d)`,
+                            sub: `${mon.count} Active Monodon Ponds (${monFarmShare}% of Farm)`
+                        },
+                        {
+                            label: "MON Finishing Stage (>90d)",
+                            value: `${mon.finishing} Ponds (${mon.finishingPct}%)`,
+                            sub: `${mon.extended} Extended Culture Ponds past DOC 120d (up to ${mon.maxDoc}d)`
+                        },
+                        {
+                            label: "MON Mid Growout (50–90d)",
+                            value: `${mon.mid} Ponds (${mon.midPct}%)`,
+                            sub: "Steady growth stage before large-grade harvest window"
+                        },
+                        {
+                            label: "MON Early Stage (<50d)",
+                            value: `${mon.early} Ponds (${mon.earlyPct}%)`,
+                            sub: "High-salinity black tiger acclimation care"
+                        }
+                    ];
+                } else {
+                    summaryBadges = [
+                        {
+                            label: "Crop Age & Species Profile",
+                            value: `VAN ${docIntel.vanStats.avgDoc}d • MON ${docIntel.monStats.avgDoc}d`,
+                            sub: `Farm Overall Avg: ${docIntel.overallStats.avgDoc}d (${docIntel.overallStats.count} Active Ponds)`
+                        },
+                        {
+                            label: "Finishing Stage",
+                            value: `${docIntel.overallStats.finishing} Ponds (${docIntel.overallStats.finishingPct}%)`,
+                            sub: `${docIntel.vanStats.finishing} VAN (>60d) • ${docIntel.monStats.finishing} MON (>90d)`
+                        },
+                        {
+                            label: "Mid Growout",
+                            value: `${docIntel.overallStats.mid} Ponds (${docIntel.overallStats.midPct}%)`,
+                            sub: "VAN 30–60d • MON 50–90d (Rapid growth & aeration)"
+                        },
+                        {
+                            label: "Early Stage",
+                            value: `${docIntel.overallStats.early} Ponds (${docIntel.overallStats.earlyPct}%)`,
+                            sub: "VAN <30d • MON <50d (Nursery & transition care)"
+                        }
+                    ];
+                }
 
                 return {
                     metricType,
                     title: "DOC & Culture Stage Composition by Species",
                     icon: "⏱️",
-                    subtitle: "Age Cohort Segments & Growout Maturation Across 216 Ponds",
-                    timelineTitle: "Average DOC by Stocking Cohort (12-Month)",
-                    summaryBadges: [
-                        { label: "VAN Avg DOC", value: `${docComp.van.avgDoc} DOC`, sub: `Mid: ${docComp.van.midPct}% • Fin: ${docComp.van.finishingPct}%` },
-                        { label: "MON Avg DOC", value: `${docComp.mon.avgDoc} DOC`, sub: `Mid: ${docComp.mon.midPct}% • Fin: ${docComp.mon.finishingPct}%` },
-                        { label: "Finishing Stage (>70d)", value: `${docComp.overall.finishing} Ponds`, sub: "Approaching harvest window" },
-                        { label: "Early Stage (<30d)", value: `${docComp.overall.early} Ponds`, sub: "Nursery & early transition" }
+                    subtitle,
+                    timelineTitle,
+                    summaryBadges,
+                    timeline: docIntel.cohortTimeline,
+                    monthOptions: [
+                        { key: "ALL", label: "All Age Cohorts" },
+                        ...docIntel.cohortTimeline.map(c => ({ key: c.monthKey, label: `${c.monthLabel} (${c.value} Ponds)` }))
                     ],
-                    timeline: monthsBuckets,
-                    monthOptions: [{ key: "ALL", label: "All Stocking Months" }, ...months12.slice().reverse().map(m => ({ key: m, label: formatMonthLabel(m) }))],
+                    hideDataTable: false,
+                    visualAnalytics: docIntel,
                     tableHeaders,
                     tableRows,
                     csvHeaders,
                     csvRows,
-                    countDisplay: `${filtered.length} active ponds displayed`
+                    countDisplay: `${filteredPonds.length} active culturing ponds displayed`
                 };
             }
 

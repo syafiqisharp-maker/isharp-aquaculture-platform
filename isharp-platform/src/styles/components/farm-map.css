@@ -125,6 +125,12 @@
     gap: 0.85rem;
 }
 
+@media (min-width: 1024px) {
+    .exec-kpi-strip {
+        grid-template-columns: repeat(4, 1fr);
+    }
+}
+
 .exec-kpi-card {
     background: rgba(255, 255, 255, 0.92);
     border: 1px solid rgba(226, 232, 240, 0.8);
@@ -208,22 +214,52 @@
 }
 
 .exec-kpi-bar {
-    height: 4px;
-    border-radius: 2px;
+    height: 6px;
+    border-radius: 999px;
     overflow: hidden;
     display: flex;
-    margin: 0.4rem 0 0.25rem 0;
+    margin: 0.45rem 0 0.35rem 0;
     background: #e2e8f0;
 }
 
 .exec-kpi-bar-van {
-    background: #0284c7;
+    background: linear-gradient(90deg, #0284c7, #38bdf8);
+    height: 100%;
+    transition: width 0.3s ease;
+    border-radius: 999px 0 0 999px;
+}
+
+.exec-kpi-bar-mon {
+    background: linear-gradient(90deg, #10b981, #059669);
+    height: 100%;
+    transition: width 0.3s ease;
+    border-radius: 0 999px 999px 0;
+}
+
+.exec-kpi-stage-bar {
+    height: 8px;
+    border-radius: 999px;
+    overflow: hidden;
+    display: flex;
+    margin: 0.6rem 0 0.25rem 0;
+    background: #e2e8f0;
+    width: 100%;
+}
+
+.exec-kpi-bar-early {
+    background: #38bdf8;
     height: 100%;
     transition: width 0.3s ease;
 }
 
-.exec-kpi-bar-mon {
-    background: #059669;
+.exec-kpi-bar-mid {
+    background: #f59e0b;
+    height: 100%;
+    transition: width 0.3s ease;
+}
+
+.exec-kpi-bar-fin {
+    background: #10b981;
     height: 100%;
     transition: width 0.3s ease;
 }
