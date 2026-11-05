@@ -215,7 +215,7 @@ export class ExecutiveMetricsPresenter {
             const wKg = Number(r.harv_weight) || 0;
             const wTons = wKg / 1000;
             const statusUpper = String(r.harv_status || "").toUpperCase();
-            const isFinal = statusUpper.includes("FINAL") || statusUpper.includes("TERM");
+            const isFinal = statusUpper.includes("FINAL") || statusUpper.includes("TERM") || statusUpper.includes("FULL") || statusUpper.includes("CLEAN");
             const isPartial = statusUpper.includes("PARTIAL");
             const abw = Number(r.harv_abw) || 0;
             const rev = Number(r.harv_revenue) || 0;
@@ -252,9 +252,17 @@ export class ExecutiveMetricsPresenter {
                     if (isPartial) b.partialCount += 1;
                 }
                 b.count += 1;
+
+                // Invariant: A pond cycle is counted as a harvested pond ONLY if it has a full/final termination harvest
+                // OR is a fully closed pond cycle. Partial harvest is strictly NOT counted as a harvested pond.
+                const cycleClosed = cycleInfo && ((cycleInfo.pond_status || "").toUpperCase() === "CLOSE" || Boolean(cycleInfo.date_close));
+                const closeMonthKey = cycleInfo?.date_close ? toMonthKey(cycleInfo.date_close) : null;
+                const isClosedInThisMonth = cycleClosed && closeMonthKey === m;
+                const isFullOrClosedHarvest = isFinal || isClosedInThisMonth;
+
                 // Key by Harvested Pond Cycle (pond_index) so multiple cycles on the same pond in a year are each counted
                 const cycleKey = r.pond_index ? String(r.pond_index).trim() : ((pondCode && pondCode !== "—") ? pondCode : null);
-                if (cycleKey) {
+                if (cycleKey && isFullOrClosedHarvest) {
                     b.pondSet.add(cycleKey);
                     b.dbmsPondSet.add(cycleKey);
                     if (isMon) b.monPondSet.add(cycleKey);
@@ -280,8 +288,8 @@ export class ExecutiveMetricsPresenter {
         (dailyProgress || []).forEach(dp => {
             if (!dp || !dp.last_harvest_date) return;
             const progState = String(dp.progress_state || "").toUpperCase();
-            // If pond has already re-entered active CULTURE for a new crop, last_harvest_date is from its previous cycle
-            if (progState === "CULTURE") return;
+            // If pond is culturing or was culled, it is not a completed harvest
+            if (progState === "CULTURE" || progState === "CULLED" || dp.status_code === "Cull") return;
 
             const pondCode = String(dp.pond || "").trim();
             if (!pondCode) return;

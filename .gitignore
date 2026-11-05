@@ -42,3 +42,6 @@ database_migration/backups/
 
 # Local Netlify folder
 .netlify
+
+# Temporary Scratch Scripts
+scratch/

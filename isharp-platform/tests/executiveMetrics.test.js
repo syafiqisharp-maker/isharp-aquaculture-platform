@@ -78,6 +78,38 @@ describe("ExecutiveMetricsPresenter: Harvest Aggregation", () => {
         assert.equal(octBucket.partialTons, 12);
         assert.equal(octBucket.finalTons, 8);
     });
+
+    test("strictly excludes partial harvests from harvested pond counts — only full/termination harvests or closed ponds count", () => {
+        const refDate = new Date(2026, 9, 29); // Oct 2026
+        const mockDaily = [
+            // Pond 01.01.01: ONLY partial harvest, still in PRODUCTION -> MUST NOT BE COUNTED as a harvested pond!
+            { pond_index: "2010101.40", pond: "01.01.01", harv_date: "2026-10-05", harv_weight: 1500, harv_status: "PARTIAL", harv_abw: 35, harv_revenue: 45000 },
+            // Pond 01.01.02: 1 partial + 1 final termination harvest -> MUST BE COUNTED exactly ONCE as a harvested pond!
+            { pond_index: "2010102.40", pond: "01.01.02", harv_date: "2026-10-10", harv_weight: 1200, harv_status: "PARTIAL", harv_abw: 36, harv_revenue: 36000 },
+            { pond_index: "2010102.40", pond: "01.01.02", harv_date: "2026-10-25", harv_weight: 3500, harv_status: "TERMINATION", harv_abw: 42, harv_revenue: 120000 },
+            // Pond 01.01.03: Full Chill harvest -> MUST BE COUNTED as a harvested pond!
+            { pond_index: "2010103.40", pond: "01.01.03", harv_date: "2026-10-28", harv_weight: 4200, harv_status: "FULL CHILL", harv_abw: 22, harv_revenue: 80000 }
+        ];
+
+        const mockOpCycles = [
+            { pond_index: "2010101.40", pond: "01.01.01", pond_status: "PRODUCTION", date_close: null },
+            { pond_index: "2010102.40", pond: "01.01.02", pond_status: "CLOSE", date_close: "2026-10-25" },
+            { pond_index: "2010103.40", pond: "01.01.03", pond_status: "CLOSE", date_close: "2026-10-28" }
+        ];
+
+        const res = ExecutiveMetricsPresenter.aggregateMonthlyHarvest(mockDaily, [], refDate, [], mockOpCycles);
+
+        // Biomass tonnage includes all 4 harvests: 1.5 + 1.2 + 3.5 + 4.2 = 10.4 MT
+        assert.equal(res.mtdTonnage, 10.4);
+        assert.equal(res.ytdTonnage, 10.4);
+
+        // BUT Harvested ponds must ONLY count the 2 full/closed cycles (01.01.02 and 01.01.03), NOT 01.01.01!
+        assert.equal(res.mtdPonds, 2, "Partial-only pond 01.01.01 must be excluded from mtdPonds");
+        assert.equal(res.ytdPonds, 2, "Partial-only pond 01.01.01 must be excluded from ytdPonds");
+
+        const octBucket = res.buckets.find(b => b.monthKey === "2026-10");
+        assert.equal(octBucket.pondCount, 2);
+    });
 });
 
 describe("ExecutiveMetricsPresenter: Stocking Aggregation", () => {

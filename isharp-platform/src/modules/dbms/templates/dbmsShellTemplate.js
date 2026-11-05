@@ -13,6 +13,7 @@ import { getHarvestTabHtml } from "./harvestTabTemplate.js";
 import { getLifecycleTabHtml } from "./lifecycleTabTemplate.js";
 import { getStaffTabHtml } from "./staffTabTemplate.js";
 import { getUtilitiesTabHtml } from "./utilitiesTabTemplate.js";
+import { getDailyReportTabHtml } from "./dailyReportTemplate.js";
 import { getModalsHtml } from "./modalsTemplate.js";
 
 export function getDbmsShellHtml() {
@@ -154,6 +155,10 @@ export function getDbmsShellHtml() {
                             <span class="tab-icon">⚙️</span>
                             <span class="tab-label">Utilities</span>
                         </button>
+                        <button class="tab-btn" data-tab="tab-daily-report" role="tab" id="btn-tab-daily-report" title="Daily Farm Executive Email Report">
+                            <span class="tab-icon">📧</span>
+                            <span class="tab-label">Daily Report</span>
+                        </button>
                     </div>
                 </div>
 
@@ -226,6 +231,9 @@ export function getDbmsShellHtml() {
 
                 <!-- Right: Quick Telemetry Chips & Actions -->
                 <div class="command-bar-right" style="display:flex; align-items:center; gap:0.5rem;">
+                    <button id="btn-dbms-top-daily-report" class="btn-action btn-secondary" style="padding:0.3rem 0.75rem; font-size:0.75rem; font-weight:700; border-color:#0284c7; color:#0284c7; display:inline-flex; align-items:center; gap:0.35rem;" title="Open Daily Farm Executive Report Generator">
+                        <span>📧 Daily Report</span>
+                    </button>
                     <button id="btn-dbms-mgmt-callout" class="btn-action btn-secondary" style="padding:0.3rem 0.75rem; font-size:0.75rem; font-weight:700; border-color:#38bdf8; color:#0284c7; display:inline-flex; align-items:center; gap:0.35rem;" title="Weekly Management Info Audit & WhatsApp Callout">
                         <span>📋 Mgmt Callout</span>
                     </button>
@@ -256,6 +264,7 @@ export function getDbmsShellHtml() {
                     ${getLifecycleTabHtml()}
                     ${getStaffTabHtml()}
                     ${getUtilitiesTabHtml()}
+                    ${getDailyReportTabHtml()}
                 </main>
             </div>
         </main>

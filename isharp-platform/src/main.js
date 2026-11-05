@@ -33,6 +33,7 @@ import { LifecycleTab } from "./modules/dbms/lifecycleTab.js";
 import { LaboratoryTab } from "./modules/dbms/laboratoryTab.js";
 import { StaffTab } from "./modules/dbms/staffTab.js";
 import { UtilitiesTab } from "./modules/dbms/utilitiesTab.js";
+import { DailyReportTab } from "./modules/dbms/dailyReportTab.js";
 import { pwaUpdateManager } from "./infrastructure/pwaUpdateManager.js";
 
 class App {
@@ -108,7 +109,8 @@ class App {
                 "tab-harvest": this.harvestTab,
                 "tab-lifecycle": this.lifecycleTab,
                 "tab-staff": new StaffTab(),
-                "tab-utilities": new UtilitiesTab()
+                "tab-utilities": new UtilitiesTab(),
+                "tab-daily-report": new DailyReportTab()
             };
 
             // 3. Tab Switching Coordinator
@@ -144,6 +146,14 @@ class App {
             Object.keys(tabScrollPositions).forEach(k => delete tabScrollPositions[k]);
             if (canvas) canvas.scrollTop = 0;
         });
+
+        const topDailyBtn = document.getElementById("btn-dbms-top-daily-report");
+        if (topDailyBtn) {
+            topDailyBtn.addEventListener("click", () => {
+                const dailySidebarBtn = document.getElementById("btn-tab-daily-report");
+                if (dailySidebarBtn) dailySidebarBtn.click();
+            });
+        }
 
         tabBtns.forEach(btn => {
             btn.addEventListener("click", () => {

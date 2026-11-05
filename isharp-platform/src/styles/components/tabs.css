@@ -155,6 +155,11 @@
     animation: aeroFadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
+.tab-pane#tab-daily-report.active {
+    display: flex;
+    flex-direction: column;
+}
+
 @keyframes aeroFadeIn {
     from { opacity: 0; transform: translateY(6px); }
     to { opacity: 1; transform: translateY(0); }
