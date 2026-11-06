@@ -11,9 +11,10 @@ import { HarvestRepository } from "../../infrastructure/repositories/harvestRepo
 import { PondRepository } from "../../infrastructure/repositories/pondRepository.js";
 import { SamplingRepository } from "../../infrastructure/repositories/samplingRepository.js";
 import { buildDailyReportEmailHtml } from "./utils/dailyReportHtmlBuilder.js";
-import { parseLabEmailTable, getNextDayLabel } from "./utils/labTableParser.js";
-
-const STORAGE_KEY = "isharp_daily_report_draft_v1";
+import { DailyReportStateService } from "./services/DailyReportStateService.js";
+import { DailyReportLabService } from "./services/DailyReportLabService.js";
+import { DailyReportExcelService } from "./services/DailyReportExcelService.js";
+import { DailyReportImageService, LAB_IMAGE_STORAGE_KEY, WHITEBOARD_IMAGE_STORAGE_KEY } from "./services/DailyReportImageService.js";
 
 export class DailyReportTab {
     constructor() {
@@ -22,6 +23,7 @@ export class DailyReportTab {
         this.isLoaded = false;
         this.isLoadingSSOT = false;
         this.isImageZoomed = false;
+        this.isWhiteboardZoomed = false;
 
         // Current compiled report state
         this.reportState = this.getDefaultReportState();
@@ -41,147 +43,7 @@ export class DailyReportTab {
     }
 
     getDefaultReportState() {
-        const now = new Date();
-        return {
-            reportDate: now.toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" }),
-            reportTime: now.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true }),
-            activePonds: 119,
-            totalPonds: 216,
-            utilizationPct: 55.09,
-
-            // Performance Scorecard
-            ytdTonnageActual: 1111,
-            ytdTonnageRolling: 1469.00,
-            ytdTonnageBP: 2229.00,
-            ytdRevenueActual: 26.42,
-            ytdRevenueRolling: 34.58,
-            ytdRevenueBP: 48.40,
-            ytdHarvestPondsActual: 346,
-            ytdHarvestPondsRolling: 435,
-            ytdHarvestPondsBP: 434,
-            ytdStockPondsActual: 428,
-            ytdStockPondsRolling: 460,
-            ytdStockPondsBP: 429,
-
-            mtdTonnageActual: "TBA",
-            mtdTonnageRolling: "TBA",
-            mtdTonnageBP: 215.74,
-            mtdRevenueActual: "TBA",
-            mtdRevenueRolling: "TBA",
-            mtdRevenueBP: 5.23,
-            mtdHarvestPondsActual: 7,
-            mtdHarvestPondsRolling: "TBA",
-            mtdHarvestPondsBP: 50,
-            mtdStockPondsActual: 7,
-            mtdStockPondsRolling: 37.00,
-            mtdStockPondsBP: 42,
-            mtdFriesActual: 2.91,
-            mtdFriesRolling: 14.80,
-            mtdFriesBP: 17.40,
-            culledMtd: 0,
-            culledYtd: 1,
-
-            // Highlights & DOC
-            highlightOperationalSummary: "Operational pond: 118 consist of 2 SPR, 0 SPF, 84 SPT, and 32 MON.",
-            highlightStockingPonds: 0,
-            highlightHarvestPonds: 0,
-            highlightCullPonds: 0,
-            docBrackets: [
-                { label: "DOC: 0-30 days", count: 19, pct: 16 },
-                { label: "DOC: 31-60 days", count: 49, pct: 42 },
-                { label: "DOC: 61-90 days", count: 36, pct: 31 },
-                { label: "DOC: 91-120 days", count: 0, pct: 0 },
-                { label: "DOC: >120 days", count: 14, pct: 12 }
-            ],
-
-            // Pond Readiness
-            idlePonds: 56,
-            cleaningTeamsCount: 3,
-            cleaningTeamsDetail: "Int 1 & 2, P02, P06",
-            cleanedPonds: 6,
-            waitingWaterFilling: 1,
-            waterFilling: 0,
-            waterCulture: 23,
-            readyForStocking: 8,
-
-            // Risk Flags & Notes
-            redFlag: "",
-            orangeFlag: "",
-            yellowFlag: "",
-            facilityActivityUpdate: "",
-
-            // Weather & Environmental
-            pondSalinity: "29 ppt",
-            pondAmTemp: "30.45°C",
-            weatherForecastDate: "Setiu (Windy.com)",
-            weatherForecastDays: [
-                { date: "04 Nov", desc: "Few Clouds", icon: "⛅" },
-                { date: "05 Nov", desc: "Few Clouds", icon: "⛅" },
-                { date: "06 Nov", desc: "Overcast", icon: "☁️" },
-                { date: "07 Nov", desc: "Light Rain", icon: "🌧️" },
-                { date: "08 Nov", desc: "Light Rain", icon: "🌧️" }
-            ],
-            rainfallHistory: [
-                { date: "04-Nov", mm: "1.00mm" },
-                { date: "03-Nov", mm: "4.20mm" },
-                { date: "02-Nov", mm: "8.60mm" },
-                { date: "01-Nov", mm: "0.00mm" },
-                { date: "31-Oct", mm: "0.00mm" }
-            ],
-            mdcStatus: "100 cm (No changes)",
-
-            // Genetics Grid
-            genetics: {
-                spr: { sw: 0, shtApi: 2 },
-                spt: { sht: 84, sbsb: 0, gsp: 0, bzy: 0 },
-                spf: { iohat: 0, hlx: 0, yhl: 0, cp: 0, ois: 0, bmc: 0 },
-                monodon: { cp: 2, gsr: 3, sht: 0, sw: 0, ubn: 9, kssb: 18 }
-            },
-
-            // Module Allocation (M01-M09) & Sampling
-            moduleRows: [],
-            samplingDateLabel: "29 Oct",
-
-            // Harvest actuals & forecast (Harvest Report sourced from Daily_Harvest_Log.xlsx - this week only)
-            todayHarvests: [],
-            harvestMonthLabel: "November 2026",
-            harvestWeekLabel: "01 Nov – 07 Nov 2026",
-            harvestReports: [
-                { pond: "04.07.02", date: "01/11", raw_date: "2026-11-01", type: "Partial-live", actTonnage: "", actAbw: "", planTonnage: 1500, planAbw: 40, planAbw2: "", doc: 133, species: "Monodon" },
-                { pond: "06.12.04", date: "01/11", raw_date: "2026-11-01", type: "Full Chill", actTonnage: "", actAbw: "", planTonnage: 3500, planAbw: 12, planAbw2: "", doc: 72, species: "Vannamei" },
-                { pond: "04.07.07", date: "02/11", raw_date: "2026-11-02", type: "Partial-live", actTonnage: "", actAbw: "", planTonnage: 1500, planAbw: 45.5, planAbw2: "", doc: 137, species: "Monodon" },
-                { pond: "09.17.11", date: "02/11", raw_date: "2026-11-02", type: "Full Chill", actTonnage: "", actAbw: "", planTonnage: 3100, planAbw: 15, planAbw2: "", doc: 67, species: "Vannamei" },
-                { pond: "03.06.05", date: "03/11", raw_date: "2026-11-03", type: "Full", actTonnage: "", actAbw: "", planTonnage: 3500, planAbw: 25, planAbw2: "", doc: 70, species: "Vannamei" },
-                { pond: "09.18.12", date: "03/11", raw_date: "2026-11-03", type: "Full", actTonnage: "", actAbw: "", planTonnage: 3000, planAbw: 16, planAbw2: "", doc: 68, species: "Vannamei" },
-                { pond: "08.15.02", date: "04/11", raw_date: "2026-11-04", type: "Full", actTonnage: "", actAbw: "", planTonnage: 3600, planAbw: 15, planAbw2: "", doc: 78, species: "Vannamei" },
-                { pond: "08.15.06", date: "04/11", raw_date: "2026-11-04", type: "Full", actTonnage: "", actAbw: "", planTonnage: 4200, planAbw: 14, planAbw2: "", doc: 82, species: "Vannamei" },
-                { pond: "09.18.02", date: "05/11", raw_date: "2026-11-05", type: "Full", actTonnage: "", actAbw: "", planTonnage: 3500, planAbw: 12, planAbw2: "", doc: 84, species: "Vannamei" }
-            ],
-            harvestForecasts: [
-                { pond: "081601", doc: 79, date: "01/11", species: "Van", abw: 16, biomass: 3000, type: "Partial" },
-                { pond: "040702", doc: 134, date: "02/11", species: "Mon", abw: 38, biomass: 2800, type: "Final" },
-                { pond: "091711", doc: 67, date: "02/11", species: "Van", abw: 15, biomass: 3100, type: "Early" },
-                { pond: "091812", doc: 68, date: "03/11", species: "Van", abw: 14, biomass: 2900, type: "Early" },
-                { pond: "040708", doc: 138, date: "03/11", species: "Mon", abw: 46, biomass: 5500, type: "Final" },
-                { pond: "040707", doc: 139, date: "04/11", species: "Mon", abw: 44, biomass: 5000, type: "Final" },
-                { pond: "081502", doc: 78, date: "04/11", species: "Van", abw: 14, biomass: 4200, type: "Partial" },
-                { pond: "091802", doc: 84, date: "05/11", species: "Van", abw: 11, biomass: 3500, type: "Early" },
-                { pond: "040703", doc: 137, date: "05/11", species: "Mon", abw: 36, biomass: 4600, type: "Final" },
-                { pond: "091703", doc: 85, date: "06/11", species: "Van", abw: 11, biomass: 3700, type: "Early" },
-                { pond: "051002", doc: 133, date: "06/11", species: "Mon", abw: 44, biomass: 4000, type: "Final" },
-                { pond: "040704", doc: 138, date: "07/11", species: "Mon", abw: 36, biomass: 3000, type: "Final" }
-            ],
-            stockingRecords: [
-                { no: 1, pondIndex: "2071305.40", pond: "07.13.05", date: "03-Nov-2026", rawDate: "2026-11-03", hatchery: "GS", species: "P. VANNAMEi", genetic: "Syaqua", plTotal: 421195, tankNo: "A3" },
-                { no: 2, pondIndex: "2071306.40", pond: "07.13.06", date: "03-Nov-2026", rawDate: "2026-11-03", hatchery: "GS", species: "P. VANNAMEi", genetic: "Syaqua", plTotal: 421195, tankNo: "A2,A3" },
-                { no: 3, pondIndex: "2071307.36", pond: "07.13.07", date: "03-Nov-2026", rawDate: "2026-11-03", hatchery: "GS", species: "P. VANNAMEi", genetic: "Syaqua", plTotal: 421195, tankNo: "A2" },
-                { no: 4, pondIndex: "2020301.42", pond: "02.03.01", date: "04-Nov-2026", rawDate: "2026-11-04", hatchery: "BZYR", species: "P. VANNAMEi", genetic: "Top Aqua", plTotal: 450000, tankNo: "J3" },
-                { no: 5, pondIndex: "2020302.40", pond: "02.03.02", date: "04-Nov-2026", rawDate: "2026-11-04", hatchery: "BZYR", species: "P. VANNAMEi", genetic: "Top Aqua", plTotal: 450000, tankNo: "J3" },
-                { no: 6, pondIndex: "2020303.41", pond: "02.03.03", date: "04-Nov-2026", rawDate: "2026-11-04", hatchery: "BZYR", species: "P. VANNAMEi", genetic: "Top Aqua", plTotal: 450000, tankNo: "J5" },
-                { no: 7, pondIndex: "2071308.40", pond: "07.13.08", date: "04-Nov-2026", rawDate: "2026-11-04", hatchery: "BZYR", species: "P. VANNAMEi", genetic: "Top Aqua", plTotal: 450000, tankNo: "J5" }
-            ],
-            stockingForecasts: []
-        };
+        return DailyReportStateService.getDefaultReportState();
     }
 
     ensureInitialized() {
@@ -192,54 +54,7 @@ export class DailyReportTab {
 
         // Load saved draft or initialize with defaults
         const savedDraft = this.loadDraftFromStorage();
-        if (savedDraft) {
-            // If saved draft had the previous chronological order (oldest on left, newest on right),
-            // reverse it so newest is on the left
-            if (savedDraft.rainfallHistory && savedDraft.rainfallHistory.length === 5) {
-                const firstDate = savedDraft.rainfallHistory[0]?.date || "";
-                const lastDate = savedDraft.rainfallHistory[4]?.date || "";
-                if (firstDate.includes("31-Oct") && lastDate.includes("04-Nov")) {
-                    savedDraft.rainfallHistory.reverse();
-                }
-            }
-            // If draft had old accumulated MTD values for today's highlights (e.g. 7 or 6), reset them to today only (0)
-            if (savedDraft.highlightStockingPonds === 7 || savedDraft.highlightHarvestPonds === 6) {
-                savedDraft.highlightStockingPonds = 0;
-                savedDraft.highlightHarvestPonds = 0;
-                savedDraft.highlightCullPonds = 0;
-            }
-            // Recompute moduleRows if old cached draft had an inflated 126-pond count or stale count
-            const draftModuleTotal = (savedDraft.moduleRows || []).reduce((acc, r) => acc + (r.van || 0) + (r.mon || 0), 0);
-            if (draftModuleTotal !== 119) {
-                delete savedDraft.moduleRows;
-            }
-            if (savedDraft.reportTime === "5:50 PM") {
-                delete savedDraft.reportTime;
-            }
-            // Invalidate stale harvest forecast (ensure all 12 whiteboard ponds are present)
-            if (!savedDraft.harvestForecasts || savedDraft.harvestForecasts.length !== 12) {
-                delete savedDraft.harvestForecasts;
-            }
-            // Invalidate stale harvest reports to adopt Daily_Harvest_Log.xlsx (9 ponds this week, plan only, actual empty)
-            if (!savedDraft.harvestReports || savedDraft.harvestReports.length !== 9 || savedDraft.harvestReports[0]?.actTonnage !== "") {
-                delete savedDraft.harvestReports;
-                delete savedDraft.harvestWeekLabel;
-            }
-            // Evict stale cached SSOT scorecard numbers from previous draft versions so live SSOT takes priority
-            if (savedDraft.ytdHarvestPondsActual === 340 || savedDraft.ytdHarvestPondsActual === 347) {
-                delete savedDraft.ytdHarvestPondsActual;
-            }
-            if (savedDraft.ytdStockPondsActual === 421) {
-                delete savedDraft.ytdStockPondsActual;
-            }
-            if (savedDraft.mtdHarvestPondsActual === 2) {
-                delete savedDraft.mtdHarvestPondsActual;
-            }
-            if (savedDraft.mtdStockPondsActual === 0) {
-                delete savedDraft.mtdStockPondsActual;
-            }
-            this.reportState = Object.assign(this.getDefaultReportState(), savedDraft);
-        }
+        this.reportState = savedDraft || this.getDefaultReportState();
 
         // Always render immediately so user sees UI without waiting
         this.populateFormFromState();
@@ -408,7 +223,7 @@ export class DailyReportTab {
             });
         }
 
-        // Add Forecast / Harvest Row Buttons & Excel Sync
+        // Add Forecast / Harvest / Stocking Plan Row Buttons & Excel Sync
         const btnAddFc = document.getElementById("btn-add-forecast-row");
         if (btnAddFc) {
             btnAddFc.addEventListener("click", () => this.addForecastRow());
@@ -416,6 +231,22 @@ export class DailyReportTab {
         const btnAddHr = document.getElementById("btn-add-harvest-row");
         if (btnAddHr) {
             btnAddHr.addEventListener("click", () => this.addHarvestReportRow());
+        }
+        const btnAddSp = document.getElementById("btn-add-stocking-plan-row");
+        if (btnAddSp) {
+            btnAddSp.addEventListener("click", () => this.addStockingPlanRow());
+        }
+        const inputSpTitle = document.getElementById("dr-input-stocking-plan-title");
+        if (inputSpTitle) {
+            inputSpTitle.addEventListener("input", () => {
+                if (!this.reportState.stockingPlanSummary) {
+                    this.reportState.stockingPlanSummary = { title: inputSpTitle.value, rows: [] };
+                } else {
+                    this.reportState.stockingPlanSummary.title = inputSpTitle.value;
+                }
+                this.renderPreview();
+                this.saveDraftToStorage(false);
+            });
         }
         const btnRefreshHLog = document.getElementById("btn-refresh-harvest-log");
         if (btnRefreshHLog) {
@@ -425,8 +256,11 @@ export class DailyReportTab {
         // Input live change listener
         const formInputs = this.container.querySelectorAll("input, textarea, select");
         formInputs.forEach(input => {
-            if (input.id === "dr-input-lab-paste" || input.id === "dr-lab-file-input" || input.id === "dr-whiteboard-upload" || input.classList.contains("dr-fc-input") || input.classList.contains("dr-hr-input")) return;
+            if (input.id === "dr-input-lab-paste" || input.id === "dr-lab-file-input" || input.id === "dr-whiteboard-upload" || input.id === "dr-input-stocking-plan-title" || input.classList.contains("dr-fc-input") || input.classList.contains("dr-hr-input") || input.classList.contains("dr-sp-input")) return;
             input.addEventListener("input", () => {
+                if (input.id === "dr-input-cleaning-teams") {
+                    this.userHasOverriddenCleaningTeams = true;
+                }
                 this.updateStateFromForm();
                 this.renderPreview();
             });
@@ -436,137 +270,53 @@ export class DailyReportTab {
     /**
      * Docks user pasted or uploaded image into Card 3 reference area and persists it in sessionStorage.
      */
-    handleImageDock(file) {
-        if (!file || !file.type || !file.type.startsWith("image/")) {
-            Toast.info("Please select or paste a valid image file.");
-            return;
-        }
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            const dataUrl = e.target.result;
-            this.setDockedImage(dataUrl);
-            try {
-                sessionStorage.setItem("isharp_lab_image_dock", dataUrl);
-            } catch (err) {
-                console.warn("Could not save docked image to sessionStorage:", err);
-            }
+    async handleImageDock(file) {
+        try {
+            const dataUrl = await DailyReportImageService.readFileAsDataUrl(file);
+            DailyReportImageService.setLabDockedImage(dataUrl);
+            sessionStorage.setItem(LAB_IMAGE_STORAGE_KEY, dataUrl);
             Toast.success("📸 Lab email screenshot docked! You can zoom or reference it while filling.");
-        };
-        reader.readAsDataURL(file);
+        } catch (err) {
+            Toast.info("Please select or paste a valid image file.");
+        }
     }
 
     setDockedImage(dataUrl) {
-        if (!dataUrl) return;
-        const img = document.getElementById("dr-lab-docked-img");
-        const placeholder = document.getElementById("dr-lab-image-placeholder");
-        const dockedView = document.getElementById("dr-lab-docked-view");
-        if (img && placeholder && dockedView) {
-            img.src = dataUrl;
-            placeholder.style.display = "none";
-            dockedView.style.display = "block";
-        }
+        DailyReportImageService.setLabDockedImage(dataUrl);
     }
 
     clearDockedImage() {
-        const img = document.getElementById("dr-lab-docked-img");
-        const placeholder = document.getElementById("dr-lab-image-placeholder");
-        const dockedView = document.getElementById("dr-lab-docked-view");
-        const btnZoom = document.getElementById("btn-zoom-lab-img");
-        if (img && placeholder && dockedView) {
-            img.src = "";
-            img.style.width = "100%";
-            img.style.minWidth = "auto";
-            this.isImageZoomed = false;
-            if (btnZoom) btnZoom.innerText = "🔍 Zoom";
-            placeholder.style.display = "block";
-            dockedView.style.display = "none";
-        }
-        try {
-            sessionStorage.removeItem("isharp_lab_image_dock");
-        } catch (e) {}
+        DailyReportImageService.clearLabDockedImage();
+        this.isImageZoomed = false;
         Toast.info("Docked lab picture cleared.");
     }
 
     toggleImageZoom() {
-        const img = document.getElementById("dr-lab-docked-img");
-        const btnZoom = document.getElementById("btn-zoom-lab-img");
-        if (!img) return;
-        this.isImageZoomed = !this.isImageZoomed;
-        if (this.isImageZoomed) {
-            img.style.width = "auto";
-            img.style.minWidth = "180%";
-            if (btnZoom) btnZoom.innerText = "🔍 Reset Zoom";
-        } else {
-            img.style.width = "100%";
-            img.style.minWidth = "auto";
-            if (btnZoom) btnZoom.innerText = "🔍 Zoom";
-        }
+        this.isImageZoomed = DailyReportImageService.toggleLabImageZoom(this.isImageZoomed);
     }
 
     restoreDockedImage() {
-        try {
-            const savedImg = sessionStorage.getItem("isharp_lab_image_dock");
-            if (savedImg) {
-                this.setDockedImage(savedImg);
-            }
-        } catch (e) {
-            console.warn("Could not restore docked lab image:", e);
-        }
+        DailyReportImageService.restoreLabDockedImage();
     }
 
-    /**
-     * Toggles between compact view and expanded/zoomed view for farm whiteboard photo in Card 6.
-     */
     toggleWhiteboardZoom() {
-        const wrap = document.getElementById("dr-whiteboard-preview-wrap");
-        const btn = document.getElementById("btn-toggle-whiteboard-zoom");
-        const img = document.getElementById("dr-whiteboard-img");
-        if (!wrap || !img) return;
-        this.isWhiteboardZoomed = !this.isWhiteboardZoomed;
-        if (this.isWhiteboardZoomed) {
-            wrap.style.maxHeight = "540px";
-            img.style.maxHeight = "540px";
-            if (btn) btn.textContent = "🔍 Collapse View";
-        } else {
-            wrap.style.maxHeight = "120px";
-            img.style.maxHeight = "120px";
-            if (btn) btn.textContent = "🔍 Expand View";
-        }
+        this.isWhiteboardZoomed = DailyReportImageService.toggleWhiteboardZoom(this.isWhiteboardZoomed);
     }
 
-    /**
-     * Handles uploading/replacing the whiteboard reference photo in Card 6.
-     */
-    handleWhiteboardUpload(file) {
-        if (!file || !file.type || !file.type.startsWith("image/")) {
-            Toast.info("Please select a valid image file.");
-            return;
-        }
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            const dataUrl = e.target.result;
+    async handleWhiteboardUpload(file) {
+        try {
+            const dataUrl = await DailyReportImageService.readFileAsDataUrl(file);
             const img = document.getElementById("dr-whiteboard-img");
             if (img) img.src = dataUrl;
-            try {
-                localStorage.setItem("isharp_whiteboard_dock_photo", dataUrl);
-            } catch (err) {
-                console.warn("Could not save whiteboard photo:", err);
-            }
+            localStorage.setItem(WHITEBOARD_IMAGE_STORAGE_KEY, dataUrl);
             Toast.success("📸 Farm whiteboard photo updated! You can inspect and edit the schedule below.");
-        };
-        reader.readAsDataURL(file);
+        } catch (err) {
+            Toast.info("Please select a valid image file.");
+        }
     }
 
     restoreWhiteboardDockedImage() {
-        try {
-            const savedPhoto = localStorage.getItem("isharp_whiteboard_dock_photo");
-            if (savedPhoto) {
-                const img = document.getElementById("dr-whiteboard-img");
-                if (img) img.src = savedPhoto;
-            }
-        } catch (e) {
-            console.warn("Could not restore whiteboard photo:", e);
-        }
+        DailyReportImageService.restoreWhiteboardPhoto();
     }
 
     /**
@@ -629,23 +379,137 @@ export class DailyReportTab {
     }
 
     /**
+     * Adds a row to the monthly stocking plan target.
+     */
+    addStockingPlanRow() {
+        if (!this.reportState.stockingPlanSummary) {
+            this.reportState.stockingPlanSummary = { title: "Stocking Plan Nov '26", rows: [] };
+        }
+        if (!this.reportState.stockingPlanSummary.rows) {
+            this.reportState.stockingPlanSummary.rows = [];
+        }
+        this.reportState.stockingPlanSummary.rows.push({
+            genetic: "SPT",
+            ponds: 10,
+            density: 450000,
+            fryMil: 4.50
+        });
+        this.renderStockingPlanTable();
+        this.renderPreview();
+        this.saveDraftToStorage(false);
+        Toast.success("➕ Added new row to Monthly Stocking Plan!");
+    }
+
+    removeStockingPlanRow(idx) {
+        if (!this.reportState.stockingPlanSummary?.rows || !this.reportState.stockingPlanSummary.rows[idx]) return;
+        const removed = this.reportState.stockingPlanSummary.rows.splice(idx, 1);
+        this.renderStockingPlanTable();
+        this.renderPreview();
+        this.saveDraftToStorage(false);
+        Toast.info(`Removed ${removed[0]?.genetic || 'row'} from Stocking Plan.`);
+    }
+
+    /**
+     * Renders editable monthly stocking plan target grid in Card 5.
+     */
+    renderStockingPlanTable() {
+        const container = document.getElementById("dr-stocking-plan-container");
+        const titleInput = document.getElementById("dr-input-stocking-plan-title");
+        const plan = this.reportState.stockingPlanSummary || { title: "Stocking Plan Nov '26", rows: [] };
+
+        if (titleInput && titleInput.value !== (plan.title || "")) {
+            titleInput.value = plan.title || "";
+        }
+
+        if (!container) return;
+
+        const rows = plan.rows || [];
+        if (rows.length === 0) {
+            container.innerHTML = `<div style="padding: 8px; color: #94a3b8; font-style: italic; text-align: center; font-size: 0.7rem;">No plan rows. Click "+ Add Row" to add.</div>`;
+            return;
+        }
+
+        let html = `
+            <table style="width: 100%; border-collapse: collapse; font-size: 0.7rem; text-align: center;">
+                <thead>
+                    <tr style="background: #f1f5f9; color: #475569; font-weight: 700; border-bottom: 1px solid #cbd5e1;">
+                        <th style="padding: 3px 2px; width: 25%;">Genetic</th>
+                        <th style="padding: 3px 2px; width: 22%;">Ponds</th>
+                        <th style="padding: 3px 2px; width: 25%;">Density</th>
+                        <th style="padding: 3px 2px; width: 22%;">Fry (Mil)</th>
+                        <th style="padding: 3px 2px; width: 6%;"></th>
+                    </tr>
+                </thead>
+                <tbody>
+        `;
+
+        rows.forEach((r, idx) => {
+            html += `
+                <tr style="border-bottom: 1px solid #f1f5f9; background: ${idx % 2 === 0 ? '#ffffff' : '#f8fafc'};">
+                    <td style="padding: 2px;"><input type="text" class="dr-sp-input" data-idx="${idx}" data-field="genetic" value="${r.genetic || ''}" style="width: 100%; font-size: 0.68rem; padding: 2px 1px; text-align: center; font-weight: 700; border: 1px solid #cbd5e1; border-radius: 3px;" /></td>
+                    <td style="padding: 2px;"><input type="number" class="dr-sp-input" data-idx="${idx}" data-field="ponds" value="${r.ponds ?? ''}" style="width: 100%; font-size: 0.68rem; padding: 2px 1px; text-align: center; border: 1px solid #cbd5e1; border-radius: 3px;" /></td>
+                    <td style="padding: 2px;"><input type="number" class="dr-sp-input" data-idx="${idx}" data-field="density" value="${r.density ?? ''}" style="width: 100%; font-size: 0.68rem; padding: 2px 1px; text-align: center; border: 1px solid #cbd5e1; border-radius: 3px;" /></td>
+                    <td style="padding: 2px;"><input type="number" step="0.01" class="dr-sp-input" data-idx="${idx}" data-field="fryMil" value="${r.fryMil ?? ''}" style="width: 100%; font-size: 0.68rem; padding: 2px 1px; text-align: right; font-weight: 700; color: #0284c7; border: 1px solid #cbd5e1; border-radius: 3px;" /></td>
+                    <td style="padding: 2px;"><button type="button" class="btn-del-sp" data-idx="${idx}" style="background: none; border: none; cursor: pointer; color: #ef4444; font-size: 0.72rem; padding: 0;" title="Delete row">🗑️</button></td>
+                </tr>
+            `;
+        });
+
+        html += `
+                </tbody>
+            </table>
+        `;
+
+        container.innerHTML = html;
+
+        // Attach listeners
+        const inputs = container.querySelectorAll(".dr-sp-input");
+        inputs.forEach(input => {
+            input.addEventListener("input", (e) => {
+                const idx = parseInt(e.target.dataset.idx, 10);
+                const field = e.target.dataset.field;
+                if (!isNaN(idx) && this.reportState.stockingPlanSummary?.rows?.[idx]) {
+                    let val = e.target.value;
+                    if (field === "ponds" || field === "density" || field === "fryMil") {
+                        val = parseFloat(val) || 0;
+                    }
+                    this.reportState.stockingPlanSummary.rows[idx][field] = val;
+                    this.renderPreview();
+                    this.saveDraftToStorage(false);
+                }
+            });
+        });
+
+        const delBtns = container.querySelectorAll(".btn-del-sp");
+        delBtns.forEach(btn => {
+            btn.addEventListener("click", (e) => {
+                const idx = parseInt(e.currentTarget.dataset.idx, 10);
+                if (!isNaN(idx)) {
+                    this.removeStockingPlanRow(idx);
+                }
+            });
+        });
+    }
+
+    /**
      * Reloads latest harvest records from public/data/daily_harvest_log.json
      * (synced from Daily_Harvest_Log.xlsx).
      */
     async reloadHarvestLogFromExcel(showToast = true) {
         try {
-            const res = await fetch(`/data/daily_harvest_log.json?t=${Date.now()}`);
-            if (!res.ok) throw new Error(`HTTP ${res.status}`);
-            const data = await res.json();
+            const data = await DailyReportExcelService.fetchWeeklyHarvestLog();
             if (data?.harvestReports && data.harvestReports.length > 0) {
                 this.reportState.harvestReports = data.harvestReports;
                 if (data.week_label) {
                     this.reportState.harvestWeekLabel = data.week_label;
                 }
                 this.renderHarvestReportTable();
+                this.renderForecastTable();
                 this.renderPreview();
-                this.saveDraftToStorage(false);
-                if (showToast) Toast.success(`🌾 Synced ${data.count} ponds from Daily_Harvest_Log.xlsx (${data.week_label || 'This Week'})!`);
+                if (showToast) {
+                    this.saveDraftToStorage(false);
+                    Toast.success(`🌾 Synced ${data.count} ponds from Daily_Harvest_Log.xlsx (${data.week_label || 'This Week'})!`);
+                }
             } else {
                 if (showToast) Toast.info("No weekly harvest records found in Daily_Harvest_Log.");
             }
@@ -656,7 +520,8 @@ export class DailyReportTab {
     }
 
     /**
-     * Renders editable weekly harvest forecast schedule grid in Card 6.
+     * Renders editable weekly harvest forecast schedule grid in Card 6,
+     * with real-time discrepancy reconciliation against actuals.
      */
     renderForecastTable() {
         const container = document.getElementById("dr-forecast-table-container");
@@ -674,24 +539,39 @@ export class DailyReportTab {
             return;
         }
 
+        // Reconcile Whiteboard Forecast against actuals
+        const reconciled = DailyReportExcelService.reconcileForecastWithActuals(
+            forecasts,
+            this.reportState.harvestReports,
+            this.reportState.todayHarvests
+        );
+        const reconciliationSummary = DailyReportExcelService.calculateReconciliationSummary(reconciled);
+
+        // Update KPI summary text in Card 6
+        const kpiText = document.getElementById("dr-forecast-reconciliation-text");
+        if (kpiText) {
+            kpiText.textContent = reconciliationSummary.summaryText;
+        }
+
         let html = `
             <table style="width: 100%; border-collapse: collapse; font-size: 0.7rem; text-align: center;">
                 <thead>
                     <tr style="background: #f1f5f9; color: #475569; font-weight: 700; border-bottom: 1px solid #cbd5e1;">
-                        <th style="padding: 3px 2px; width: 14%;">Date</th>
-                        <th style="padding: 3px 2px; width: 17%;">Pond</th>
-                        <th style="padding: 3px 2px; width: 11%;">DOC</th>
-                        <th style="padding: 3px 2px; width: 12%;">Spec</th>
-                        <th style="padding: 3px 2px; width: 11%;">ABW</th>
-                        <th style="padding: 3px 2px; width: 16%;">Biomass</th>
-                        <th style="padding: 3px 2px; width: 13%;">Type</th>
-                        <th style="padding: 3px 2px; width: 6%;"></th>
+                        <th style="padding: 3px 2px; width: 12%;">Date</th>
+                        <th style="padding: 3px 2px; width: 14%;">Pond</th>
+                        <th style="padding: 3px 2px; width: 9%;">DOC</th>
+                        <th style="padding: 3px 2px; width: 9%;">Spec</th>
+                        <th style="padding: 3px 2px; width: 9%;">ABW</th>
+                        <th style="padding: 3px 2px; width: 12%;">Biomass</th>
+                        <th style="padding: 3px 2px; width: 10%;">Type</th>
+                        <th style="padding: 3px 2px; width: 20%;">Actuals / Status</th>
+                        <th style="padding: 3px 2px; width: 5%;"></th>
                     </tr>
                 </thead>
                 <tbody>
         `;
 
-        forecasts.forEach((f, idx) => {
+        reconciled.forEach((f, idx) => {
             html += `
                 <tr style="border-bottom: 1px solid #f1f5f9; background: ${idx % 2 === 0 ? '#ffffff' : '#f8fafc'};">
                     <td style="padding: 2px;"><input type="text" class="dr-fc-input" data-idx="${idx}" data-field="date" value="${f.date || ''}" style="width: 100%; font-size: 0.68rem; padding: 2px 1px; text-align: center; border: 1px solid #cbd5e1; border-radius: 3px;" /></td>
@@ -706,6 +586,11 @@ export class DailyReportTab {
                     <td style="padding: 2px;"><input type="number" class="dr-fc-input" data-idx="${idx}" data-field="abw" value="${f.abw ?? ''}" style="width: 100%; font-size: 0.68rem; padding: 2px 1px; text-align: center; border: 1px solid #cbd5e1; border-radius: 3px;" /></td>
                     <td style="padding: 2px;"><input type="number" class="dr-fc-input" data-idx="${idx}" data-field="biomass" value="${f.biomass ?? ''}" style="width: 100%; font-size: 0.68rem; padding: 2px 1px; text-align: right; font-weight: 700; color: #274e13; border: 1px solid #cbd5e1; border-radius: 3px;" /></td>
                     <td style="padding: 2px;"><input type="text" class="dr-fc-input" data-idx="${idx}" data-field="type" value="${f.type || ''}" style="width: 100%; font-size: 0.68rem; padding: 2px 1px; text-align: center; border: 1px solid #cbd5e1; border-radius: 3px;" /></td>
+                    <td style="padding: 2px;">
+                        <span style="display: inline-block; padding: 2px 4px; border-radius: 4px; font-size: 0.63rem; font-weight: 700; color: ${f.badgeColor}; background: ${f.badgeBg}; border: 1px solid ${f.badgeColor}40;">
+                            ${f.badgeText}
+                        </span>
+                    </td>
                     <td style="padding: 2px;"><button type="button" class="btn-del-fc" data-idx="${idx}" style="background: none; border: none; cursor: pointer; color: #ef4444; font-size: 0.72rem; padding: 0;" title="Delete row">🗑️</button></td>
                 </tr>
             `;
@@ -814,6 +699,7 @@ export class DailyReportTab {
                     }
                     this.reportState.harvestReports[idx][field] = val;
                     this.renderPreview();
+                    this.renderForecastTable(); // Instantly update Whiteboard Forecast reconciliation status & KPIs
                     this.saveDraftToStorage(false);
                 }
             });
@@ -857,18 +743,10 @@ export class DailyReportTab {
      */
     handleShiftDay() {
         this.updateStateFromForm();
-        const rf = this.reportState.rainfallHistory || [];
-        if (rf.length < 5) return;
+        const { nextDate, rainfallHistory } = DailyReportLabService.shiftRainfallDays(this.reportState.rainfallHistory);
+        if (!nextDate) return;
 
-        // Advance today's date from previous newest day (index 0)
-        const nextDate = getNextDayLabel(rf[0]?.date);
-        this.reportState.rainfallHistory = [
-            { date: nextDate, mm: "0.00" },     // Newest (Today) on leftmost column
-            { date: rf[0].date, mm: rf[0].mm }, // Yesterday
-            { date: rf[1].date, mm: rf[1].mm }, // 2 days ago
-            { date: rf[2].date, mm: rf[2].mm }, // 3 days ago
-            { date: rf[3].date, mm: rf[3].mm }  // 4 days ago
-        ];
+        this.reportState.rainfallHistory = rainfallHistory;
 
         // Synchronize 5 date & mm fields in UI
         for (let i = 0; i < 5; i++) {
@@ -898,49 +776,13 @@ export class DailyReportTab {
      */
     handleLabTablePaste(rawText) {
         if (!rawText || typeof rawText !== "string") return;
-        const parsed = parseLabEmailTable(rawText);
+        const parsed = DailyReportLabService.parseLabTableText(rawText);
         if (!parsed) {
             Toast.info("Could not detect tabular laboratory data in pasted text. Please check format.");
             return;
         }
 
-        let updatedFields = [];
-
-        // 1. Update 5-day Dates & Rainfall
-        if (parsed.dates && parsed.dates.length > 0) {
-            parsed.dates.forEach((d, i) => {
-                if (this.reportState.rainfallHistory[i]) {
-                    this.reportState.rainfallHistory[i].date = d;
-                }
-            });
-            updatedFields.push(`${parsed.dates.length} dates`);
-        }
-        if (parsed.rainfall && parsed.rainfall.length > 0) {
-            parsed.rainfall.forEach((rf, i) => {
-                if (this.reportState.rainfallHistory[i]) {
-                    this.reportState.rainfallHistory[i].mm = rf;
-                }
-            });
-            updatedFields.push(`${parsed.rainfall.length} rainfall readings`);
-        }
-
-        // 2. Update MDC Level
-        if (parsed.mdc) {
-            this.reportState.mdcStatus = parsed.mdc;
-            updatedFields.push(`MDC: ${parsed.mdc}`);
-        }
-
-        // 3. Update AM Temp
-        if (parsed.amTemp) {
-            this.reportState.pondAmTemp = parsed.amTemp;
-            updatedFields.push(`Temp: ${parsed.amTemp}`);
-        }
-
-        // 4. Update Salinity
-        if (parsed.salinity) {
-            this.reportState.pondSalinity = parsed.salinity;
-            updatedFields.push(`Salinity: ${parsed.salinity}`);
-        }
+        const { updatedFields } = DailyReportLabService.applyParsedLabData(parsed, this.reportState);
 
         // Synchronize Form UI & Preview
         this.populateFormFromState();
@@ -1012,7 +854,7 @@ export class DailyReportTab {
                 console.warn("Could not calculate stockAgg:", e);
             }
 
-            // 3. Hero Card 7: DOC Demographic Distribution
+            // 3. Hero Card 7 & Detailed 5-Bracket DOC Distribution
             const culturingPonds = (dailyProgress || []).filter(p => (p.progress_state || "").toUpperCase() === "CULTURE");
             const activePool = culturingPonds.length > 0 ? culturingPonds : (activeCycles || []);
             let docComp = { overall: { early: 19, earlyPct: 16, mid: 85, midPct: 73, finishing: 14, finishingPct: 12 } };
@@ -1020,6 +862,18 @@ export class DailyReportTab {
                 docComp = ExecutiveMetricsPresenter.calculateDocComposition(activePool);
             } catch (e) {
                 console.warn("Could not calculate docComp:", e);
+            }
+
+            let dynamicDocBrackets = null;
+            try {
+                dynamicDocBrackets = ExecutiveMetricsPresenter.calculateDetailedDocBrackets({
+                    culturingPonds,
+                    activeCycles: activeCycles || [],
+                    operationalCycles: opCycles || [],
+                    referenceDate: now
+                });
+            } catch (e) {
+                console.warn("Could not calculate dynamicDocBrackets:", e);
             }
 
             // 4. Hero Card 6 & Module Spatial Allocation (M01 - M09 Species Breakdown)
@@ -1036,14 +890,55 @@ export class DailyReportTab {
                 console.warn("Could not calculate speciesIntel:", e);
             }
 
-            // 5. Hero Card 2: 216-Pond Map Readiness Stages
-            const readiness = this.aggregatePondReadiness(dailyProgress || []);
+            // 5. Hero Card 2: 216-Pond Map Readiness Stages & Cleaning Teams
+            const readiness = this.aggregatePondReadiness(dailyProgress || [], this.reportState);
 
-            // 6. Genetics Breakdown from Active Crops
-            const genetics = this.extractGeneticsFromCycles(activeCycles || []);
+            // Dynamic Cleaning Ponds Detail from pond_daily_progress (progress_state === 'CLEANING' or status_code === 'Cp')
+            const cleaningPonds = (dailyProgress || []).filter(p => {
+                const st = String(p.progress_state || "").toUpperCase();
+                const code = String(p.status_code || "").toUpperCase();
+                return st === "CLEANING" || code === "CP";
+            });
+            const dynamicCleaningDetail = cleaningPonds
+                .map(p => p.pond || p.pond_code)
+                .filter(Boolean)
+                .sort()
+                .join(", ");
 
-            // 7. Module 01-09 Species Rows & Samplings (Primary Source: dailyProgress)
-            const moduleRows = this.buildModuleRows(speciesIntel?.moduleAllocation || [], activeCycles || [], samplings || [], dailyProgress || []);
+            let cleaningTeamsDetail = this.reportState.cleaningTeamsDetail;
+            if (!this.userHasOverriddenCleaningTeams || !cleaningTeamsDetail || cleaningTeamsDetail === "Int 1 & 2, P02, P06") {
+                cleaningTeamsDetail = dynamicCleaningDetail || cleaningTeamsDetail || "";
+            }
+
+            // 6. Operational Hatcheries & Stocking Types (SPF / SPT / SPR / Monodon) SSOT
+            let operationalHatcheries = null;
+            try {
+                operationalHatcheries = ExecutiveMetricsPresenter.aggregateOperationalHatcheriesByType({
+                    culturingPonds,
+                    activeCycles: activeCycles || [],
+                    stockingBatches: stockingBatches || [],
+                    operationalCycles: opCycles || []
+                });
+            } catch (e) {
+                console.warn("Could not calculate operationalHatcheries:", e);
+                operationalHatcheries = this.getDefaultReportState().operationalHatcheries;
+            }
+            const genetics = this.convertHatcheriesToLegacyGenetics(operationalHatcheries);
+
+            // 7. Module 01-09 Species Rows & Samplings (Primary Source: dailyProgress + biometrics_sampling)
+            let moduleBioResult = null;
+            try {
+                moduleBioResult = ExecutiveMetricsPresenter.aggregateModuleBiometrics({
+                    samplings: samplings || [],
+                    culturingPonds,
+                    activeCycles: activeCycles || [],
+                    dailyProgress: dailyProgress || []
+                });
+            } catch (e) {
+                console.warn("Could not calculate module biometrics:", e);
+            }
+            const moduleRows = moduleBioResult?.moduleRows || this.buildModuleRows(speciesIntel?.moduleAllocation || [], activeCycles || [], samplings || [], dailyProgress || []);
+            const samplingDateLabel = moduleBioResult?.samplingDateLabel || this.reportState.samplingDateLabel || "Latest";
 
             // 8. Today's Operational Movements (Highlight Today Only — strictly today's records)
             // Harvest from 216 Pond Mapping (Excel sync) & Daily Harvests
@@ -1145,21 +1040,25 @@ export class DailyReportTab {
             const syncDateStr = now.toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
             const syncTimeStr = now.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true });
 
-            // Dynamic genetics breakdown for highlight summary
-            const gVan = (genetics?.spr?.shtApi || 0) + (genetics?.spt?.sht || 0) + (genetics?.spf?.iohat || 0);
-            const gMon = Object.values(genetics?.monodon || {}).reduce((a, b) => a + (Number(b) || 0), 0);
-            const spr = genetics?.spr?.shtApi || 2;
-            const spf = genetics?.spf?.iohat || 0;
-            const spt = genetics?.spt?.sht || 85;
-            const mon = gMon || 32;
+            // Immediately reflect sync date & time in input controls
+            const dateInput = document.getElementById("dr-input-date");
+            if (dateInput) dateInput.value = syncDateStr;
+            const timeInput = document.getElementById("dr-input-time");
+            if (timeInput) timeInput.value = syncTimeStr;
+
+            // Dynamic genetics & operational hatchery breakdown for highlight summary
+            const spr = operationalHatcheries?.summary?.spr ?? 0;
+            const spf = operationalHatcheries?.summary?.spf ?? 0;
+            const spt = operationalHatcheries?.summary?.spt ?? 0;
+            const mon = operationalHatcheries?.summary?.monodon ?? 0;
 
             // Update reportState
             this.reportState = Object.assign(this.reportState, {
                 reportDate: syncDateStr,
                 reportTime: syncTimeStr,
-                activePonds: activePool.length || 119,
+                activePonds: activePool.length || 0,
                 totalPonds: 216,
-                utilizationPct: Math.round(((activePool.length || 119) / 216) * 10000) / 100,
+                utilizationPct: Math.round(((activePool.length || 0) / 216) * 10000) / 100,
 
                 // Performance Scorecard (Fully closed ponds / full harvest only; partials excluded)
                 ytdTonnageActual: Math.round((harvestAgg.ytdTonnage || 1111) * 10) / 10,
@@ -1177,31 +1076,28 @@ export class DailyReportTab {
                 stockingRecords: formattedStockingRecords,
 
                 // Highlights & DOC (strictly today's movements, never accumulated MTD)
-                highlightOperationalSummary: `Operational pond: ${activePool.length || 119} consist of ${spr} SPR, ${spf} SPF, ${spt} SPT, and ${mon} MON.`,
+                highlightOperationalSummary: `Operational pond: ${activePool.length || 0} consist of ${spr} SPR, ${spf} SPF, ${spt} SPT, and ${mon} MON.`,
                 highlightStockingPonds: todayStockPonds.size,
                 highlightHarvestPonds: todayHarvestPonds.size,
                 highlightCullPonds: todayCullCount,
-                docBrackets: [
-                    { label: "DOC: 0-30 days", count: docComp.overall?.early || 19, pct: docComp.overall?.earlyPct || 16 },
-                    { label: "DOC: 31-60 days", count: Math.round((docComp.overall?.mid || 49) * 0.6), pct: 42 },
-                    { label: "DOC: 61-90 days", count: Math.round((docComp.overall?.mid || 49) * 0.4), pct: 31 },
-                    { label: "DOC: 91-120 days", count: 0, pct: 0 },
-                    { label: "DOC: >120 days", count: docComp.overall?.finishing || 14, pct: docComp.overall?.finishingPct || 12 }
-                ],
+                docBrackets: dynamicDocBrackets || this.reportState.docBrackets || this.getDefaultReportState().docBrackets,
 
                 // Readiness
                 idlePonds: readiness.idle,
                 cleaningTeamsCount: readiness.cleaning,
+                cleaningTeamsDetail: cleaningTeamsDetail,
                 cleanedPonds: readiness.cleaned,
                 waitingWaterFilling: readiness.repaired,
                 waterCulture: readiness.waterCulture,
                 readyForStocking: readiness.ready,
 
-                // Genetics
+                // Operational Hatcheries & Stocking Types (SSOT)
+                operationalHatcheries: operationalHatcheries,
                 genetics: genetics,
 
-                // Module Rows
+                // Module Rows & Sampling Date
                 moduleRows: moduleRows,
+                samplingDateLabel: samplingDateLabel,
 
                 // Harvest actuals & forecast (preserve edits or load default 12 whiteboard ponds)
                 harvestForecasts: (this.reportState.harvestForecasts && this.reportState.harvestForecasts.length > 0)
@@ -1212,12 +1108,13 @@ export class DailyReportTab {
                     : this.getDefaultReportState().harvestReports
             });
 
+            this.populateFormFromState();
+
             // Automatically synchronize latest records from Daily_Harvest_Log.xlsx
             try {
                 await this.reloadHarvestLogFromExcel(false);
             } catch (e) {}
 
-            this.populateFormFromState();
             this.renderPreview();
             this.saveDraftToStorage(false);
 
@@ -1241,8 +1138,9 @@ export class DailyReportTab {
 
     /**
      * Extracts readiness counts from pond_daily_progress table.
+     * Preserves last valid state if query returns empty, eliminating mock fallbacks.
      */
-    aggregatePondReadiness(dailyProgress = []) {
+    aggregatePondReadiness(dailyProgress = [], fallbackState = null) {
         const counts = {
             idle: 0,
             cleaning: 0,
@@ -1252,7 +1150,7 @@ export class DailyReportTab {
             ready: 0
         };
 
-        dailyProgress.forEach(p => {
+        (dailyProgress || []).forEach(p => {
             const state = String(p.progress_state || "").toUpperCase();
             if (state === "IDLE") counts.idle++;
             else if (state === "CLEANING") counts.cleaning++;
@@ -1262,40 +1160,73 @@ export class DailyReportTab {
             else if (state === "READY") counts.ready++;
         });
 
-        if (counts.idle === 0 && counts.ready === 0) {
-            return { idle: 56, cleaning: 3, cleaned: 6, repaired: 1, waterCulture: 23, ready: 8 };
+        const total = counts.idle + counts.cleaning + counts.cleaned + counts.repaired + counts.waterCulture + counts.ready;
+        if (total === 0 && fallbackState) {
+            return {
+                idle: fallbackState.idlePonds || 0,
+                cleaning: fallbackState.cleaningTeamsCount || 0,
+                cleaned: fallbackState.cleanedPonds || 0,
+                repaired: fallbackState.waitingWaterFilling || 0,
+                waterCulture: fallbackState.waterCulture || 0,
+                ready: fallbackState.readyForStocking || 0
+            };
         }
         return counts;
+    }
+
+    /**
+     * Converts operational hatcheries aggregation to legacy genetics structure for backward compatibility.
+     */
+    convertHatcheriesToLegacyGenetics(hatcheryData) {
+        const g = {
+            spr: { sw: 0, shtApi: 0 },
+            spt: { sht: 0, sbsb: 0, gsp: 0, bzy: 0 },
+            spf: { iohat: 0, hlx: 0, yhl: 0, cp: 0, ois: 0, bmc: 0 },
+            monodon: { cp: 0, gsr: 0, sht: 0, sw: 0, ubn: 0, kssb: 0 }
+        };
+
+        if (!hatcheryData || !hatcheryData.groups) return g;
+
+        hatcheryData.groups.forEach(grp => {
+            const t = (grp.type || "").toUpperCase();
+            (grp.hatcheries || []).forEach(h => {
+                const src = (h.source || "").toUpperCase();
+                if (t === "SPR") {
+                    if (src.includes("API")) g.spr.shtApi += h.ponds;
+                    else g.spr.sw += h.ponds;
+                } else if (t === "SPT") {
+                    if (src.includes("SHT")) g.spt.sht += h.ponds;
+                    else if (src.includes("SBSB")) g.spt.sbsb += h.ponds;
+                    else if (src.includes("GSP")) g.spt.gsp += h.ponds;
+                    else if (src.includes("BZY")) g.spt.bzy += h.ponds;
+                    else g.spt[src.toLowerCase()] = h.ponds;
+                } else if (t === "SPF") {
+                    if (src.includes("IOHAT")) g.spf.iohat += h.ponds;
+                    else if (src.includes("HLX")) g.spf.hlx += h.ponds;
+                    else if (src.includes("YHL")) g.spf.yhl += h.ponds;
+                    else if (src.includes("CP")) g.spf.cp += h.ponds;
+                    else if (src.includes("OIS")) g.spf.ois += h.ponds;
+                    else if (src.includes("BMC")) g.spf.bmc += h.ponds;
+                    else g.spf[src.toLowerCase()] = h.ponds;
+                } else if (t === "MONODON") {
+                    if (src.includes("UBN")) g.monodon.ubn += h.ponds;
+                    else if (src.includes("KSK") || src.includes("KSSB")) g.monodon.kssb += h.ponds;
+                    else if (src.includes("GSR")) g.monodon.gsr += h.ponds;
+                    else if (src.includes("CP")) g.monodon.cp += h.ponds;
+                    else g.monodon[src.toLowerCase()] = h.ponds;
+                }
+            });
+        });
+
+        return g;
     }
 
     /**
      * Extracts genetic lines breakdown across active cycles.
      */
     extractGeneticsFromCycles(activeCycles = []) {
-        const g = {
-            spr: { sw: 0, shtApi: 2 },
-            spt: { sht: 84, sbsb: 0, gsp: 0, bzy: 0 },
-            spf: { iohat: 0, hlx: 0, yhl: 0, cp: 0, ois: 0, bmc: 0 },
-            monodon: { cp: 2, gsr: 3, sht: 0, sw: 0, ubn: 9, kssb: 18 }
-        };
-
-        if (activeCycles && activeCycles.length > 0) {
-            let found = false;
-            activeCycles.forEach(c => {
-                const line = String(c.bs_line || c.genetic || c.genetic_line || "").toUpperCase();
-                const sp = String(c.species || "").toUpperCase();
-                if (line.includes("SHT") && !sp.includes("MON")) { g.spt.sht++; found = true; }
-                else if (line.includes("API") || line.includes("SPR")) { g.spr.shtApi++; found = true; }
-                else if (line.includes("UBN")) { g.monodon.ubn++; found = true; }
-                else if (line.includes("KSSB") || line.includes("KSK")) { g.monodon.kssb++; found = true; }
-                else if (line.includes("GSR")) { g.monodon.gsr++; found = true; }
-                else if (line.includes("CP") && sp.includes("MON")) { g.monodon.cp++; found = true; }
-            });
-            if (found) {
-                g.spt.sht = Math.max(g.spt.sht, 1);
-            }
-        }
-        return g;
+        const intel = ExecutiveMetricsPresenter.aggregateOperationalHatcheriesByType({ activeCycles });
+        return this.convertHatcheriesToLegacyGenetics(intel);
     }
 
     /**
@@ -1510,6 +1441,13 @@ export class DailyReportTab {
         // Harvesting Forecast & Completed Harvest Report Grids (Card 6)
         this.renderForecastTable();
         this.renderHarvestReportTable();
+
+        // Monthly Stocking Plan Editor (Card 5)
+        const planTitleInput = document.getElementById("dr-input-stocking-plan-title");
+        if (planTitleInput) {
+            planTitleInput.value = s.stockingPlanSummary?.title || "Stocking Plan Nov '26";
+        }
+        this.renderStockingPlanTable();
     }
 
     /**
@@ -1528,6 +1466,15 @@ export class DailyReportTab {
 
         this.reportState.reportDate = getVal("dr-input-date", this.reportState.reportDate);
         this.reportState.reportTime = getVal("dr-input-time", this.reportState.reportTime);
+
+        // Monthly Stocking Plan Title
+        if (!this.reportState.stockingPlanSummary) {
+            this.reportState.stockingPlanSummary = { title: "Stocking Plan Nov '26", rows: [] };
+        }
+        const titleEl = document.getElementById("dr-input-stocking-plan-title");
+        if (titleEl && titleEl.value) {
+            this.reportState.stockingPlanSummary.title = titleEl.value;
+        }
 
         // Finance YTD
         this.reportState.ytdTonnageActual = getNum("dr-input-ytd-ton-act", this.reportState.ytdTonnageActual);
@@ -1681,31 +1628,8 @@ export class DailyReportTab {
     async fetchSetiuWeather() {
         try {
             Toast.info("Fetching Setiu live forecast from Open-Meteo / Windy ECMWF...");
-            const url = "https://api.open-meteo.com/v1/forecast?latitude=5.6667&longitude=102.7500&daily=weathercode,temperature_2m_max,precipitation_sum&timezone=Asia%2FKuala_Lumpur";
-            const res = await fetch(url);
-            if (!res.ok) throw new Error("Forecast API unavailable");
-            const data = await res.json();
-
-            if (data?.daily?.time && data.daily.time.length >= 5) {
-                const days = [];
-                for (let i = 0; i < 5; i++) {
-                    const dStr = new Date(data.daily.time[i]).toLocaleDateString("en-US", { day: "2-digit", month: "short" });
-                    const code = data.daily.weathercode[i];
-                    const rain = data.daily.precipitation_sum[i] || 0;
-                    let icon = "☀️";
-                    let desc = "Clear";
-                    if (code >= 1 && code <= 3) { icon = "⛅"; desc = "Few Clouds"; }
-                    else if (code >= 45 && code <= 48) { icon = "☁️"; desc = "Overcast"; }
-                    else if (code >= 51 && code <= 67) { icon = "🌧️"; desc = "Light Rain"; }
-                    else if (code >= 80 && code <= 99) { icon = "⛈️"; desc = "Rain / Thunder"; }
-
-                    days.push({
-                        date: dStr,
-                        desc: desc,
-                        icon: icon,
-                        rain: `${rain.toFixed(1)}mm`
-                    });
-                }
+            const days = await DailyReportLabService.fetchSetiuWeather();
+            if (days && days.length >= 5) {
                 this.reportState.weatherForecastDays = days;
                 this.renderPreview();
                 Toast.success("Updated Setiu 5-day weather forecast.");
@@ -1718,20 +1642,13 @@ export class DailyReportTab {
 
     saveDraftToStorage(showToast = true) {
         this.updateStateFromForm();
-        try {
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(this.reportState));
-            if (showToast) Toast.success("Daily report draft saved locally.");
-        } catch (e) {
-            console.warn("Could not save daily report draft:", e);
+        const success = DailyReportStateService.saveDraft(this.reportState);
+        if (success && showToast) {
+            Toast.success("Daily report draft saved locally.");
         }
     }
 
     loadDraftFromStorage() {
-        try {
-            const raw = localStorage.getItem(STORAGE_KEY);
-            return raw ? JSON.parse(raw) : null;
-        } catch (e) {
-            return null;
-        }
+        return DailyReportStateService.loadDraft();
     }
 }

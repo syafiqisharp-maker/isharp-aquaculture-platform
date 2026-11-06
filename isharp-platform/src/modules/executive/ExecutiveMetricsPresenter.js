@@ -2047,6 +2047,535 @@ export class ExecutiveMetricsPresenter {
     }
 
     /**
+     * Calculates exact 5-bracket DOC distribution (0-30d, 31-60d, 61-90d, 91-120d, >120d)
+     * based on culturing ponds' actual stocking dates (stck_date).
+     * 
+     * @param {object} params
+     * @param {Array<object>} [params.culturingPonds=[]] - Ponds from pond_daily_progress in CULTURE state
+     * @param {Array<object>} [params.activeCycles=[]] - Active pond cycles
+     * @param {Array<object>} [params.operationalCycles=[]] - Operational cycles
+     * @param {Date|string} [params.referenceDate=new Date()] - Target calculation date
+     * @returns {Array<{label: string, count: number, pct: number}>}
+     */
+    static calculateDetailedDocBrackets({
+        culturingPonds = [],
+        activeCycles = [],
+        operationalCycles = [],
+        referenceDate = new Date()
+    } = {}) {
+        const refDate = referenceDate ? new Date(referenceDate) : new Date();
+        const normalizePondCode = (str) => {
+            if (!str) return "";
+            const m = String(str).match(/(\d{1,2})[.\-_](\d{1,2})[.\-_](\d{1,2})/);
+            if (m) {
+                return `${m[1].padStart(2, "0")}.${m[2].padStart(2, "0")}.${m[3].padStart(2, "0")}`;
+            }
+            return String(str).trim();
+        };
+
+        const cycleMap = new Map();
+        const allCycles = [...(operationalCycles || []), ...(activeCycles || [])];
+        allCycles.forEach(c => {
+            if (c.pond_index) cycleMap.set(String(c.pond_index).trim(), c);
+            const pCode = normalizePondCode(c.pond || c.pond_code);
+            if (pCode) {
+                const existing = cycleMap.get(pCode);
+                const isProd = String(c.pond_status || "").toUpperCase() === "PRODUCTION";
+                const curDate = String(c.stck_date || "");
+                const extDate = String(existing?.stck_date || "");
+                if (!existing || isProd || curDate >= extDate) {
+                    cycleMap.set(pCode, c);
+                }
+            }
+        });
+
+        // 1. Target culturing ponds pool
+        let targetPonds = (culturingPonds || []).filter(p => {
+            const st = (p.progress_state || p.progressState || "").toUpperCase();
+            return st === "CULTURE" || st === "OPR" || p.isActive;
+        });
+
+        // If no culturing ponds provided, fallback to cycles in PRODUCTION
+        if (targetPonds.length === 0) {
+            targetPonds = allCycles.filter(c => String(c.pond_status || "").toUpperCase() === "PRODUCTION");
+        }
+
+        const counts = {
+            "0-30": 0,
+            "31-60": 0,
+            "61-90": 0,
+            "91-120": 0,
+            ">120": 0
+        };
+
+        let totalPonds = 0;
+
+        targetPonds.forEach(p => {
+            const pCode = normalizePondCode(p.pond || p.pond_code);
+            const pIdx = p.pond_index ? String(p.pond_index).trim() : "";
+            const cycle = (pCode ? cycleMap.get(pCode) : null) || (pIdx ? cycleMap.get(pIdx) : null) || p;
+
+            let doc = null;
+            if (cycle?.stck_date) {
+                const stDate = new Date(cycle.stck_date);
+                if (!isNaN(stDate.getTime())) {
+                    doc = Math.max(0, Math.floor((refDate - stDate) / (1000 * 60 * 60 * 24)));
+                }
+            }
+
+            if (doc === null) {
+                if (p.doc !== undefined && p.doc !== null && !isNaN(Number(p.doc))) {
+                    doc = Number(p.doc);
+                } else if (p.progress_days !== undefined && p.progress_days !== null && !isNaN(Number(p.progress_days))) {
+                    doc = Number(p.progress_days);
+                } else if (p.status_start_date) {
+                    const stDate = new Date(p.status_start_date);
+                    if (!isNaN(stDate.getTime())) {
+                        doc = Math.max(0, Math.floor((refDate - stDate) / (1000 * 60 * 60 * 24)));
+                    }
+                }
+            }
+
+            if (doc === null) doc = 0;
+
+            totalPonds++;
+            if (doc <= 30) counts["0-30"]++;
+            else if (doc <= 60) counts["31-60"]++;
+            else if (doc <= 90) counts["61-90"]++;
+            else if (doc <= 120) counts["91-120"]++;
+            else counts[">120"]++;
+        });
+
+        const tot = totalPonds || 1;
+        return [
+            { label: "DOC: 0-30 days", count: counts["0-30"], pct: totalPonds > 0 ? Math.round((counts["0-30"] / tot) * 100) : 0 },
+            { label: "DOC: 31-60 days", count: counts["31-60"], pct: totalPonds > 0 ? Math.round((counts["31-60"] / tot) * 100) : 0 },
+            { label: "DOC: 61-90 days", count: counts["61-90"], pct: totalPonds > 0 ? Math.round((counts["61-90"] / tot) * 100) : 0 },
+            { label: "DOC: 91-120 days", count: counts["91-120"], pct: totalPonds > 0 ? Math.round((counts["91-120"] / tot) * 100) : 0 },
+            { label: "DOC: >120 days", count: counts[">120"], pct: totalPonds > 0 ? Math.round((counts[">120"] / tot) * 100) : 0 }
+        ];
+    }
+
+    /**
+     * Aggregates hatchery sources divided by stocking type (SPF / SPT / SPR / Monodon)
+     * strictly for currently operational ponds culturing shrimp.
+     * 
+     * @param {object} params
+     * @param {Array<object>} [params.culturingPonds=[]] Ponds where progress_state === 'CULTURE' from dailyProgress
+     * @param {Array<object>} [params.activeCycles=[]] Active cycles from view_growout_pond_cycles
+     * @param {Array<object>} [params.stockingBatches=[]] Batches from pond_stocking_batches
+     * @param {Array<object>} [params.operationalCycles=[]] Historical/operational cycles fallback
+     * @returns {object} Formatted operational hatchery breakdown with groups, subtotals, and totalOperation
+     */
+    static aggregateOperationalHatcheriesByType({
+        culturingPonds = [],
+        activeCycles = [],
+        stockingBatches = [],
+        operationalCycles = []
+    } = {}) {
+        const normalizePondCode = (str) => {
+            if (!str) return "";
+            const m = String(str).match(/(\d{1,2})[.\-_](\d{1,2})[.\-_](\d{1,2})/);
+            if (m) {
+                return `${m[1].padStart(2, "0")}.${m[2].padStart(2, "0")}.${m[3].padStart(2, "0")}`;
+            }
+            return String(str).trim();
+        };
+
+        // 1. Index cycles by pond and by pond_index
+        const cycleByPond = new Map();
+        const cycleByIndex = new Map();
+
+        const allCycles = [...(operationalCycles || []), ...(activeCycles || [])];
+        allCycles.forEach(c => {
+            if (c.pond_index) cycleByIndex.set(String(c.pond_index).trim(), c);
+            const pCode = normalizePondCode(c.pond || c.pond_code);
+            if (pCode) {
+                const existing = cycleByPond.get(pCode);
+                const isProd = String(c.pond_status || "").toUpperCase() === "PRODUCTION";
+                const curDate = String(c.stck_date || "");
+                const extDate = String(existing?.stck_date || "");
+                if (!existing || isProd || curDate >= extDate) {
+                    cycleByPond.set(pCode, c);
+                }
+            }
+        });
+
+        // 2. Index stocking batches by pond_index
+        const batchesByCycle = new Map();
+        (stockingBatches || []).forEach(b => {
+            if (!b.pond_index) return;
+            const idx = String(b.pond_index).trim();
+            if (!batchesByCycle.has(idx)) batchesByCycle.set(idx, []);
+            batchesByCycle.get(idx).push(b);
+        });
+
+        // 3. Operational culturing ponds pool
+        let pool = (culturingPonds || []).filter(p => {
+            const state = (p.progress_state || p.progressState || "").toUpperCase();
+            return state === "CULTURE" || state === "OPR" || p.isActive;
+        });
+
+        if (pool.length === 0) {
+            // Fallback to active cycles in PRODUCTION
+            pool = (activeCycles || []).filter(c => (c.pond_status || "").toUpperCase() === "PRODUCTION");
+        }
+
+        // Category mapping: categoryKey -> { label, hatcheries: Map(source -> Set(ponds)) }
+        const categoryOrder = ["SPR", "SPT", "SPF", "MONODON"];
+        const categoryMap = new Map();
+
+        const getOrCreateCategory = (key, label) => {
+            if (!categoryMap.has(key)) {
+                categoryMap.set(key, {
+                    type: key,
+                    label: label || key,
+                    hatcheryMap: new Map(),
+                    pondSet: new Set()
+                });
+            }
+            return categoryMap.get(key);
+        };
+
+        categoryOrder.forEach(k => {
+            const label = k === "MONODON" ? "Monodon" : k;
+            getOrCreateCategory(k, label);
+        });
+
+        const totalOperationalPondsSet = new Set();
+
+        pool.forEach(p => {
+            const pCode = normalizePondCode(p.pond || p.pond_code || p.pondIndex || p.pond_index);
+            if (!pCode) return;
+            totalOperationalPondsSet.add(pCode);
+
+            // Find cycle
+            const cycle = (p.pond_index ? cycleByIndex.get(String(p.pond_index).trim()) : null) || cycleByPond.get(pCode) || null;
+            const cycleIndex = cycle?.pond_index ? String(cycle.pond_index).trim() : null;
+
+            // Find batches
+            const batches = cycleIndex ? (batchesByCycle.get(cycleIndex) || []) : [];
+
+            let stckType = "";
+            let stckSource = "";
+            let species = "";
+
+            if (batches.length > 0) {
+                // Pick latest batch
+                const b = batches[batches.length - 1];
+                stckType = (b.stck_type || "").trim().toUpperCase();
+                stckSource = (b.stck_source || "").trim().toUpperCase();
+                species = (b.stck_species || cycle?.stck_species || "").trim().toUpperCase();
+            } else if (cycle) {
+                stckSource = (cycle.stck_source || "").trim().toUpperCase();
+                species = (cycle.stck_species || p.species_code || p.species || "").trim().toUpperCase();
+                const bsLine = (cycle.bs_line || "").trim().toUpperCase();
+                if (species.includes("MON")) stckType = "P.M";
+                else if (bsLine.includes("SPR")) stckType = "SPR";
+                else if (bsLine.includes("SPF")) stckType = "SPF";
+                else stckType = "SPT";
+            }
+
+            const isMonodon = species.includes("MON") || stckType === "P.M" || stckType === "MONODON";
+            let catKey = "SPT";
+            let catLabel = "SPT";
+
+            if (isMonodon) {
+                catKey = "MONODON";
+                catLabel = "Monodon";
+            } else if (stckType === "SPR") {
+                catKey = "SPR";
+                catLabel = "SPR";
+            } else if (stckType === "SPF") {
+                catKey = "SPF";
+                catLabel = "SPF";
+            } else if (stckType === "SPT") {
+                catKey = "SPT";
+                catLabel = "SPT";
+            } else if (stckType) {
+                catKey = stckType;
+                catLabel = stckType;
+            }
+
+            const cleanSource = (!stckSource || stckSource === "NULL" || stckSource === "—") ? "UNSPECIFIED" : stckSource;
+
+            const cat = getOrCreateCategory(catKey, catLabel);
+            cat.pondSet.add(pCode);
+            if (!cat.hatcheryMap.has(cleanSource)) {
+                cat.hatcheryMap.set(cleanSource, new Set());
+            }
+            cat.hatcheryMap.get(cleanSource).add(pCode);
+        });
+
+        // Format output groups
+        const groups = [];
+        const summary = { spr: 0, spt: 0, spf: 0, monodon: 0 };
+
+        // Standard order followed by any dynamic other categories
+        const allKeys = Array.from(categoryMap.keys());
+        allKeys.sort((a, b) => {
+            const ia = categoryOrder.indexOf(a);
+            const ib = categoryOrder.indexOf(b);
+            if (ia !== -1 && ib !== -1) return ia - ib;
+            if (ia !== -1) return -1;
+            if (ib !== -1) return 1;
+            return a.localeCompare(b);
+        });
+
+        allKeys.forEach(k => {
+            const cat = categoryMap.get(k);
+            const totalPonds = cat.pondSet.size;
+
+            if (k === "SPR") summary.spr = totalPonds;
+            else if (k === "SPT") summary.spt = totalPonds;
+            else if (k === "SPF") summary.spf = totalPonds;
+            else if (k === "MONODON") summary.monodon = totalPonds;
+
+            // Hatcheries sorted by pond count desc, then source asc
+            const hatcheries = Array.from(cat.hatcheryMap.entries()).map(([source, pSet]) => ({
+                source,
+                ponds: pSet.size
+            })).sort((a, b) => b.ponds - a.ponds || a.source.localeCompare(b.source));
+
+            // If a standard category has 0 hatcheries/ponds, include a placeholder with 0
+            if (hatcheries.length === 0) {
+                hatcheries.push({ source: "—", ponds: 0 });
+            }
+
+            groups.push({
+                type: cat.type,
+                label: cat.label,
+                totalPonds,
+                hatcheries
+            });
+        });
+
+        return {
+            totalOperation: totalOperationalPondsSet.size,
+            groups,
+            summary
+        };
+    }
+
+    /**
+     * Aggregates Module-Level Species Allocation & Biometrics Samplings (Previous and Latest ADG, ABW, DOC)
+     * across Modules 01 to 09 for both Vannamei and Monodon from live biometrics_sampling and active ponds.
+     * 
+     * @param {object} params
+     * @param {Array<object>} [params.samplings=[]] Live sampling records from biometrics_sampling
+     * @param {Array<object>} [params.culturingPonds=[]] Ponds in CULTURE state from pond_daily_progress
+     * @param {Array<object>} [params.activeCycles=[]] Active cycles from view_growout_pond_cycles
+     * @param {Array<object>} [params.dailyProgress=[]] 216-pond progress records
+     * @returns {object} { moduleRows: Array<object>, samplingDateLabel: string }
+     */
+    static aggregateModuleBiometrics({
+        samplings = [],
+        culturingPonds = [],
+        activeCycles = [],
+        dailyProgress = []
+    } = {}) {
+        // Map active cycles by pond_index and by pond code for quick lookup
+        const cycleByIndex = new Map();
+        const cycleByPond = new Map();
+
+        const normalizePondCode = (str) => {
+            if (!str) return "";
+            const m = String(str).match(/(\d{1,2})[.\-_](\d{1,2})[.\-_](\d{1,2})/);
+            if (m) {
+                return `${m[1].padStart(2, "0")}.${m[2].padStart(2, "0")}.${m[3].padStart(2, "0")}`;
+            }
+            return String(str).trim();
+        };
+
+        (activeCycles || []).forEach(c => {
+            if (c.pond_index) cycleByIndex.set(String(c.pond_index).trim(), c);
+            const pCode = normalizePondCode(c.pond || c.pond_code);
+            if (pCode) cycleByPond.set(pCode, c);
+        });
+
+        // Determine active culturing pond pool
+        const oprPonds = (dailyProgress || []).filter(p => {
+            const sc = String(p.status_code || "").trim().toUpperCase();
+            const ps = String(p.progress_state || "").trim().toUpperCase();
+            return sc === "OPR" || ps === "CULTURE";
+        });
+        const pool = oprPonds.length > 0 ? oprPonds : (culturingPonds.length > 0 ? culturingPonds : activeCycles);
+
+        // Count live operational ponds per module and species
+        const modCounts = {};
+        for (let i = 1; i <= 9; i++) {
+            const m = String(i).padStart(2, "0");
+            modCounts[m] = { van: 0, mon: 0, total: 0 };
+        }
+
+        const activePondSet = new Set();
+        pool.forEach(p => {
+            const pCode = normalizePondCode(p.pond || p.pond_code || p.pondIndex || p.pond_index);
+            if (!pCode) return;
+            activePondSet.add(pCode);
+
+            let mKey = p.module_no ? String(p.module_no).trim().padStart(2, "0") : null;
+            if (!mKey && pCode) {
+                const mMatch = pCode.match(/^(\d{2})\./);
+                if (mMatch) mKey = mMatch[1];
+            }
+            if (!mKey || !modCounts[mKey]) return;
+
+            const c = (p.pond_index ? cycleByIndex.get(String(p.pond_index).trim()) : null) || cycleByPond.get(pCode) || null;
+            const sp = String(c?.stck_species || p.species_code || p.species || "").toUpperCase();
+
+            let isMon = false;
+            if (mKey === "05") {
+                isMon = true;
+            } else if (mKey === "07") {
+                isMon = pCode.includes("07.14") || sp.includes("MON");
+            } else if (mKey === "04") {
+                isMon = sp.includes("MON") || (p.row_no === "07" && !sp.includes("VAN"));
+            } else {
+                isMon = sp.includes("MON");
+            }
+
+            if (isMon) {
+                modCounts[mKey].mon++;
+            } else {
+                modCounts[mKey].van++;
+            }
+            modCounts[mKey].total++;
+        });
+
+        // Group samplings by pond
+        const pondSamplings = new Map();
+        let maxSamplingDate = "";
+
+        (samplings || []).forEach(s => {
+            const pIdx = String(s.pond_index || "").trim();
+            if (!pIdx) return;
+
+            let pCode = "";
+            const mIdx = pIdx.match(/^2(\d{2})(\d{2})(\d{2})/);
+            if (mIdx) {
+                pCode = `${mIdx[1]}.${mIdx[2]}.${mIdx[3]}`;
+            } else {
+                pCode = normalizePondCode(pIdx);
+            }
+
+            // Only consider samplings for currently active ponds or active cycles
+            const isActivePond = activePondSet.has(pCode) || cycleByIndex.has(pIdx) || cycleByPond.has(pCode);
+            if (!isActivePond && activePondSet.size > 0) return;
+
+            if (s.smpl_date) {
+                const dOnly = String(s.smpl_date).split("T")[0];
+                if (!maxSamplingDate || dOnly > maxSamplingDate) {
+                    maxSamplingDate = dOnly;
+                }
+            }
+
+            const groupKey = pCode || pIdx;
+            if (!pondSamplings.has(groupKey)) {
+                pondSamplings.set(groupKey, []);
+            }
+            pondSamplings.get(groupKey).push(s);
+        });
+
+        // Module biometrics accumulator
+        const moduleBio = {};
+        for (let i = 1; i <= 9; i++) {
+            const mKey = String(i).padStart(2, "0");
+            moduleBio[mKey] = {
+                van: { latAdg: [], latAbw: [], latDoc: [], prevAdg: [], prevAbw: [], prevDoc: [] },
+                mon: { latAdg: [], latAbw: [], latDoc: [], prevAdg: [], prevAbw: [], prevDoc: [] }
+            };
+        }
+
+        pondSamplings.forEach((sList, pCode) => {
+            let mKey = null;
+            const mMatch = pCode.match(/^(\d{2})\./);
+            if (mMatch) mKey = mMatch[1];
+            if (!mKey || !moduleBio[mKey]) return;
+
+            const c = cycleByPond.get(pCode);
+            const sp = String(c?.stck_species || "").toUpperCase();
+            let isMon = mKey === "05" || pCode.includes("07.14") || sp.includes("MON");
+
+            // Sort samplings chronologically: smpl_date asc, smpl_doc asc
+            sList.sort((a, b) => (a.smpl_date || "").localeCompare(b.smpl_date || "") || (Number(a.smpl_doc) - Number(b.smpl_doc)));
+
+            const lat = sList[sList.length - 1];
+            const prev = sList.length >= 2 ? sList[sList.length - 2] : null;
+
+            const target = isMon ? moduleBio[mKey].mon : moduleBio[mKey].van;
+
+            if (lat && Number(lat.smpl_doc) > 0 && Number(lat.smpl_abw) > 0) {
+                const doc = Number(lat.smpl_doc);
+                const abw = Number(lat.smpl_abw);
+                target.latDoc.push(doc);
+                target.latAbw.push(abw);
+                target.latAdg.push(abw / doc);
+            }
+
+            if (prev && Number(prev.smpl_doc) > 0 && Number(prev.smpl_abw) > 0) {
+                const doc = Number(prev.smpl_doc);
+                const abw = Number(prev.smpl_abw);
+                target.prevDoc.push(doc);
+                target.prevAbw.push(abw);
+                target.prevAdg.push(abw / doc);
+            }
+        });
+
+        const avg = arr => (arr && arr.length > 0) ? (arr.reduce((a, b) => a + b, 0) / arr.length) : null;
+        const fmtNum = (v, decimals) => (v !== null && !isNaN(v)) ? v.toFixed(decimals) : "—";
+
+        // Format samplingDateLabel (e.g. "29 Oct")
+        const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+        let samplingDateLabel = "Latest";
+        if (maxSamplingDate && maxSamplingDate.includes("-")) {
+            const parts = maxSamplingDate.split("-");
+            if (parts.length >= 3) {
+                const mIdx = parseInt(parts[1], 10) - 1;
+                const dDay = parts[2].padStart(2, "0");
+                samplingDateLabel = `${dDay} ${months[mIdx] || parts[1]}`;
+            }
+        } else {
+            const now = new Date();
+            samplingDateLabel = `${String(now.getDate()).padStart(2, "0")} ${months[now.getMonth()]}`;
+        }
+
+        const moduleRows = [];
+        for (let i = 1; i <= 9; i++) {
+            const mKey = String(i).padStart(2, "0");
+            const counts = modCounts[mKey] || { van: 0, mon: 0 };
+            const bio = moduleBio[mKey];
+
+            moduleRows.push({
+                mod: mKey,
+                van: counts.van,
+                mon: counts.mon,
+                // Vannamei Previous
+                prevAdgV: fmtNum(avg(bio?.van?.prevAdg), 2),
+                prevAbwV: fmtNum(avg(bio?.van?.prevAbw), 1),
+                prevDocV: fmtNum(avg(bio?.van?.prevDoc), 0),
+                // Vannamei Latest
+                latAdgV: fmtNum(avg(bio?.van?.latAdg), 2),
+                latAbwV: fmtNum(avg(bio?.van?.latAbw), 1),
+                latDocV: fmtNum(avg(bio?.van?.latDoc), 0),
+                // Monodon Previous
+                prevAdgM: fmtNum(avg(bio?.mon?.prevAdg), 2),
+                prevAbwM: fmtNum(avg(bio?.mon?.prevAbw), 1),
+                prevDocM: fmtNum(avg(bio?.mon?.prevDoc), 0),
+                // Monodon Latest
+                latAdgM: fmtNum(avg(bio?.mon?.latAdg), 2),
+                latAbwM: fmtNum(avg(bio?.mon?.latAbw), 1),
+                latDocM: fmtNum(avg(bio?.mon?.latDoc), 0)
+            });
+        }
+
+        return {
+            moduleRows,
+            samplingDateLabel
+        };
+    }
+
+    /**
      * Aggregates Days of Culture (DOC) and Culture Stage intelligence across active farm crops.
      * Generates a 10-day age cohort histogram, species stage progression funnels, harvest maturation pipelines,
      * module synchrony breakdowns, and stage-specific biosecurity cross-tabulations.

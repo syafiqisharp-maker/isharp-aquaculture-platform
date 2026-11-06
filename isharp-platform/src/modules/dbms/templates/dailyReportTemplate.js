@@ -335,16 +335,16 @@ export function getDailyReportTabHtml() {
                     </div>
                     <div style="margin-bottom: 0.5rem;">
                         <label style="font-size: 0.68rem; font-weight: 700; color: #64748b; display: block; margin-bottom: 0.2rem;">Cleaning Team Assigned Ponds</label>
-                        <input type="text" id="dr-input-cleaning-teams" class="sidebar-search-input" style="width: 100%; font-size: 0.75rem; padding: 0.35rem; border: 1px solid #cbd5e1; border-radius: 6px;" value="Int 1 & 2, P02, P06" />
+                        <input type="text" id="dr-input-cleaning-teams" class="sidebar-search-input" style="width: 100%; font-size: 0.75rem; padding: 0.35rem; border: 1px solid #cbd5e1; border-radius: 6px;" value="" placeholder="e.g. 07.14.09, 06.11.01..." />
                     </div>
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.4rem;">
                         <div>
                             <label style="font-size: 0.67rem; font-weight: 600; color: #64748b;">Waiting Water Filling</label>
-                            <input type="number" id="dr-input-wait-water" class="sidebar-search-input" style="width: 100%; font-size: 0.75rem; padding: 0.35rem; border: 1px solid #cbd5e1; border-radius: 6px;" value="1" />
+                            <input type="number" id="dr-input-wait-water" class="sidebar-search-input" style="width: 100%; font-size: 0.75rem; padding: 0.35rem; border: 1px solid #cbd5e1; border-radius: 6px;" value="0" />
                         </div>
                         <div>
                             <label style="font-size: 0.67rem; font-weight: 600; color: #059669;">Ready for Stocking</label>
-                            <input type="number" id="dr-input-ready-stock" class="sidebar-search-input" style="width: 100%; font-size: 0.75rem; padding: 0.35rem; border: 1px solid #cbd5e1; border-radius: 6px;" value="8" />
+                            <input type="number" id="dr-input-ready-stock" class="sidebar-search-input" style="width: 100%; font-size: 0.75rem; padding: 0.35rem; border: 1px solid #cbd5e1; border-radius: 6px;" value="0" />
                         </div>
                     </div>
                 </div>
@@ -360,6 +360,25 @@ export function getDailyReportTabHtml() {
                     </div>
                     <div id="dr-stocking-list-container" style="max-height: 180px; overflow-y: auto; border: 1px solid #e2e8f0; border-radius: 6px; padding: 0.4rem; font-size: 0.72rem; background: #f8fafc;">
                         <!-- Auto-populated with stocking items -->
+                    </div>
+
+                    <!-- Monthly Stocking Plan Editor (Farm Plan) -->
+                    <div style="margin-top: 0.75rem; padding-top: 0.6rem; border-top: 1px dashed #cbd5e1;">
+                        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.35rem;">
+                            <label style="font-size: 0.72rem; font-weight: 700; color: #0f172a; text-transform: uppercase;">
+                                🎯 Monthly Stocking Plan (Target)
+                            </label>
+                            <button type="button" id="btn-add-stocking-plan-row" class="btn-action btn-secondary" style="padding: 1px 7px; font-size: 0.65rem; font-weight: 700; border-radius: 4px; background: #e0f2fe; border: 1px solid #bae6fd; color: #0284c7; cursor: pointer;">
+                                ➕ Add Row
+                            </button>
+                        </div>
+                        <div style="margin-bottom: 0.4rem;">
+                            <label style="font-size: 0.65rem; font-weight: 600; color: #64748b; display: block; margin-bottom: 0.15rem;">Plan Title</label>
+                            <input type="text" id="dr-input-stocking-plan-title" class="sidebar-search-input" style="width: 100%; font-size: 0.75rem; padding: 0.35rem; border: 1px solid #cbd5e1; border-radius: 6px; font-weight: 700; color: #002060;" placeholder="e.g. Stocking Plan Nov '26" />
+                        </div>
+                        <div id="dr-stocking-plan-container" style="max-height: 180px; overflow-y: auto; border: 1px solid #e2e8f0; border-radius: 6px; background: #ffffff;">
+                            <!-- Dynamically rendered editable rows -->
+                        </div>
                     </div>
                 </div>
 
@@ -403,6 +422,9 @@ export function getDailyReportTabHtml() {
                             <button type="button" id="btn-add-forecast-row" class="btn-action btn-secondary" style="padding: 1px 7px; font-size: 0.65rem; font-weight: 700; border-radius: 4px; background: #e8f5e9; border: 1px solid #a5d6a7; color: #2e7d32; cursor: pointer;">
                                 ➕ Add Pond
                             </button>
+                        </div>
+                        <div id="dr-forecast-reconciliation-kpi" style="margin-bottom: 0.35rem; padding: 4px 8px; border-radius: 4px; font-size: 0.68rem; font-weight: 600; background: #f0fdf4; border: 1px solid #bbf7d0; color: #166534; display: flex; justify-content: space-between; align-items: center;">
+                            <span id="dr-forecast-reconciliation-text">Reconciliation: Loading...</span>
                         </div>
                         <div id="dr-forecast-table-container" style="max-height: 250px; overflow-y: auto; border: 1px solid #e2e8f0; border-radius: 6px; background: #ffffff;">
                             <!-- Dynamically rendered forecast table -->

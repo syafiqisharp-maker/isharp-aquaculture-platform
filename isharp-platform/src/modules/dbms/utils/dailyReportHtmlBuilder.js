@@ -1,3 +1,5 @@
+import { DailyReportExcelService } from "../services/DailyReportExcelService.js";
+
 /**
  * iSHARP DBMS 2.0 — Daily Farm Report HTML Builder
  * Option 1: Clean Executive Excel-Style Table (Outlook-Guaranteed)
@@ -56,27 +58,27 @@ export function buildDailyReportEmailHtml(data = {}, wrapFullDocument = true) {
         culledYtd: 1,
 
         // Highlights & DOC
-        highlightOperationalSummary: "Operational pond: 118 consist of 2 SPR, 0 SPF, 84 SPT, and 32 MON.",
+        highlightOperationalSummary: "Operational pond: 0 consist of 0 SPR, 0 SPF, 0 SPT, and 0 MON.",
         highlightStockingPonds: 0,
-        highlightHarvestPonds: 1,
+        highlightHarvestPonds: 0,
         highlightCullPonds: 0,
         docBrackets: [
-            { label: "DOC: 0-30 days", count: 19, pct: 16 },
-            { label: "DOC: 31-60 days", count: 49, pct: 42 },
-            { label: "DOC: 61-90 days", count: 36, pct: 31 },
+            { label: "DOC: 0-30 days", count: 0, pct: 0 },
+            { label: "DOC: 31-60 days", count: 0, pct: 0 },
+            { label: "DOC: 61-90 days", count: 0, pct: 0 },
             { label: "DOC: 91-120 days", count: 0, pct: 0 },
-            { label: "DOC: >120 days", count: 14, pct: 12 }
+            { label: "DOC: >120 days", count: 0, pct: 0 }
         ],
 
         // Pond Readiness Pipeline
-        idlePonds: 56,
-        cleaningTeamsCount: 3,
-        cleaningTeamsDetail: "Int 1 & 2, P02, P06",
-        cleanedPonds: 6,
-        waitingWaterFilling: 1,
+        idlePonds: 0,
+        cleaningTeamsCount: 0,
+        cleaningTeamsDetail: "",
+        cleanedPonds: 0,
+        waitingWaterFilling: 0,
         waterFilling: 0,
-        waterCulture: 23,
-        readyForStocking: 8,
+        waterCulture: 0,
+        readyForStocking: 0,
 
         // Risk Flags & Notes
         redFlag: "",
@@ -104,12 +106,24 @@ export function buildDailyReportEmailHtml(data = {}, wrapFullDocument = true) {
         ],
         mdcStatus: "100 cm (No changes)",
 
-        // Genetics Grid (Total 118 Ponds: 2 SPR + 84 SPT + 0 SPF + 32 MON)
+        // Operational Hatcheries & Stocking Types (SPF / SPT / SPR / Monodon) SSOT
+        operationalHatcheries: {
+            totalOperation: 119,
+            groups: [
+                { type: "SPR", label: "SPR", totalPonds: 1, hatcheries: [{ source: "SPR", ponds: 1 }] },
+                { type: "SPT", label: "SPT", totalPonds: 82, hatcheries: [{ source: "SHT", ponds: 75 }, { source: "SHT,KS", ponds: 4 }, { source: "GS", ponds: 3 }] },
+                { type: "SPF", label: "SPF", totalPonds: 4, hatcheries: [{ source: "BZYR", ponds: 4 }] },
+                { type: "MONODON", label: "Monodon", totalPonds: 32, hatcheries: [{ source: "KSK", ponds: 18 }, { source: "UBN", ponds: 9 }, { source: "GSR", ponds: 3 }, { source: "CPS", ponds: 2 }] }
+            ],
+            summary: { spr: 1, spt: 82, spf: 4, monodon: 32 }
+        },
+
+        // Genetics Grid (Total 119 Ponds: 1 SPR + 82 SPT + 4 SPF + 32 MON)
         genetics: {
-            spr: { sw: 0, shtApi: 2 },
-            spt: { sht: 84, sbsb: 0, gsp: 0, bzy: 0 },
+            spr: { sw: 1, shtApi: 0 },
+            spt: { sht: 75, sbsb: 0, gsp: 0, bzy: 0 },
             spf: { iohat: 0, hlx: 0, yhl: 0, cp: 0, ois: 0, bmc: 0 },
-            monodon: { cp: 2, gsr: 3, sht: 0, sw: 0, ubn: 9, kssb: 18 }
+            monodon: { cp: 0, gsr: 3, sht: 0, sw: 0, ubn: 9, kssb: 18 }
         },
 
         // Module Allocation (M01-M09) & Sampling
@@ -206,6 +220,24 @@ export function buildDailyReportEmailHtml(data = {}, wrapFullDocument = true) {
 <!-- ================= OPTION 1: CLEAN EXECUTIVE EXCEL-STYLE TABLE ================= -->
 <table border="1" cellpadding="0" cellspacing="0" width="820" style="width: 820px; max-width: 820px; font-family: Calibri, Aptos, 'Segoe UI', Arial, sans-serif; font-size: 11px; border-collapse: collapse; border: 1px solid #b4c6e7; mso-table-lspace: 0pt; mso-table-rspace: 0pt; background-color: #ffffff;">
     
+    <!-- 0. INTERACTIVE WEBSITE ANNOUNCEMENT BANNER (LIGHT CORPORATE STYLE) -->
+    <tr>
+        <td colspan="5" bgcolor="#f0f7ff" style="background-color: #f0f7ff; padding: 7px 12px; text-align: center; border: 1px solid #b4c6e7;">
+            <table border="0" cellpadding="0" cellspacing="0" width="100%" style="width: 100%; border-collapse: collapse;">
+                <tr>
+                    <td align="center" style="font-family: Calibri, Aptos, 'Segoe UI', Arial, sans-serif; font-size: 11px; color: #1f497d; line-height: 1.4;">
+                        <strong style="color: #002060;">🌐 Interactive Online Report:</strong>
+                        <span style="color: #334155;"> For interactive reports, live charts & real-time farm analytics, visit:</span>
+                        &nbsp;
+                        <a href="https://isharp-platform.netlify.app/#/executive" target="_blank" style="color: #0066cc; font-weight: bold; text-decoration: underline;">
+                            https://isharp-platform.netlify.app/#/executive →
+                        </a>
+                    </td>
+                </tr>
+            </table>
+        </td>
+    </tr>
+
     <!-- 1. TOP HEADER (EXCEL LIGHT BLUE BAR WITH BOLD DARK NAVY TEXT) -->
     <tr>
         <td colspan="5" bgcolor="#b4c6e7" style="background-color: #b4c6e7; padding: 10px 14px; text-align: center; border: 1px solid #8ea9db;">
@@ -340,9 +372,9 @@ export function buildDailyReportEmailHtml(data = {}, wrapFullDocument = true) {
             Highlight Today
         </td>
         <td colspan="4" valign="top" bgcolor="#ffffff" style="background-color: #ffffff; padding: 6px 10px; border: 1px solid #b4c6e7; color: #000000; line-height: 1.5;">
-            <div><strong>Operational pond: ${d.activePonds}</strong> consist of ${d.genetics?.spr ? ((d.genetics.spr.sw || 0) + (d.genetics.spr.shtApi || 0)) : 2} SPR, ${d.genetics?.spf ? Object.values(d.genetics.spf).reduce((a, b) => a + (Number(b) || 0), 0) : 0} SPF, ${d.genetics?.spt ? Object.values(d.genetics.spt).reduce((a, b) => a + (Number(b) || 0), 0) : 84} SPT, and ${d.genetics?.monodon ? Object.values(d.genetics.monodon).reduce((a, b) => a + (Number(b) || 0), 0) : 32} MON.</div>
+            <div><strong>Operational pond: ${d.activePonds}</strong> consist of ${d.operationalHatcheries?.summary?.spr ?? 0} SPR, ${d.operationalHatcheries?.summary?.spf ?? 0} SPF, ${d.operationalHatcheries?.summary?.spt ?? 0} SPT, and ${d.operationalHatcheries?.summary?.monodon ?? 0} MON.</div>
             <div style="margin-top: 2px;">Pond stocking (${d.highlightStockingPonds ?? 0}) pond harvest (${d.highlightHarvestPonds ?? 0}), pond cull (${d.highlightCullPonds ?? 0})</div>
-            ${d.docBrackets.map(b => `<div style="margin-top: 1px;">${b.label}; ${b.count} ponds(${b.pct}%)</div>`).join("")}
+            ${(d.docBrackets || []).map(b => `<div style="margin-top: 1px;">${b.label}; ${b.count} ponds(${b.pct}%)</div>`).join("")}
         </td>
     </tr>
 
@@ -353,7 +385,7 @@ export function buildDailyReportEmailHtml(data = {}, wrapFullDocument = true) {
         </td>
         <td colspan="4" valign="top" bgcolor="#ffffff" style="background-color: #ffffff; padding: 6px 10px; border: 1px solid #b4c6e7; color: #000000; line-height: 1.5;">
             <div>Idle ponds: ${d.idlePonds}</div>
-            <div>Cleaning team: ${d.cleaningTeamsCount} (${d.cleaningTeamsDetail})</div>
+            <div>Cleaning team: ${d.cleaningTeamsCount}${d.cleaningTeamsDetail ? ` (${d.cleaningTeamsDetail})` : ""}</div>
             <div>Cleaned ponds: ${d.cleanedPonds}</div>
             <div>Waiting for water filling: ${d.waitingWaterFilling}</div>
             <div>Water filling: ${d.waterFilling}</div>
@@ -446,55 +478,49 @@ export function buildDailyReportEmailHtml(data = {}, wrapFullDocument = true) {
 
 <br>
 
-<!-- ================= 8. TOTAL OPERATION & GENETICS COMPOSITION TABLE ================= -->
+<!-- ================= 8. TOTAL OPERATION & HATCHERY COMPOSITION TABLE ================= -->
 <table border="1" cellpadding="3" cellspacing="0" width="820" style="width: 820px; max-width: 820px; font-family: Calibri, Aptos, 'Segoe UI', Arial, sans-serif; font-size: 10px; border-collapse: collapse; border: 1px solid #b4c6e7; text-align: center; background-color: #ffffff;">
     <tr bgcolor="#d9e1f2" style="font-weight: bold; color: #002060;">
-        <td rowspan="2" bgcolor="#d9e1f2" style="background-color: #d9e1f2; border: 1px solid #b4c6e7; width: 12%;">Total operation</td>
-        <td colspan="2" bgcolor="#d9e1f2" style="background-color: #d9e1f2; border: 1px solid #b4c6e7;">SPR</td>
-        <td colspan="4" bgcolor="#d9e1f2" style="background-color: #d9e1f2; border: 1px solid #b4c6e7;">SPT</td>
-        <td colspan="6" bgcolor="#d9e1f2" style="background-color: #d9e1f2; border: 1px solid #b4c6e7;">SPF</td>
-        <td colspan="6" bgcolor="#d9e1f2" style="background-color: #d9e1f2; border: 1px solid #b4c6e7;">Monodon</td>
+        <td rowspan="2" bgcolor="#d9e1f2" style="background-color: #d9e1f2; border: 1px solid #b4c6e7; width: 14%; font-weight: bold; color: #002060; padding: 6px 4px;">Total operation</td>
+        ${(d.operationalHatcheries?.groups || [
+            { type: "SPR", label: "SPR", totalPonds: 1, hatcheries: [{ source: "SPR", ponds: 1 }] },
+            { type: "SPT", label: "SPT", totalPonds: 82, hatcheries: [{ source: "SHT", ponds: 75 }, { source: "SHT,KS", ponds: 4 }, { source: "GS", ponds: 3 }] },
+            { type: "SPF", label: "SPF", totalPonds: 4, hatcheries: [{ source: "BZYR", ponds: 4 }] },
+            { type: "MONODON", label: "Monodon", totalPonds: 32, hatcheries: [{ source: "KSK", ponds: 18 }, { source: "UBN", ponds: 9 }, { source: "GSR", ponds: 3 }, { source: "CPS", ponds: 2 }] }
+        ]).map(g => `
+            <td colspan="${(g.hatcheries && g.hatcheries.length > 0) ? g.hatcheries.length : 1}" bgcolor="#d9e1f2" style="background-color: #d9e1f2; border: 1px solid #b4c6e7; font-weight: bold; color: #002060; padding: 6px 4px;">
+                ${g.label}
+            </td>
+        `).join("")}
     </tr>
     <tr bgcolor="#f2f2f2" style="font-weight: bold; color: #000000; font-size: 9px;">
-        <td bgcolor="#f2f2f2" style="border: 1px solid #b4c6e7;">SW</td>
-        <td bgcolor="#f2f2f2" style="border: 1px solid #b4c6e7;">SHT(API)</td>
-        <td bgcolor="#f2f2f2" style="border: 1px solid #b4c6e7;">SHT</td>
-        <td bgcolor="#f2f2f2" style="border: 1px solid #b4c6e7;">SBSB</td>
-        <td bgcolor="#f2f2f2" style="border: 1px solid #b4c6e7;">GSP</td>
-        <td bgcolor="#f2f2f2" style="border: 1px solid #b4c6e7;">BZY</td>
-        <td bgcolor="#f2f2f2" style="border: 1px solid #b4c6e7;">IOHAT</td>
-        <td bgcolor="#f2f2f2" style="border: 1px solid #b4c6e7;">HLX</td>
-        <td bgcolor="#f2f2f2" style="border: 1px solid #b4c6e7;">YHL</td>
-        <td bgcolor="#f2f2f2" style="border: 1px solid #b4c6e7;">CP</td>
-        <td bgcolor="#f2f2f2" style="border: 1px solid #b4c6e7;">OIS</td>
-        <td bgcolor="#f2f2f2" style="border: 1px solid #b4c6e7;">BMC</td>
-        <td bgcolor="#f2f2f2" style="border: 1px solid #b4c6e7;">CP</td>
-        <td bgcolor="#f2f2f2" style="border: 1px solid #b4c6e7;">GSR</td>
-        <td bgcolor="#f2f2f2" style="border: 1px solid #b4c6e7;">SHT</td>
-        <td bgcolor="#f2f2f2" style="border: 1px solid #b4c6e7;">SW</td>
-        <td bgcolor="#f2f2f2" style="border: 1px solid #b4c6e7;">UBN</td>
-        <td bgcolor="#f2f2f2" style="border: 1px solid #b4c6e7;">KSSB</td>
+        ${(d.operationalHatcheries?.groups || [
+            { type: "SPR", label: "SPR", totalPonds: 1, hatcheries: [{ source: "SPR", ponds: 1 }] },
+            { type: "SPT", label: "SPT", totalPonds: 82, hatcheries: [{ source: "SHT", ponds: 75 }, { source: "SHT,KS", ponds: 4 }, { source: "GS", ponds: 3 }] },
+            { type: "SPF", label: "SPF", totalPonds: 4, hatcheries: [{ source: "BZYR", ponds: 4 }] },
+            { type: "MONODON", label: "Monodon", totalPonds: 32, hatcheries: [{ source: "KSK", ponds: 18 }, { source: "UBN", ponds: 9 }, { source: "GSR", ponds: 3 }, { source: "CPS", ponds: 2 }] }
+        ]).map(g => {
+            const hList = (g.hatcheries && g.hatcheries.length > 0) ? g.hatcheries : [{ source: "—", ponds: 0 }];
+            return hList.map(h => `
+                <td bgcolor="#f2f2f2" style="background-color: #f2f2f2; border: 1px solid #b4c6e7; padding: 4px 2px; text-align: center;">${h.source}</td>
+            `).join("");
+        }).join("")}
     </tr>
     <tr bgcolor="#ffffff" style="font-weight: bold; font-size: 11px; color: #000000;">
-        <td bgcolor="#ffffff" style="border: 1px solid #b4c6e7; font-size: 13px; color: #002060;">${d.activePonds}</td>
-        <td bgcolor="#ffffff" style="border: 1px solid #b4c6e7;">${d.genetics.spr.sw}</td>
-        <td bgcolor="#ffffff" style="border: 1px solid #b4c6e7;">${d.genetics.spr.shtApi}</td>
-        <td bgcolor="#ffffff" style="border: 1px solid #b4c6e7;">${d.genetics.spt.sht}</td>
-        <td bgcolor="#ffffff" style="border: 1px solid #b4c6e7;">${d.genetics.spt.sbsb}</td>
-        <td bgcolor="#ffffff" style="border: 1px solid #b4c6e7;">${d.genetics.spt.gsp}</td>
-        <td bgcolor="#ffffff" style="border: 1px solid #b4c6e7;">${d.genetics.spt.bzy}</td>
-        <td bgcolor="#ffffff" style="border: 1px solid #b4c6e7;">${d.genetics.spf.iohat}</td>
-        <td bgcolor="#ffffff" style="border: 1px solid #b4c6e7;">${d.genetics.spf.hlx}</td>
-        <td bgcolor="#ffffff" style="border: 1px solid #b4c6e7;">${d.genetics.spf.yhl}</td>
-        <td bgcolor="#ffffff" style="border: 1px solid #b4c6e7;">${d.genetics.spf.cp}</td>
-        <td bgcolor="#ffffff" style="border: 1px solid #b4c6e7;">${d.genetics.spf.ois}</td>
-        <td bgcolor="#ffffff" style="border: 1px solid #b4c6e7;">${d.genetics.spf.bmc}</td>
-        <td bgcolor="#ffffff" style="border: 1px solid #b4c6e7;">${d.genetics.monodon.cp}</td>
-        <td bgcolor="#ffffff" style="border: 1px solid #b4c6e7;">${d.genetics.monodon.gsr}</td>
-        <td bgcolor="#ffffff" style="border: 1px solid #b4c6e7;">${d.genetics.monodon.sht}</td>
-        <td bgcolor="#ffffff" style="border: 1px solid #b4c6e7;">${d.genetics.monodon.sw}</td>
-        <td bgcolor="#ffffff" style="border: 1px solid #b4c6e7;">${d.genetics.monodon.ubn}</td>
-        <td bgcolor="#ffffff" style="border: 1px solid #b4c6e7;">${d.genetics.monodon.kssb}</td>
+        <td bgcolor="#ffffff" style="border: 1px solid #b4c6e7; font-size: 13px; color: #002060; padding: 6px 4px;">
+            ${d.operationalHatcheries?.totalOperation ?? d.activePonds ?? 119}
+        </td>
+        ${(d.operationalHatcheries?.groups || [
+            { type: "SPR", label: "SPR", totalPonds: 1, hatcheries: [{ source: "SPR", ponds: 1 }] },
+            { type: "SPT", label: "SPT", totalPonds: 82, hatcheries: [{ source: "SHT", ponds: 75 }, { source: "SHT,KS", ponds: 4 }, { source: "GS", ponds: 3 }] },
+            { type: "SPF", label: "SPF", totalPonds: 4, hatcheries: [{ source: "BZYR", ponds: 4 }] },
+            { type: "MONODON", label: "Monodon", totalPonds: 32, hatcheries: [{ source: "KSK", ponds: 18 }, { source: "UBN", ponds: 9 }, { source: "GSR", ponds: 3 }, { source: "CPS", ponds: 2 }] }
+        ]).map(g => {
+            const hList = (g.hatcheries && g.hatcheries.length > 0) ? g.hatcheries : [{ source: "—", ponds: 0 }];
+            return hList.map(h => `
+                <td bgcolor="#ffffff" style="border: 1px solid #b4c6e7; padding: 6px 2px; text-align: center; font-size: 11px;">${h.ponds}</td>
+            `).join("");
+        }).join("")}
     </tr>
 </table>
 
@@ -720,33 +746,47 @@ export function buildDailyReportEmailHtml(data = {}, wrapFullDocument = true) {
                 })()}
             </table>
 
-            <!-- Stocking Plan Nov '26 Summary -->
+            <!-- Stocking Plan Monthly Summary -->
             <div style="margin-top: 10px;">
-                <table border="1" cellpadding="3" cellspacing="0" width="100%" style="width: 100%; border-collapse: collapse; border: 1px solid #b4c6e7; text-align: center; font-size: 9.5px;">
-                    <tr bgcolor="#d9e1f2" style="font-weight: bold; color: #002060;">
-                        <td colspan="4" bgcolor="#d9e1f2" style="background-color: #d9e1f2; border: 1px solid #b4c6e7; padding: 4px 6px;">
-                            Stocking Plan Nov '26
-                        </td>
-                    </tr>
-                    <tr bgcolor="#f2f2f2" style="font-weight: bold; color: #000000;">
-                        <td bgcolor="#f2f2f2" style="border: 1px solid #b4c6e7;">Genetic</td>
-                        <td bgcolor="#f2f2f2" style="border: 1px solid #b4c6e7;">Total Pond</td>
-                        <td bgcolor="#f2f2f2" style="border: 1px solid #b4c6e7;">Density</td>
-                        <td bgcolor="#f2f2f2" style="border: 1px solid #b4c6e7;">Total Fry (Mil)</td>
-                    </tr>
-                    <tr bgcolor="#ffffff" style="color: #000000;">
-                        <td bgcolor="#ffffff" style="border: 1px solid #b4c6e7;">SPT</td>
-                        <td bgcolor="#ffffff" style="border: 1px solid #b4c6e7; font-weight: bold;">27</td>
-                        <td bgcolor="#ffffff" style="border: 1px solid #b4c6e7;">450,000</td>
-                        <td bgcolor="#ffffff" style="border: 1px solid #b4c6e7; font-weight: bold;">14.80</td>
-                    </tr>
-                    <tr bgcolor="#d9e1f2" style="font-weight: bold; color: #002060;">
-                        <td bgcolor="#d9e1f2" style="border: 1px solid #b4c6e7;">Total</td>
-                        <td bgcolor="#d9e1f2" style="border: 1px solid #b4c6e7;">27</td>
-                        <td bgcolor="#d9e1f2" style="border: 1px solid #b4c6e7;">—</td>
-                        <td bgcolor="#d9e1f2" style="border: 1px solid #b4c6e7;">14.80</td>
-                    </tr>
-                </table>
+                ${(() => {
+                    const plan = d.stockingPlanSummary || {
+                        title: "Stocking Plan Nov '26",
+                        rows: [{ genetic: "SPT", ponds: 27, density: 450000, fryMil: 14.80 }]
+                    };
+                    const rows = plan.rows || [];
+                    const totalPonds = rows.reduce((acc, r) => acc + (Number(r.ponds) || 0), 0);
+                    const totalFry = rows.reduce((acc, r) => acc + (Number(r.fryMil) || 0), 0);
+
+                    return `
+                        <table border="1" cellpadding="3" cellspacing="0" width="100%" style="width: 100%; border-collapse: collapse; border: 1px solid #b4c6e7; text-align: center; font-size: 9.5px;">
+                            <tr bgcolor="#d9e1f2" style="font-weight: bold; color: #002060;">
+                                <td colspan="4" bgcolor="#d9e1f2" style="background-color: #d9e1f2; border: 1px solid #b4c6e7; padding: 4px 6px;">
+                                    ${plan.title || "Stocking Plan"}
+                                </td>
+                            </tr>
+                            <tr bgcolor="#f2f2f2" style="font-weight: bold; color: #000000;">
+                                <td bgcolor="#f2f2f2" style="border: 1px solid #b4c6e7;">Genetic</td>
+                                <td bgcolor="#f2f2f2" style="border: 1px solid #b4c6e7;">Total Pond</td>
+                                <td bgcolor="#f2f2f2" style="border: 1px solid #b4c6e7;">Density</td>
+                                <td bgcolor="#f2f2f2" style="border: 1px solid #b4c6e7;">Total Fry (Mil)</td>
+                            </tr>
+                            ${rows.map(r => `
+                                <tr bgcolor="#ffffff" style="color: #000000;">
+                                    <td bgcolor="#ffffff" style="border: 1px solid #b4c6e7;">${r.genetic || "—"}</td>
+                                    <td bgcolor="#ffffff" style="border: 1px solid #b4c6e7; font-weight: bold;">${r.ponds ?? "—"}</td>
+                                    <td bgcolor="#ffffff" style="border: 1px solid #b4c6e7;">${Number(r.density || 0) > 0 ? Number(r.density).toLocaleString() : (r.density || "—")}</td>
+                                    <td bgcolor="#ffffff" style="border: 1px solid #b4c6e7; font-weight: bold;">${!isNaN(Number(r.fryMil)) ? Number(r.fryMil).toFixed(2) : (r.fryMil || "—")}</td>
+                                </tr>
+                            `).join("")}
+                            <tr bgcolor="#d9e1f2" style="font-weight: bold; color: #002060;">
+                                <td bgcolor="#d9e1f2" style="border: 1px solid #b4c6e7;">Total</td>
+                                <td bgcolor="#d9e1f2" style="border: 1px solid #b4c6e7;">${totalPonds}</td>
+                                <td bgcolor="#d9e1f2" style="border: 1px solid #b4c6e7;">—</td>
+                                <td bgcolor="#d9e1f2" style="border: 1px solid #b4c6e7;">${totalFry.toFixed(2)}</td>
+                            </tr>
+                        </table>
+                    `;
+                })()}
             </div>
 
         </td>
@@ -757,8 +797,8 @@ export function buildDailyReportEmailHtml(data = {}, wrapFullDocument = true) {
         <td width="49%" valign="top" style="border: none;">
             <table border="1" cellpadding="3" cellspacing="0" width="100%" style="width: 100%; border-collapse: collapse; border: 1px solid #a9d18e; text-align: center;">
                 <tr bgcolor="#548235" style="font-weight: bold; color: #ffffff;">
-                    <td colspan="7" bgcolor="#548235" style="background-color: #548235; border: 1px solid #385723; padding: 5px 8px; font-size: 11px; text-transform: uppercase;">
-                        HARVESTING FORECAST
+                    <td colspan="8" bgcolor="#548235" style="background-color: #548235; border: 1px solid #385723; padding: 5px 8px; font-size: 11px; text-transform: uppercase;">
+                        HARVESTING FORECAST &amp; RECONCILIATION
                     </td>
                 </tr>
                 <tr bgcolor="#e2efda" style="font-weight: bold; color: #274e13; font-size: 9px;">
@@ -769,39 +809,55 @@ export function buildDailyReportEmailHtml(data = {}, wrapFullDocument = true) {
                     <td bgcolor="#e2efda" style="border: 1px solid #a9d18e;">ABW</td>
                     <td bgcolor="#e2efda" style="border: 1px solid #a9d18e;">Biomass</td>
                     <td bgcolor="#e2efda" style="border: 1px solid #a9d18e;">Type</td>
+                    <td bgcolor="#e2efda" style="border: 1px solid #a9d18e;">Reconciliation Status</td>
                 </tr>
                 ${(() => {
                     const forecastList = d.harvestForecasts || [];
                     if (forecastList.length === 0) {
                         return `
                             <tr bgcolor="#ffffff">
-                                <td colspan="7" bgcolor="#ffffff" style="border: 1px solid #a9d18e; padding: 12px; color: #666666; font-style: italic;">
+                                <td colspan="8" bgcolor="#ffffff" style="border: 1px solid #a9d18e; padding: 12px; color: #666666; font-style: italic;">
                                     No harvest candidates scheduled.
                                 </td>
                             </tr>
                         `;
                     }
-                    const totalForecastBiomass = forecastList.reduce((acc, f) => acc + (Number(f.biomass) || 0), 0);
-                    const rowsHtml = forecastList.map((f, idx) => `
+                    const reconciledList = DailyReportExcelService.reconcileForecastWithActuals(forecastList, d.harvestReports, d.todayHarvests);
+                    const reconciliationSummary = DailyReportExcelService.calculateReconciliationSummary(reconciledList);
+                    const totalForecastBiomass = reconciledList.reduce((acc, f) => acc + (Number(f.forecastKg) || 0), 0);
+
+                    const rowsHtml = reconciledList.map((f, idx) => `
                         <tr bgcolor="${idx % 2 === 0 ? '#ffffff' : '#f9fafb'}" style="color: #000000;">
                             <td bgcolor="${idx % 2 === 0 ? '#ffffff' : '#f9fafb'}" style="border: 1px solid #a9d18e; font-weight: bold; color: #002060;">${f.pond}</td>
                             <td bgcolor="${idx % 2 === 0 ? '#ffffff' : '#f9fafb'}" style="border: 1px solid #a9d18e;">${f.doc}</td>
                             <td bgcolor="${idx % 2 === 0 ? '#ffffff' : '#f9fafb'}" style="border: 1px solid #a9d18e;">${f.date || "Scheduled"}</td>
                             <td bgcolor="${idx % 2 === 0 ? '#ffffff' : '#f9fafb'}" style="border: 1px solid #a9d18e; font-weight: bold; color: ${f.species === 'Mon' ? '#002060' : '#1e3a8a'};">${f.species}</td>
                             <td bgcolor="${idx % 2 === 0 ? '#ffffff' : '#f9fafb'}" style="border: 1px solid #a9d18e; font-weight: bold;">${f.abw ? `${f.abw}g` : "—"}</td>
-                            <td bgcolor="${idx % 2 === 0 ? '#ffffff' : '#f9fafb'}" style="border: 1px solid #a9d18e; font-weight: bold; color: #274e13;">${Number(f.biomass || 0).toLocaleString()}</td>
+                            <td bgcolor="${idx % 2 === 0 ? '#ffffff' : '#f9fafb'}" style="border: 1px solid #a9d18e; font-weight: bold; color: #274e13;">${Number(f.forecastKg || 0).toLocaleString()}</td>
                             <td bgcolor="${idx % 2 === 0 ? '#ffffff' : '#f9fafb'}" style="border: 1px solid #a9d18e;">${f.type || "Partial"}</td>
+                            <td bgcolor="${f.badgeBg || '#ffffff'}" style="border: 1px solid #a9d18e; font-size: 8.5px; font-weight: bold; color: ${f.badgeColor || '#475569'}; background-color: ${f.badgeBg || '#ffffff'};">
+                                ${f.badgeText || "—"}
+                            </td>
                         </tr>
                     `).join("");
+
                     const totalRowHtml = `
                         <tr bgcolor="#e2efda" style="font-weight: bold; color: #274e13; font-size: 9.5px;">
                             <td colspan="5" bgcolor="#e2efda" style="border: 1px solid #a9d18e; text-align: right; padding-right: 6px;">
-                                TOTAL FORECAST (${forecastList.length} PONDS):
+                                TOTAL FORECAST (${reconciledList.length} PONDS):
                             </td>
                             <td bgcolor="#e2efda" style="border: 1px solid #a9d18e; font-weight: bold; color: #274e13;">
                                 ${totalForecastBiomass.toLocaleString()}
                             </td>
                             <td bgcolor="#e2efda" style="border: 1px solid #a9d18e; color: #64748b;">—</td>
+                            <td bgcolor="#e2efda" style="border: 1px solid #a9d18e; font-size: 8.5px; font-weight: bold; color: #15803d;">
+                                ${reconciliationSummary.completedActualKg > 0 ? `${reconciliationSummary.completedActualTon}T Act` : "—"}
+                            </td>
+                        </tr>
+                        <tr bgcolor="#f9fafb" style="font-size: 9px; color: #475569;">
+                            <td colspan="8" bgcolor="#f9fafb" style="border: 1px solid #a9d18e; padding: 5px 8px; text-align: left;">
+                                📌 <strong>Executive Reconciliation:</strong> ${reconciliationSummary.summaryText}
+                            </td>
                         </tr>
                     `;
                     return rowsHtml + totalRowHtml;

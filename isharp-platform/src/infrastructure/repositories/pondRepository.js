@@ -160,7 +160,7 @@ export class PondRepository {
         const now = new Date();
         const past = new Date(now.getFullYear(), now.getMonth() - (monthsBack + 1), 1);
         const fromDate = `${past.getFullYear()}-${String(past.getMonth() + 1).padStart(2, '0')}-01`;
-        const endpoint = `pond_stocking_batches?select=id,pond_index,stck_date,stck_species,stck_pcs,stck_allow,stck_total,stck_source,stck_tank,stck_size,bs_line&stck_date=gte.${fromDate}&order=stck_date.asc&limit=5000`;
+        const endpoint = `pond_stocking_batches?select=id,pond_index,stck_date,stck_species,stck_pcs,stck_allow,stck_total,stck_source,stck_tank,stck_size,bs_line,stck_type&stck_date=gte.${fromDate}&order=stck_date.asc&limit=5000`;
         try {
             return await supabase.request(endpoint);
         } catch (err) {
