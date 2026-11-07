@@ -1269,8 +1269,8 @@ export class ExecutiveMetricsPresenter {
                 : rawSource.toUpperCase();
 
             const rawLine = String(r.bs_line || cycleInfo?.bs_line || "").trim();
-            const cleanLine = (!rawLine || rawLine.toUpperCase() === "NULL" || rawLine === "—")
-                ? (r.species === "MON" ? "CP THAI" : "SYAQUA")
+            const cleanLine = (!rawLine || rawLine.toUpperCase() === "NULL" || rawLine === "—" || rawLine.toUpperCase() === "UNSPECIFIED")
+                ? "UNSPECIFIED"
                 : rawLine.toUpperCase();
 
             const plSize = Number(r.stck_size || cycleInfo?.stck_size) || null;
@@ -1316,8 +1316,8 @@ export class ExecutiveMetricsPresenter {
                 ? "UNSPECIFIED"
                 : rawSource.toUpperCase();
             const rawLine = String(c.bs_line || "").trim();
-            const cleanLine = (!rawLine || rawLine.toUpperCase() === "NULL" || rawLine === "—")
-                ? (isMon ? "CP THAI" : "SYAQUA")
+            const cleanLine = (!rawLine || rawLine.toUpperCase() === "NULL" || rawLine === "—" || rawLine.toUpperCase() === "UNSPECIFIED")
+                ? "UNSPECIFIED"
                 : rawLine.toUpperCase();
             const plSize = Number(c.stck_size) || null;
             const pcs = Number(c.stck_pcs) || 0;
@@ -1496,7 +1496,10 @@ export class ExecutiveMetricsPresenter {
             recordsForSp.forEach(r => {
                 totalPondSet.add(r.pond_index);
                 totalSpPcs += r.pcs;
-                const line = r.bs_line || (speciesCode === "MON" ? "CP THAI" : "SYAQUA");
+                const rawLine = String(r.bs_line || "").trim();
+                const line = (!rawLine || rawLine.toUpperCase() === "NULL" || rawLine === "—" || rawLine.toUpperCase() === "UNSPECIFIED")
+                    ? "UNSPECIFIED"
+                    : rawLine.toUpperCase();
                 if (!map.has(line)) {
                     map.set(line, { line, species: speciesCode, pondSet: new Set(), pcs: 0 });
                 }
@@ -1637,10 +1640,10 @@ export class ExecutiveMetricsPresenter {
         const fullYtdVanLines = buildGeneticLineBreakdown(ytdRecordList.filter(r => r.species === "VAN"), "VAN");
         const fullYtdMonLines = buildGeneticLineBreakdown(ytdRecordList.filter(r => r.species === "MON"), "MON");
 
-        const topVanHatchery = fullYtdVan.items[0] || { source: "SHT", ponds: 0, millionPcs: 0, pondSharePct: 0, frySharePct: 0 };
-        const topMonHatchery = fullYtdMon.items[0] || { source: "KSK", ponds: 0, millionPcs: 0, pondSharePct: 0, frySharePct: 0 };
-        const topVanLine = fullYtdVanLines[0] || { line: "SYAQUA", ponds: 0, sharePct: 0 };
-        const topMonLine = fullYtdMonLines[0] || { line: "CP THAI", ponds: 0, sharePct: 0 };
+        const topVanHatchery = fullYtdVan.items[0] || { source: "None", ponds: 0, millionPcs: 0, pondSharePct: 0, frySharePct: 0 };
+        const topMonHatchery = fullYtdMon.items[0] || { source: "None", ponds: 0, millionPcs: 0, pondSharePct: 0, frySharePct: 0 };
+        const topVanLine = fullYtdVanLines[0] || { line: "None", ponds: 0, sharePct: 0 };
+        const topMonLine = fullYtdMonLines[0] || { line: "None", ponds: 0, sharePct: 0 };
 
         // ---------------------------------------------------------------------------------
         // Realized Harvest Performance by Hatchery (2026 Completed / Harvested Pond Cycles)
@@ -1735,15 +1738,27 @@ export class ExecutiveMetricsPresenter {
             const closeDate = hAgg.maxHarvDate || String(c?.date_close || "").slice(0, 10);
             const stckDateStr = String(stckDateRaw).slice(0, 10);
             const docDays = Math.round((Date.parse(closeDate) - Date.parse(stckDateStr)) / 86400000);
+            // Business Rule: Exclude early liquidations at DOC <= 20 days. Early emergency terminations
+            // stem from catastrophic acute pathogen or environmental collapse rather than post-larvae genetic quality.
             if (isNaN(docDays) || docDays <= 20) continue;
 
             const finalAdg = avgHarvAbw / docDays;
+
+            // Business Rule: Exclude SR <= 5%. Ultra-low survival is caused by external force majeure
+            // (e.g. electrical power station outage, aerator breaker trip, asphyxiation) rather than PL quality.
+            // Survival rates above 100% indicate stocking density count estimation variance; capped at 100%.
+            const isCatastrophicLoss = finalSr <= 5;
+            const hasDensityVariance = finalSr > 100;
+            const validSr = (!isCatastrophicLoss && finalSr <= 115) ? Math.min(100, Math.round(finalSr * 10) / 10) : null;
+            const validAdg = (finalAdg > 0.02 && finalAdg <= 0.65) ? Math.round(finalAdg * 100) / 100 : null;
+
             harvestedCyclesList.push({
                 pond_index: idx,
                 species,
                 source: cleanSrc,
-                finalSr: (finalSr > 5 && finalSr <= 115) ? Math.min(100, Math.round(finalSr * 10) / 10) : null,
-                finalAdg: (finalAdg > 0.02 && finalAdg <= 0.65) ? Math.round(finalAdg * 100) / 100 : null,
+                finalSr: validSr,
+                hasDensityVariance,
+                finalAdg: validAdg,
                 harvestKg: Math.round(hAgg.totalWeightKg),
                 avgAbw: Math.round(avgHarvAbw * 10) / 10,
                 docDays
@@ -1801,6 +1816,84 @@ export class ExecutiveMetricsPresenter {
         const vanHarvestPerf = buildHarvestedPerformanceByHatchery("VAN");
         const monHarvestPerf = buildHarvestedPerformanceByHatchery("MON");
 
+        // ---------------------------------------------------------------------------------
+        // Incomplete Pond Data Quality Audit for Manual Database Repair
+        // Scans all YTD stocking batches and active operational cycles to surface ponds
+        // missing Hatchery Source, Broodstock Genetic Line, or PL Size so operators
+        // can repair records in Microsoft Access / Supabase.
+        // ---------------------------------------------------------------------------------
+        const incompletePondsMap = new Map();
+
+        // 1. Audit YTD stocking batches / cycles
+        ytdRecordList.forEach(r => {
+            const missing = [];
+            if (!r.source || r.source === "UNSPECIFIED") missing.push("Missing Hatchery");
+            if (!r.bs_line || r.bs_line === "UNSPECIFIED") missing.push("Missing Genetic Line");
+            if (!r.plSize || r.plSize <= 0) missing.push("Missing PL Size");
+
+            if (missing.length > 0) {
+                const key = String(r.pond_index || r.pond).trim();
+                incompletePondsMap.set(key, {
+                    pondIndex: r.pond_index,
+                    pondCode: r.pond,
+                    species: r.species,
+                    stckDate: r.stck_date ? String(r.stck_date).slice(0, 10) : "—",
+                    status: r.isCurrentlyActive ? "ACTIVE" : "YTD BATCH",
+                    missingFields: missing
+                });
+            }
+        });
+
+        // 2. Audit current active culturing cycles in opCycles
+        opCycles.forEach(c => {
+            const isProd = String(c.pond_status || "").toUpperCase() === "PRODUCTION" || activePondIndexSet.has(String(c.pond_index).trim());
+            if (!isProd) return;
+
+            const pCode = derivePondCodeFromIndex(c.pond_index, c.pond);
+            const cycleKey = c.pond_index ? String(c.pond_index).trim() : pCode;
+            if (!cycleKey) return;
+
+            const missing = [];
+            const rawSrc = String(c.stck_source || "").trim().toUpperCase();
+            if (!rawSrc || rawSrc === "NULL" || rawSrc === "—" || rawSrc === "UNSPECIFIED") {
+                missing.push("Missing Hatchery");
+            }
+            const rawLine = String(c.bs_line || "").trim().toUpperCase();
+            if (!rawLine || rawLine === "NULL" || rawLine === "—" || rawLine === "UNSPECIFIED") {
+                missing.push("Missing Genetic Line");
+            }
+            const plSize = Number(c.stck_size) || 0;
+            if (plSize <= 0) {
+                missing.push("Missing PL Size");
+            }
+
+            if (missing.length > 0) {
+                if (incompletePondsMap.has(cycleKey)) {
+                    const existing = incompletePondsMap.get(cycleKey);
+                    missing.forEach(m => {
+                        if (!existing.missingFields.includes(m)) existing.missingFields.push(m);
+                    });
+                    existing.status = "ACTIVE";
+                } else {
+                    const isMon = String(c.stck_species || "VAN").toUpperCase().includes("MON");
+                    incompletePondsMap.set(cycleKey, {
+                        pondIndex: cycleKey,
+                        pondCode: pCode,
+                        species: isMon ? "MON" : "VAN",
+                        stckDate: c.stck_date ? String(c.stck_date).slice(0, 10) : "—",
+                        status: "ACTIVE",
+                        missingFields: missing
+                    });
+                }
+            }
+        });
+
+        const incompletePonds = Array.from(incompletePondsMap.values()).sort((a, b) => {
+            if (a.status === "ACTIVE" && b.status !== "ACTIVE") return -1;
+            if (a.status !== "ACTIVE" && b.status === "ACTIVE") return 1;
+            return (a.pondCode || "").localeCompare(b.pondCode || "");
+        });
+
         return {
             currentYear,
             scope,
@@ -1821,6 +1914,7 @@ export class ExecutiveMetricsPresenter {
             moduleAllocation,
             vanHarvestPerf,
             monHarvestPerf,
+            incompletePonds,
             fullYtdStats: {
                 vanPonds: fullYtdVan.totalPonds,
                 vanMillion: fullYtdVan.totalMillion,
@@ -3885,7 +3979,8 @@ export class ExecutiveMetricsPresenter {
                     ...intel.vanGeneticLines.map(l => ["Broodstock Line", "VAN", l.line, l.ponds, `${l.millionPcs} M`, `${l.sharePct}%`, "—"]),
                     ...intel.monGeneticLines.map(l => ["Broodstock Line", "MON", l.line, l.ponds, `${l.millionPcs} M`, `${l.sharePct}%`, "—"]),
                     ...(intel.vanHarvestPerf || []).map(p => ["Harvested Outcome", "VAN", p.source, p.harvestedPonds, `${p.totalTons} MT`, `${p.avgSr}% [${p.minSr}%-${p.maxSr}%]`, `${p.avgAdg} g/d [${p.minAdg}-${p.maxAdg}]`]),
-                    ...(intel.monHarvestPerf || []).map(p => ["Harvested Outcome", "MON", p.source, p.harvestedPonds, `${p.totalTons} MT`, `${p.avgSr}% [${p.minSr}%-${p.maxSr}%]`, `${p.avgAdg} g/d [${p.minAdg}-${p.maxAdg}]`])
+                    ...(intel.monHarvestPerf || []).map(p => ["Harvested Outcome", "MON", p.source, p.harvestedPonds, `${p.totalTons} MT`, `${p.avgSr}% [${p.minSr}%-${p.maxSr}%]`, `${p.avgAdg} g/d [${p.minAdg}-${p.maxAdg}]`]),
+                    ...(intel.incompletePonds || []).map(p => ["Data Repair Needed", p.species, `${p.pondCode} (Index: ${p.pondIndex})`, 1, p.status, p.missingFields.join(" & "), `Stocked: ${p.stckDate}`])
                 ];
 
                 const scopeLabel = selectedMonth !== "ALL"

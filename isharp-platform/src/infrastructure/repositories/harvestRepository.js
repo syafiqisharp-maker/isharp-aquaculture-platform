@@ -111,7 +111,36 @@ export class HarvestRepository {
     }
 
     /**
+     * Executes parallel chunked requests to safely retrieve large datasets beyond PostgREST's 1,000-row page limit.
+     * @private
+     * @param {string} endpoint Base query endpoint without offset
+     * @param {number} [pageSize=1000]
+     * @param {number} [parallelBatches=4]
+     * @returns {Promise<Array<object>>}
+     */
+    static async _fetchAllPaged(endpoint, pageSize = 1000, parallelBatches = 4) {
+        const promises = [];
+        for (let i = 0; i < parallelBatches; i++) {
+            promises.push(supabase.request(`${endpoint}&offset=${i * pageSize}&limit=${pageSize}`));
+        }
+        const pages = await Promise.all(promises);
+        const all = pages.flat().filter(Boolean);
+        if (pages[parallelBatches - 1] && pages[parallelBatches - 1].length === pageSize) {
+            let offset = parallelBatches * pageSize;
+            while (true) {
+                const extra = await supabase.request(`${endpoint}&offset=${offset}&limit=${pageSize}`);
+                if (!extra || !Array.isArray(extra) || extra.length === 0) break;
+                all.push(...extra);
+                if (extra.length < pageSize) break;
+                offset += pageSize;
+            }
+        }
+        return all;
+    }
+
+    /**
      * Fetches harvest daily and sales transactions for the past 12 rolling months.
+     * Automatically paginates beyond PostgREST's 1,000-row limit to ensure 100% full year coverage.
      * @param {number} [monthsBack=12] 
      * @returns {Promise<{dailyHarvests: Array<object>, salesRecords: Array<object>}>}
      */
@@ -127,9 +156,9 @@ export class HarvestRepository {
 
         try {
             const [dailyHarvests, salesRecords, stockings] = await Promise.all([
-                supabase.request(`pond_harvest_daily?select=pond_index,harv_date,harv_status,harv_weight,harv_abw,harv_revenue&harv_date=gte.${fromDate}&order=harv_date.asc&limit=3000`),
-                supabase.request(`pond_harvest_sales?select=pond_index,hvt_date,hvt_buyer,good_wgt,second_grade_wgt,small_wgt,below_wgt,rubbish_wgt,raw_wgt,net_sales&hvt_date=gte.${fromDate}&order=hvt_date.asc&limit=3000`),
-                supabase.request(`pond_stocking_batches?select=pond_index,stck_species&stck_date=gte.${stockFrom}&limit=5000`)
+                HarvestRepository._fetchAllPaged(`pond_harvest_daily?select=pond_index,harv_date,harv_status,harv_weight,harv_abw,harv_revenue&harv_date=gte.${fromDate}&order=harv_date.asc`),
+                HarvestRepository._fetchAllPaged(`pond_harvest_sales?select=pond_index,hvt_date,hvt_buyer,good_wgt,good_prc,second_grade_wgt,second_grade_prc,small_wgt,below_wgt,rubbish_wgt,raw_wgt,net_sales&hvt_date=gte.${fromDate}&order=hvt_date.asc`),
+                HarvestRepository._fetchAllPaged(`pond_stocking_batches?select=pond_index,stck_species&stck_date=gte.${stockFrom}&order=stck_date.asc`)
             ]);
 
             // Species is not stored on harvest tables; resolve from the stocking batch of the same cycle (pond_index)
@@ -173,19 +202,22 @@ export class HarvestRepository {
                 issuesMap.get(idx).push(iss);
             });
 
-            // Index latest sampling by pond_index
-            const sampleMap = new Map();
+            // Index samplings per pond_index (ordered by smpl_date desc) for interval ADG and latest readings
+            const sampleHistoryMap = new Map();
             (samplings || []).forEach(s => {
                 if (!s.pond_index) return;
                 const idx = String(s.pond_index);
-                if (!sampleMap.has(idx)) {
-                    sampleMap.set(idx, s);
+                if (!sampleHistoryMap.has(idx)) {
+                    sampleHistoryMap.set(idx, []);
                 }
+                sampleHistoryMap.get(idx).push(s);
             });
 
             return (cycles || []).map(cycle => {
                 const pIdx = String(cycle.pond_index);
-                const s = sampleMap.get(pIdx) || null;
+                const history = sampleHistoryMap.get(pIdx) || [];
+                const s = history[0] || null;
+                const prevS = history[1] || null;
                 const pIssues = issuesMap.get(pIdx) || [];
 
                 // Determine biosecurity flag
@@ -219,19 +251,40 @@ export class HarvestRepository {
                 }
 
                 const abw = s && s.smpl_abw ? parseFloat(s.smpl_abw) : 0;
-                const surv = s && s.smpl_surv ? parseFloat(s.smpl_surv) : 75;
+                // Zero fake survival: do not assume 75% SR if smpl_surv is missing
+                const rawSurv = s && s.smpl_surv ? parseFloat(s.smpl_surv) : null;
+                const hasSurvSample = rawSurv !== null && rawSurv > 0;
+                const surv = hasSurvSample ? rawSurv : null;
                 const pcs = cycle.stck_total || cycle.stck_pcs || 0;
 
-                // Biomass (kg)
-                let biomassKg = s && s.smpl_bms ? parseFloat(s.smpl_bms) : 0;
-                if (!biomassKg && pcs > 0 && abw > 0 && surv > 0) {
+                // Biomass (kg): Zero / excluded from biomass calculations if pond lacks verified survival & smpl_bms
+                let biomassKg = 0;
+                if (s && s.smpl_bms && parseFloat(s.smpl_bms) > 0) {
+                    biomassKg = parseFloat(s.smpl_bms);
+                } else if (hasSurvSample && pcs > 0 && abw > 0) {
                     biomassKg = Math.round((pcs * (surv / 100) * abw) / 1000);
                 }
 
-                // ADG pace
-                let adg = 0.22;
-                if (s && s.smpl_abw && doc > 0) {
-                    adg = Math.round((parseFloat(s.smpl_abw) / doc) * 100) / 100;
+                // ADG (Cumulative / Lifetime Average Daily Growth from stocking)
+                let adg = (s && s.smpl_abw && doc > 0)
+                    ? Math.round((parseFloat(s.smpl_abw) / doc) * 100) / 100
+                    : 0;
+
+                // AWG (Recent Weekly Gain Rate): weight difference between current and previous sample / days
+                let awg = 0;
+                let weeklyGainG = 0;
+                if (prevS && s && s.smpl_abw && prevS.smpl_abw && s.smpl_doc && prevS.smpl_doc) {
+                    const docDiff = Number(s.smpl_doc) - Number(prevS.smpl_doc);
+                    const abwDiff = parseFloat(s.smpl_abw) - parseFloat(prevS.smpl_abw);
+                    if (docDiff > 0) {
+                        awg = Math.round((abwDiff / docDiff) * 100) / 100;
+                        weeklyGainG = Math.round(abwDiff * 100) / 100;
+                    }
+                }
+                // Fallback to lifetime pace if only 1 sampling exists
+                if (awg <= 0) {
+                    awg = adg;
+                    weeklyGainG = Math.round(adg * 7 * 100) / 100;
                 }
 
                 const species = (cycle.stck_species || 'P. VANNAMEI').toUpperCase().includes('MON') ? 'MON' : 'VAN';
@@ -246,9 +299,13 @@ export class HarvestRepository {
                     surv,
                     biomassKg,
                     adg,
+                    awg,
+                    weeklyGainG,
                     issueFlag,
                     issueNote,
-                    hasSample: abw > 0
+                    hasSample: abw > 0,
+                    hasSurvSample,
+                    needsSurvRepair: !hasSurvSample
                 };
             });
         } catch (err) {

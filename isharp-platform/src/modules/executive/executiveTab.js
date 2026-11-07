@@ -189,13 +189,21 @@ export class ExecutiveView {
                     </section>
 
                     <!-- SECTION 2: EXECUTIVE PRODUCTION INTELLIGENCE -->
-                    <section class="exec-section-panel" id="exec-production-section">
-                        <div class="exec-section-header">
+                    <section class="exec-section-panel exec-section-collapsible is-collapsed" id="exec-production-section">
+                        <div class="exec-section-header exec-collapsible-header" id="header-exec-production" role="button" tabindex="0" aria-expanded="false" aria-controls="exec-production-container" title="Click to expand/collapse Executive Production &amp; Biomass Intelligence">
                             <div class="exec-section-title">
+                                <span class="exec-collapse-chevron" aria-hidden="true">▶</span>
                                 <span>📈 Executive Production &amp; Biomass Intelligence</span>
+                                <span class="exec-collapse-badge">12M Ledger &amp; Harvest Pipeline</span>
+                            </div>
+                            <div class="exec-section-actions">
+                                <button type="button" class="btn-section-toggle" id="btn-toggle-exec-production" aria-hidden="true" tabindex="-1">
+                                    <span class="toggle-text">Expand</span>
+                                    <span class="toggle-arrow">▾</span>
+                                </button>
                             </div>
                         </div>
-                        <div class="exec-section-body" id="exec-production-container">
+                        <div class="exec-section-body exec-collapsible-body" id="exec-production-container">
                             <div class="placeholder-box">
                                 <div class="placeholder-icon">📊</div>
                                 <div class="placeholder-title">Executive Biomass &amp; Capacity Analytics (Phase 3)</div>
@@ -207,20 +215,25 @@ export class ExecutiveView {
                     </section>
 
                     <!-- SECTION 3: HATCHERY REALIZED HARVEST PERFORMANCE -->
-                    <section class="exec-section-panel" id="exec-hatchery-perf-section">
-                        <div class="exec-section-header">
+                    <section class="exec-section-panel exec-section-collapsible is-collapsed" id="exec-hatchery-perf-section">
+                        <div class="exec-section-header exec-collapsible-header" id="header-exec-hatchery" role="button" tabindex="0" aria-expanded="false" aria-controls="exec-hatchery-perf-container" title="Click to expand/collapse Hatchery Harvest Performance">
                             <div class="exec-section-title">
+                                <span class="exec-collapse-chevron" aria-hidden="true">▶</span>
                                 <span>🧬 2026 Realized Harvest Performance by Hatchery</span>
                                 <span style="font-size: 0.72rem; background: #e0f2fe; color: #0369a1; padding: 0.2rem 0.6rem; border-radius: 9999px; font-weight: 700;">Final SR % &amp; ADG • Min / Avg / Max</span>
                             </div>
                             <div class="exec-section-actions">
-                                <a href="#/executive-detail?metric=SPECIES_COMP" class="btn-action btn-secondary" style="font-size: 0.76rem; padding: 0.35rem 0.75rem; text-decoration: none; display: inline-flex; align-items: center; gap: 0.35rem;" title="Explore Hatchery Allocations, Genetic Lines &amp; Module Zoning">
+                                <a href="#/executive-detail?metric=SPECIES_COMP" class="btn-action btn-secondary" style="font-size: 0.76rem; padding: 0.35rem 0.75rem; text-decoration: none; display: inline-flex; align-items: center; gap: 0.35rem;" title="Explore Hatchery Allocations, Genetic Lines &amp; Module Zoning" id="link-hatchery-portfolio">
                                     <span>Hatchery &amp; Species Portfolio</span>
                                     <span>➔</span>
                                 </a>
+                                <button type="button" class="btn-section-toggle" id="btn-toggle-exec-hatchery" aria-hidden="true" tabindex="-1">
+                                    <span class="toggle-text">Expand</span>
+                                    <span class="toggle-arrow">▾</span>
+                                </button>
                             </div>
                         </div>
-                        <div class="exec-section-body" id="exec-hatchery-perf-container">
+                        <div class="exec-section-body exec-collapsible-body" id="exec-hatchery-perf-container">
                             <div class="sleek-card" style="padding: 2rem; text-align: center; color: #64748b;">
                                 <div class="spinner-sm" style="margin: 0 auto 0.75rem auto;"></div>
                                 <div style="font-weight: 600; font-size: 0.88rem; color: #0f172a;">Analyzing 2026 Completed Pond Harvests by Hatchery...</div>
@@ -295,6 +308,81 @@ export class ExecutiveView {
 
         // Initialize natural touch & gesture scrolling for mobile horizontal view
         this.initMobileTouchScroll();
+
+        // Collapsible Sections (Executive Production & Hatchery Harvest Performance)
+        this.initCollapsibleSections();
+    }
+
+    /**
+     * Initializes interactive collapsible behaviour for secondary executive panels.
+     * Panels default to collapsed to prevent visual clutter and scroll fatigue.
+     */
+    initCollapsibleSections() {
+        const sections = [
+            {
+                sectionId: "exec-production-section",
+                headerId: "header-exec-production",
+                toggleBtnId: "btn-toggle-exec-production",
+                onExpand: () => {
+                    if (this.biomassView && typeof this.biomassView.drawMinimalistChart === "function") {
+                        // Canvas needs redrawing after container becomes visible
+                        requestAnimationFrame(() => this.biomassView.drawMinimalistChart());
+                    }
+                }
+            },
+            {
+                sectionId: "exec-hatchery-perf-section",
+                headerId: "header-exec-hatchery",
+                toggleBtnId: "btn-toggle-exec-hatchery"
+            }
+        ];
+
+        sections.forEach(({ sectionId, headerId, toggleBtnId, onExpand }) => {
+            const sectionEl = this.container.querySelector(`#${sectionId}`);
+            const headerEl = this.container.querySelector(`#${headerId}`);
+            const toggleBtn = this.container.querySelector(`#${toggleBtnId}`);
+            if (!sectionEl || !headerEl) return;
+
+            const toggleSection = (e) => {
+                // If user clicked inside an action link or button that isn't the toggle, don't collapse
+                if (e && e.target && e.target.closest("a, .btn-action")) {
+                    return;
+                }
+
+                const isCurrentlyCollapsed = sectionEl.classList.contains("is-collapsed");
+                const nextCollapsed = !isCurrentlyCollapsed;
+
+                sectionEl.classList.toggle("is-collapsed", nextCollapsed);
+                headerEl.setAttribute("aria-expanded", String(!nextCollapsed));
+
+                if (toggleBtn) {
+                    const textEl = toggleBtn.querySelector(".toggle-text");
+                    const arrowEl = toggleBtn.querySelector(".toggle-arrow");
+                    if (textEl) textEl.textContent = nextCollapsed ? "Expand" : "Collapse";
+                    if (arrowEl) arrowEl.textContent = nextCollapsed ? "▾" : "▴";
+                }
+
+                if (!nextCollapsed && typeof onExpand === "function") {
+                    onExpand();
+                }
+            };
+
+            headerEl.addEventListener("click", toggleSection);
+            headerEl.addEventListener("keydown", (e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    toggleSection(e);
+                }
+            });
+        });
+
+        // Isolate action link clicks from header collapse toggle
+        const hatcheryLink = this.container.querySelector("#link-hatchery-portfolio");
+        if (hatcheryLink) {
+            hatcheryLink.addEventListener("click", (e) => {
+                e.stopPropagation();
+            });
+        }
     }
 
     /**

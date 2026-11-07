@@ -154,7 +154,7 @@ export class LandingPage {
                         <div class="orb-content">
                             <div class="orb-title-row">
                                 <h2 class="orb-title">iSHARP Simulator</h2>
-                                <span class="orb-badge-active" style="background: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%); color: #ffffff;">FRONTIER AI</span>
+                                <span class="orb-badge-active" style="background: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%); color: #ffffff;">UNDER DEVELOPMENT</span>
                             </div>
                         </div>
                     </div>

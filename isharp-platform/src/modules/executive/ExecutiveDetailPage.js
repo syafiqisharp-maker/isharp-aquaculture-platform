@@ -591,8 +591,100 @@ export class ExecutiveDetailPage {
                         ${buildHarvestedPerfRowsHtml(va.monHarvestPerf || [], "#059669", "#34d399")}
                     </div>
                 </div>
+
+                <!-- Card 7: Data Quality & Manual Repair Audit (Incomplete Ponds) -->
+                <div class="exec-detail-table-card" style="padding: 1.15rem 1.25rem; grid-column: 1 / -1; border-left: 4px solid #f59e0b; background: #fffdfa;">
+                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.9rem; border-bottom: 1px solid #fed7aa; padding-bottom: 0.6rem; flex-wrap: wrap; gap: 0.5rem;">
+                        <div>
+                            <div style="font-size: 0.92rem; font-weight: 800; color: #9a3412; display: flex; align-items: center; gap: 0.45rem;">
+                                <span>🛠️ Pond Master Data Quality &amp; Manual Repair Audit</span>
+                                <span class="drilldown-badge" style="background: ${(va.incompletePonds || []).length > 0 ? '#fef3c7' : '#dcfce7'}; color: ${(va.incompletePonds || []).length > 0 ? '#b45309' : '#15803d'}; font-weight: 800;">
+                                    ${(va.incompletePonds || []).length > 0 ? `${(va.incompletePonds || []).length} Ponds Require Repair` : '✓ All Data Complete'}
+                                </span>
+                            </div>
+                            <div style="font-size: 0.74rem; color: #78350f; margin-top: 0.2rem;">
+                                Operational cycles and stocking batches with unrecorded Hatchery Source, Genetic Line, or PL Size. Use Pond Index for targeted updates in Microsoft Access / Supabase.
+                            </div>
+                        </div>
+                        ${(va.incompletePonds || []).length > 0 ? `
+                        <button type="button" id="btn-copy-incomplete-indices" class="btn-action" style="padding: 0.35rem 0.8rem; font-size: 0.75rem; font-weight: 700; background: #ea580c; color: #ffffff; border: none; border-radius: 6px; cursor: pointer; display: inline-flex; align-items: center; gap: 0.35rem; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
+                            <span>📋 Copy Pond Index List</span>
+                        </button>
+                        ` : ''}
+                    </div>
+
+                    ${(va.incompletePonds || []).length === 0 ? `
+                        <div style="padding: 1.5rem; text-align: center; color: #166534; font-size: 0.84rem; background: #f0fdf4; border-radius: 6px; font-weight: 600;">
+                            ✅ Perfect Data Integrity: All current operational cycles and YTD stocking batches have complete hatchery sources, genetic lines, and stocking PL sizes.
+                        </div>
+                    ` : `
+                        <div style="overflow-x: auto; max-height: 280px; overflow-y: auto; border: 1px solid #fde68a; border-radius: 6px;">
+                            <table style="width: 100%; border-collapse: collapse; font-size: 0.76rem; text-align: left;">
+                                <thead style="background: #fffbeb; position: sticky; top: 0; z-index: 2; border-bottom: 1px solid #fed7aa; color: #78350f; font-weight: 800; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.03em;">
+                                    <tr>
+                                        <th style="padding: 0.55rem 0.75rem;">Pond Code</th>
+                                        <th style="padding: 0.55rem 0.75rem;">Pond Index (Database Key)</th>
+                                        <th style="padding: 0.55rem 0.75rem;">Species</th>
+                                        <th style="padding: 0.55rem 0.75rem;">Stock Date</th>
+                                        <th style="padding: 0.55rem 0.75rem;">Status</th>
+                                        <th style="padding: 0.55rem 0.75rem;">Missing Fields (Action Needed)</th>
+                                    </tr>
+                                </thead>
+                                <tbody style="background: #ffffff;">
+                                    ${(va.incompletePonds || []).map(p => `
+                                        <tr style="border-bottom: 1px solid #fef3c7;">
+                                            <td style="padding: 0.5rem 0.75rem; font-weight: 800; color: #0f172a;">${p.pondCode}</td>
+                                            <td style="padding: 0.5rem 0.75rem; font-family: monospace; font-size: 0.82rem; font-weight: 700; color: #b45309;">${p.pondIndex}</td>
+                                            <td style="padding: 0.5rem 0.75rem;">
+                                                <span class="drilldown-badge ${p.species === 'VAN' ? 'badge-sp-van' : 'badge-sp-mon'}" style="font-size: 0.65rem; padding: 0.08rem 0.35rem;">${p.species}</span>
+                                            </td>
+                                            <td style="padding: 0.5rem 0.75rem; color: #475569;">${p.stckDate}</td>
+                                            <td style="padding: 0.5rem 0.75rem;">
+                                                <span style="background: ${p.status === 'ACTIVE' ? '#dbeafe' : '#f1f5f9'}; color: ${p.status === 'ACTIVE' ? '#1e40af' : '#475569'}; font-weight: 700; font-size: 0.68rem; padding: 0.1rem 0.4rem; border-radius: 4px;">${p.status}</span>
+                                            </td>
+                                            <td style="padding: 0.5rem 0.75rem;">
+                                                <div style="display: flex; gap: 0.35rem; flex-wrap: wrap;">
+                                                    ${p.missingFields.map(f => `
+                                                        <span style="background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; padding: 0.08rem 0.4rem; border-radius: 4px; font-weight: 700; font-size: 0.68rem;">⚠️ ${f}</span>
+                                                    `).join('')}
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                        </div>
+                    `}
+                </div>
             </section>
         `;
+    }
+
+    /**
+     * Binds clipboard copy actions for incomplete pond data repair audit.
+     * @param {object} va Visual analytics object
+     */
+    bindSpeciesVisualEvents(va) {
+        const btnCopy = this.container.querySelector("#btn-copy-incomplete-indices");
+        if (btnCopy) {
+            btnCopy.onclick = () => {
+                const incomplete = va?.incompletePonds || [];
+                if (incomplete.length === 0) {
+                    Toast.info("No incomplete pond indexes found.");
+                    return;
+                }
+                const indicesList = Array.from(new Set(incomplete.map(p => p.pondIndex).filter(Boolean))).join(", ");
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    navigator.clipboard.writeText(indicesList).then(() => {
+                        Toast.success(`Copied ${incomplete.length} pond index(es) to clipboard for database repair!`);
+                    }).catch(() => {
+                        prompt("Pond Index List for manual repair:", indicesList);
+                    });
+                } else {
+                    prompt("Pond Index List for manual repair:", indicesList);
+                }
+            };
+        }
     }
 
     /**
@@ -1256,6 +1348,39 @@ export class ExecutiveDetailPage {
     }
 
     bindEvents() {
+        // Incomplete Pond Data Repair Clipboard Action
+        const btnCopyIncomplete = this.container.querySelector("#btn-copy-incomplete-indices");
+        if (btnCopyIncomplete) {
+            btnCopyIncomplete.addEventListener("click", () => {
+                const vm = ExecutiveMetricsPresenter.getMetricDrillDownData(
+                    this.currentMetric,
+                    this.dataBundle,
+                    this.selectedMonth,
+                    this.searchQuery,
+                    {
+                        speciesCompScope: this.speciesCompScope,
+                        speciesCompMode: this.speciesCompMode,
+                        speciesCompSpecies: this.speciesCompSpecies
+                    }
+                );
+                const incomplete = vm.visualAnalytics?.incompletePonds || [];
+                if (incomplete.length === 0) {
+                    Toast.info("No incomplete pond indexes found.");
+                    return;
+                }
+                const indicesList = Array.from(new Set(incomplete.map(p => p.pondIndex).filter(Boolean))).join(", ");
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    navigator.clipboard.writeText(indicesList).then(() => {
+                        Toast.success(`Copied ${incomplete.length} pond index(es) to clipboard for database repair!`);
+                    }).catch(() => {
+                        prompt("Pond Index List for manual repair:", indicesList);
+                    });
+                } else {
+                    prompt("Pond Index List for manual repair:", indicesList);
+                }
+            });
+        }
+
         // Harvest Metric Mode Toggle (TONNAGE, PONDS)
         const harvestModeBtns = this.container.querySelectorAll("[data-harvest-mode]");
         harvestModeBtns.forEach(btn => {
@@ -1794,6 +1919,7 @@ export class ExecutiveDetailPage {
         const visualMount = this.container.querySelector("#detail-visual-analytics-mount");
         if (visualMount && vm.hideDataTable) {
             visualMount.innerHTML = this.buildSpeciesVisualAnalyticsHtml(vm.visualAnalytics);
+            this.bindSpeciesVisualEvents(vm.visualAnalytics);
         }
 
         // Update doc visual mount if present (e.g. DOC_COMP)

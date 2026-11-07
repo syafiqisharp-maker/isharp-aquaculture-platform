@@ -10,7 +10,14 @@
 import { HarvestRepository } from "../../infrastructure/repositories/harvestRepository.js";
 import { classifyHarvestReadiness, projectHarvestForecast, aggregate12MonthMovingHarvest } from "../../domain/biometrics.js";
 import { Toast } from "../../components/Toast.js";
-import { getExecutiveBiomassHtml, renderPipelineRowsHtml } from "./templates/executiveBiomassTemplate.js";
+import {
+    getExecutiveBiomassHtml,
+    renderPipelineRowsHtml,
+    renderPipelineFooterHtml,
+    filterPondsForPipeline,
+    renderCommercialPackoutCardHtml,
+    renderPerformanceLedgerSectionHtml
+} from "./templates/executiveBiomassTemplate.js";
 import { drawMinimalistHarvestChart } from "./charts/MinimalistHarvestChart.js";
 
 const CACHE_KEY = "isharp_exec_biomass_cache_v4";
@@ -27,6 +34,15 @@ export class ExecutiveBiomassView {
 
         this.cohortFilter = "ALL";       // 'ALL', 'VAN', 'MON'
         this.pipelineFilter = "ALL";     // 'ALL', 'OPTIMUM', 'MINIMUM', 'ALERT', 'FORECAST'
+        this.packoutSpeciesFilter = null; // 'ALL', 'VAN', 'MON' or null (synced with cohort)
+        this.sortKey = "abw";            // 'pond', 'species', 'classification', 'abw', 'doc', 'biomassKg', 'adg', 'awg', 'issueFlag', 'action'
+        this.sortDirection = "desc";     // 'asc', 'desc'
+
+        // Audited Commercial Ledger State
+        this.ledgerTimeHorizon = "ALL";  // 'ALL' (12M Rolling) or 'YTD' (Current Calendar Year)
+        this.ledgerHideEmpty = false;
+        this.ledgerSortKey = "month";
+        this.ledgerSortDirection = "desc";
         
         this.rawDailyHarvests = [];
         this.rawSalesRecords = [];
@@ -162,6 +178,7 @@ export class ExecutiveBiomassView {
                 abw: p.abw,
                 doc: p.doc,
                 adg: p.adg,
+                awg: p.awg,
                 issueFlag: p.issueFlag,
                 issueNote: p.issueNote
             });
@@ -184,33 +201,116 @@ export class ExecutiveBiomassView {
         this.container.innerHTML = getExecutiveBiomassHtml({
             cohortFilter: this.cohortFilter,
             pipelineFilter: this.pipelineFilter,
-            evaluatedPonds: this.evaluatedPonds,
+            evaluatedPonds: this.sortEvaluatedPonds(this.evaluatedPonds),
             forecast14d: this.forecast14d,
-            aggregated12m: this.aggregated12m
+            aggregated12m: this.aggregated12m,
+            packoutSpeciesFilter: this.packoutSpeciesFilter,
+            ledgerTimeHorizon: this.ledgerTimeHorizon,
+            hideEmptyMonths: this.ledgerHideEmpty,
+            ledgerSortKey: this.ledgerSortKey,
+            ledgerSortDirection: this.ledgerSortDirection
+        });
+        this.updateSortHeaderIndicators();
+    }
+
+    sortEvaluatedPonds(ponds = []) {
+        if (!this.sortKey || !this.sortDirection) return ponds;
+        const dir = this.sortDirection === "asc" ? 1 : -1;
+        const key = this.sortKey;
+
+        return ponds.slice().sort((a, b) => {
+            let valA, valB;
+            if (key === "pond") {
+                valA = a.pond || "";
+                valB = b.pond || "";
+                return dir * valA.localeCompare(valB, undefined, { numeric: true });
+            } else if (key === "species") {
+                valA = a.species || "";
+                valB = b.species || "";
+                return dir * valA.localeCompare(valB);
+            } else if (key === "classification") {
+                const rank = { ALERT: 3, OPTIMUM: 2, MINIMUM: 1, GROWING: 0, NO_DATA: -1 };
+                valA = rank[a.classification?.category] ?? 0;
+                valB = rank[b.classification?.category] ?? 0;
+                return dir * (valA - valB);
+            } else if (key === "abw") {
+                valA = Number(a.abw) || 0;
+                valB = Number(b.abw) || 0;
+                return dir * (valA - valB);
+            } else if (key === "doc") {
+                valA = Number(a.doc) || 0;
+                valB = Number(b.doc) || 0;
+                return dir * (valA - valB);
+            } else if (key === "biomassKg") {
+                valA = Number(a.biomassKg) || 0;
+                valB = Number(b.biomassKg) || 0;
+                return dir * (valA - valB);
+            } else if (key === "adg") {
+                valA = Number(a.adg) || 0;
+                valB = Number(b.adg) || 0;
+                return dir * (valA - valB);
+            } else if (key === "awg") {
+                valA = Number(a.awg) || 0;
+                valB = Number(b.awg) || 0;
+                return dir * (valA - valB);
+            } else if (key === "issueFlag") {
+                const rank = { RED: 3, YELLOW: 2, GREEN: 1 };
+                valA = rank[a.issueFlag] ?? 0;
+                valB = rank[b.issueFlag] ?? 0;
+                return dir * (valA - valB);
+            } else if (key === "action") {
+                valA = a.classification?.actionText || "";
+                valB = b.classification?.actionText || "";
+                return dir * valA.localeCompare(valB);
+            }
+            return 0;
         });
     }
 
     renderPipelineRows() {
-        return renderPipelineRowsHtml(this.evaluatedPonds, this.pipelineFilter, this.forecast14d);
+        const sorted = this.sortEvaluatedPonds(this.evaluatedPonds);
+        return renderPipelineRowsHtml(sorted, this.pipelineFilter, this.forecast14d);
+    }
+
+    renderPipelineFooter() {
+        const sorted = this.sortEvaluatedPonds(this.evaluatedPonds);
+        const filtered = filterPondsForPipeline(sorted, this.pipelineFilter, this.forecast14d);
+        return renderPipelineFooterHtml(filtered);
+    }
+
+    refreshPipelineTable() {
+        const tbody = this.container.querySelector("#exec-pipeline-tbody");
+        if (tbody) {
+            tbody.innerHTML = this.renderPipelineRows();
+            this.bindActionGateTriggers();
+        }
+        const tfoot = this.container.querySelector("#exec-pipeline-tfoot");
+        if (tfoot) {
+            tfoot.innerHTML = this.renderPipelineFooter();
+        }
+        this.updateSortHeaderIndicators();
+    }
+
+    updateSortHeaderIndicators() {
+        if (!this.container) return;
+        const headers = this.container.querySelectorAll(".exec-pipeline-table th[data-sort-key]");
+        headers.forEach(th => {
+            const key = th.getAttribute("data-sort-key");
+            const indicator = th.querySelector(".sort-indicator");
+            if (indicator) {
+                if (key === this.sortKey) {
+                    indicator.textContent = this.sortDirection === "asc" ? "▲" : "▼";
+                    indicator.style.color = "#0284c7";
+                } else {
+                    indicator.textContent = "↕";
+                    indicator.style.color = "#94a3b8";
+                }
+            }
+        });
     }
 
     bindEvents() {
         if (!this.container) return;
-
-        // Cohort Switcher (Combined / VAN / MON)
-        const cohortBtns = this.container.querySelectorAll(".btn-cohort");
-        cohortBtns.forEach(btn => {
-            btn.addEventListener("click", () => {
-                const c = btn.getAttribute("data-cohort");
-                if (c && c !== this.cohortFilter) {
-                    this.cohortFilter = c;
-                    this.processEvaluations();
-                    this.render();
-                    this.bindEvents();
-                    this.drawMinimalistChart();
-                }
-            });
-        });
 
         // Pipeline Segmented Tabs
         const tabBtns = this.container.querySelectorAll(".tab-pill");
@@ -219,25 +319,67 @@ export class ExecutiveBiomassView {
                 const t = btn.getAttribute("data-tab");
                 if (t && t !== this.pipelineFilter) {
                     this.pipelineFilter = t;
-                    const tbody = this.container.querySelector("#exec-pipeline-tbody");
-                    if (tbody) {
-                        tbody.innerHTML = this.renderPipelineRows();
-                        this.bindActionGateTriggers();
-                    }
+                    this.refreshPipelineTable();
                     tabBtns.forEach(b => b.classList.remove("active"));
                     btn.classList.add("active");
                 }
             });
         });
 
+        // Banner Shortcut for Missing Survival Rate
+        const btnShowMissing = this.container.querySelector(".btn-show-missing-surv");
+        if (btnShowMissing) {
+            btnShowMissing.addEventListener("click", () => {
+                this.pipelineFilter = "MISSING_SURV";
+                this.refreshPipelineTable();
+                const allTabBtns = this.container.querySelectorAll(".tab-pill");
+                allTabBtns.forEach(b => {
+                    if (b.getAttribute("data-tab") === "MISSING_SURV") {
+                        b.classList.add("active");
+                    } else {
+                        b.classList.remove("active");
+                    }
+                });
+            });
+        }
+
+        // Sortable Table Headers
+        const sortHeaders = this.container.querySelectorAll(".exec-pipeline-table th[data-sort-key]");
+        sortHeaders.forEach(th => {
+            th.addEventListener("click", () => {
+                const key = th.getAttribute("data-sort-key");
+                if (this.sortKey === key) {
+                    this.sortDirection = this.sortDirection === "asc" ? "desc" : "asc";
+                } else {
+                    this.sortKey = key;
+                    this.sortDirection = (key === "pond" || key === "species") ? "asc" : "desc";
+                }
+                this.refreshPipelineTable();
+            });
+        });
+
+        // Expandable Policy & Decision Criteria Drawer Toggle
+        const btnTogglePolicy = this.container.querySelector("#btn-toggle-harvest-policy");
+        const policyDrawer = this.container.querySelector("#exec-harvest-policy-drawer");
+        if (btnTogglePolicy && policyDrawer) {
+            btnTogglePolicy.addEventListener("click", () => {
+                const isHidden = policyDrawer.style.display === "none";
+                policyDrawer.style.display = isHidden ? "block" : "none";
+                const icon = btnTogglePolicy.querySelector(".policy-toggle-icon");
+                const text = btnTogglePolicy.querySelector(".policy-toggle-text");
+                if (icon) icon.textContent = isHidden ? "▲" : "▼";
+                if (text) text.textContent = isHidden ? "Hide Decision Rules" : "View Decision Gate Criteria";
+            });
+        }
+
         // Action Gate Buttons
         this.bindActionGateTriggers();
 
-        // Export CSV button
-        const btnExport = this.container.querySelector("#btn-export-exec-ledger");
-        if (btnExport) {
-            btnExport.addEventListener("click", () => this.exportToCSV());
-        }
+        // Packout Species Switcher Buttons
+        this.bindPackoutEvents();
+
+        // Audited Commercial Ledger Events
+        this.bindLedgerEvents();
 
         // Window resize observer for canvas chart responsiveness
         if (this._chartObserver) this._chartObserver.disconnect();
@@ -266,6 +408,32 @@ export class ExecutiveBiomassView {
         });
     }
 
+    bindPackoutEvents() {
+        if (!this.container) return;
+        const packoutBtns = this.container.querySelectorAll(".btn-packout-species");
+        packoutBtns.forEach(btn => {
+            btn.addEventListener("click", () => {
+                const sp = btn.getAttribute("data-packout-species") || "ALL";
+                this.packoutSpeciesFilter = sp;
+                const packoutCard = this.container.querySelector("#card-commercial-packout");
+                if (packoutCard) {
+                    const agg = this.aggregated12m;
+                    const activePackoutSpecies = this.packoutSpeciesFilter || (this.cohortFilter === "MON" ? "MON" : (this.cohortFilter === "VAN" ? "VAN" : "ALL"));
+                    const activePackout = agg?.packoutBySpecies?.[activePackoutSpecies] || agg?.packoutSummary || { goodPct: 0, secondPct: 0, smallPct: 0, rejectPct: 0 };
+                    const activeBuyersData = agg?.topBuyersBySpecies?.[activePackoutSpecies] || { buyers: agg?.topBuyers || [], top3ConcentrationPct: agg?.top3BuyerConcentration || 0 };
+
+                    packoutCard.outerHTML = renderCommercialPackoutCardHtml({
+                        packout: activePackout,
+                        topBuyers: activeBuyersData.buyers || [],
+                        currentSpecies: activePackoutSpecies,
+                        top3Concentration: activeBuyersData.top3ConcentrationPct || 0
+                    });
+                    this.bindPackoutEvents();
+                }
+            });
+        });
+    }
+
     drawMinimalistChart() {
         const canvas = document.getElementById("canvas-exec-pastel-biomass");
         if (!canvas) return;
@@ -273,38 +441,215 @@ export class ExecutiveBiomassView {
         drawMinimalistHarvestChart(canvas, buckets);
     }
 
+    refreshLedgerSection() {
+        if (!this.container) return;
+        const ledgerContainer = this.container.querySelector("#exec-ledger-container");
+        if (!ledgerContainer) return;
+
+        const agg = this.aggregated12m || { monthlyBuckets: [], totals: {} };
+        ledgerContainer.innerHTML = renderPerformanceLedgerSectionHtml({
+            buckets: agg.monthlyBuckets || [],
+            totals: agg.totals || {},
+            cohortFilter: this.cohortFilter,
+            ledgerTimeHorizon: this.ledgerTimeHorizon,
+            hideEmptyMonths: this.ledgerHideEmpty,
+            sortKey: this.ledgerSortKey,
+            sortDirection: this.ledgerSortDirection
+        });
+        this.bindLedgerEvents();
+    }
+
+    bindLedgerEvents() {
+        if (!this.container) return;
+
+        // Horizon toggle buttons (12M Rolling vs YTD)
+        const horizonBtns = this.container.querySelectorAll(".btn-ledger-horizon");
+        horizonBtns.forEach(btn => {
+            btn.addEventListener("click", () => {
+                const h = btn.getAttribute("data-horizon") || "ALL";
+                if (h !== this.ledgerTimeHorizon) {
+                    this.ledgerTimeHorizon = h;
+                    this.refreshLedgerSection();
+                }
+            });
+        });
+
+        // Hide empty months checkbox
+        const chkHide = this.container.querySelector("#chk-ledger-hide-empty");
+        if (chkHide) {
+            chkHide.addEventListener("change", e => {
+                this.ledgerHideEmpty = e.target.checked;
+                this.refreshLedgerSection();
+            });
+        }
+
+        // Ledger sortable headers
+        const sortHeaders = this.container.querySelectorAll(".exec-ledger-table th[data-ledger-sort]");
+        sortHeaders.forEach(th => {
+            th.addEventListener("click", () => {
+                const key = th.getAttribute("data-ledger-sort");
+                if (this.ledgerSortKey === key) {
+                    this.ledgerSortDirection = this.ledgerSortDirection === "asc" ? "desc" : "asc";
+                } else {
+                    this.ledgerSortKey = key;
+                    this.ledgerSortDirection = (key === "month" || key === "tonnage" || key === "grossRevenue" || key === "vanTons" || key === "monTons") ? "desc" : "asc";
+                }
+                this.refreshLedgerSection();
+            });
+        });
+
+        // Export CSV button
+        const btnExport = this.container.querySelector("#btn-export-exec-ledger");
+        if (btnExport) {
+            btnExport.addEventListener("click", () => this.exportToCSV());
+        }
+    }
+
     exportToCSV() {
-        const buckets = this.aggregated12m?.monthlyBuckets || [];
-        if (buckets.length === 0) {
+        const rawBuckets = this.aggregated12m?.monthlyBuckets || [];
+        if (rawBuckets.length === 0) {
             Toast.info("No ledger data available to export.");
             return;
         }
 
-        const headers = ["Month", "Harvest (Tons)", "Total Runs", "Weighted ABW (g)", "Min ABW (g)", "Max ABW (g)", "Gross Revenue (RM)", "VAN Price (RM/kg)", "MON Price (RM/kg)", "VAN Tons", "MON Tons"];
+        const currentYear = new Date().getFullYear();
+        let buckets = rawBuckets.slice();
+        if (this.ledgerTimeHorizon === "YTD") {
+            buckets = buckets.filter(b => b.month && String(b.month).startsWith(String(currentYear)));
+        }
+        if (this.ledgerHideEmpty) {
+            buckets = buckets.filter(b => ((b.tonnage || 0) > 0 || (b.grossRevenue || 0) > 0 || (b.runs || 0) > 0));
+        }
+
+        const dir = this.ledgerSortDirection === "asc" ? 1 : -1;
+        buckets.sort((a, b) => {
+            if (this.ledgerSortKey === "month") return dir * String(a.month).localeCompare(String(b.month));
+            if (this.ledgerSortKey === "tonnage") return dir * ((a.tonnage || 0) - (b.tonnage || 0));
+            if (this.ledgerSortKey === "runs") return dir * ((a.runs || 0) - (b.runs || 0));
+            if (this.ledgerSortKey === "grossRevenue") return dir * ((a.grossRevenue || 0) - (b.grossRevenue || 0));
+            if (this.ledgerSortKey === "vanTons") return dir * ((a.vanTons || 0) - (b.vanTons || 0));
+            if (this.ledgerSortKey === "vanAbw") return dir * ((a.vanAbw || 0) - (b.vanAbw || 0));
+            if (this.ledgerSortKey === "vanPricePerKg") return dir * ((a.vanPricePerKg || 0) - (b.vanPricePerKg || 0));
+            if (this.ledgerSortKey === "monTons") return dir * ((a.monTons || 0) - (b.monTons || 0));
+            if (this.ledgerSortKey === "monAbw") return dir * ((a.monAbw || 0) - (b.monAbw || 0));
+            if (this.ledgerSortKey === "monPricePerKg") return dir * ((a.monPricePerKg || 0) - (b.monPricePerKg || 0));
+            return 0;
+        });
+
+        const headers = [
+            "Month",
+            "Harvest (MT)",
+            "MoM Change (%)",
+            "Termination (MT)",
+            "Partial Harvest (MT)",
+            "Harvest Events",
+            "Gross Revenue (RM)",
+            "VAN (MT)",
+            "VAN Share (%)",
+            "VAN Avg ABW (g)",
+            "VAN Min ABW (g)",
+            "VAN Max ABW (g)",
+            "VAN Price (RM/kg)",
+            "MON (MT)",
+            "MON Share (%)",
+            "MON Avg ABW (g)",
+            "MON Min ABW (g)",
+            "MON Max ABW (g)",
+            "MON Price (RM/kg)"
+        ];
+
         const rows = buckets.map(b => [
             b.month,
-            b.tonnage,
-            b.runs,
-            b.weightedAbw,
-            b.minAbw,
-            b.maxAbw,
-            b.grossRevenue,
-            b.vanPricePerKg,
-            b.monPricePerKg,
-            b.vanTons,
-            b.monTons
+            (b.tonnage || 0).toFixed(1),
+            b.momDeltaPct !== null ? b.momDeltaPct : "",
+            (b.terminationTons || 0).toFixed(1),
+            (b.partialTons || 0).toFixed(1),
+            b.runs || 0,
+            b.grossRevenue || 0,
+            (b.vanTons || 0).toFixed(1),
+            b.vanSharePct || 0,
+            b.vanAbw > 0 ? b.vanAbw.toFixed(2) : "",
+            b.vanMinAbw > 0 ? b.vanMinAbw.toFixed(1) : "",
+            b.vanMaxAbw > 0 ? b.vanMaxAbw.toFixed(1) : "",
+            b.vanPricePerKg > 0 ? b.vanPricePerKg.toFixed(2) : "",
+            (b.monTons || 0).toFixed(1),
+            b.monSharePct || 0,
+            b.monAbw > 0 ? b.monAbw.toFixed(2) : "",
+            b.monMinAbw > 0 ? b.monMinAbw.toFixed(1) : "",
+            b.monMaxAbw > 0 ? b.monMaxAbw.toFixed(1) : "",
+            b.monPricePerKg > 0 ? b.monPricePerKg.toFixed(2) : ""
+        ]);
+
+        // Calculate Totals row for CSV
+        const totWeightKg = buckets.reduce((sum, b) => sum + (b.weightKg || 0), 0);
+        const totTons = Math.round(totWeightKg / 100) / 10;
+        const totRev = buckets.reduce((sum, b) => sum + (b.grossRevenue || 0), 0);
+        const totVanTons = Math.round(buckets.reduce((sum, b) => sum + (b.vanTons || 0), 0) * 10) / 10;
+        const totMonTons = Math.round(buckets.reduce((sum, b) => sum + (b.monTons || 0), 0) * 10) / 10;
+        const totVanPct = totTons > 0 ? Math.round((totVanTons / totTons) * 1000) / 10 : 0;
+        const totMonPct = totTons > 0 ? Math.round((totMonTons / totTons) * 1000) / 10 : 0;
+        const totTermTons = Math.round(buckets.reduce((sum, b) => sum + (b.terminationTons || 0), 0) * 10) / 10;
+        const totPartTons = Math.round(buckets.reduce((sum, b) => sum + (b.partialTons || 0), 0) * 10) / 10;
+        const totRuns = buckets.reduce((sum, b) => sum + (b.runs || 0), 0);
+
+        let vRev = 0, vWgt = 0, mRev = 0, mWgt = 0;
+        buckets.forEach(b => {
+            if (b.vanPricePerKg > 0 && b.vanTons > 0) { const kg = b.vanTons * 1000; vRev += b.vanPricePerKg * kg; vWgt += kg; }
+            if (b.monPricePerKg > 0 && b.monTons > 0) { const kg = b.monTons * 1000; mRev += b.monPricePerKg * kg; mWgt += kg; }
+        });
+        const wVanPrc = vWgt > 0 ? (vRev / vWgt).toFixed(2) : "";
+        const wMonPrc = mWgt > 0 ? (mRev / mWgt).toFixed(2) : "";
+
+        // Species ABWs and ranges across exported rows
+        const vanWeightKg = buckets.reduce((sum, b) => sum + ((b.vanTons || 0) * 1000), 0);
+        const vanAbwSum = buckets.reduce((sum, b) => sum + ((b.vanAbw || 0) * ((b.vanTons || 0) * 1000)), 0);
+        const totVanAbw = vanWeightKg > 0 ? (vanAbwSum / vanWeightKg).toFixed(2) : "";
+        const vanMins = buckets.map(b => b.vanMinAbw).filter(v => v > 0);
+        const totVanMin = vanMins.length ? Math.min(...vanMins).toFixed(1) : "";
+        const vanMaxs = buckets.map(b => b.vanMaxAbw).filter(v => v > 0);
+        const totVanMax = vanMaxs.length ? Math.max(...vanMaxs).toFixed(1) : "";
+
+        const monWeightKg = buckets.reduce((sum, b) => sum + ((b.monTons || 0) * 1000), 0);
+        const monAbwSum = buckets.reduce((sum, b) => sum + ((b.monAbw || 0) * ((b.monTons || 0) * 1000)), 0);
+        const totMonAbw = monWeightKg > 0 ? (monAbwSum / monWeightKg).toFixed(2) : "";
+        const monMins = buckets.map(b => b.monMinAbw).filter(m => m > 0);
+        const totMonMin = monMins.length ? Math.min(...monMins).toFixed(1) : "";
+        const monMaxs = buckets.map(b => b.monMaxAbw).filter(m => m > 0);
+        const totMonMax = monMaxs.length ? Math.max(...monMaxs).toFixed(1) : "";
+
+        rows.push([
+            `FINANCE TOTAL (${buckets.length} Mos)`,
+            totTons.toFixed(1),
+            "",
+            totTermTons.toFixed(1),
+            totPartTons.toFixed(1),
+            totRuns,
+            totRev,
+            totVanTons.toFixed(1),
+            totVanPct,
+            totVanAbw,
+            totVanMin,
+            totVanMax,
+            wVanPrc,
+            totMonTons.toFixed(1),
+            totMonPct,
+            totMonAbw,
+            totMonMin,
+            totMonMax,
+            wMonPrc
         ]);
 
         const csvContent = "data:text/csv;charset=utf-8," 
             + [headers.join(","), ...rows.map(e => e.join(","))].join("\n");
 
+        const horizonTag = this.ledgerTimeHorizon === "YTD" ? `${currentYear}_ytd` : "12m_rolling";
         const encodedUri = encodeURI(csvContent);
         const link = document.createElement("a");
         link.setAttribute("href", encodedUri);
-        link.setAttribute("download", `isharp_12m_executive_harvest_ledger_${this.cohortFilter.toLowerCase()}.csv`);
+        link.setAttribute("download", `isharp_finance_harvest_ledger_${horizonTag}_${this.cohortFilter.toLowerCase()}.csv`);
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
-        Toast.success("12-Month Performance Ledger downloaded.");
+        Toast.success("Finance Harvest & Revenue Ledger downloaded.");
     }
 }

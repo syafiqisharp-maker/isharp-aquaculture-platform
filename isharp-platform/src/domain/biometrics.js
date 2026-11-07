@@ -18,7 +18,9 @@ export {
 } from "./biometrics/coreMetrics.js";
 
 export {
+    COO_HARVEST_READINESS_THRESHOLDS,
     classifyHarvestReadiness,
+    evaluateBiosecurityAndEhpStatus,
     projectHarvestForecast,
     aggregate12MonthMovingHarvest
 } from "./biometrics/harvestForecast.js";
